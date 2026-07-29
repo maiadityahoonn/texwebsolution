@@ -1,0 +1,182 @@
+@import "tailwindcss";
+
+:root {
+  --background: #ffffff;
+  --foreground: #171717;
+}
+
+@theme {
+  --font-sans: var(--font-matter), system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --font-poppins: var(--font-poppins), sans-serif;
+  --font-clash: var(--font-clash), sans-serif;
+  --font-matter: var(--font-matter), sans-serif;
+
+  --animate-floatingSmooth: floatingSmooth 3s ease-in-out infinite;
+  --animate-marquee-left: marqueeLeft 50s linear infinite;
+  --animate-marquee-right: marqueeRight 50s linear infinite;
+  --animate-marquee-sep1: marqueeSep1 45s linear infinite;
+  --animate-marquee-sep2: marqueeSep2 45s linear infinite;
+  --animate-fade-in-up: fadeInUp 0.6s ease-out forwards;
+
+  @keyframes floatingSmooth {
+
+    0%,
+    100% {
+      transform: translateY(0) scale(1);
+    }
+
+    50% {
+      transform: translateY(-8px) scale(1.03);
+    }
+  }
+
+  @keyframes marqueeLeft {
+    0% {
+      transform: translateX(0);
+    }
+
+    100% {
+      transform: translateX(-33.333%);
+    }
+  }
+
+  @keyframes marqueeRight {
+    0% {
+      transform: translateX(-33.333%);
+    }
+
+    100% {
+      transform: translateX(0);
+    }
+  }
+
+  @keyframes marqueeSep1 {
+    0% {
+      transform: translate3d(0%, 0, 0);
+    }
+
+    100% {
+      transform: translate3d(-100%, 0, 0);
+    }
+  }
+
+  @keyframes marqueeSep2 {
+    0% {
+      transform: translate3d(100%, 0, 0);
+    }
+
+    100% {
+      transform: translate3d(0%, 0, 0);
+    }
+  }
+
+  @keyframes fadeInUp {
+    from {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+}
+
+html,
+body {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+img,
+video,
+svg,
+canvas {
+  max-width: 100%;
+}
+
+button,
+input,
+textarea,
+select {
+  max-width: 100%;
+}
+
+@media (max-width: 640px) {
+  body {
+    -webkit-text-size-adjust: 100%;
+  }
+}
+
+/* Global Website Label Standard */
+label,
+.badge-label,
+.site-label {
+  font-family: var(--font-matter), system-ui, sans-serif !important;
+  font-weight: 600 !important;
+  font-size: 0.875rem !important; /* 14px on desktop */
+}
+
+@media (max-width: 640px) {
+  label,
+  .badge-label,
+  .site-label {
+    font-size: 0.75rem !important; /* 12px on mobile */
+  }
+}
+
+/* Custom Hide Scrollbar Utility */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Floating Animation for SVG Elements */
+@keyframes float {
+
+  0%,
+  100% {
+    transform: translateY(0px) rotate(0deg);
+  }
+
+  50% {
+    transform: translateY(-10px) rotate(3deg);
+  }
+}
+
+.float-animation {
+  animation: float 6s ease-in-out infinite;
+}
+
+/* Swiper custom overrides */
+.swiper-pagination-bullet-active {
+  background: #000000 !important;
+  width: 24px !important;
+  border-radius: 4px !important;
+}
+
+.swiper-slide {
+  height: auto !important;
+}
+
+/* Hardware acceleration for marquee elements to prevent stuttering */
+.animate-marquee-sep1,
+.animate-marquee-sep2 {
+  will-change: transform;
+  backface-visibility: hidden;
+}

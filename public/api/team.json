@@ -1,0 +1,42 @@
+[
+  {
+    "name": "Aditya Kumar Gupta",
+    "role": "Founder & CEO",
+    "image": "/home/aditya_gupta.png"
+  },
+  {
+    "name": "Meraj Hussain",
+    "role": "Co-founder & CTO",
+    "image": "/home/meraj_hussain.webp"
+  },
+  {
+    "name": "Shashank Suman",
+    "role": "Chief Operating Officer",
+    "image": "/home/shashank_suman.webp"
+  },
+  {
+    "name": "Priyank Patel",
+    "role": "Chief Marketing Officer",
+    "image": "/home/priyank_patel.png"
+  },
+  {
+    "name": "Kumar Nishu",
+    "role": "Chief Business Officer",
+    "image": "/home/kumar_nishu.png"
+  },
+  {
+    "name": "Ajeet Kumar Yadav",
+    "role": "Chief Human Resources Officer",
+    "image": "/home/ajeet_yadav.png"
+  },
+  {
+    "name": "Thakur Kumar",
+    "role": "Chief Financial Officer",
+    "image": "/home/thakur_kumar.webp"
+  },
+  {
+    "name": "Sunny Thakur",
+    "role": "Social Media Manager",
+    "image": "/home/sunny_thakur.webp"
+  }
+]

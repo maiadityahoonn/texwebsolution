@@ -1,0 +1,482 @@
+{
+  "single-vendor-grocery-solution": {
+    "title": "Single Vendor Grocery Business Complete Solution",
+    "subtitle": "Digitize your grocery supermarket or retail store. Offer direct-to-consumer online grocery ordering, real-time inventory management, and doorstep delivery.",
+    "phoneGif": "/prebuilt_02/phone.mp4",
+    "offers": [
+      {
+        "title": "User Application",
+        "desc": "A user-friendly mobile app where customers can browse products, add items to their cart, place orders, make secure payments, and track deliveries in real time.",
+        "image": "/prebuilt_02/card1.png"
+      },
+      {
+        "title": "Admin Panel",
+        "desc": "A powerful control center for managing your entire grocery business - products, prices, orders, vendors, customers, offers, payments, and reports.",
+        "image": "/prebuilt_02/card2.png"
+      },
+      {
+        "title": "Delivery Boy Application",
+        "desc": "An easy-to-use app for delivery staff to view assigned orders, get optimized routes, update delivery status, and collect payments if needed.",
+        "image": "/prebuilt_02/card3.png"
+      },
+      {
+        "title": "Customer Website",
+        "desc": "A responsive web version of the customer app that allows users to shop from their desktop or mobile browser without downloading the app.",
+        "image": "/prebuilt_02/card4.png"
+      }
+    ],
+    "whyChooseUs": [
+      {
+        "title": "Geo-Location Data Insights",
+        "desc": "Analyze results based on location to tailor your grocery store\u2019s performance and market reach.",
+        "image": "/common/grocery.svg",
+        "icon": "/common/geo-location.svg"
+      },
+      {
+        "title": "Specially Built for Grocery Business",
+        "desc": "Engineered specifically for grocery stores, ensuring a smooth and relevant shopping experience.",
+        "image": "/common/payment.svg",
+        "icon": "/common/grocery.svg"
+      },
+      {
+        "title": "Versatile Payment Options",
+        "desc": "Integrates multiple payment gateways for secure and varied transaction choices.",
+        "image": "/common/platform.svg",
+        "icon": "/common/payment.svg"
+      },
+      {
+        "title": "All-Inclusive Platform",
+        "desc": "Offers a complete package with mobile and web apps, plus an admin panel for total store control.",
+        "image": "/common/security.svg",
+        "icon": "/common/platform.svg"
+      },
+      {
+        "title": "Enhanced Security Features",
+        "desc": "Provides secure access with multi-login options to protect user and store information.",
+        "image": "/common/categories.svg",
+        "icon": "/common/security.svg"
+      },
+      {
+        "title": "Broad Product Categories",
+        "desc": "Categorize products into various sections for a streamlined browsing and shopping experience.",
+        "image": "/common/stack.webp",
+        "icon": "/common/categories.svg"
+      }
+    ]
+  },
+  "food-delivery-system": {
+    "title": "Food Delivery System Just Like Zomato",
+    "subtitle": "Build a comprehensive food delivery business just like Zomato or foodpanda. Link local restaurants, delivery fleets, and customers under your own brand.",
+    "phoneGif": "/prebuilt_03/phone.mp4",
+    "offers": [
+      {
+        "title": "User Application",
+        "desc": "A user-friendly mobile app where customers can browse products, add items to their cart, place orders, make secure payments, and track deliveries in real time.",
+        "image": "/prebuilt_03/card1.png"
+      },
+      {
+        "title": "Admin Panel",
+        "desc": "A powerful control center for managing your entire grocery business - products, prices, orders, vendors, customers, offers, payments, and reports.",
+        "image": "/prebuilt_03/card2.png"
+      },
+      {
+        "title": "Restaurant Panel",
+        "desc": "A dedicated dashboard for restaurants or vendors to manage their inventory, update stock, track sales, and fulfill customer orders with ease.",
+        "image": "/prebuilt_03/card3.png"
+      },
+      {
+        "title": "Restaurant App",
+        "desc": "A mobile application for restaurant owners to manage orders, menu items, and business status on the go.",
+        "image": "/prebuilt_03/card3.png"
+      },
+      {
+        "title": "Delivery Boy Application",
+        "desc": "An easy-to-use app for delivery staff to view assigned orders, get optimized routes, update delivery status, and collect payments if needed.",
+        "image": "/prebuilt_03/card4.png"
+      },
+      {
+        "title": "Customer Website",
+        "desc": "A responsive web version of the customer app that allows users to shop from their desktop or mobile browser without downloading the app.",
+        "image": "/prebuilt_03/card5.png"
+      }
+    ],
+    "whyChooseUs": [
+      {
+        "title": "Geo-Location Data Insights",
+        "desc": "Analyze results based on location to tailor your grocery store\u2019s performance and market reach.",
+        "image": "/common/grocery.svg",
+        "icon": "/common/geo-location.svg"
+      },
+      {
+        "title": "Specially Built for Grocery Business",
+        "desc": "Engineered specifically for grocery stores, ensuring a smooth and relevant shopping experience.",
+        "image": "/common/payment.svg",
+        "icon": "/common/grocery.svg"
+      },
+      {
+        "title": "Versatile Payment Options",
+        "desc": "Integrates multiple payment gateways for secure and varied transaction choices.",
+        "image": "/common/platform.svg",
+        "icon": "/common/payment.svg"
+      },
+      {
+        "title": "All-Inclusive Platform",
+        "desc": "Offers a complete package with mobile and web apps, plus an admin panel for total store control.",
+        "image": "/common/security.svg",
+        "icon": "/common/platform.svg"
+      },
+      {
+        "title": "Enhanced Security Features",
+        "desc": "Provides secure access with multi-login options to protect user and store information.",
+        "image": "/common/categories.svg",
+        "icon": "/common/security.svg"
+      },
+      {
+        "title": "Broad Product Categories",
+        "desc": "Categorize products into various sections for a streamlined browsing and shopping experience.",
+        "image": "/common/stack.webp",
+        "icon": "/common/categories.svg"
+      }
+    ]
+  },
+  "restaurant-ordering-system": {
+    "title": "Complete Restaurant Ordering System",
+    "subtitle": "Streamline restaurant table bookings, contactless QR-code dining, takeaways, and local deliveries with a branded digital ordering suite.",
+    "phoneGif": "/prebuilt_04/phone.mp4",
+    "offers": [
+      {
+        "title": "User Application",
+        "desc": "A user-friendly mobile app where customers can browse products, add items to their cart, place orders, make secure payments, and track deliveries in real time.",
+        "image": "/prebuilt_04/card1.png"
+      },
+      {
+        "title": "Admin Panel",
+        "desc": "A powerful control center for managing your entire grocery business - products, prices, orders, vendors, customers, offers, payments, and reports.",
+        "image": "/prebuilt_04/card2.png"
+      },
+      {
+        "title": "Branch Panel",
+        "desc": "A dedicated panel for branch managers to oversee specific outlet operations, stock levels, and incoming orders.",
+        "image": "/prebuilt_04/card2.png"
+      },
+      {
+        "title": "Delivery Boy Application",
+        "desc": "An easy-to-use app for delivery staff to view assigned orders, get optimized routes, update delivery status, and collect payments if needed.",
+        "image": "/prebuilt_04/card3.png"
+      },
+      {
+        "title": "Customer Website",
+        "desc": "A responsive web version of the customer app that allows users to shop from their desktop or mobile browser without downloading the app.",
+        "image": "/prebuilt_04/card4.png"
+      }
+    ],
+    "whyChooseUs": [
+      {
+        "title": "Geo-Location Data Insights",
+        "desc": "Analyze results based on location to tailor your grocery store\u2019s performance and market reach.",
+        "image": "/common/grocery.svg",
+        "icon": "/common/geo-location.svg"
+      },
+      {
+        "title": "Specially Built for Grocery Business",
+        "desc": "Engineered specifically for grocery stores, ensuring a smooth and relevant shopping experience.",
+        "image": "/common/payment.svg",
+        "icon": "/common/grocery.svg"
+      },
+      {
+        "title": "Versatile Payment Options",
+        "desc": "Integrates multiple payment gateways for secure and varied transaction choices.",
+        "image": "/common/platform.svg",
+        "icon": "/common/payment.svg"
+      },
+      {
+        "title": "All-Inclusive Platform",
+        "desc": "Offers a complete package with mobile and web apps, plus an admin panel for total store control.",
+        "image": "/common/security.svg",
+        "icon": "/common/platform.svg"
+      },
+      {
+        "title": "Enhanced Security Features",
+        "desc": "Provides secure access with multi-login options to protect user and store information.",
+        "image": "/common/categories.svg",
+        "icon": "/common/security.svg"
+      },
+      {
+        "title": "Broad Product Categories",
+        "desc": "Categorize products into various sections for a streamlined browsing and shopping experience.",
+        "image": "/common/stack.webp",
+        "icon": "/common/categories.svg"
+      }
+    ]
+  },
+  "on-demand-services-system": {
+    "title": "All-in-One Multi Vendor On-Demand Handyman Solution",
+    "subtitle": "An all-in-one multi-vendor handyman platform connecting local cleaning, plumbing, repair, and beauty professionals with customers on demand.",
+    "phoneGif": "/prebuilt_05/phone.mp4",
+    "offers": [
+      {
+        "title": "Admin Panel",
+        "desc": "A comprehensive dashboard to manage service categories, providers, bookings, payments, and system settings efficiently.",
+        "image": "/prebuilt_05/card1.png"
+      },
+      {
+        "title": "Provider Panel",
+        "desc": "A dedicated web interface for service providers to manage their profile, services, bookings, and earnings statistics.",
+        "image": "/prebuilt_05/card2.png"
+      },
+      {
+        "title": "Customer App",
+        "desc": "A convenient mobile app for users to browse services, book professionals, track status, and make secure payments.",
+        "image": "/prebuilt_05/card3.png"
+      },
+      {
+        "title": "Provider App",
+        "desc": "An on-the-go app for professionals to accept booking requests, navigate to locations, and manage their service portfolio.",
+        "image": "/prebuilt_05/card4.png"
+      }
+    ],
+    "whyChooseUs": [
+      {
+        "title": "Comprehensive Admin Dashboard",
+        "desc": "Admin panel for insights and complete control over operations.",
+        "image": "/common/grocery.svg",
+        "icon": "/common/geo-location.svg"
+      },
+      {
+        "title": "Multiple Payment Gateways",
+        "desc": "Secure processing with multiple payment options for easy transactions.",
+        "image": "/common/payment.svg",
+        "icon": "/common/payment.svg"
+      },
+      {
+        "title": "In-App Chat and Support",
+        "desc": "Direct communication between users and providers for better support.",
+        "image": "/common/platform.svg",
+        "icon": "/common/security.svg"
+      },
+      {
+        "title": "Variety of Service Delivery Options",
+        "desc": "Multiple delivery methods to suit diverse user needs and preferences.",
+        "image": "/common/security.svg",
+        "icon": "/common/platform.svg"
+      },
+      {
+        "title": "Schedule Time Slot",
+        "desc": "Easy appointment booking with flexible time slot scheduling.",
+        "image": "/common/categories.svg",
+        "icon": "/common/categories.svg"
+      },
+      {
+        "title": "Multi-Language and RTL Support",
+        "desc": "Supports multiple languages and RTL text for global accessibility.",
+        "image": "/common/stack.webp",
+        "icon": "/common/stack.webp"
+      }
+    ]
+  },
+  "ride-sharing-complete-system": {
+    "title": "Complete Ride Sharing Solution Solution Just Like Uber",
+    "subtitle": "Launch a complete ride-hailing and taxi booking ecosystem just like Uber or Ola. Complete with passenger, driver, and central dispatcher platforms.",
+    "phoneGif": "/prebuilt_06/phone.mp4",
+    "offers": [
+      {
+        "title": "Admin Panel",
+        "desc": "Add drivers & vehicles, manage customers, & monitor trip logs, etc.",
+        "image": "/prebuilt_06/card1.png"
+      },
+      {
+        "title": "User App",
+        "desc": "Customers can request a ride, send parcels, get loyalty points, etc.",
+        "image": "/prebuilt_06/card2.png"
+      },
+      {
+        "title": "Driver App",
+        "desc": "Drivers can bid for ride requests, earn performance bonuses, etc.",
+        "image": "/prebuilt_06/card3.png"
+      }
+    ],
+    "whyChooseUs": [
+      {
+        "title": "Geo-Location Data Insights",
+        "desc": "Analyze results based on location to tailor your grocery store\u2019s performance and market reach.",
+        "image": "/common/grocery.svg",
+        "icon": "/common/geo-location.svg"
+      },
+      {
+        "title": "Specially Built for Grocery Business",
+        "desc": "Engineered specifically for grocery stores, ensuring a smooth and relevant shopping experience.",
+        "image": "/common/payment.svg",
+        "icon": "/common/grocery.svg"
+      },
+      {
+        "title": "Versatile Payment Options",
+        "desc": "Integrates multiple payment gateways for secure and varied transaction choices.",
+        "image": "/common/platform.svg",
+        "icon": "/common/payment.svg"
+      },
+      {
+        "title": "All-Inclusive Platform",
+        "desc": "Offers a complete package with mobile and web apps, plus an admin panel for total store control.",
+        "image": "/common/security.svg",
+        "icon": "/common/platform.svg"
+      },
+      {
+        "title": "Enhanced Security Features",
+        "desc": "Provides secure access with multi-login options to protect user and store information.",
+        "image": "/common/categories.svg",
+        "icon": "/common/security.svg"
+      },
+      {
+        "title": "Broad Product Categories",
+        "desc": "Categorize products into various sections for a streamlined browsing and shopping experience.",
+        "image": "/common/stack.webp",
+        "icon": "/common/categories.svg"
+      }
+    ]
+  },
+  "multi-single-vendor-ecommerce": {
+    "title": "Single / Multi-Vendor Business Complete Solution",
+    "subtitle": "Create your own multi-vendor online marketplace like Amazon or Flipkart. Manage sellers, shipments, payment gateways, and client orders seamlessly.",
+    "phoneGif": "/prebuilt_07/phone.mp4",
+    "offers": [
+      {
+        "title": "Admin Panel",
+        "desc": "A powerful control center for managing your entire ecommerce business - products, orders, vendors, customers, and reports.",
+        "image": "/prebuilt_07/card1.png"
+      },
+      {
+        "title": "Web Application",
+        "desc": "A responsive shopping website allowing customers to browse, search, and buy products from any device seamlessly.",
+        "image": "/prebuilt_07/card2.png"
+      },
+      {
+        "title": "Seller Panel",
+        "desc": "A dedicated dashboard for vendors to manage their inventory, add products, track sales, and process orders.",
+        "image": "/prebuilt_07/card3.png"
+      },
+      {
+        "title": "Delivery Boy Panel",
+        "desc": "A web interface for delivery personnel to track assigned orders, manage deliveries, and view earnings.",
+        "image": "/prebuilt_07/card4.png"
+      },
+      {
+        "title": "User Application",
+        "desc": "A native mobile app for customers to shop online, track orders, compare products, and make secure payments.",
+        "image": "/prebuilt_07/card5.png"
+      },
+      {
+        "title": "Seller Application",
+        "desc": "A mobile app enabling sellers to manage their store, upload products, and chat with customers on the go.",
+        "image": "/prebuilt_07/card5.png"
+      },
+      {
+        "title": "Delivery Boy Application",
+        "desc": "A mobile app for delivery agents to receive tasks, navigate to locations, and update order status in real-time.",
+        "image": "/prebuilt_07/card5.png"
+      }
+    ],
+    "whyChooseUs": [
+      {
+        "title": "Geo-Location Data Insights",
+        "desc": "Analyze results based on location to tailor your grocery store\u2019s performance and market reach.",
+        "image": "/common/grocery.svg",
+        "icon": "/common/geo-location.svg"
+      },
+      {
+        "title": "Specially Built for Grocery Business",
+        "desc": "Engineered specifically for grocery stores, ensuring a smooth and relevant shopping experience.",
+        "image": "/common/payment.svg",
+        "icon": "/common/grocery.svg"
+      },
+      {
+        "title": "Versatile Payment Options",
+        "desc": "Integrates multiple payment gateways for secure and varied transaction choices.",
+        "image": "/common/platform.svg",
+        "icon": "/common/payment.svg"
+      },
+      {
+        "title": "All-Inclusive Platform",
+        "desc": "Offers a complete package with mobile and web apps, plus an admin panel for total store control.",
+        "image": "/common/security.svg",
+        "icon": "/common/platform.svg"
+      },
+      {
+        "title": "Enhanced Security Features",
+        "desc": "Provides secure access with multi-login options to protect user and store information.",
+        "image": "/common/categories.svg",
+        "icon": "/common/security.svg"
+      },
+      {
+        "title": "Broad Product Categories",
+        "desc": "Categorize products into various sections for a streamlined browsing and shopping experience.",
+        "image": "/common/stack.webp",
+        "icon": "/common/categories.svg"
+      }
+    ]
+  },
+  "pharmacy-business-solution": {
+    "title": "Pharmacy Marketplace Software",
+    "subtitle": "A dedicated digital pharmacy solution with prescription validation, pharmaceutical catalogs, online consultations, and temperature-controlled delivery tracking.",
+    "phoneGif": "/prebuilt_08/phone.mp4",
+    "offers": [
+      {
+        "title": "User Application",
+        "desc": "A user-friendly mobile app where customers can browse products, add items to their cart, place orders, make secure payments, and track deliveries in real time.",
+        "image": "/prebuilt_08/card1.png"
+      },
+      {
+        "title": "Admin Panel",
+        "desc": "A powerful control center for managing your entire grocery business - products, prices, orders, vendors, customers, offers, payments, and reports.",
+        "image": "/prebuilt_08/card2.png"
+      },
+      {
+        "title": "Vendor Panel",
+        "desc": "A dedicated dashboard for store owners or vendors to manage their inventory, update stock, track sales, and fulfill customer orders with ease.",
+        "image": "/prebuilt_08/card3.png"
+      },
+      {
+        "title": "Customer Website",
+        "desc": "A responsive web version of the customer app that allows users to shop from their desktop or mobile browser without downloading the app.",
+        "image": "/prebuilt_08/card4.png"
+      }
+    ],
+    "whyChooseUs": [
+      {
+        "title": "Geo-Location Data Insights",
+        "desc": "Analyze results based on location to tailor your grocery store\u2019s performance and market reach.",
+        "image": "/common/grocery.svg",
+        "icon": "/common/geo-location.svg"
+      },
+      {
+        "title": "Specially Built for Grocery Business",
+        "desc": "Engineered specifically for grocery stores, ensuring a smooth and relevant shopping experience.",
+        "image": "/common/payment.svg",
+        "icon": "/common/grocery.svg"
+      },
+      {
+        "title": "Versatile Payment Options",
+        "desc": "Integrates multiple payment gateways for secure and varied transaction choices.",
+        "image": "/common/platform.svg",
+        "icon": "/common/payment.svg"
+      },
+      {
+        "title": "All-Inclusive Platform",
+        "desc": "Offers a complete package with mobile and web apps, plus an admin panel for total store control.",
+        "image": "/common/security.svg",
+        "icon": "/common/platform.svg"
+      },
+      {
+        "title": "Enhanced Security Features",
+        "desc": "Provides secure access with multi-login options to protect user and store information.",
+        "image": "/common/categories.svg",
+        "icon": "/common/security.svg"
+      },
+      {
+        "title": "Broad Product Categories",
+        "desc": "Categorize products into various sections for a streamlined browsing and shopping experience.",
+        "image": "/common/stack.webp",
+        "icon": "/common/categories.svg"
+      }
+    ]
+  }
+}

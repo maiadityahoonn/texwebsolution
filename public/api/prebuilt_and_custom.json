@@ -1,0 +1,114 @@
+[
+  {
+    "title": "Single Vendor Grocery Solution",
+    "image": "https://cdn.sanity.io/images/9bk5wvkx/production/aad5cd16121170340d580ebd591ae5364d3351ee-530x390.png",
+    "imageAlt": "Single Vendor Grocery Solution",
+    "bullets": [
+      "Launch your branded grocery store with a complete package consisting of a Customer App, Customer Website, and central Admin Panel.",
+      "Equipped with a powerful Admin Panel designed to manage inventory, products, orders, customers, coupons, and reports from a single dashboard.",
+      "Includes an easy-to-use Delivery Boy App for staff to manage deliveries, get optimized routes, and update delivery status in real-time.",
+      "Offers a fully responsive Customer Website allowing users to browse items, pay securely, and track orders from any browser.",
+      "Optimized for quick local deliveries with automated order assignments and geographical routing integrations."
+    ],
+    "buttonText": "Check this out",
+    "buttonLink": "/prebuilt/single-vendor-grocery-solution",
+    "imageOrder": 2,
+    "slug": "single-vendor-grocery-solution"
+  },
+  {
+    "title": "Food Delivery System",
+    "image": "https://cdn.sanity.io/images/9bk5wvkx/production/715eb6d666ecd3847e948f9ecedff3c57111bf87-530x390.png",
+    "imageAlt": "Food Delivery System",
+    "bullets": [
+      "Complete food delivery ecosystem containing a Customer App, Restaurant App, Delivery Boy App, Customer Website, and central Admin Panel.",
+      "Features a dedicated Restaurant Panel and App for food outlets to manage their menus, update item pricing, and track incoming orders.",
+      "Includes a Delivery Boy App for riders to accept delivery requests, view optimized navigation, and manage daily payout reports.",
+      "Empowers users with a feature-rich mobile app and website featuring live GPS order tracking, ratings, and instant status notifications.",
+      "Configured with smart commission tracking, multi-payment options, and automated restaurant payout settlements."
+    ],
+    "buttonText": "Check this out",
+    "buttonLink": "/prebuilt/food-delivery-system",
+    "imageOrder": 1,
+    "slug": "food-delivery-system"
+  },
+  {
+    "title": "Restaurant Ordering System",
+    "image": "https://cdn.sanity.io/images/9bk5wvkx/production/87c6f424d7deac7e13bdc79a2f8ced3d56de917e-530x390.png",
+    "imageAlt": "Restaurant Ordering System",
+    "bullets": [
+      "Launch a digital ordering system featuring a Customer App, Branch Manager Panel, Delivery App, Customer Website, and central Admin Panel.",
+      "Includes a Branch Panel for outlet managers to oversee location-specific operations, handle kitchen tickets, and monitor stock levels.",
+      "Equipped with an intuitive Customer Web and Mobile App to browse menu categories, place orders, apply discounts, and pay securely.",
+      "Features a Delivery Boy App for optimized routing, order status tracking, and cash-on-delivery collection logging.",
+      "Provides an Admin Control Center for central product catalog management, branch coordination, and global sales analytics."
+    ],
+    "buttonText": "Check this out",
+    "buttonLink": "/prebuilt/restaurant-ordering-system",
+    "imageOrder": 2,
+    "slug": "restaurant-ordering-system"
+  },
+  {
+    "title": "On-Demand Services System",
+    "image": "https://cdn.sanity.io/images/9bk5wvkx/production/9a2a478a822b2c89a3e025ecc10de859b2526ae8-530x390.png",
+    "imageAlt": "On-Demand Services System",
+    "bullets": [
+      "All-in-one multi-vendor handyman platform including a Customer App, Provider App, Provider Web Panel, and comprehensive Admin Panel.",
+      "Includes a Provider Web Panel and App for professionals to showcase services, adjust pricing hourly/fixed, and manage bookings.",
+      "Features a smart booking system supporting flexible time slot scheduling, appointment tracking, and instant in-app support chat.",
+      "Empowers administrators with a control dashboard to manage categories, verify provider credentials, set commissions, and view analytics.",
+      "Supports global accessibility out of the box with multi-language packages and right-to-left (RTL) text layouts."
+    ],
+    "buttonText": "Check this out",
+    "buttonLink": "/prebuilt/on-demand-services-system",
+    "imageOrder": 1,
+    "slug": "on-demand-services-system"
+  },
+  {
+    "title": "Ride Sharing Complete System",
+    "image": "https://cdn.sanity.io/images/9bk5wvkx/production/77f54514d12086dab32a3c9c9f426fd5c1097089-530x390.png",
+    "imageAlt": "Ride Sharing Complete System",
+    "bullets": [
+      "Complete ride-sharing platform just like Uber, featuring a Customer App, Driver App, and central Administrator Panel.",
+      "Features a Customer App allowing users to request rides, select vehicle categories, calculate fares, and send packages/parcels.",
+      "Includes a Driver App with real-time bidding for rides, GPS route navigation, digital wallet, and performance bonus tracking.",
+      "Equipped with a comprehensive Admin Panel to verify driver documents, add/remove vehicles, monitor active trips, and track commissions.",
+      "Integrated with advanced location services and secure payment gateways for automated fare splits and driver payouts."
+    ],
+    "buttonText": "Check this out",
+    "buttonLink": "/prebuilt/ride-sharing-complete-system",
+    "imageOrder": 2,
+    "slug": "ride-sharing-complete-system"
+  },
+  {
+    "title": "Multi/Single Vendor Ecommerce",
+    "image": "https://cdn.sanity.io/images/9bk5wvkx/production/a0927d52b8dc43f9f93af4d38d5ab6658872ba9b-530x390.png",
+    "imageAlt": "Multi/Single Vendor Ecommerce",
+    "bullets": [
+      "Launch an Amazon-like marketplace with a comprehensive suite of Web App, Seller Panel, User App, Seller App, and Delivery App.",
+      "Includes a Seller Panel and App for vendors to manage catalog listings, handle bulk inventory uploads, track sales, and fulfill orders.",
+      "Features a native User App and responsive website for browsing products, comparing specs, tracking shipments, and secure checkout.",
+      "Equipped with a Delivery Agent App providing live navigation maps, task statuses, and instant delivery verification codes.",
+      "Provides a central Admin Dashboard to manage global settings, commission structures, vendor approvals, and marketplace advertisements."
+    ],
+    "buttonText": "Check this out",
+    "buttonLink": "/prebuilt/multi-single-vendor-ecommerce",
+    "imageOrder": 1,
+    "slug": "multi-single-vendor-ecommerce"
+  },
+  {
+    "title": "Pharmacy Business Solution",
+    "image": "https://cdn.sanity.io/images/9bk5wvkx/production/25bda95c028b6235e8eedad6411f952252f7260d-530x390.png",
+    "imageAlt": "Pharmacy Business Solution",
+    "bullets": [
+      "Branded pharmacy e-commerce platform including a Customer App, Customer Website, Vendor Panel, and central Admin Panel.",
+      "Features a Customer App with digital prescription upload modules, visual category browsing, and order tracking integrations.",
+      "Includes a Vendor Panel for chemists to update medicine inventories, verify uploaded prescriptions, and process orders safely.",
+      "Equipped with a central Admin Panel for regulatory logs, seller approvals, medicine catalog indexing, and financial reports.",
+      "Supports multiple secure digital payment gateways and optimized delivery routing for temperature-sensitive medicine transit."
+    ],
+    "buttonText": "Check this out",
+    "buttonLink": "/prebuilt/pharmacy-business-solution",
+    "imageOrder": 2,
+    "slug": "pharmacy-business-solution"
+  }
+]
