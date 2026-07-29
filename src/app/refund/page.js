@@ -30,21 +30,21 @@ export default function RefundPage() {
       </div>
 
       {/* Main Legal Content */}
-      <main className="w-full py-16 px-6 max-w-4xl mx-auto font-poppins text-gray-700 leading-relaxed">
-        <div className="space-y-12">
+      <main className="w-full py-12 sm:py-16 px-4 sm:px-6 max-w-4xl mx-auto font-poppins text-gray-700 leading-relaxed">
+        <div className="space-y-8 sm:space-y-12">
           
-          <section className="bg-slate-50/70 border border-gray-100 rounded-3xl p-8 shadow-sm">
-            <h2 className="text-2xl font-bold text-gray-900 mb-4 font-[Matter]">1. Overview</h2>
+          <section className="bg-slate-50/70 border border-gray-100 rounded-3xl p-5 sm:p-8 shadow-sm">
+            <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-4 font-[Matter]">1. Overview</h2>
             <p className="mb-4">
-              At <strong>TexWeb Solution Pvt. Ltd.</strong> ("TexWeb Solution", "we", "our"), we are dedicated to delivering world-class software development, prebuilt SaaS platforms, custom AI automation agents, and high-conversion digital marketing solutions.
+              At <strong>TexWeb Solution Pvt. Ltd.</strong> (&quot;TexWeb Solution&quot;, &quot;we&quot;, &quot;our&quot;), we are dedicated to delivering world-class software development, prebuilt SaaS platforms, custom AI automation agents, and high-conversion digital marketing solutions.
             </p>
             <p>
               This Refund Policy outlines the terms regarding payments, milestone deposits, project cancellations, and refunds for all services provided by TexWeb Solution Pvt. Ltd.
             </p>
           </section>
 
-          <section className="bg-red-50/50 border border-red-100 rounded-3xl p-8 shadow-sm">
-            <h2 className="text-2xl font-bold text-gray-900 mb-4 font-[Matter]">2. No Refund Policy</h2>
+          <section className="bg-red-50/50 border border-red-100 rounded-3xl p-5 sm:p-8 shadow-sm">
+            <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-4 font-[Matter]">2. No Refund Policy</h2>
             <p className="mb-4 font-medium text-gray-900">
               All payments, milestone deposits, and fees paid to TexWeb Solution Pvt. Ltd. are strictly non-refundable.
             </p>
@@ -61,7 +61,7 @@ export default function RefundPage() {
           </section>
 
           <section>
-            <h2 className="text-2xl font-bold text-gray-900 mb-4 font-[Matter]">3. Our Service & Delivery Commitment</h2>
+            <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-4 font-[Matter]">3. Our Service & Delivery Commitment</h2>
             <p className="mb-4">
               While payments are non-refundable, TexWeb Solution guarantees 100% completion of all deliverables agreed upon at the time of quotation or invoice sign-off:
             </p>
@@ -85,7 +85,7 @@ export default function RefundPage() {
           </section>
 
           <section>
-            <h2 className="text-2xl font-bold text-gray-900 mb-4 font-[Matter]">4. Third-Party Costs & Subscription Fees</h2>
+            <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-4 font-[Matter]">4. Third-Party Costs & Subscription Fees</h2>
             <p className="mb-4">
               TexWeb Solution project fees do not include external third-party subscriptions or infrastructure costs:
             </p>
@@ -96,19 +96,19 @@ export default function RefundPage() {
           </section>
 
           <section>
-            <h2 className="text-2xl font-bold text-gray-900 mb-4 font-[Matter]">5. Project Cancellation</h2>
+            <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-4 font-[Matter]">5. Project Cancellation</h2>
             <p className="mb-4">
               If a client requests project cancellation after development has commenced:
             </p>
             <ul className="list-disc pl-6 space-y-2 marker:text-red-600 text-sm sm:text-base">
               <li>The project will be marked as voluntarily terminated.</li>
               <li>No refund for prior milestone payments or advance deposits will be issued.</li>
-              <li>Partial work modules or source code developed up to the point of cancellation may be handed over at TexWeb Solution's sole discretion, provided all accrued costs are cleared.</li>
+              <li>Partial work modules or source code developed up to the point of cancellation may be handed over at TexWeb Solution&apos;s sole discretion, provided all accrued costs are cleared.</li>
             </ul>
           </section>
 
-          <section className="bg-slate-50/70 border border-gray-100 rounded-3xl p-8 shadow-sm">
-            <h2 className="text-2xl font-bold text-gray-900 mb-4 font-[Matter]">6. Contact Information</h2>
+          <section className="bg-slate-50/70 border border-gray-100 rounded-3xl p-5 sm:p-8 shadow-sm">
+            <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-4 font-[Matter]">6. Contact Information</h2>
             <p className="mb-4 font-light">
               For any questions regarding our Refund Policy or payment terms, please contact our billing desk:
             </p>

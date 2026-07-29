@@ -121,7 +121,7 @@ export default function ContactPage() {
                 className="text-3xl sm:text-5xl md:text-6xl lg:text-7xl font-bold bg-gradient-to-r from-gray-900 via-gray-800 to-red-600 bg-clip-text text-transparent leading-snug sm:leading-tight pb-2" 
                 style={{ fontFamily: "Matter, sans-serif" }}
               >
-                Let's Build Something <br /> Extraordinary Together
+                Let&apos;s Build Something <br /> Extraordinary Together
               </h1>
               <p className="mt-4 sm:mt-6 text-sm sm:text-base md:text-lg text-gray-500/80 max-w-md sm:max-w-xl md:max-w-2xl mx-auto font-poppins font-light leading-relaxed">
                 Whether you need AI Automation, custom software engineering, high-ROI digital marketing, or ready-to-deploy prebuilt SaaS, our team is ready to scale your business.
@@ -186,14 +186,14 @@ export default function ContactPage() {
               
               {/* Email Card */}
               <div className="bg-white border border-gray-100 rounded-2xl p-5 shadow-sm hover:shadow-md transition-all duration-300">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-4">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-4 min-w-0">
                     <div className="p-3 bg-red-50 text-red-600 rounded-xl">
                       <Mail size={22} />
                     </div>
-                    <div>
+                    <div className="min-w-0">
                       <h4 className="font-semibold text-gray-800 text-sm sm:text-base font-[Matter]">Email Us</h4>
-                      <p className="text-xs sm:text-sm text-gray-500 font-medium">info@texwebsolution.in</p>
+                      <p className="text-xs sm:text-sm text-gray-500 font-medium break-all">info@texwebsolution.in</p>
                     </div>
                   </div>
                   <button 
@@ -213,12 +213,12 @@ export default function ContactPage() {
                 rel="noopener noreferrer"
                 className="block bg-white border border-gray-100 rounded-2xl p-5 shadow-sm hover:shadow-md hover:border-green-500/20 transition-all duration-300 group"
               >
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-4">
+                <div className="flex flex-col min-[420px]:flex-row min-[420px]:items-center justify-between gap-3">
+                  <div className="flex items-center gap-4 min-w-0">
                     <div className="p-3 bg-green-50 text-green-600 rounded-xl group-hover:bg-green-100 transition-colors">
                       <MessageSquare size={22} />
                     </div>
-                    <div>
+                    <div className="min-w-0">
                       <h4 className="font-semibold text-gray-800 text-sm sm:text-base font-[Matter]">WhatsApp Support</h4>
                       <p className="text-xs sm:text-sm text-gray-500 font-medium">+91 7462827259</p>
                     </div>

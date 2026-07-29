@@ -96,7 +96,7 @@ export default function PrebuiltPage() {
       </div>
 
       {/* Check our SaaS Products (staggered list) */}
-      <div className="w-full flex flex-col items-center text-center pt-12 pb-2 px-6" style={{ fontFamily: "Matter, sans-serif" }}>
+      <div className="w-full flex flex-col items-center text-center pt-12 pb-2 px-4 sm:px-6" style={{ fontFamily: "Matter, sans-serif" }}>
         <div className="inline-block px-4 py-1 bg-red-50 text-red-600 border border-red-100 shadow-sm rounded-full site-label font-semibold text-xs sm:text-sm font-[Matter]">
           SaaS
         </div>

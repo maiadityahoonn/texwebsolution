@@ -84,7 +84,7 @@ export default function FaqAccordion({ faqs, badge = "Common Inquiries" }) {
 
         <button
           onClick={() => toggleFaq(originalIndex)}
-          className={`w-full flex justify-between items-center px-6 py-5 text-left font-semibold transition-colors focus:outline-none ${
+          className={`w-full flex justify-between items-center px-4 sm:px-6 py-5 text-left font-semibold transition-colors focus:outline-none ${
             isOpen ? "text-red-600 bg-red-50/5" : "text-gray-800 hover:text-red-600"
           }`}
         >
@@ -107,10 +107,10 @@ export default function FaqAccordion({ faqs, badge = "Common Inquiries" }) {
         </button>
         <div 
           className={`transition-all duration-300 ease-in-out overflow-hidden ${
-            isOpen ? "max-h-[300px] border-t border-gray-50" : "max-h-0"
+            isOpen ? "max-h-[520px] border-t border-gray-50" : "max-h-0"
           }`}
         >
-          <p className="px-6 py-5 text-gray-600 text-sm sm:text-base leading-relaxed bg-neutral-50/20 pl-[48px] sm:pl-[56px]">
+          <p className="px-4 sm:px-6 py-5 text-gray-600 text-sm sm:text-base leading-relaxed bg-neutral-50/20 pl-[42px] sm:pl-[56px]">
             {faq.answer}
           </p>
         </div>

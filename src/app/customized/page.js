@@ -96,7 +96,7 @@ export default function CustomizedPage() {
       </div>
 
       {/* Customized Projects Tab Switcher */}
-      <div className="w-full flex flex-col items-center text-center pt-4 pb-2 px-6 font-poppins">
+      <div className="w-full flex flex-col items-center text-center pt-4 pb-2 px-4 sm:px-6 font-poppins">
         {/* Render the switcher and projects list */}
         <CustomizedTabs />
       </div>

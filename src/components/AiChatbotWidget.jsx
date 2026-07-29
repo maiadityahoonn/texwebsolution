@@ -321,6 +321,12 @@ export default function AiChatbotWidget() {
   ]);
 
   const messagesEndRef = useRef(null);
+  const messageIdRef = useRef(1);
+
+  const getMessageId = () => {
+    messageIdRef.current += 1;
+    return `msg-${messageIdRef.current}`;
+  };
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -380,7 +386,7 @@ export default function AiChatbotWidget() {
     // Track asked question so it is never shown again in follow-up chips
     setAskedQueries((prev) => [...prev, text.toLowerCase()]);
 
-    const msgId = `msg-${Date.now()}`;
+    const msgId = getMessageId();
     const newMessages = [...messages, { id: msgId, sender: "user", text }];
     setMessages(newMessages);
     if (!textToSend) setInputMessage("");
@@ -393,7 +399,7 @@ export default function AiChatbotWidget() {
       setMessages((prev) => [
         ...prev,
         {
-          id: `msg-${Date.now() + 1}`,
+          id: getMessageId(),
           sender: "bot",
           text: replyData.answer,
           followUps: replyData.followUps || []
@@ -453,7 +459,7 @@ export default function AiChatbotWidget() {
     setMessages((prev) => [
       ...prev,
       {
-        id: `msg-${Date.now()}`,
+        id: getMessageId(),
         sender: "bot",
         text: `✓ **Thank you, ${leadInfo.name}!**\nYour request has been received. Our team will reach out to you at **${formattedPhone}** shortly to discuss your ${leadInfo.service} project.`
       }

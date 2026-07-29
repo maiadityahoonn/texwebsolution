@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { 
   Users, 
   Search, 
@@ -19,8 +19,7 @@ import {
   Bot, 
   Layout, 
   Mail,
-  ChevronDown,
-  ArrowUpRight
+  X
 } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
@@ -33,7 +32,7 @@ import {
 } from "@/utils/leadStorage";
 
 export default function AdminPage() {
-  const [leads, setLeads] = useState([]);
+  const [leads, setLeads] = useState(() => getLeads());
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedSource, setSelectedSource] = useState("All");
   const [selectedStatus, setSelectedStatus] = useState("All");
@@ -47,11 +46,6 @@ export default function AdminPage() {
     source: "Admin Manual",
     notes: ""
   });
-
-  // Load leads on mount
-  useEffect(() => {
-    refreshLeads();
-  }, []);
 
   const refreshLeads = () => {
     const data = getLeads();
@@ -139,7 +133,7 @@ export default function AdminPage() {
             </p>
           </div>
 
-          <div className="flex items-center gap-3 font-poppins">
+          <div className="flex flex-wrap items-center gap-3 font-poppins">
             <button
               onClick={() => refreshLeads()}
               className="p-3 bg-white/5 border border-white/10 rounded-2xl text-gray-300 hover:text-white hover:bg-white/10 transition-all text-xs font-semibold flex items-center gap-2"
@@ -168,7 +162,7 @@ export default function AdminPage() {
         </div>
 
         {/* Analytics Overview Cards Grid */}
-        <div className="grid grid-cols-2 lg:grid-cols-6 gap-4 mb-10 font-poppins">
+        <div className="grid grid-cols-1 min-[420px]:grid-cols-2 lg:grid-cols-6 gap-4 mb-10 font-poppins">
           
           <div className="bg-white/5 border border-white/10 rounded-3xl p-5 backdrop-blur-md">
             <div className="flex items-center justify-between text-gray-400 mb-2">
@@ -460,7 +454,7 @@ export default function AdminPage() {
                   />
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-xs font-semibold text-gray-300 uppercase mb-1">Phone *</label>
                     <input

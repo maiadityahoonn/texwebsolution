@@ -82,4 +82,7 @@ export default function Navbar() {
             {link.name}
           </Link>
         ))}
-   
+      </div>
+    </nav>
+  );
+}

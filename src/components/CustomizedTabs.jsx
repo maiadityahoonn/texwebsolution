@@ -212,18 +212,18 @@ export default function CustomizedTabs() {
         </div>
 
         {/* Staggered detailed grid list */}
-        <div className="w-full max-w-7xl mx-auto px-6 md:px-12 space-y-24">
+        <div className="w-full max-w-7xl mx-auto px-0 sm:px-6 md:px-12 space-y-14 sm:space-y-20 md:space-y-24">
           {currentList.map((project, index) => {
             const isImageLeft = index % 2 === 0;
 
             return (
               <div 
                 key={project.title}
-                className="grid md:grid-cols-2 gap-12 items-center px-2 md:px-6"
+                className="grid md:grid-cols-2 gap-8 md:gap-12 items-center px-0 md:px-6"
               >
                 {/* Image Side */}
                 <div 
-                  className={`flex justify-center items-center rounded-3xl bg-[#F3F3F3] w-full max-w-md aspect-4/3 overflow-hidden p-4 md:p-6 shadow-inner mx-auto ${
+                  className={`flex justify-center items-center rounded-3xl bg-[#F3F3F3] w-full max-w-md aspect-[4/3] overflow-hidden p-3 sm:p-4 md:p-6 shadow-inner mx-auto ${
                     isImageLeft ? "md:order-1" : "md:order-2"
                   }`}
                 >

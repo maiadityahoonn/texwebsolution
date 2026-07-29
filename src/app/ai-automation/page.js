@@ -137,7 +137,7 @@ export default function AiAutomationPage() {
       </div>
 
       {/* Services List Section */}
-      <div className="w-full flex flex-col items-center text-center pt-16 pb-24 px-6" style={{ fontFamily: "Matter, sans-serif" }}>
+      <div className="w-full flex flex-col items-center text-center pt-14 sm:pt-16 pb-16 sm:pb-24 px-4 sm:px-6" style={{ fontFamily: "Matter, sans-serif" }}>
         <div className="inline-block px-4 py-1 bg-red-50 text-red-600 border border-red-100 shadow-sm rounded-full site-label font-semibold text-xs sm:text-sm font-[Matter] mb-4">
           Our AI Catalog
         </div>
@@ -145,14 +145,14 @@ export default function AiAutomationPage() {
           Explore Our AI Automations
         </h2>
 
-        <div className="w-full max-w-7xl mx-auto px-6 md:px-12 space-y-28">
+        <div className="w-full max-w-7xl mx-auto px-0 sm:px-6 md:px-12 space-y-14 sm:space-y-20 md:space-y-28">
           {SERVICES.map((service, index) => {
             const isImageLeft = index % 2 === 0;
 
             return (
               <div 
                 key={service.title}
-                className="grid md:grid-cols-2 gap-12 items-center px-2 md:px-6"
+                className="grid md:grid-cols-2 gap-8 md:gap-12 items-center px-0 md:px-6"
               >
                 {/* Image Side */}
                 <div 

@@ -82,8 +82,8 @@ export default function Reviews3DCarousel({
       )}
 
       {/* 3D Stack Carousel Frame */}
-      <div className="relative flex flex-col items-center justify-center min-h-[520px]">
-        <div className="relative flex items-center justify-center h-[490px] sm:h-[510px] w-full max-w-[1400px]">
+      <div className="relative flex flex-col items-center justify-center min-h-[480px] sm:min-h-[520px]">
+        <div className="relative flex items-center justify-center h-[460px] sm:h-[510px] w-full max-w-[1400px]">
           <AnimatePresence initial={false} mode="popLayout">
             {reviewsList.map((item, index) => {
               let offset = ((index - activeIndex) % total + total) % total;
@@ -127,7 +127,7 @@ export default function Reviews3DCarousel({
                     if (info.offset.x > 50) handlePrev();
                     else if (info.offset.x < -50) handleNext();
                   }}
-                  className="absolute p-[2px] rounded-[32px] bg-gradient-to-b from-red-500/40 via-rose-300/30 to-amber-200/40 shadow-2xl cursor-pointer text-left overflow-hidden select-none"
+                  className="absolute max-w-[calc(100vw-1.5rem)] p-[2px] rounded-[32px] bg-gradient-to-b from-red-500/40 via-rose-300/30 to-amber-200/40 shadow-2xl cursor-pointer text-left overflow-hidden select-none"
                   style={{ width, height }}
                   onClick={() => setActiveIndex(index)}
                 >
@@ -165,7 +165,7 @@ export default function Reviews3DCarousel({
 
                       {/* Review Quote Text */}
                       <p className="text-gray-700 text-sm sm:text-base leading-relaxed font-light font-poppins mb-4 relative z-10 line-clamp-6">
-                        "{item.quote}"
+                        &quot;{item.quote}&quot;
                       </p>
                     </div>
 

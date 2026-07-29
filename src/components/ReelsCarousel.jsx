@@ -75,7 +75,7 @@ export default function ReelsCarousel({
 
       <div className="relative flex flex-col items-center justify-center mt-4">
         {/* 3D Stack Slider Frame */}
-        <div className="relative flex items-center justify-center h-[480px] w-full max-w-[1400px]">
+        <div className="relative flex items-center justify-center h-[440px] sm:h-[480px] w-full max-w-[1400px]">
           <AnimatePresence initial={false} mode="popLayout">
             {reelsList.map((reel, index) => {
               let offset = ((index - activeIndex) % total + total) % total;
@@ -119,7 +119,7 @@ export default function ReelsCarousel({
                     if (info.offset.x > 50) handlePrev();
                     else if (info.offset.x < -50) handleNext();
                   }}
-                  className="absolute rounded-[28px] overflow-hidden shadow-2xl bg-black cursor-pointer"
+                  className="absolute max-w-[calc(100vw-2rem)] rounded-[28px] overflow-hidden shadow-2xl bg-black cursor-pointer"
                   style={{ width, height }}
                 >
                   <a

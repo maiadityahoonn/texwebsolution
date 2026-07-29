@@ -11,7 +11,7 @@ export default function Footer() {
   return (
     <footer className="relative border-t border-gray-200 overflow-hidden w-full bg-cover bg-center" style={{ fontFamily: "Matter" }}>
       <div className="relative z-10 max-w-7xl mx-auto px-3 sm:px-4 lg:px-5 py-16">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-12 items-start">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-10 lg:gap-12 items-start">
           {/* Newsletter / Contact Section */}
           <div className="flex flex-col justify-center space-y-6">
             <div>
@@ -31,16 +31,16 @@ export default function Footer() {
             </div>
 
             <form className="relative w-full max-w-lg" onSubmit={handleSubscribe}>
-              <div className="flex items-center bg-white rounded-full shadow-md overflow-hidden border border-gray-100 p-1">
+              <div className="flex flex-col min-[420px]:flex-row items-stretch min-[420px]:items-center bg-white rounded-3xl min-[420px]:rounded-full shadow-md overflow-hidden border border-gray-100 p-1">
                 <input
                   type="email"
                   placeholder="Enter your email address"
-                  className="grow min-w-0 pl-4 pr-2 py-3 text-sm text-gray-700 placeholder-gray-400 focus:outline-none md:px-7 md:py-4"
+                  className="w-full min-w-0 pl-4 pr-2 py-3 text-sm text-gray-700 placeholder-gray-400 focus:outline-none md:px-7 md:py-4"
                   required
                 />
                 <button
                   type="submit"
-                  className="bg-red-600 text-white px-5 py-3 rounded-full hover:bg-red-700 transition-colors shrink-0 text-sm md:px-8 shadow-sm shadow-red-600/10"
+                  className="w-full min-[420px]:w-auto bg-red-600 text-white px-5 py-3 rounded-full hover:bg-red-700 transition-colors shrink-0 text-sm md:px-8 shadow-sm shadow-red-600/10"
                 >
                   Subscribe
                 </button>
@@ -49,8 +49,8 @@ export default function Footer() {
           </div>
 
           {/* Navigation Links Grid */}
-          <div className="lg:col-span-2 flex justify-end">
-            <div className="grid grid-cols-2 gap-12 sm:gap-16 text-right">
+          <div className="lg:col-span-2 flex justify-start lg:justify-end">
+            <div className="grid grid-cols-1 min-[420px]:grid-cols-2 gap-8 sm:gap-16 text-left min-[420px]:text-right">
               <div>
                 <h4 className="text-gray-400 text-base font-medium mb-4">Links</h4>
                 <nav className="space-y-3">

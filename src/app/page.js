@@ -116,7 +116,7 @@ export default function Home() {
                 className="w-32 py-3.5 text-sm sm:w-44 sm:text-base lg:py-4 bg-red-600 text-white rounded-full transition-transform hover:scale-105 hover:bg-red-700 shadow-md shadow-red-600/15"
                 style={{ fontFamily: "Matter", fontWeight: 500 }}
               >
-                Let's Explore
+                Let&apos;s Explore
               </button>
             </a>
             <a href="/contact">

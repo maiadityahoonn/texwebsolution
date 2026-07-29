@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import Navbar from "@/components/Navbar";
 import TeamSection from "@/components/TeamSection";
 import TestimonialsSwiper from "@/components/TestimonialsSwiper";
@@ -40,32 +40,7 @@ function AnimatedCounter({ value, label }) {
   const [displayValue, setDisplayValue] = useState("0");
   const ref = useRef(null);
 
-  useEffect(() => {
-    const node = ref.current;
-    const observer = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          if (entry.isIntersecting) {
-            animateCount();
-          } else {
-            setDisplayValue("0");
-          }
-        });
-      },
-      { threshold: 0.3 }
-    );
-
-    if (node) {
-      observer.observe(node);
-    }
-
-    return () => {
-      if (node) observer.unobserve(node);
-      observer.disconnect();
-    };
-  }, [value]);
-
-  const animateCount = () => {
+  const animateCount = useCallback(() => {
     const match = value.match(/^([\d.]+)(.*)$/);
     if (!match) {
       setDisplayValue(value);
@@ -103,7 +78,32 @@ function AnimatedCounter({ value, label }) {
     };
 
     requestAnimationFrame(step);
-  };
+  }, [value]);
+
+  useEffect(() => {
+    const node = ref.current;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            animateCount();
+          } else {
+            setDisplayValue("0");
+          }
+        });
+      },
+      { threshold: 0.3 }
+    );
+
+    if (node) {
+      observer.observe(node);
+    }
+
+    return () => {
+      if (node) observer.unobserve(node);
+      observer.disconnect();
+    };
+  }, [animateCount]);
 
   return (
     <div 

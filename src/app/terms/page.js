@@ -30,13 +30,13 @@ export default function TermsPage() {
       </div>
 
       {/* Main Legal Content */}
-      <main className="w-full py-16 px-6 max-w-4xl mx-auto font-poppins text-gray-700 leading-relaxed">
-        <div className="space-y-12">
+      <main className="w-full py-12 sm:py-16 px-4 sm:px-6 max-w-4xl mx-auto font-poppins text-gray-700 leading-relaxed">
+        <div className="space-y-8 sm:space-y-12">
           
-          <section className="bg-slate-50/70 border border-gray-100 rounded-3xl p-8 shadow-sm">
-            <h2 className="text-2xl font-bold text-gray-900 mb-4 font-[Matter]">1. Introduction & Acceptance</h2>
+          <section className="bg-slate-50/70 border border-gray-100 rounded-3xl p-5 sm:p-8 shadow-sm">
+            <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-4 font-[Matter]">1. Introduction & Acceptance</h2>
             <p className="mb-4">
-              Welcome to <strong>TexWeb Solution Pvt. Ltd.</strong> ("TexWeb Solution", "we", "our", or "us"). These Terms and Conditions govern your access to and use of our website (<a href="https://texwebsolution.in" className="text-red-600 font-medium hover:underline">texwebsolution.in</a>), mobile applications, custom software solutions, prebuilt SaaS products, AI automation services, and digital marketing offerings.
+              Welcome to <strong>TexWeb Solution Pvt. Ltd.</strong> (&quot;TexWeb Solution&quot;, &quot;we&quot;, &quot;our&quot;, or &quot;us&quot;). These Terms and Conditions govern your access to and use of our website (<a href="https://texwebsolution.in" className="text-red-600 font-medium hover:underline">texwebsolution.in</a>), mobile applications, custom software solutions, prebuilt SaaS products, AI automation services, and digital marketing offerings.
             </p>
             <p>
               By engaging our services, making a payment, or accessing our platforms, you agree to be legally bound by these Terms. If you do not agree to these terms, please do not use our services.
@@ -44,7 +44,7 @@ export default function TermsPage() {
           </section>
 
           <section>
-            <h2 className="text-2xl font-bold text-gray-900 mb-4 font-[Matter]">2. Scope of Services</h2>
+            <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-4 font-[Matter]">2. Scope of Services</h2>
             <p className="mb-4">
               TexWeb Solution provides end-to-end technology and digital expansion services grouped into four core pillars:
             </p>
@@ -65,7 +65,7 @@ export default function TermsPage() {
           </section>
 
           <section>
-            <h2 className="text-2xl font-bold text-gray-900 mb-4 font-[Matter]">3. Code Ownership & Intellectual Property</h2>
+            <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-4 font-[Matter]">3. Code Ownership & Intellectual Property</h2>
             <p className="mb-4">
               Intellectual Property (IP) rights and source code authority are transferred to the client as follows:
             </p>
@@ -83,7 +83,7 @@ export default function TermsPage() {
           </section>
 
           <section>
-            <h2 className="text-2xl font-bold text-gray-900 mb-4 font-[Matter]">4. Payment Terms & Invoicing</h2>
+            <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-4 font-[Matter]">4. Payment Terms & Invoicing</h2>
             <ul className="list-disc pl-6 space-y-2 marker:text-red-600 text-sm sm:text-base">
               <li>Project milestones and fee structures are outlined in the official quote, invoice, or agreement provided to the client.</li>
               <li>Invoices must be paid according to the agreed milestone schedule.</li>
@@ -93,7 +93,7 @@ export default function TermsPage() {
           </section>
 
           <section>
-            <h2 className="text-2xl font-bold text-gray-900 mb-4 font-[Matter]">5. Client Responsibilities & Materials</h2>
+            <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-4 font-[Matter]">5. Client Responsibilities & Materials</h2>
             <p className="mb-4">
               Smooth project execution relies on timely collaboration. Clients are responsible for:
             </p>
@@ -105,7 +105,7 @@ export default function TermsPage() {
           </section>
 
           <section>
-            <h2 className="text-2xl font-bold text-gray-900 mb-4 font-[Matter]">6. Third-Party Integrations & Expenses</h2>
+            <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-4 font-[Matter]">6. Third-Party Integrations & Expenses</h2>
             <p className="mb-4">
               Our software solutions may integrate third-party APIs and services (e.g. OpenAI, WhatsApp Cloud API, AWS, Google Cloud, Razorpay, Stripe, Twilio, Play Store/App Store developer accounts).
             </p>
@@ -116,21 +116,21 @@ export default function TermsPage() {
           </section>
 
           <section>
-            <h2 className="text-2xl font-bold text-gray-900 mb-4 font-[Matter]">7. Limitation of Liability</h2>
+            <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-4 font-[Matter]">7. Limitation of Liability</h2>
             <p className="mb-4">
               To the maximum extent permitted by applicable law, TexWeb Solution Pvt. Ltd. and its directors, officers, employees, and partners shall not be liable for any indirect, incidental, punitive, or consequential damages (including loss of profits, data loss, or business interruption) arising from the use of our services or software deliverables.
             </p>
           </section>
 
           <section>
-            <h2 className="text-2xl font-bold text-gray-900 mb-4 font-[Matter]">8. Governing Law & Jurisdiction</h2>
+            <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-4 font-[Matter]">8. Governing Law & Jurisdiction</h2>
             <p className="mb-4">
               These Terms and Conditions shall be governed by and construed in accordance with the laws of India. Any disputes arising out of or in connection with these terms shall be subject to the exclusive jurisdiction of the courts located in West Bengal, India.
             </p>
           </section>
 
-          <section className="bg-red-50/60 border border-red-100 rounded-3xl p-8 shadow-sm">
-            <h2 className="text-2xl font-bold text-gray-900 mb-4 font-[Matter]">9. Contact & Official Info</h2>
+          <section className="bg-red-50/60 border border-red-100 rounded-3xl p-5 sm:p-8 shadow-sm">
+            <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-4 font-[Matter]">9. Contact & Official Info</h2>
             <p className="mb-4 font-light">
               If you have any questions or require legal clarification regarding these Terms & Conditions, please reach out to us:
             </p>

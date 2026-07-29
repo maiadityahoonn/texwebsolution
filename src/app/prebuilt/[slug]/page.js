@@ -7,7 +7,7 @@ import Link from "next/link";
 import PrebuiltReviews from "@/components/PrebuiltReviews";
 import FaqAccordion from "@/components/FaqAccordion";
 import GetInTouchSection from "@/components/GetInTouchSection";
-import { Sparkles, ArrowUpRight } from "lucide-react";
+import { Sparkles, ArrowLeft } from "lucide-react";
 
 const PREBUILT_FAQS = [
   {
@@ -99,7 +99,7 @@ export default function ProductDetailPage({ params: paramsPromise }) {
       >
         <Navbar />
 
-        <div className="flex-1 flex flex-col justify-center px-6 py-8 md:py-16">
+        <div className="flex-1 flex flex-col justify-center px-4 sm:px-6 py-8 md:py-16">
           <div className="max-w-7xl mx-auto w-full grid md:grid-cols-12 gap-8 md:gap-12 items-center">
 
             {/* Left side: Heading and Subtitle */}
@@ -126,9 +126,9 @@ export default function ProductDetailPage({ params: paramsPromise }) {
               </p>
 
               {/* Action Buttons in Hero */}
-              <div className="flex flex-wrap items-center gap-4 mt-8">
+              <div className="flex flex-col sm:flex-row sm:flex-wrap items-stretch sm:items-center gap-3 sm:gap-4 mt-8">
                 <Link href={`/contact?product=${encodeURIComponent(product.title)}`}>
-                  <button className="px-8 py-3.5 bg-red-600 text-white rounded-full shadow-lg shadow-red-600/15 hover:bg-red-700 hover:scale-[1.02] active:scale-[0.98] transition-all font-semibold font-[Matter]">
+                  <button className="w-full sm:w-auto px-8 py-3.5 bg-red-600 text-white rounded-full shadow-lg shadow-red-600/15 hover:bg-red-700 hover:scale-[1.02] active:scale-[0.98] transition-all font-semibold font-[Matter]">
                     Request a Demo
                   </button>
                 </Link>
@@ -137,7 +137,7 @@ export default function ProductDetailPage({ params: paramsPromise }) {
                   target="_blank"
                   rel="noopener noreferrer"
                 >
-                  <button className="px-8 py-3.5 bg-white border border-gray-200 text-gray-950 rounded-full shadow-sm hover:bg-neutral-50 hover:scale-[1.02] active:scale-[0.98] transition-all font-semibold font-[Matter] flex items-center gap-2">
+                  <button className="w-full sm:w-auto px-8 py-3.5 bg-white border border-gray-200 text-gray-950 rounded-full shadow-sm hover:bg-neutral-50 hover:scale-[1.02] active:scale-[0.98] transition-all font-semibold font-[Matter] flex items-center justify-center gap-2">
                     <img src="/common/WhatsApp.svg" alt="WhatsApp" className="w-5 h-5" /> WhatsApp Live
                   </button>
                 </a>
@@ -186,7 +186,7 @@ export default function ProductDetailPage({ params: paramsPromise }) {
 
       {/* What All We Offer Section */}
       <section className="py-20 md:py-28 bg-white font-poppins border-t border-gray-100">
-        <div className="max-w-7xl mx-auto px-6 text-center">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 text-center">
           <span className="inline-block px-5 py-2 bg-red-50 text-red-600 border border-red-100/80 shadow-sm rounded-full site-label font-semibold text-xs sm:text-sm font-[Matter]">
             Features & Capabilities
           </span>
@@ -194,17 +194,17 @@ export default function ProductDetailPage({ params: paramsPromise }) {
             What All We Offer
           </h2>
 
-          <div className="space-y-24">
+          <div className="space-y-14 sm:space-y-20 md:space-y-24">
             {product.offers.map((offer, index) => {
               const isImageLeft = index % 2 === 0;
               return (
                 <div
                   key={offer.title}
-                  className="grid md:grid-cols-2 gap-12 lg:gap-16 items-center text-left"
+                  className="grid md:grid-cols-2 gap-8 md:gap-12 lg:gap-16 items-center text-left"
                 >
                   {/* Image Side */}
                   <div
-                    className={`flex justify-center items-center rounded-3xl bg-[#F5F5F5] w-full max-w-lg aspect-4/3 overflow-hidden p-6 shadow-inner relative group border border-neutral-100/50 ${isImageLeft ? "md:order-1" : "md:order-2"
+                    className={`flex justify-center items-center rounded-3xl bg-[#F5F5F5] w-full max-w-lg aspect-[4/3] overflow-hidden p-3 sm:p-6 shadow-inner relative group border border-neutral-100/50 mx-auto ${isImageLeft ? "md:order-1" : "md:order-2"
                       }`}
                   >
                     <div className="absolute inset-0 bg-gradient-to-tr from-red-500/5 via-rose-500/5 to-transparent rounded-3xl pointer-events-none"></div>
@@ -259,7 +259,7 @@ export default function ProductDetailPage({ params: paramsPromise }) {
       {/* Why Choose Our Solution Section */}
       {product.whyChooseUs && product.whyChooseUs.length > 0 && (
         <section className="py-20 md:py-28 bg-gradient-to-b from-neutral-50 to-white border-y border-gray-100 font-poppins">
-          <div className="max-w-7xl mx-auto px-6 text-center">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 text-center">
             <span className="inline-block px-5 py-2 bg-red-50 text-red-600 border border-red-100/80 shadow-sm rounded-full site-label font-semibold text-xs sm:text-sm font-[Matter]">
               Strategic Advantages
             </span>

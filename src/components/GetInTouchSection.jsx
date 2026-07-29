@@ -10,10 +10,10 @@ export default function GetInTouchSection() {
           Get In Touch
         </div>
         <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold text-center bg-gradient-to-r from-gray-900 to-red-600 bg-clip-text text-transparent mt-2 mb-6 leading-tight pb-1">
-          Let's build something great together
+          Let&apos;s build something great together
         </h2>
         <p className="text-gray-500 text-base sm:text-lg mb-8 max-w-xl mx-auto">
-          Have a custom project or need a pre-built solution? Reach out to us, and we'll help you bring your vision to life.
+          Have a custom project or need a pre-built solution? Reach out to us, and we&apos;ll help you bring your vision to life.
         </p>
         <div className="flex flex-col sm:flex-row justify-center items-center gap-4">
           <a

@@ -93,7 +93,7 @@ export default function LeadCaptureModal() {
             </div>
 
             <h3 className="text-xl sm:text-2xl font-bold text-gray-900 leading-tight mb-1 font-[Matter]">
-              Let's Build Something Great Together
+              Let&apos;s Build Something Great Together
             </h3>
             <p className="text-gray-500 text-xs font-poppins font-light leading-relaxed mb-4">
               Fill in your details to receive a custom quote and 1-on-1 strategy call with our senior developers.

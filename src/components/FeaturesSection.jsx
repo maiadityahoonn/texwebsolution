@@ -40,7 +40,7 @@ export default function FeaturesSection() {
         Smart Tech Options<br />to Grow Your Business
       </h2>
 
-      <div className="w-full max-w-6xl px-6 grid grid-cols-1 sm:grid-cols-2 gap-10 lg:gap-12 justify-center">
+      <div className="w-full max-w-6xl px-4 sm:px-6 grid grid-cols-1 sm:grid-cols-2 gap-8 sm:gap-10 lg:gap-12 justify-center">
         {/* Card 1: Custom Development (Red Theme Gradient Border) */}
         <div 
           className={`p-[2px] rounded-[32px] bg-gradient-to-b from-red-500/50 via-rose-200/40 to-gray-200/60 hover:from-red-600 hover:via-red-400 hover:to-red-600 transition-all duration-500 max-w-[500px] mx-auto w-full shadow-sm hover:shadow-[0_20px_40px_-10px_rgba(220,38,38,0.2)] ${
@@ -49,7 +49,7 @@ export default function FeaturesSection() {
         >
           <Link 
             href="/customized"
-            className="group bg-white/95 backdrop-blur-xl flex flex-col justify-between rounded-[30px] overflow-hidden p-6 h-full transition-all duration-500 hover:-translate-y-1"
+            className="group bg-white/95 backdrop-blur-xl flex flex-col justify-between rounded-[30px] overflow-hidden p-5 sm:p-6 h-full transition-all duration-500 hover:-translate-y-1"
           >
             <div>
               <div className="relative w-full aspect-[4/3] rounded-2xl overflow-hidden bg-gradient-to-br from-neutral-50 to-neutral-100/50 p-6 flex items-center justify-center mb-6 transition-all duration-500 group-hover:from-red-50/40 group-hover:to-rose-50/40">
@@ -92,7 +92,7 @@ export default function FeaturesSection() {
         >
           <Link 
             href="/prebuilt"
-            className="group bg-white/95 backdrop-blur-xl flex flex-col justify-between rounded-[30px] overflow-hidden p-6 h-full transition-all duration-500 hover:-translate-y-1"
+            className="group bg-white/95 backdrop-blur-xl flex flex-col justify-between rounded-[30px] overflow-hidden p-5 sm:p-6 h-full transition-all duration-500 hover:-translate-y-1"
           >
             <div>
               <div className="relative w-full aspect-[4/3] rounded-2xl overflow-hidden bg-gradient-to-br from-neutral-50 to-neutral-100/50 p-6 flex items-center justify-center mb-6 transition-all duration-500 group-hover:from-amber-50/40 group-hover:to-yellow-50/40">
@@ -135,7 +135,7 @@ export default function FeaturesSection() {
         >
           <Link 
             href="/ai-automation"
-            className="group bg-white/95 backdrop-blur-xl flex flex-col justify-between rounded-[30px] overflow-hidden p-6 h-full transition-all duration-500 hover:-translate-y-1"
+            className="group bg-white/95 backdrop-blur-xl flex flex-col justify-between rounded-[30px] overflow-hidden p-5 sm:p-6 h-full transition-all duration-500 hover:-translate-y-1"
           >
             <div>
               <div className="relative w-full aspect-[4/3] rounded-2xl overflow-hidden bg-gradient-to-br from-neutral-50 to-neutral-100/50 p-6 flex items-center justify-center mb-6 transition-all duration-500 group-hover:from-indigo-50/40 group-hover:to-violet-50/40">
@@ -178,7 +178,7 @@ export default function FeaturesSection() {
         >
           <Link 
             href="/digital-marketing"
-            className="group bg-white/95 backdrop-blur-xl flex flex-col justify-between rounded-[30px] overflow-hidden p-6 h-full transition-all duration-500 hover:-translate-y-1"
+            className="group bg-white/95 backdrop-blur-xl flex flex-col justify-between rounded-[30px] overflow-hidden p-5 sm:p-6 h-full transition-all duration-500 hover:-translate-y-1"
           >
             <div>
               <div className="relative w-full aspect-[4/3] rounded-2xl overflow-hidden bg-gradient-to-br from-neutral-50 to-neutral-100/50 p-6 flex items-center justify-center mb-6 transition-all duration-500 group-hover:from-emerald-50/40 group-hover:to-teal-50/40">

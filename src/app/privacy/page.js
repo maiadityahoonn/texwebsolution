@@ -30,13 +30,13 @@ export default function PrivacyPage() {
       </div>
 
       {/* Main Legal Content */}
-      <main className="w-full py-16 px-6 max-w-4xl mx-auto font-poppins text-gray-700 leading-relaxed">
-        <div className="space-y-12">
+      <main className="w-full py-12 sm:py-16 px-4 sm:px-6 max-w-4xl mx-auto font-poppins text-gray-700 leading-relaxed">
+        <div className="space-y-8 sm:space-y-12">
           
-          <section className="bg-slate-50/70 border border-gray-100 rounded-3xl p-8 shadow-sm">
-            <h2 className="text-2xl font-bold text-gray-900 mb-4 font-[Matter]">1. Commitment to Privacy</h2>
+          <section className="bg-slate-50/70 border border-gray-100 rounded-3xl p-5 sm:p-8 shadow-sm">
+            <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-4 font-[Matter]">1. Commitment to Privacy</h2>
             <p className="mb-4">
-              At <strong>TexWeb Solution Pvt. Ltd.</strong> ("TexWeb Solution", "we", "our"), we take data privacy and intellectual confidentiality very seriously. This Privacy Policy details how we collect, handle, store, and protect your personal information, client project specifications, proprietary business data, and software source codes across our custom development, prebuilt SaaS, AI automation, and digital marketing services.
+              At <strong>TexWeb Solution Pvt. Ltd.</strong> (&quot;TexWeb Solution&quot;, &quot;we&quot;, &quot;our&quot;), we take data privacy and intellectual confidentiality very seriously. This Privacy Policy details how we collect, handle, store, and protect your personal information, client project specifications, proprietary business data, and software source codes across our custom development, prebuilt SaaS, AI automation, and digital marketing services.
             </p>
             <p>
               By accessing our website (<a href="https://texwebsolution.in" className="text-red-600 font-medium hover:underline">texwebsolution.in</a>) or sharing project requirements with us, you consent to the practices described in this policy.
@@ -44,7 +44,7 @@ export default function PrivacyPage() {
           </section>
 
           <section>
-            <h2 className="text-2xl font-bold text-gray-900 mb-4 font-[Matter]">2. Information We Collect</h2>
+            <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-4 font-[Matter]">2. Information We Collect</h2>
             <p className="mb-4">
               We collect information to provide high-performance software engineering, AI workflow setup, and digital marketing services:
             </p>
@@ -65,7 +65,7 @@ export default function PrivacyPage() {
           </section>
 
           <section>
-            <h2 className="text-2xl font-bold text-gray-900 mb-4 font-[Matter]">3. How We Use Your Information</h2>
+            <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-4 font-[Matter]">3. How We Use Your Information</h2>
             <p className="mb-4">
               Your information is strictly utilized for core operational and project execution purposes:
             </p>
@@ -78,8 +78,8 @@ export default function PrivacyPage() {
             </ul>
           </section>
 
-          <section className="bg-emerald-50/60 border border-emerald-100 rounded-3xl p-8 shadow-sm">
-            <h2 className="text-2xl font-bold text-gray-900 mb-4 font-[Matter]">4. AI Data Privacy & Proprietary Security</h2>
+          <section className="bg-emerald-50/60 border border-emerald-100 rounded-3xl p-5 sm:p-8 shadow-sm">
+            <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-4 font-[Matter]">4. AI Data Privacy & Proprietary Security</h2>
             <p className="mb-4">
               For businesses deploying our <strong>AI Automation Solutions</strong> (WhatsApp AI Bots, RAG Knowledge Base Chatbots, Document OCR):
             </p>
@@ -97,7 +97,7 @@ export default function PrivacyPage() {
           </section>
 
           <section>
-            <h2 className="text-2xl font-bold text-gray-900 mb-4 font-[Matter]">5. Data Sharing & Third-Party Disclosure</h2>
+            <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-4 font-[Matter]">5. Data Sharing & Third-Party Disclosure</h2>
             <p className="mb-4">
               We do not sell, rent, or trade your personal or business data to third-party advertisers. Data is shared strictly when required for service execution:
             </p>
@@ -109,21 +109,21 @@ export default function PrivacyPage() {
           </section>
 
           <section>
-            <h2 className="text-2xl font-bold text-gray-900 mb-4 font-[Matter]">6. Cookies & Site Analytics</h2>
+            <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-4 font-[Matter]">6. Cookies & Site Analytics</h2>
             <p className="mb-4">
               Our website uses standard cookies and session storage to optimize page performance, remember user preferences, and collect anonymous traffic analytics. You can disable cookies at any time through your browser settings.
             </p>
           </section>
 
           <section>
-            <h2 className="text-2xl font-bold text-gray-900 mb-4 font-[Matter]">7. Your Data Rights</h2>
+            <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-4 font-[Matter]">7. Your Data Rights</h2>
             <p className="mb-4">
               You have the right to request access to the personal data we hold about you, request corrections, opt-out of newsletter communications, or request the deletion of your contact records by emailing <a href="mailto:info@texwebsolution.in" className="text-red-600 font-medium hover:underline">info@texwebsolution.in</a>.
             </p>
           </section>
 
-          <section className="bg-red-50/60 border border-red-100 rounded-3xl p-8 shadow-sm">
-            <h2 className="text-2xl font-bold text-gray-900 mb-4 font-[Matter]">8. Contact Us & Privacy Officer</h2>
+          <section className="bg-red-50/60 border border-red-100 rounded-3xl p-5 sm:p-8 shadow-sm">
+            <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-4 font-[Matter]">8. Contact Us & Privacy Officer</h2>
             <p className="mb-4 font-light">
               If you have any questions or data privacy inquiries, please contact our privacy officer:
             </p>
