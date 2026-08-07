@@ -91,12 +91,12 @@ export default function Footer() {
                     </Link>
                   ))}
                   <a
-                    href="https://www.internshipcatalyst.in/"
+                    href="https://texwebsolution.in/"
                     target="_blank"
                     rel="noopener noreferrer"
                     className="block text-sm font-medium text-red-600 hover:text-red-700 transition-colors"
                   >
-                    Internship Catalyst ↗
+                    TexWeb Solution ↗
                   </a>
                 </nav>
               </div>
