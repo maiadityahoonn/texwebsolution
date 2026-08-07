@@ -102,9 +102,10 @@ export default function Home() {
 
         {/* Hero Section */}
         <div className="flex flex-col items-center text-center px-4 justify-start bg-transparent pt-4 pb-6 sm:pb-8">
+          <h1 className="sr-only">TexWeb Solution - Tailor-Made Website, Mobile App Development & Digital Marketing Agency</h1>
           <div className="relative w-full mx-auto mt-[-35px] md:mt-[-15px] lg:mt-[-25px] px-4 sm:px-8 max-w-full md:max-w-3xl lg:max-w-[740px]">
             <img
-              alt="Hero"
+              alt="TexWeb Solution - Custom Website and Mobile App Development Agency"
               className="w-full h-auto object-contain"
               src="/home/home.webp"
             />
