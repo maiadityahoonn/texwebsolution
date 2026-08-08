@@ -1,11 +1,11 @@
 export const metadata = {
-  title: "Contact Us | TexWeb Solution - Free Project Consultation",
+  title: "Contact Us",
   description: "Contact TexWeb Solution. From idea to launch, we design and develop tailor-made websites, apps, and digital growth strategies for your business.",
   alternates: {
     canonical: "https://texwebsolution.in/contact",
   },
   openGraph: {
-    title: "Contact Us | TexWeb Solution",
+    title: "Contact Us",
     description: "Contact TexWeb Solution. From idea to launch, we design and develop tailor-made websites, apps, and digital growth strategies for your business.",
     url: "https://texwebsolution.in/contact",
   },

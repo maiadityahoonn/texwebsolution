@@ -1,11 +1,11 @@
 export const metadata = {
-  title: "About Us | TexWeb Solution - Web & Mobile App Agency",
+  title: "About Us",
   description: "Learn about TexWeb Solution. We specialize in custom web application development, prebuilt SaaS solutions, AI automation, and digital marketing.",
   alternates: {
     canonical: "https://texwebsolution.in/about-us",
   },
   openGraph: {
-    title: "About Us | TexWeb Solution",
+    title: "About Us",
     description: "Learn about TexWeb Solution. We specialize in custom web application development, prebuilt SaaS solutions, AI automation, and digital marketing.",
     url: "https://texwebsolution.in/about-us",
   },

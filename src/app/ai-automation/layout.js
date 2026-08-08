@@ -1,11 +1,11 @@
 export const metadata = {
-  title: "AI Automation & Custom Chatbots | TexWeb Solution",
+  title: "AI Automation & Custom Chatbots",
   description: "Automate your customer service, business workflows, and lead generation with TexWeb Solution's custom AI chatbot and automation solutions.",
   alternates: {
     canonical: "https://texwebsolution.in/ai-automation",
   },
   openGraph: {
-    title: "AI Automation & Custom Chatbots | TexWeb Solution",
+    title: "AI Automation & Custom Chatbots",
     description: "Automate your customer service, business workflows, and lead generation with TexWeb Solution's custom AI chatbot and automation solutions.",
     url: "https://texwebsolution.in/ai-automation",
   },

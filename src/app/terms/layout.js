@@ -1,5 +1,5 @@
 export const metadata = {
-  title: "Terms of Service | TexWeb Solution",
+  title: "Terms of Service",
   description: "Terms of service and user agreements for TexWeb Solution's website and software development services.",
   alternates: {
     canonical: "https://texwebsolution.in/terms",

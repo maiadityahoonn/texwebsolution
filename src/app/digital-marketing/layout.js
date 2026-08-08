@@ -1,11 +1,11 @@
 export const metadata = {
-  title: "Digital Marketing & SEO Services | TexWeb Solution",
+  title: "Digital Marketing & SEO Services",
   description: "Drive targeted traffic, organic SEO rankings, social media growth, and paid campaigns with TexWeb Solution's digital marketing expertise.",
   alternates: {
     canonical: "https://texwebsolution.in/digital-marketing",
   },
   openGraph: {
-    title: "Digital Marketing & SEO Services | TexWeb Solution",
+    title: "Digital Marketing & SEO Services",
     description: "Drive targeted traffic, organic SEO rankings, social media growth, and paid campaigns with TexWeb Solution's digital marketing expertise.",
     url: "https://texwebsolution.in/digital-marketing",
   },

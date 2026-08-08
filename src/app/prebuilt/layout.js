@@ -1,11 +1,11 @@
 export const metadata = {
-  title: "Prebuilt SaaS Software & Applications | TexWeb Solution",
+  title: "Prebuilt SaaS Software & Applications",
   description: "Ready-to-launch prebuilt software solutions for businesses. Get custom SaaS applications, e-learning platforms, and e-commerce portals fast.",
   alternates: {
     canonical: "https://texwebsolution.in/prebuilt",
   },
   openGraph: {
-    title: "Prebuilt SaaS Software & Applications | TexWeb Solution",
+    title: "Prebuilt SaaS Software & Applications",
     description: "Ready-to-launch prebuilt software solutions for businesses. Get custom SaaS applications, e-learning platforms, and e-commerce portals fast.",
     url: "https://texwebsolution.in/prebuilt",
   },

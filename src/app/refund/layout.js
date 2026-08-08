@@ -1,5 +1,5 @@
 export const metadata = {
-  title: "Refund Policy | TexWeb Solution",
+  title: "Refund Policy",
   description: "TexWeb Solution refund and cancellation guidelines for web development, custom software, and marketing services.",
   alternates: {
     canonical: "https://texwebsolution.in/refund",

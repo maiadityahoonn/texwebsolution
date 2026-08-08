@@ -28,8 +28,8 @@ const clashDisplay = localFont({
 export const metadata = {
   metadataBase: new URL("https://texwebsolution.in"),
   title: {
-    default: "TexWeb Solution | Tailor-Made Website & Mobile App Development",
-    template: "%s | TexWeb Solution",
+    default: "TexWeb Solution",
+    template: "%s",
   },
   description:
     "From idea to launch, TexWeb Solution designs and develops tailor-made websites, custom mobile apps, AI automation, and digital marketing strategies that scale with your business.",
@@ -56,7 +56,7 @@ export const metadata = {
     canonical: "https://texwebsolution.in",
   },
   openGraph: {
-    title: "TexWeb Solution | Tailor-Made Website & Mobile App Development",
+    title: "TexWeb Solution",
     description:
       "From idea to launch, TexWeb Solution designs and develops tailor-made websites, custom mobile apps, AI automation, and digital marketing strategies.",
     url: "https://texwebsolution.in",
@@ -74,7 +74,7 @@ export const metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "TexWeb Solution | Tailor-Made Website & Mobile App Development",
+    title: "TexWeb Solution",
     description:
       "From idea to launch, TexWeb Solution designs and develops tailor-made websites, custom mobile apps, AI automation, and digital marketing strategies.",
     images: ["/logo.png"],
