@@ -10,15 +10,15 @@ export default function sitemap() {
       priority: 1.0,
     },
     {
-      url: `${baseUrl}/about-us`,
+      url: `${baseUrl}/customized`,
       lastModified,
       changeFrequency: 'weekly',
       priority: 0.9,
     },
     {
-      url: `${baseUrl}/contact`,
+      url: `${baseUrl}/prebuilt`,
       lastModified,
-      changeFrequency: 'monthly',
+      changeFrequency: 'weekly',
       priority: 0.9,
     },
     {
@@ -34,15 +34,15 @@ export default function sitemap() {
       priority: 0.9,
     },
     {
-      url: `${baseUrl}/prebuilt`,
+      url: `${baseUrl}/about-us`,
       lastModified,
       changeFrequency: 'weekly',
       priority: 0.8,
     },
     {
-      url: `${baseUrl}/customized`,
+      url: `${baseUrl}/contact`,
       lastModified,
-      changeFrequency: 'weekly',
+      changeFrequency: 'monthly',
       priority: 0.8,
     },
     {

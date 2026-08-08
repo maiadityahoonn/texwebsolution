@@ -154,15 +154,15 @@ export default function RootLayout({ children }) {
       "hasPart": [
         {
           "@type": "WebPage",
-          "name": "About Us",
-          "url": "https://texwebsolution.in/about-us",
-          "description": "We specialize in custom web apps, prebuilt software, AI automation, and digital marketing solutions."
+          "name": "Customized Solutions",
+          "url": "https://texwebsolution.in/customized",
+          "description": "Tailor-made full-stack web and mobile application engineering built to scale."
         },
         {
           "@type": "WebPage",
-          "name": "Contact Us",
-          "url": "https://texwebsolution.in/contact",
-          "description": "Contact Us. From idea to launch, we design and develop tailor-made websites & apps."
+          "name": "Prebuilt SaaS Software",
+          "url": "https://texwebsolution.in/prebuilt",
+          "description": "Empower your business with ready-to-launch prebuilt web and SaaS software solutions."
         },
         {
           "@type": "WebPage",
@@ -178,15 +178,15 @@ export default function RootLayout({ children }) {
         },
         {
           "@type": "WebPage",
-          "name": "Prebuilt SaaS Software",
-          "url": "https://texwebsolution.in/prebuilt",
-          "description": "Empower your business with ready-to-launch prebuilt web and SaaS software solutions."
+          "name": "About Us",
+          "url": "https://texwebsolution.in/about-us",
+          "description": "We specialize in custom web apps, prebuilt software, AI automation, and digital marketing solutions."
         },
         {
           "@type": "WebPage",
-          "name": "Customized Solutions",
-          "url": "https://texwebsolution.in/customized",
-          "description": "Tailor-made full-stack web and mobile application engineering built to scale."
+          "name": "Contact Us",
+          "url": "https://texwebsolution.in/contact",
+          "description": "Contact Us. From idea to launch, we design and develop tailor-made websites & apps."
         }
       ]
     }
