@@ -2,6 +2,7 @@
 
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
+import { Mail, PhoneCall } from "lucide-react";
 
 export default function TermsPage() {
   return (
@@ -30,7 +31,7 @@ export default function TermsPage() {
       </div>
 
       {/* Main Legal Content */}
-      <main className="w-full py-12 sm:py-16 px-4 sm:px-6 max-w-4xl mx-auto font-poppins text-gray-700 leading-relaxed">
+      <main className="w-full py-10 sm:py-12 px-4 sm:px-6 max-w-4xl mx-auto font-poppins text-gray-700 leading-relaxed">
         <div className="space-y-8 sm:space-y-12">
           
           <section className="bg-slate-50/70 border border-gray-100 rounded-3xl p-5 sm:p-8 shadow-sm">
@@ -137,17 +138,32 @@ export default function TermsPage() {
             <div className="space-y-2 text-sm sm:text-base text-gray-800 font-medium font-poppins">
               <p><strong>Company Name:</strong> TexWeb Solution Pvt. Ltd.</p>
               <p><strong>CIN:</strong> U85500WB2026PTC287896</p>
-              <p>
-                <strong>Email:</strong>{" "}
-                <a href="mailto:info@texwebsolution.in" className="text-red-600 hover:underline">
-                  info@texwebsolution.in
-                </a>
+              <p className="flex items-center gap-2">
+                <Mail className="w-4 h-4 text-red-600 shrink-0" />
+                <span>
+                  <strong>Email:</strong>{" "}
+                  <a href="mailto:info@texwebsolution.in" className="text-red-600 hover:underline">
+                    info@texwebsolution.in
+                  </a>
+                </span>
               </p>
-              <p>
-                <strong>Phone / WhatsApp:</strong>{" "}
-                <a href="https://wa.me/+917462827259" target="_blank" rel="noopener noreferrer" className="text-green-600 hover:underline">
-                  +91 7462827259
-                </a>
+              <p className="flex items-center gap-2">
+                <img src="/common/WhatsApp.svg" alt="WhatsApp" className="w-4 h-4 object-contain shrink-0" />
+                <span>
+                  <strong>Phone / WhatsApp:</strong>{" "}
+                  <a href="https://wa.me/+917462827259" target="_blank" rel="noopener noreferrer" className="text-green-600 hover:underline">
+                    +91 7462827259
+                  </a>
+                </span>
+              </p>
+              <p className="flex items-center gap-2">
+                <PhoneCall className="w-4 h-4 text-blue-600 shrink-0" />
+                <span>
+                  <strong>Calling Desk:</strong>{" "}
+                  <a href="tel:07554601839" className="text-blue-600 hover:underline">
+                    0755-4601839
+                  </a>
+                </span>
               </p>
             </div>
           </section>

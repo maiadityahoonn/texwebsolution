@@ -4,6 +4,7 @@ import Navbar from "@/components/Navbar";
 import CommonMarquee from "@/components/CommonMarquee";
 import PrebuiltSection from "@/components/PrebuiltSection";
 import PrebuiltReviews from "@/components/PrebuiltReviews";
+import PricingCtaBanner from "@/components/PricingCtaBanner";
 import FaqAccordion from "@/components/FaqAccordion";
 import GetInTouchSection from "@/components/GetInTouchSection";
 import Footer from "@/components/Footer";
@@ -63,7 +64,7 @@ export default function PrebuiltPage() {
 
 
         {/* Marquee Strip Separator */}
-        <div className="relative w-full overflow-hidden bg-gradient-to-r from-gray-950 via-red-900 to-gray-950 py-6 sm:py-8 flex items-center shadow-inner group select-none">
+        <div className="relative w-full overflow-hidden bg-gradient-to-r from-gray-950 via-red-900 to-gray-950 py-4 sm:py-5 flex items-center shadow-inner group select-none">
           <div className="absolute top-0 left-0 h-full flex shrink-0 items-center gap-8 whitespace-nowrap animate-marquee-sep1 pr-8">
             {[...Array(6)].map((_, i) => (
               <span key={i} className="text-base sm:text-2xl font-bold text-white uppercase tracking-wider shrink-0 flex items-center gap-8 font-[Matter]">
@@ -96,11 +97,11 @@ export default function PrebuiltPage() {
       </div>
 
       {/* Check our SaaS Products (staggered list) */}
-      <div className="w-full flex flex-col items-center text-center pt-12 pb-2 px-4 sm:px-6" style={{ fontFamily: "Matter, sans-serif" }}>
-        <div className="inline-block px-4 py-1 bg-red-50 text-red-600 border border-red-100 shadow-sm rounded-full site-label font-semibold text-xs sm:text-sm font-[Matter]">
+      <div className="w-full flex flex-col items-center text-center pt-10 sm:pt-12 pb-6 sm:pb-8 px-4 sm:px-6" style={{ fontFamily: "Matter, sans-serif" }}>
+        <div className="inline-block px-4 py-1 bg-red-50 text-red-600 border border-red-100 shadow-sm rounded-full site-label font-semibold text-xs sm:text-sm font-[Matter] mb-3">
           SaaS
         </div>
-        <h2 className="mt-6 text-3xl sm:text-4xl md:text-5xl font-bold text-center bg-gradient-to-r from-gray-900 to-red-600 bg-clip-text text-transparent leading-tight pb-1">
+        <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold text-center bg-gradient-to-r from-gray-900 to-red-600 bg-clip-text text-transparent leading-tight pb-1">
           Explore Our SaaS Products
         </h2>
         
@@ -110,6 +111,14 @@ export default function PrebuiltPage() {
 
       {/* Prebuilt Software Dedicated Reviews */}
       <PrebuiltReviews />
+
+      {/* Pricing CTA Banner */}
+      <PricingCtaBanner
+        badge="SaaS & Prebuilt Pricing"
+        title="Ready to Launch Your SaaS at Unbeatable Prices?"
+        subtitle="Explore our transparent ready-to-deploy software packages or calculate your custom turnkey solution cost."
+        customWhatsappText="Hi TexWeb Solution, I'd like to discuss pricing for Prebuilt SaaS platforms."
+      />
 
       {/* Frequently Asked Questions */}
       <FaqAccordion faqs={PREBUILT_FAQS} badge="SaaS FAQ" />

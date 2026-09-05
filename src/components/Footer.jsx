@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { Mail, PhoneCall } from "lucide-react";
 
 export default function Footer() {
   const handleSubscribe = (e) => {
@@ -16,15 +17,23 @@ export default function Footer() {
           <div className="flex flex-col justify-center space-y-6">
             <div>
               <h3 className="text-gray-400 text-sm font-medium mb-3">Contact us at</h3>
-              <div className="space-y-2 text-sm sm:text-base font-semibold text-gray-800">
+              <div className="space-y-2.5 text-sm sm:text-base font-semibold text-gray-800">
                 <p>
-                  <a href="mailto:info@texwebsolution.in" className="hover:text-red-600 transition-colors">
-                    info@texwebsolution.in
+                  <a href="mailto:info@texwebsolution.in" className="inline-flex items-center gap-2 hover:text-red-600 transition-colors">
+                    <Mail className="w-4 h-4 text-red-600 shrink-0" />
+                    <span>info@texwebsolution.in</span>
                   </a>
                 </p>
                 <p>
-                  <a href="https://wa.me/+917462827259" target="_blank" rel="noopener noreferrer" className="hover:text-green-600 transition-colors">
-                    +91 7462827259 (WhatsApp)
+                  <a href="https://wa.me/+917462827259" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 hover:text-green-600 transition-colors">
+                    <img src="/common/WhatsApp.svg" alt="WhatsApp" className="w-4 h-4 object-contain shrink-0" />
+                    <span>+91 7462827259 (WhatsApp)</span>
+                  </a>
+                </p>
+                <p>
+                  <a href="tel:07554601839" className="inline-flex items-center gap-2 hover:text-blue-600 transition-colors">
+                    <PhoneCall className="w-4 h-4 text-blue-600 shrink-0" />
+                    <span>0755-4601839 (Calling Desk)</span>
                   </a>
                 </p>
               </div>
@@ -60,6 +69,7 @@ export default function Footer() {
                     { name: "Customized", href: "/customized" },
                     { name: "AI Automation", href: "/ai-automation" },
                     { name: "Digital Marketing", href: "/digital-marketing" },
+                    { name: "Pricing & Plans (₹999)", href: "/pricing" },
                     { name: "About Us", href: "/about-us" },
                     { name: "Contact", href: "/contact" }
                   ].map((link) => (

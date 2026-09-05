@@ -99,7 +99,7 @@ export default function ProductDetailPage({ params: paramsPromise }) {
       >
         <Navbar />
 
-        <div className="flex-1 flex flex-col justify-center px-4 sm:px-6 py-8 md:py-16">
+        <div className="flex-1 flex flex-col justify-center px-4 sm:px-6 py-6 md:py-10">
           <div className="max-w-7xl mx-auto w-full grid md:grid-cols-12 gap-8 md:gap-12 items-center">
 
             {/* Left side: Heading and Subtitle */}
@@ -185,16 +185,16 @@ export default function ProductDetailPage({ params: paramsPromise }) {
       </div>
 
       {/* What All We Offer Section */}
-      <section className="py-20 md:py-28 bg-white font-poppins border-t border-gray-100">
+      <section className="py-10 sm:py-12 bg-white font-poppins border-t border-gray-100">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 text-center">
           <span className="inline-block px-5 py-2 bg-red-50 text-red-600 border border-red-100/80 shadow-sm rounded-full site-label font-semibold text-xs sm:text-sm font-[Matter]">
             Features & Capabilities
           </span>
-          <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold bg-gradient-to-r from-gray-900 to-red-600 bg-clip-text text-transparent leading-tight mt-6 mb-16" style={{ fontFamily: "Matter" }}>
+          <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold bg-gradient-to-r from-gray-900 to-red-600 bg-clip-text text-transparent leading-tight mt-4 mb-8 sm:mb-10" style={{ fontFamily: "Matter" }}>
             What All We Offer
           </h2>
 
-          <div className="space-y-14 sm:space-y-20 md:space-y-24">
+          <div className="space-y-10 sm:space-y-14">
             {product.offers.map((offer, index) => {
               const isImageLeft = index % 2 === 0;
               return (
@@ -258,12 +258,12 @@ export default function ProductDetailPage({ params: paramsPromise }) {
 
       {/* Why Choose Our Solution Section */}
       {product.whyChooseUs && product.whyChooseUs.length > 0 && (
-        <section className="py-20 md:py-28 bg-gradient-to-b from-neutral-50 to-white border-y border-gray-100 font-poppins">
+        <section className="py-10 sm:py-12 bg-gradient-to-b from-neutral-50 to-white border-y border-gray-100 font-poppins">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 text-center">
             <span className="inline-block px-5 py-2 bg-red-50 text-red-600 border border-red-100/80 shadow-sm rounded-full site-label font-semibold text-xs sm:text-sm font-[Matter]">
               Strategic Advantages
             </span>
-            <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold bg-gradient-to-r from-gray-900 to-red-600 bg-clip-text text-transparent leading-tight mt-6 mb-16" style={{ fontFamily: "Matter" }}>
+            <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold bg-gradient-to-r from-gray-900 to-red-600 bg-clip-text text-transparent leading-tight mt-4 mb-8 sm:mb-10" style={{ fontFamily: "Matter" }}>
               Why Choose Our Solution?
             </h2>
 

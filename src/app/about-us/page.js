@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import Navbar from "@/components/Navbar";
 import TeamSection from "@/components/TeamSection";
 import TestimonialsSwiper from "@/components/TestimonialsSwiper";
+import PricingCtaBanner from "@/components/PricingCtaBanner";
 import GetInTouchSection from "@/components/GetInTouchSection";
 import Footer from "@/components/Footer";
 import Link from "next/link";
@@ -447,7 +448,7 @@ export default function AboutUsPage() {
       </div>
 
       {/* Stats Section */}
-      <section className="py-16 px-6 max-w-7xl mx-auto w-full" style={{ fontFamily: "Matter, sans-serif" }}>
+      <section className="py-10 sm:py-12 px-6 max-w-7xl mx-auto w-full" style={{ fontFamily: "Matter, sans-serif" }}>
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-6 md:gap-8">
           {stats.map((stat, idx) => (
             <AnimatedCounter key={idx} value={stat.number} label={stat.label} />
@@ -456,12 +457,12 @@ export default function AboutUsPage() {
       </section>
 
       {/* Mission, Vision, Values Grid */}
-      <section className="py-16 px-6 max-w-7xl mx-auto w-full" style={{ fontFamily: "Matter, sans-serif" }}>
-        <div className="text-center max-w-3xl mx-auto mb-16">
-          <div className="inline-block px-4 py-1 bg-red-50 text-red-600 border border-red-100 shadow-sm rounded-full font-semibold text-xs sm:text-sm font-[Matter] mb-4">
+      <section className="py-10 sm:py-12 px-6 max-w-7xl mx-auto w-full" style={{ fontFamily: "Matter, sans-serif" }}>
+        <div className="text-center max-w-3xl mx-auto mb-8 sm:mb-10">
+          <div className="inline-block px-4 py-1 bg-red-50 text-red-600 border border-red-100 shadow-sm rounded-full font-semibold text-xs sm:text-sm font-[Matter] mb-3">
             Our Foundation
           </div>
-          <h2 className="text-3xl sm:text-4xl font-bold bg-gradient-to-r from-gray-900 to-red-600 bg-clip-text text-transparent">
+          <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold bg-gradient-to-r from-gray-900 to-red-600 bg-clip-text text-transparent leading-tight pb-1">
             Our Guiding Principles
           </h2>
         </div>
@@ -486,16 +487,16 @@ export default function AboutUsPage() {
       </section>
 
       {/* Services Showcase Section */}
-      <section className="py-16 px-6 bg-slate-50/60 border-y border-gray-100 w-full" style={{ fontFamily: "Matter, sans-serif" }}>
+      <section className="py-10 sm:py-12 px-6 bg-slate-50/60 border-y border-gray-100 w-full" style={{ fontFamily: "Matter, sans-serif" }}>
         <div className="max-w-7xl mx-auto">
-          <div className="text-center max-w-3xl mx-auto mb-16">
-            <div className="inline-block px-4 py-1 bg-red-50 text-red-600 border border-red-100 shadow-sm rounded-full font-semibold text-xs sm:text-sm font-[Matter] mb-4">
+          <div className="text-center max-w-3xl mx-auto mb-8 sm:mb-10">
+            <div className="inline-block px-4 py-1 bg-red-50 text-red-600 border border-red-100 shadow-sm rounded-full font-semibold text-xs sm:text-sm font-[Matter] mb-3">
               What We Do
             </div>
             <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold bg-gradient-to-r from-gray-900 to-red-600 bg-clip-text text-transparent leading-tight pb-1">
               Our Core Services & Solutions
             </h2>
-            <p className="mt-4 text-gray-600 text-sm sm:text-base font-poppins font-light leading-relaxed">
+            <p className="mt-3 text-gray-600 text-sm sm:text-base font-poppins font-light leading-relaxed">
               We cover every phase of digital growth — from building custom web applications and instant prebuilt software to implementing cutting-edge AI bots and driving revenue with performance marketing.
             </p>
           </div>
@@ -553,15 +554,15 @@ export default function AboutUsPage() {
       </section>
 
       {/* SECTION 1: The TexWeb Advantage */}
-      <section className="py-20 px-6 max-w-7xl mx-auto w-full font-poppins" style={{ fontFamily: "Matter, sans-serif" }}>
-        <div className="text-center max-w-3xl mx-auto mb-16">
-          <div className="inline-block px-4 py-1 bg-red-50 text-red-600 border border-red-100 shadow-sm rounded-full font-semibold text-xs sm:text-sm font-[Matter] mb-4">
+      <section className="py-10 sm:py-12 px-6 max-w-7xl mx-auto w-full font-poppins" style={{ fontFamily: "Matter, sans-serif" }}>
+        <div className="text-center max-w-3xl mx-auto mb-8 sm:mb-10">
+          <div className="inline-block px-4 py-1 bg-red-50 text-red-600 border border-red-100 shadow-sm rounded-full font-semibold text-xs sm:text-sm font-[Matter] mb-3">
             The TexWeb Advantage
           </div>
           <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold bg-gradient-to-r from-gray-900 to-red-600 bg-clip-text text-transparent leading-tight pb-1">
             Why Businesses Partner With Us
           </h2>
-          <p className="mt-4 text-gray-600 text-sm sm:text-base font-light leading-relaxed">
+          <p className="mt-3 text-gray-600 text-sm sm:text-base font-light leading-relaxed">
             Engineered for speed, security, and total code ownership — built to scale your business with zero technical compromises.
           </p>
         </div>
@@ -590,16 +591,16 @@ export default function AboutUsPage() {
       </section>
 
       {/* SECTION 2: Our 4-Step Working & Delivery Process */}
-      <section className="py-20 px-6 bg-neutral-900 text-white w-full font-poppins relative overflow-hidden" style={{ fontFamily: "Matter, sans-serif" }}>
+      <section className="py-10 sm:py-12 px-6 bg-neutral-900 text-white w-full font-poppins relative overflow-hidden" style={{ fontFamily: "Matter, sans-serif" }}>
         <div className="max-w-7xl mx-auto relative z-10">
-          <div className="text-center max-w-3xl mx-auto mb-16">
-            <div className="inline-block px-4 py-1 bg-red-500/20 text-red-300 border border-red-500/30 rounded-full font-semibold text-xs sm:text-sm font-[Matter] mb-4">
+          <div className="text-center max-w-3xl mx-auto mb-8 sm:mb-10">
+            <div className="inline-block px-4 py-1 bg-red-500/20 text-red-300 border border-red-500/30 rounded-full font-semibold text-xs sm:text-sm font-[Matter] mb-3">
               How We Work
             </div>
             <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold text-white leading-tight pb-1">
               Our Proven 4-Step Delivery Process
             </h2>
-            <p className="mt-4 text-gray-400 text-sm sm:text-base font-light leading-relaxed">
+            <p className="mt-3 text-gray-400 text-sm sm:text-base font-light leading-relaxed">
               A transparent, streamlined engineering methodology from initial concept to live market deployment.
             </p>
           </div>
@@ -637,15 +638,15 @@ export default function AboutUsPage() {
       </section>
 
       {/* SECTION 3: Tech Stack & Tools We Master */}
-      <section className="py-20 px-6 max-w-7xl mx-auto w-full font-poppins" style={{ fontFamily: "Matter, sans-serif" }}>
-        <div className="text-center max-w-3xl mx-auto mb-16">
-          <div className="inline-block px-4 py-1 bg-red-50 text-red-600 border border-red-100 shadow-sm rounded-full font-semibold text-xs sm:text-sm font-[Matter] mb-4">
+      <section className="py-10 sm:py-12 px-6 max-w-7xl mx-auto w-full font-poppins" style={{ fontFamily: "Matter, sans-serif" }}>
+        <div className="text-center max-w-3xl mx-auto mb-8 sm:mb-10">
+          <div className="inline-block px-4 py-1 bg-red-50 text-red-600 border border-red-100 shadow-sm rounded-full font-semibold text-xs sm:text-sm font-[Matter] mb-3">
             Our Technology Stack
           </div>
           <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold bg-gradient-to-r from-gray-900 to-red-600 bg-clip-text text-transparent leading-tight pb-1">
             Powered by World-Class Tech Infrastructure
           </h2>
-          <p className="mt-4 text-gray-600 text-sm sm:text-base font-light leading-relaxed">
+          <p className="mt-3 text-gray-600 text-sm sm:text-base font-light leading-relaxed">
             We leverage battle-tested frameworks, modern cloud platforms, and cutting-edge AI engines to build enterprise software.
           </p>
         </div>
@@ -715,7 +716,7 @@ export default function AboutUsPage() {
       </section>
 
       {/* Sister Company Highlight: Internship Catalyst */}
-      <section className="py-20 px-6 max-w-7xl mx-auto w-full" style={{ fontFamily: "Matter, sans-serif" }}>
+      <section className="py-10 sm:py-12 px-6 max-w-7xl mx-auto w-full" style={{ fontFamily: "Matter, sans-serif" }}>
         <div className="relative rounded-3xl bg-gradient-to-br from-gray-950 via-gray-900 to-red-950 text-white p-8 sm:p-12 md:p-16 overflow-hidden shadow-2xl border border-gray-800">
           
           {/* Subtle Background Glows */}
@@ -795,14 +796,22 @@ export default function AboutUsPage() {
       </section>
 
       {/* Team Showcase */}
-      <div className="bg-neutral-50/50 py-16 border-t border-gray-100">
+      <div className="bg-neutral-50/50 border-t border-gray-100">
         <TeamSection />
       </div>
 
       {/* Testimonials */}
-      <div className="bg-white py-12 border-y border-gray-100">
+      <div className="bg-white border-y border-gray-100">
         <TestimonialsSwiper />
       </div>
+
+      {/* Pricing CTA Banner */}
+      <PricingCtaBanner
+        badge="Enterprise & Startup Packages"
+        title="Ready to Scale Your Project with TexWeb Solution?"
+        subtitle="Explore our transparent pricing tiers, custom quotation models, or speak directly with our solutions architect."
+        customWhatsappText="Hi TexWeb Solution, I'd like to discuss pricing and solutions for my company."
+      />
 
       {/* Get In Touch section */}
       <GetInTouchSection />

@@ -2,41 +2,49 @@
   {
     "name": "Aditya Kumar Gupta",
     "role": "Founder & CEO",
+    "desc": "Leading company vision, product architecture & strategic growth.",
     "image": "/home/aditya_gupta.png"
   },
   {
     "name": "Meraj Hussain",
     "role": "Co-founder & CTO",
+    "desc": "Heading tech engineering, scalable cloud systems & AI architectures.",
     "image": "/home/meraj_hussain.webp"
   },
   {
     "name": "Shashank Suman",
-    "role": "Chief Operating Officer",
+    "role": "COO & Head of HR",
+    "desc": "Directing operations, human resources & company execution.",
     "image": "/home/shashank_suman.webp"
   },
   {
+    "name": "Ajeet Kumar Yadav",
+    "role": "Full Stack Developer",
+    "desc": "Building high-performance web/mobile apps & scalable full-stack APIs.",
+    "image": "/home/ajeet_yadav.png"
+  },
+  {
     "name": "Priyank Patel",
-    "role": "Chief Marketing Officer",
+    "role": "Sales & Client Management",
+    "desc": "Managing client onboarding, strategic partnerships & sales relations.",
     "image": "/home/priyank_patel.png"
   },
   {
     "name": "Kumar Nishu",
-    "role": "Chief Business Officer",
+    "role": "Sales & Growth Lead",
+    "desc": "Driving sales growth, client consultations & business development.",
     "image": "/home/kumar_nishu.png"
   },
   {
-    "name": "Ajeet Kumar Yadav",
-    "role": "Chief Human Resources Officer",
-    "image": "/home/ajeet_yadav.png"
-  },
-  {
     "name": "Thakur Kumar",
-    "role": "Chief Financial Officer",
+    "role": "Social Media Branding & Meta Ads",
+    "desc": "Handling brand profiles, script analysis, performance analytics & Meta Ads.",
     "image": "/home/thakur_kumar.webp"
   },
   {
     "name": "Sunny Thakur",
-    "role": "Social Media Manager",
+    "role": "Video Editing Lead & Media Manager",
+    "desc": "Leading viral video reel editing, media storytelling & managing editor team.",
     "image": "/home/sunny_thakur.webp"
   }
 ]

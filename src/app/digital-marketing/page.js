@@ -4,6 +4,7 @@ import Navbar from "@/components/Navbar";
 import CommonMarquee from "@/components/CommonMarquee";
 import ReelsCarousel from "@/components/ReelsCarousel";
 import DigitalMarketingReviews from "@/components/DigitalMarketingReviews";
+import PricingCtaBanner from "@/components/PricingCtaBanner";
 import FaqAccordion from "@/components/FaqAccordion";
 import GetInTouchSection from "@/components/GetInTouchSection";
 import Footer from "@/components/Footer";
@@ -136,13 +137,11 @@ export default function DigitalMarketingPage() {
         </div>
 
         {/* Marquee Strip Separator */}
-        <div className="relative w-full overflow-hidden bg-gradient-to-r from-gray-950 via-red-900 to-gray-950 py-6 sm:py-8 flex items-center shadow-inner group select-none">
+        <div className="relative w-full overflow-hidden bg-gradient-to-r from-gray-950 via-red-900 to-gray-950 py-4 sm:py-5 flex items-center shadow-inner group select-none">
           <div className="absolute top-0 left-0 h-full flex shrink-0 items-center gap-8 whitespace-nowrap animate-marquee-sep1 pr-8">
-            {[...Array(4)].map((_, i) => (
+            {[...Array(6)].map((_, i) => (
               <span key={i} className="text-base sm:text-2xl font-bold text-white uppercase tracking-wider shrink-0 flex items-center gap-8 font-[Matter]">
-                <span>Video Shooting & Production</span>
-                <span className="text-red-200/60 font-normal">•</span>
-                <span>Reel Editing & Shorts</span>
+                <span>Viral Reel Editing</span>
                 <span className="text-red-200/60 font-normal">•</span>
                 <span>Social Media Handling</span>
                 <span className="text-red-200/60 font-normal">•</span>
@@ -156,11 +155,9 @@ export default function DigitalMarketingPage() {
             ))}
           </div>
           <div className="absolute top-0 left-0 h-full flex shrink-0 items-center gap-8 whitespace-nowrap animate-marquee-sep2 pr-8">
-            {[...Array(4)].map((_, i) => (
+            {[...Array(6)].map((_, i) => (
               <span key={i} className="text-base sm:text-2xl font-bold text-white uppercase tracking-wider shrink-0 flex items-center gap-8 font-[Matter]">
-                <span>Video Shooting & Production</span>
-                <span className="text-red-200/60 font-normal">•</span>
-                <span>Reel Editing & Shorts</span>
+                <span>Viral Reel Editing</span>
                 <span className="text-red-200/60 font-normal">•</span>
                 <span>Social Media Handling</span>
                 <span className="text-red-200/60 font-normal">•</span>
@@ -177,15 +174,15 @@ export default function DigitalMarketingPage() {
       </div>
 
       {/* Services List Section */}
-      <div className="w-full flex flex-col items-center text-center pt-14 sm:pt-16 pb-16 sm:pb-24 px-4 sm:px-6" style={{ fontFamily: "Matter, sans-serif" }}>
-        <div className="inline-block px-4 py-1 bg-red-50 text-red-600 border border-red-100 shadow-sm rounded-full site-label font-semibold text-xs sm:text-sm font-[Matter] mb-4">
+      <div className="w-full flex flex-col items-center text-center pt-10 sm:pt-12 pb-12 sm:pb-16 px-4 sm:px-6" style={{ fontFamily: "Matter, sans-serif" }}>
+        <div className="inline-block px-4 py-1 bg-red-50 text-red-600 border border-red-100 shadow-sm rounded-full site-label font-semibold text-xs sm:text-sm font-[Matter] mb-3">
           Our Marketing Catalog
         </div>
-        <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold text-center bg-gradient-to-r from-gray-900 to-red-600 bg-clip-text text-transparent leading-tight pb-1 mb-16">
+        <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold text-center bg-gradient-to-r from-gray-900 to-red-600 bg-clip-text text-transparent leading-tight pb-1 mb-10 sm:mb-12">
           Explore Our Marketing Solutions
         </h2>
 
-        <div className="w-full max-w-7xl mx-auto px-0 sm:px-6 md:px-12 space-y-14 sm:space-y-20 md:space-y-28">
+        <div className="w-full max-w-7xl mx-auto px-0 sm:px-6 md:px-12 space-y-12 sm:space-y-16 md:space-y-20">
           {SERVICES.map((service, index) => {
             const isImageLeft = index % 2 === 0;
 
@@ -234,18 +231,17 @@ export default function DigitalMarketingPage() {
                     ))}
                   </ul>
 
-                  <div className="flex justify-start">
                     <a
                       href={`https://wa.me/+917462827259?text=${encodeURIComponent(
                         `Hi, I'm interested in ${service.title} (Digital Marketing)`
                       )}`}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="px-6 py-2.5 bg-red-600 text-white rounded-full shadow-md hover:scale-[1.05] hover:bg-red-700 active:scale-[0.96] transition-all duration-100 shadow-red-600/10 font-medium inline-block"
+                      className="px-6 py-2.5 bg-red-600 text-white rounded-full shadow-md hover:scale-[1.05] hover:bg-red-700 active:scale-[0.96] transition-all duration-100 shadow-red-600/10 font-medium inline-flex items-center gap-2"
                     >
-                      Enquire Now
+                      <img src="/common/WhatsApp.svg" alt="WhatsApp" className="w-4 h-4 object-contain" />
+                      <span>Enquire on WhatsApp</span>
                     </a>
-                  </div>
                 </div>
               </div>
             );
@@ -257,6 +253,14 @@ export default function DigitalMarketingPage() {
 
       {/* Digital Marketing Dedicated Reviews */}
       <DigitalMarketingReviews />
+
+      {/* Pricing CTA Banner */}
+      <PricingCtaBanner
+        badge="Marketing & Video Packages"
+        title="Scale Your Brand Reach with High-ROI Marketing Plans"
+        subtitle="Transparent pricing for social media handling, video reel production, and high-converting Meta & Google ad campaigns."
+        customWhatsappText="Hi TexWeb Solution, I'd like to discuss pricing for Digital Marketing & Video Services."
+      />
 
       {/* Digital Marketing Frequently Asked Questions (6 FAQs) */}
       <FaqAccordion faqs={DIGITAL_MARKETING_FAQS} badge="Marketing FAQ" />

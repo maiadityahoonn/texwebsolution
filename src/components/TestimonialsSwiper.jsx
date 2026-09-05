@@ -16,16 +16,6 @@ const HOMEPAGE_MIXED_REVIEWS = [
   },
   {
     id: 2,
-    name: "Er. VK Gupta",
-    role: "Founder, Er. VK Gupta Math Campus",
-    image: "/avatars/er_vk_gupta.png",
-    solution: "Instagram Growth & Reel Production",
-    roi: "3k ➔ 18k+ Followers",
-    rating: 5,
-    quote: "TexWeb Solution handled our complete Instagram channel management, edited engaging educational reels, and grew our followers from 3,000 to 18,000+. The viral reels converted directly into course sales!"
-  },
-  {
-    id: 3,
     name: "Mrs. Rakhi",
     role: "Founder, Anumeet Cutpiece",
     image: "/avatars/mrs_rakhi.png",
@@ -35,64 +25,54 @@ const HOMEPAGE_MIXED_REVIEWS = [
     quote: "TexWeb Solution handles our complete video shooting, reel editing, daily social media posting, and client lead conversions for Anumeet Cutpiece. Outstanding ROI and channel management!"
   },
   {
-    id: 4,
-    name: "Dr. Ananya Roy",
-    role: "Founder, Maa Nisha Seva Sadan",
-    image: "/avatars/dr_ananya_roy.png",
-    solution: "AI Voice & Appointment Agent",
-    roi: "85% Auto Booking",
+    id: 3,
+    name: "Er. VK Gupta",
+    role: "Founder, Er. VK Gupta Math Campus",
+    image: "/avatars/er_vk_gupta.png",
+    solution: "Instagram Growth & Reel Production",
+    roi: "3k ➔ 18k+ Followers",
     rating: 5,
-    quote: "The AI voice agent handles patient calls round-the-clock for Maa Nisha Seva Sadan, answers medical FAQs, and syncs with our appointment system. It feels like having a 24/7 receptionist team!"
+    quote: "TexWeb Solution handled our complete Instagram channel management, edited engaging educational reels, and grew our followers from 3,000 to 18,000+. The viral reels converted directly into course sales!"
+  },
+  {
+    id: 4,
+    name: "Atul Kumar",
+    role: "Founder & Director, Trend Kro Media",
+    image: "/avatars/atul_kumar.png",
+    solution: "Digital Growth & Media Platform",
+    roi: "96M+ Organic Views",
+    rating: 5,
+    quote: "TexWeb built a high-converting, sleek dark-themed web platform for Trend Kro Media. It perfectly showcases our media coverage, TEDx speaker opportunities, and strategy consultation bookings!"
   },
   {
     id: 5,
-    name: "Priya Nambiar",
-    role: "Head of Growth, Global Science Academy",
-    image: "/avatars/priya_nambiar.png",
-    solution: "Multi-Platform AI Lead Agent",
-    roi: "4.8x Sales Pipeline",
+    name: "Neelam Arora",
+    role: "Founder, Meditation Magic",
+    image: "/avatars/neelam_arora.jpg",
+    solution: "Spiritual Learning & Healing Platform",
+    roi: "10k+ Active Learners",
     rating: 5,
-    quote: "Their AI Agent captures incoming Instagram DMs, website chats, and email leads for Global Science Academy, qualifies student budget, and pushes warm leads straight to our sales team's WhatsApp!"
+    quote: "Our spiritual courses, guided audio meditations, and masterclass bookings run seamlessly on the custom platform developed by TexWeb Solution. Our students love the calm UI and smooth checkout experience!"
   },
   {
     id: 6,
-    name: "Muktesh Narula",
-    role: "Founder, Dovesoft Tech",
-    image: "/avatars/siddharth_mehta.png",
-    solution: "Custom SaaS & Web Platform",
-    roi: "99.9% System Uptime",
+    name: "D.D. Sharma Ji",
+    role: "Founder, Team 360 Mind Mentorship",
+    image: "/avatars/dd_sharma.jpg",
+    solution: "Mind Mentorship & Learning Portal",
+    roi: "50k+ Mind Training Members",
     rating: 5,
-    quote: "TexWeb delivered our custom SaaS platform ahead of schedule with flawless UI/UX, turbo-fast loading speed, and ultra-secure backend integration. Outstanding engineering team!"
+    quote: "TexWeb Solution built a comprehensive portal for our Team 360 workshops, recorded courses, and spiritual literature. The platform performance, video streaming, and registration tools are exceptional!"
   },
   {
     id: 7,
-    name: "Siddharth Mehta",
-    role: "Operations Lead, FinServe Capital",
-    image: "/avatars/siddharth_mehta.png",
-    solution: "Document AI & Invoice OCR",
-    roi: "95% Faster Audits",
+    name: "Ruchi Upadhyay",
+    role: "Founder & Educator, Ruchi Upadhyay Classes",
+    image: "/avatars/ruchi_upadhyay.png",
+    solution: "Chemistry EdTech & Test Portal",
+    roi: "5x Student Growth",
     rating: 5,
-    quote: "We automated invoice data extraction and audit verification using TexWeb's custom AI OCR pipeline. What used to take 3 full-time accountants 5 hours now runs in under 45 seconds!"
-  },
-  {
-    id: 8,
-    name: "Shriya Sadneni",
-    role: "Managing Director, Murzban",
-    image: "/avatars/priya_nambiar.png",
-    solution: "Custom Mobile App & E-Com Ads",
-    roi: "4.5x Revenue Growth",
-    rating: 5,
-    quote: "Their team built a high-converting e-commerce mobile application and ran targeted marketing campaigns that multiplied our online order revenue by 4.5x in less than 3 months!"
-  },
-  {
-    id: 9,
-    name: "Vikramaditya Rao",
-    role: "CTO, CloudScale E-Com",
-    image: "/avatars/vikramaditya_rao.png",
-    solution: "Prebuilt SaaS & RAG AI Chatbot",
-    roi: "$45k/yr Cost Saved",
-    rating: 5,
-    quote: "We deployed TexWeb's prebuilt SaaS e-commerce system with custom RAG AI chatbot integration. It resolves 78% of customer tickets instantly without human intervention!"
+    quote: "TexWeb created a top-notch educational platform for our Chemistry classes. From live session schedules and study note downloads to test series integration, everything works flawlessly for our students!"
   }
 ];
 

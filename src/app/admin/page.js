@@ -391,10 +391,10 @@ export default function AdminPage() {
                               href={waUrl}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="p-2 bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 rounded-xl hover:bg-emerald-500/30 transition-colors"
+                              className="p-2 bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 rounded-xl hover:bg-emerald-500/30 transition-colors flex items-center justify-center"
                               title="Chat on WhatsApp"
                             >
-                              <MessageSquare className="w-4 h-4" />
+                              <img src="/common/WhatsApp.svg" alt="WhatsApp" className="w-4 h-4 object-contain" />
                             </a>
 
                             {/* Direct Phone Call */}

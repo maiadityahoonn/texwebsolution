@@ -131,7 +131,7 @@ export default function ContactPage() {
         </div>
 
         {/* Marquee Strip Separator */}
-        <div className="relative w-full overflow-hidden bg-gradient-to-r from-gray-950 via-red-900 to-gray-950 py-6 sm:py-8 flex items-center shadow-inner group select-none">
+        <div className="relative w-full overflow-hidden bg-gradient-to-r from-gray-950 via-red-900 to-gray-950 py-4 sm:py-5 flex items-center shadow-inner group select-none">
           <div className="absolute top-0 left-0 h-full flex shrink-0 items-center gap-8 whitespace-nowrap animate-marquee-sep1 pr-8">
             {[...Array(6)].map((_, i) => (
               <span key={i} className="text-base sm:text-2xl font-bold text-white uppercase tracking-wider shrink-0 flex items-center gap-8 font-[Matter]">
@@ -164,7 +164,7 @@ export default function ContactPage() {
       </div>
 
       {/* Contact Form Section */}
-      <section className="py-16 sm:py-20 px-4 sm:px-6 max-w-7xl mx-auto w-full" style={{ fontFamily: "Matter, sans-serif" }}>
+      <section className="py-10 sm:py-12 px-4 sm:px-6 max-w-7xl mx-auto w-full" style={{ fontFamily: "Matter, sans-serif" }}>
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-start">
           
           {/* Info Side (Left Column) */}
@@ -215,8 +215,8 @@ export default function ContactPage() {
               >
                 <div className="flex flex-col min-[420px]:flex-row min-[420px]:items-center justify-between gap-3">
                   <div className="flex items-center gap-4 min-w-0">
-                    <div className="p-3 bg-green-50 text-green-600 rounded-xl group-hover:bg-green-100 transition-colors">
-                      <MessageSquare size={22} />
+                    <div className="p-3 bg-green-50 rounded-xl group-hover:bg-green-100 transition-colors flex items-center justify-center">
+                      <img src="/common/WhatsApp.svg" alt="WhatsApp" className="w-[22px] h-[22px] object-contain" />
                     </div>
                     <div className="min-w-0">
                       <h4 className="font-semibold text-gray-800 text-sm sm:text-base font-[Matter]">WhatsApp Support</h4>
@@ -225,6 +225,27 @@ export default function ContactPage() {
                   </div>
                   <span className="text-xs font-semibold text-green-600 px-3 py-1 bg-green-50 rounded-full group-hover:bg-green-100 transition-colors font-[Matter]">
                     Chat Now
+                  </span>
+                </div>
+              </a>
+
+              {/* Calling Desk Card */}
+              <a 
+                href="tel:07554601839" 
+                className="block bg-white border border-gray-100 rounded-2xl p-5 shadow-sm hover:shadow-md hover:border-blue-500/20 transition-all duration-300 group"
+              >
+                <div className="flex flex-col min-[420px]:flex-row min-[420px]:items-center justify-between gap-3">
+                  <div className="flex items-center gap-4 min-w-0">
+                    <div className="p-3 bg-blue-50 rounded-xl group-hover:bg-blue-100 transition-colors flex items-center justify-center text-blue-600">
+                      <PhoneCall size={22} />
+                    </div>
+                    <div className="min-w-0">
+                      <h4 className="font-semibold text-gray-800 text-sm sm:text-base font-[Matter]">Calling Desk</h4>
+                      <p className="text-xs sm:text-sm text-gray-500 font-medium">0755-4601839</p>
+                    </div>
+                  </div>
+                  <span className="text-xs font-semibold text-blue-600 px-3 py-1 bg-blue-50 rounded-full group-hover:bg-blue-100 transition-colors font-[Matter]">
+                    Call Now
                   </span>
                 </div>
               </a>
@@ -323,7 +344,10 @@ export default function ContactPage() {
 
                   {/* Email Input */}
                   <div className="space-y-2">
-                    <label htmlFor="email" className="site-label font-semibold text-xs sm:text-sm font-[Matter] text-gray-700">Email Address</label>
+                    <label htmlFor="email" className="site-label font-semibold text-xs sm:text-sm font-[Matter] text-gray-700 flex items-center gap-1.5">
+                      <Mail className="w-3.5 h-3.5 text-red-600" />
+                      <span>Email Address</span>
+                    </label>
                     <input 
                       type="email" 
                       id="email"
@@ -340,7 +364,10 @@ export default function ContactPage() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                   {/* Phone Input */}
                   <div className="space-y-2">
-                    <label htmlFor="phone" className="site-label font-semibold text-xs sm:text-sm font-[Matter] text-gray-700">Phone / WhatsApp Number</label>
+                    <label htmlFor="phone" className="site-label font-semibold text-xs sm:text-sm font-[Matter] text-gray-700 flex items-center gap-1.5">
+                      <img src="/common/WhatsApp.svg" alt="WhatsApp" className="w-3.5 h-3.5 object-contain" />
+                      <span>Phone / WhatsApp Number</span>
+                    </label>
                     <input 
                       type="tel" 
                       id="phone"

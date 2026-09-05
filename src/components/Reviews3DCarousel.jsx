@@ -38,13 +38,13 @@ export default function Reviews3DCarousel({
   }, [isDesktop, handleNext, total]);
 
   const cardVariants = {
-    center: { x: 0, scale: 1, opacity: 1, filter: "blur(0px)", zIndex: 50 },
+    center: { x: 0, scale: 1, opacity: 1, filter: "blur(0px)", zIndex: 25 },
     sideNear: (custom) => ({
       x: custom * (isDesktop ? 430 : 230),
       scale: isDesktop ? 0.82 : 0.85,
       opacity: 0.6,
       filter: "blur(3.5px)",
-      zIndex: 40,
+      zIndex: 15,
     }),
     hidden: (custom) => ({
       x: 520 * custom,
@@ -58,25 +58,25 @@ export default function Reviews3DCarousel({
   if (!total) return null;
 
   return (
-    <section className="py-16 sm:py-20 text-center w-full overflow-hidden bg-gradient-to-b from-white via-red-50/20 to-white font-[Matter] relative">
+    <section className="py-10 sm:py-14 text-center w-full overflow-hidden bg-gradient-to-b from-white via-red-50/20 to-white font-[Matter] relative">
       {/* Background Tech Grid & Ambient Glow Lights */}
       <div className="absolute inset-0 bg-[linear-gradient(to_right,#ef444408_1px,transparent_1px),linear-gradient(to_bottom,#ef444408_1px,transparent_1px)] bg-[size:32px_32px] pointer-events-none -z-10" />
       <div className="absolute top-1/4 left-10 w-96 h-96 bg-red-400/10 rounded-full blur-[120px] pointer-events-none -z-10" />
       <div className="absolute bottom-10 right-10 w-96 h-96 bg-rose-400/10 rounded-full blur-[120px] pointer-events-none -z-10" />
 
       {/* Badge Header */}
-      <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-red-50 text-red-600 border border-red-100 shadow-sm rounded-full site-label font-semibold text-xs sm:text-sm font-[Matter] mb-4">
+      <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-red-50 text-red-600 border border-red-100 shadow-sm rounded-full site-label font-semibold text-xs sm:text-sm font-[Matter] mb-3">
         <Sparkles className="w-3.5 h-3.5 text-red-600 animate-pulse" />
         {badge}
       </div>
 
       {/* Main Heading */}
-      <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold text-center bg-gradient-to-r from-gray-900 via-gray-800 to-red-600 bg-clip-text text-transparent my-2 px-3 leading-tight pb-1">
+      <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-[40px] font-bold text-center bg-gradient-to-r from-gray-900 via-gray-800 to-red-600 bg-clip-text text-transparent my-1.5 px-3 leading-tight pb-1">
         {heading}
       </h2>
 
       {subheading && (
-        <p className="mt-3 text-sm sm:text-base text-gray-500 font-poppins font-light max-w-xl mx-auto px-4 mb-10">
+        <p className="mt-2 text-sm sm:text-base text-gray-500 font-poppins font-light max-w-xl mx-auto px-4 mb-6 sm:mb-8">
           {subheading}
         </p>
       )}
@@ -200,7 +200,7 @@ export default function Reviews3DCarousel({
         </div>
 
         {/* Carousel Controls & Dot Indicators */}
-        <div className="flex items-center justify-center gap-6 mt-4 sm:mt-8 z-50">
+        <div className="flex items-center justify-center gap-6 mt-4 sm:mt-8 z-20">
           <button
             onClick={handlePrev}
             className="w-12 h-12 rounded-full bg-white border border-gray-200 hover:border-red-500 text-gray-700 hover:text-red-600 flex items-center justify-center shadow-md transition-all transform hover:scale-105 active:scale-95"

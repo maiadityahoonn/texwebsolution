@@ -8,6 +8,7 @@ import MarqueeStrip from "@/components/MarqueeStrip";
 import ReelsCarousel from "@/components/ReelsCarousel";
 import TeamSection from "@/components/TeamSection";
 import TestimonialsSwiper from "@/components/TestimonialsSwiper";
+import HomePricingSection from "@/components/HomePricingSection";
 import FaqAccordion from "@/components/FaqAccordion";
 import GetInTouchSection from "@/components/GetInTouchSection";
 import Footer from "@/components/Footer";
@@ -101,9 +102,9 @@ export default function Home() {
         <Navbar />
 
         {/* Hero Section */}
-        <div className="flex flex-col items-center text-center px-4 justify-start bg-transparent pt-4 pb-6 sm:pb-8">
+        <div className="flex flex-col items-center text-center px-4 justify-start bg-transparent pt-1 sm:pt-2 pb-6 sm:pb-8">
           <h1 className="sr-only">TexWeb Solution - Tailor-Made Website, Mobile App Development & Digital Marketing Agency</h1>
-          <div className="relative w-full mx-auto mt-[-35px] md:mt-[-15px] lg:mt-[-25px] px-4 sm:px-8 max-w-full md:max-w-3xl lg:max-w-[740px]">
+          <div className="relative w-full mx-auto -mt-1 sm:-mt-2 md:-mt-3 px-4 sm:px-8 max-w-full md:max-w-3xl lg:max-w-[740px]">
             <img
               alt="TexWeb Solution - Custom Website and Mobile App Development Agency"
               className="w-full h-auto object-contain"
@@ -162,7 +163,7 @@ export default function Home() {
         {/* Turning Visions Into Digital Reality (Featured Customized Websites) */}
         <section
           ref={gridRef}
-          className="relative py-16 sm:py-20 text-center w-full overflow-hidden bg-gradient-to-b from-white to-gray-50/30"
+          className="relative py-10 sm:py-12 text-center w-full overflow-hidden bg-gradient-to-b from-white to-gray-50/30"
           style={{ fontFamily: "Matter, sans-serif" }}
         >
           {/* Dotted Grid Overlay & Accent Glows */}
@@ -170,13 +171,16 @@ export default function Home() {
           <div className="absolute top-0 left-1/4 w-[35rem] h-[35rem] bg-red-50/30 rounded-full blur-3xl -z-10 pointer-events-none" />
           <div className="absolute bottom-0 right-1/4 w-[35rem] h-[35rem] bg-neutral-100/50 rounded-full blur-3xl -z-10 pointer-events-none" />
 
-          <div className="max-w-4xl mx-auto text-center px-4 mb-8 sm:mb-10">
-            <div className="inline-block px-4 py-1 bg-red-50 text-red-600 border border-red-100 shadow-sm rounded-full site-label font-semibold text-xs sm:text-sm font-[Matter] mb-4">
+          <div className="max-w-5xl mx-auto text-center px-4 mb-8 sm:mb-10">
+            <div className="inline-block px-4 py-1 bg-red-50 text-red-600 border border-red-100 shadow-sm rounded-full site-label font-semibold text-xs sm:text-sm font-[Matter] mb-3">
               Featured Projects
             </div>
-            <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold bg-gradient-to-r from-gray-900 to-red-600 bg-clip-text text-transparent leading-tight tracking-tight pb-1">
+            <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-[40px] font-bold bg-gradient-to-r from-gray-900 to-red-600 bg-clip-text text-transparent leading-tight tracking-tight pb-1 mb-3">
               Transforming Concepts Into Live Platforms
             </h2>
+            <p className="text-sm sm:text-base text-gray-500 font-poppins font-light max-w-xl mx-auto leading-relaxed">
+              Explore some of our most impactful custom platforms, websites, and mobile apps built for client growth.
+            </p>
           </div>
 
           <div className="max-w-6xl mx-auto px-4">
@@ -246,7 +250,7 @@ export default function Home() {
           </div>
 
           {/* View All CTA */}
-          <div className="flex justify-center mt-12">
+          <div className="flex justify-center mt-8 sm:mt-10">
             <a href="/customized" className="relative inline-flex items-center group">
               <button className="relative z-10 px-8 py-3.5 bg-red-600 text-white rounded-full text-sm font-semibold hover:bg-red-700 shadow-md shadow-red-600/15 hover:shadow-lg hover:shadow-red-600/25 hover:scale-105 transition-all duration-300 flex items-center gap-2 transform">
                 View All Projects
@@ -260,7 +264,7 @@ export default function Home() {
         </section>
 
         {/* Marquee Separator */}
-        <div className="relative w-full overflow-hidden bg-gradient-to-r from-gray-950 via-red-900 to-gray-950 py-6 sm:py-8 flex items-center shadow-inner group select-none">
+        <div className="relative w-full overflow-hidden bg-gradient-to-r from-gray-950 via-red-900 to-gray-950 py-4 sm:py-5 flex items-center shadow-inner group select-none">
           <div className="absolute top-0 left-0 h-full flex shrink-0 items-center gap-8 whitespace-nowrap animate-marquee-sep1 pr-8">
             {[...Array(14)].map((_, i) => (
               <span key={i} className="text-base sm:text-2xl font-bold text-white uppercase tracking-wider shrink-0 flex items-center gap-8 font-[Matter]">
@@ -285,11 +289,19 @@ export default function Home() {
 
 
 
-        {/* Team section mobile/desktop layout */}
-        <TeamSection />
+        {/* Client Testimonials */}
+        <div className="bg-white border-y border-gray-100">
+          <TestimonialsSwiper />
+        </div>
+
+        {/* 3 Pricing Cards Section with See More redirect */}
+        <HomePricingSection />
 
         {/* FAQ Accordion */}
         <FaqAccordion />
+
+        {/* Team section mobile/desktop layout (Show only 4 on home with See More button) */}
+        <TeamSection limit={4} showSeeMore={true} />
 
         {/* Get In Touch section */}
         <GetInTouchSection />

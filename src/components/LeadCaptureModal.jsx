@@ -115,8 +115,9 @@ export default function LeadCaptureModal() {
               </div>
 
               <div>
-                <label className="block text-[11px] font-bold text-gray-700 uppercase tracking-wider mb-1">
-                  Phone / WhatsApp Number *
+                <label className="flex items-center gap-1.5 text-[11px] font-bold text-gray-700 uppercase tracking-wider mb-1">
+                  <img src="/common/WhatsApp.svg" alt="WhatsApp" className="w-3.5 h-3.5 object-contain" />
+                  <span>Phone / WhatsApp Number *</span>
                 </label>
                 <input
                   type="tel"

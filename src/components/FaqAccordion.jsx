@@ -119,20 +119,23 @@ export default function FaqAccordion({ faqs, badge = "Common Inquiries" }) {
   };
 
   return (
-    <section className="relative py-16 sm:py-20 w-full font-[Matter]" id="faq">
+    <section className="relative py-10 sm:py-12 w-full font-[Matter]" id="faq">
       {/* Background Dotted Grid Overlay & Ambient Glows */}
       <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808006_1px,transparent_1px),linear-gradient(to_bottom,#80808006_1px,transparent_1px)] bg-[size:16px_28px] -z-10" />
       <div className="absolute top-0 right-1/4 w-[30rem] h-[30rem] bg-red-50/10 rounded-full blur-3xl -z-10 pointer-events-none" />
       <div className="absolute bottom-0 left-1/4 w-[30rem] h-[30rem] bg-neutral-100/30 rounded-full blur-3xl -z-10 pointer-events-none" />
 
       <div className="max-w-6xl mx-auto px-4">
-        <div className="text-center mb-10 sm:mb-12">
-          <div className="inline-block px-4 py-1 bg-red-50 text-red-600 border border-red-100 shadow-sm rounded-full site-label font-semibold text-xs sm:text-sm font-[Matter] mb-4">
+        <div className="text-center mb-8 sm:mb-10">
+          <div className="inline-block px-4 py-1 bg-red-50 text-red-600 border border-red-100 shadow-sm rounded-full site-label font-semibold text-xs sm:text-sm font-[Matter] mb-3">
             {badge}
           </div>
-          <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold text-center bg-gradient-to-r from-gray-900 to-red-600 bg-clip-text text-transparent leading-tight pb-1">
+          <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-[40px] font-bold text-center bg-gradient-to-r from-gray-900 to-red-600 bg-clip-text text-transparent leading-tight pb-1 mb-3">
             Frequently Asked Questions
           </h2>
+          <p className="text-sm sm:text-base text-gray-500 font-poppins font-light max-w-xl mx-auto leading-relaxed">
+            Everything you need to know about our services, process, ownership, and support.
+          </p>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5 w-full items-start">

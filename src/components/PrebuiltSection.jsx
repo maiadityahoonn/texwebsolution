@@ -26,7 +26,7 @@ export default function PrebuiltSection() {
   if (loading || products.length === 0) return null;
 
   return (
-    <section className="mt-16 w-full font-[Matter]" id="prebuilt">
+    <section className="mt-8 sm:mt-10 w-full font-[Matter]" id="prebuilt">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
 
         {/* Staggered detailed grid list */}

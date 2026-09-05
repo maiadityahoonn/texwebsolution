@@ -4,6 +4,7 @@ import Navbar from "@/components/Navbar";
 import CommonMarquee from "@/components/CommonMarquee";
 import CustomizedTabs from "@/components/CustomizedTabs";
 import CustomizedReviews from "@/components/CustomizedReviews";
+import PricingCtaBanner from "@/components/PricingCtaBanner";
 import FaqAccordion from "@/components/FaqAccordion";
 import GetInTouchSection from "@/components/GetInTouchSection";
 import Footer from "@/components/Footer";
@@ -63,7 +64,7 @@ export default function CustomizedPage() {
 
 
         {/* Marquee Strip Separator */}
-        <div className="relative w-full overflow-hidden bg-gradient-to-r from-gray-950 via-red-900 to-gray-950 py-6 sm:py-8 flex items-center shadow-inner group select-none">
+        <div className="relative w-full overflow-hidden bg-gradient-to-r from-gray-950 via-red-900 to-gray-950 py-4 sm:py-5 flex items-center shadow-inner group select-none">
           <div className="absolute top-0 left-0 h-full flex shrink-0 items-center gap-8 whitespace-nowrap animate-marquee-sep1 pr-8">
             {[...Array(6)].map((_, i) => (
               <span key={i} className="text-base sm:text-2xl font-bold text-white uppercase tracking-wider shrink-0 flex items-center gap-8 font-[Matter]">
@@ -96,13 +97,21 @@ export default function CustomizedPage() {
       </div>
 
       {/* Customized Projects Tab Switcher */}
-      <div className="w-full flex flex-col items-center text-center pt-4 pb-2 px-4 sm:px-6 font-poppins">
+      <div className="w-full flex flex-col items-center text-center pt-10 sm:pt-12 pb-6 sm:pb-8 px-4 sm:px-6 font-poppins">
         {/* Render the switcher and projects list */}
         <CustomizedTabs />
       </div>
 
       {/* Custom Development Dedicated Reviews */}
       <CustomizedReviews />
+
+      {/* Pricing CTA Banner */}
+      <PricingCtaBanner
+        badge="Custom Development Pricing"
+        title="Need a Custom Website or App Tailored to Your Budget?"
+        subtitle="Get a transparent breakdown of development costs or use our instant interactive pricing calculator."
+        customWhatsappText="Hi TexWeb Solution, I'd like to get an estimate for a custom software project."
+      />
 
       {/* Custom Development FAQs */}
       <FaqAccordion faqs={CUSTOMIZED_FAQS} badge="Custom Dev FAQ" />
