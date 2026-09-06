@@ -26,6 +26,8 @@ import {
 
 export default function DownloadPage() {
   const [activeTab, setActiveTab] = useState("android"); // "android" | "ios" | "desktop"
+  const [deferredPrompt, setDeferredPrompt] = useState(null);
+  const [isInstalled, setIsInstalled] = useState(false);
 
   useEffect(() => {
     // Detect OS for default tab
@@ -39,7 +41,39 @@ export default function DownloadPage() {
         setActiveTab("desktop");
       }
     }
+
+    // Check if already standalone
+    const isStandalone = 
+      (typeof window !== "undefined" && window.matchMedia("(display-mode: standalone)").matches) ||
+      (typeof navigator !== "undefined" && navigator.standalone);
+    if (isStandalone) {
+      setIsInstalled(true);
+    }
+
+    const handleBeforeInstallPrompt = (e) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+    };
+
+    window.addEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
+    return () => {
+      window.removeEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
+    };
   }, []);
+
+  const handle1TapInstall = async () => {
+    if (deferredPrompt) {
+      deferredPrompt.prompt();
+      const { outcome } = await deferredPrompt.userChoice;
+      if (outcome === "accepted") {
+        setIsInstalled(true);
+      }
+      setDeferredPrompt(null);
+    } else {
+      // Fallback instructions if browser already prompted or iOS
+      alert("To install directly on Android / iPhone:\n\n1. Tap Chrome's 3-dot menu (or Safari Share icon)\n2. Tap 'Install App' or 'Add to Home Screen'\n\nTexWeb Solution will be installed on your phone!");
+    }
+  };
 
   return (
     <div className="min-h-screen bg-white text-gray-900 font-poppins selection:bg-red-600 selection:text-white relative overflow-x-hidden">
@@ -74,28 +108,37 @@ export default function DownloadPage() {
         </h1>
 
         <p className="text-base sm:text-lg text-gray-600 max-w-2xl mx-auto leading-relaxed mb-8">
-          Run your whole client business from your pocket — leads, projects, invoices and payments. Free download, straight from us.
+          Run your whole workspace from your pocket — leads, projects, invoices and team credentials. Free install, straight to your phone.
         </p>
 
-        {/* Direct Download CTA */}
-        <div className="flex flex-col items-center justify-center gap-3">
+        {/* Action Buttons: 1-Tap Install + Direct APK */}
+        <div className="flex flex-col sm:flex-row items-center justify-center gap-3.5 max-w-md mx-auto">
+          <button
+            onClick={handle1TapInstall}
+            className="w-full sm:w-auto flex-1 inline-flex items-center justify-center gap-2.5 bg-red-600 hover:bg-red-700 text-white font-bold px-7 py-4 rounded-full text-base shadow-xl shadow-red-600/20 hover:shadow-2xl hover:-translate-y-0.5 transition-all duration-300 cursor-pointer"
+            style={{ fontFamily: "Matter" }}
+          >
+            <Smartphone className="w-5 h-5 text-white" />
+            <span>{isInstalled ? "App Installed ✓" : "1-Tap Install App"}</span>
+          </button>
+
           <a
             href="/texwebsolution.apk"
             download="TexWebSolution.apk"
-            className="inline-flex items-center gap-3 bg-gray-950 hover:bg-gray-800 text-white font-bold px-8 sm:px-10 py-4 rounded-full text-base shadow-xl shadow-black/10 hover:shadow-2xl hover:-translate-y-0.5 transition-all duration-300 cursor-pointer"
+            className="w-full sm:w-auto inline-flex items-center justify-center gap-2.5 bg-gray-950 hover:bg-gray-800 text-white font-bold px-7 py-4 rounded-full text-base shadow-xl shadow-black/10 hover:shadow-2xl hover:-translate-y-0.5 transition-all duration-300 cursor-pointer"
             style={{ fontFamily: "Matter" }}
           >
             <Download className="w-5 h-5 text-white" />
             <span>Download APK</span>
           </a>
-
-          <p className="text-xs sm:text-sm text-gray-500 font-poppins mt-1">
-            Version 1.3.3 · 4.6 MB · Android 7.0 and newer
-          </p>
-          <p className="text-[11px] text-gray-400 font-poppins">
-            Updated September 2026
-          </p>
         </div>
+
+        <p className="text-xs sm:text-sm text-gray-500 font-poppins mt-4">
+          Direct 1-Tap Install & APK · Android 7.0+ & iOS
+        </p>
+        <p className="text-[11px] text-gray-400 font-poppins mt-0.5">
+          Updated September 2026
+        </p>
       </section>
 
       {/* ========================================================================= */}
