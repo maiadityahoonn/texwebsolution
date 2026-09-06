@@ -7,7 +7,7 @@ export default function manifest() {
     id: '/',
     scope: '/',
     display: 'standalone',
-    display_override: ['tabbed', 'window-controls-overlay', 'standalone', 'minimal-ui', 'browser'],
+    display_override: ['standalone', 'fullscreen'],
     orientation: 'portrait-primary',
     dir: 'ltr',
     lang: 'en-IN',

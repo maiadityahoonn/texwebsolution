@@ -226,6 +226,9 @@ export default function RootLayout({ children }) {
         <meta name="application-name" content="TexWeb Solution" />
         <meta property="og:site_name" content="TexWeb Solution" />
         <meta name="apple-mobile-web-app-title" content="TexWeb Solution" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="default" />
         <meta name="theme-color" content="#ffffff" />
         <script
           type="application/ld+json"
@@ -293,4 +296,3 @@ export default function RootLayout({ children }) {
     </html>
   );
 }
-

@@ -48,7 +48,7 @@ export default function AppSplashScreen() {
           <img
             src="/logo.png"
             alt="TexWeb Solution"
-            className="w-24 h-24 sm:w-28 sm:h-28 rounded-3xl object-contain shadow-2xl shadow-red-600/20"
+            className="w-28 h-28 sm:w-32 sm:h-32 rounded-3xl object-contain shadow-2xl shadow-red-600/20"
           />
         </div>
 
