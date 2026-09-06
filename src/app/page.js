@@ -6,6 +6,7 @@ import CommonMarquee from "@/components/CommonMarquee";
 import FeaturesSection from "@/components/FeaturesSection";
 import MarqueeStrip from "@/components/MarqueeStrip";
 import ReelsCarousel from "@/components/ReelsCarousel";
+import AnimatedCounter from "@/components/AnimatedCounter";
 import TeamSection from "@/components/TeamSection";
 import TestimonialsSwiper from "@/components/TestimonialsSwiper";
 import HomePricingSection from "@/components/HomePricingSection";
@@ -131,14 +132,14 @@ export default function Home() {
             </a>
           </div>
 
-          <div className="flex items-center gap-2 sm:gap-4 mt-3">
+          <div className="inline-flex items-center gap-2 sm:gap-4 mt-3">
             <div className="flex -space-x-3 scale-[0.85] sm:scale-90 origin-left">
-              <img className="w-8 h-8 sm:w-10 sm:h-10 rounded-full border-2 border-red-600 object-cover bg-white" src="/home/prof1.png" alt="Audience 1" />
-              <img className="w-8 h-8 sm:w-10 sm:h-10 rounded-full border-2 border-red-600 object-cover bg-white" src="/home/prof2.png" alt="Audience 2" />
-              <img className="w-8 h-8 sm:w-10 sm:h-10 rounded-full border-2 border-red-600 object-cover bg-white" src="/home/prof3.png" alt="Audience 3" />
+              <img className="w-8 h-8 sm:w-10 sm:h-10 rounded-full border-2 border-red-600 object-cover bg-white shadow-sm" src="/home/prof1.png" alt="Audience 1" />
+              <img className="w-8 h-8 sm:w-10 sm:h-10 rounded-full border-2 border-red-600 object-cover bg-white shadow-sm" src="/home/prof2.png" alt="Audience 2" />
+              <img className="w-8 h-8 sm:w-10 sm:h-10 rounded-full border-2 border-red-600 object-cover bg-white shadow-sm" src="/home/prof3.png" alt="Audience 3" />
             </div>
             <p className="text-gray-700 text-sm sm:text-lg leading-none" style={{ fontFamily: "Matter" }}>
-              Trusted by <span className="text-red-600 font-semibold">90k+</span> Audience
+              Trusted by <AnimatedCounter target={90} suffix="k+" className="text-red-600 font-semibold" /> Audience
             </p>
           </div>
 

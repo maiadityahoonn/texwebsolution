@@ -150,43 +150,61 @@ export default function RootLayout({ children }) {
       "@context": "https://schema.org",
       "@type": "SiteNavigationElement",
       "@id": "https://texwebsolution.in/#sitelinks",
-      "name": "TexWeb Solution Sitelinks",
+      "name": "TexWeb Solution Navigation Sitelinks",
       "hasPart": [
         {
           "@type": "WebPage",
-          "name": "Customized Solutions",
+          "name": "Android App",
+          "url": "https://texwebsolution.in/download",
+          "description": "Download official TexWeb Solution mobile app for Android & iOS."
+        },
+        {
+          "@type": "WebPage",
+          "name": "Login",
+          "url": "https://texwebsolution.in/login",
+          "description": "TexWeb Solution workspace portal login for Intern, TL, Developer, Sales Executive, and Designer."
+        },
+        {
+          "@type": "WebPage",
+          "name": "Pricing",
+          "url": "https://texwebsolution.in/pricing",
+          "description": "Transparent web development pricing, SaaS packages & starter plans from ₹999/mo."
+        },
+        {
+          "@type": "WebPage",
+          "name": "Prebuilt",
+          "url": "https://texwebsolution.in/prebuilt",
+          "description": "Ready-to-launch prebuilt SaaS software, business templates, and CRM systems."
+        },
+        {
+          "@type": "WebPage",
+          "name": "Customized",
           "url": "https://texwebsolution.in/customized",
           "description": "Tailor-made full-stack web and mobile application engineering built to scale."
         },
         {
           "@type": "WebPage",
-          "name": "Prebuilt SaaS Software",
-          "url": "https://texwebsolution.in/prebuilt",
-          "description": "Empower your business with ready-to-launch prebuilt web and SaaS software solutions."
-        },
-        {
-          "@type": "WebPage",
-          "name": "Digital Marketing",
-          "url": "https://texwebsolution.in/digital-marketing",
-          "description": "Strategic SEO, social media marketing, PPC campaigns, and brand growth strategies."
-        },
-        {
-          "@type": "WebPage",
-          "name": "AI Automation",
-          "url": "https://texwebsolution.in/ai-automation",
-          "description": "Custom AI chatbots, automated business workflows, and intelligent software integration."
-        },
-        {
-          "@type": "WebPage",
           "name": "About Us",
           "url": "https://texwebsolution.in/about-us",
-          "description": "We specialize in custom web apps, prebuilt software, AI automation, and digital marketing solutions."
+          "description": "Learn about TexWeb Solution — leadership, engineering team, vision & agency history."
         },
         {
           "@type": "WebPage",
           "name": "Contact Us",
           "url": "https://texwebsolution.in/contact",
-          "description": "Contact Us. From idea to launch, we design and develop tailor-made websites & apps."
+          "description": "Get in touch with TexWeb Solution via phone, email or 1-on-1 WhatsApp consultation."
+        },
+        {
+          "@type": "WebPage",
+          "name": "AI Automation",
+          "url": "https://texwebsolution.in/ai-automation",
+          "description": "Custom AI chatbots, intelligent workflows, and automated business integrations."
+        },
+        {
+          "@type": "WebPage",
+          "name": "Digital Marketing",
+          "url": "https://texwebsolution.in/digital-marketing",
+          "description": "Strategic SEO, Google ads PPC, social media management, and branding campaigns."
         }
       ]
     }
@@ -204,8 +222,10 @@ export default function RootLayout({ children }) {
         <link rel="icon" href="/favicon-48x48.png" type="image/png" sizes="48x48" />
         <link rel="apple-touch-icon" href="/apple-icon.png" />
         <link rel="manifest" href="/site.webmanifest" />
-        <meta name="theme-color" content="#ffffff" />
+        <meta name="application-name" content="TexWeb Solution" />
+        <meta property="og:site_name" content="TexWeb Solution" />
         <meta name="apple-mobile-web-app-title" content="TexWeb Solution" />
+        <meta name="theme-color" content="#ffffff" />
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLdData) }}
@@ -238,7 +258,7 @@ export default function RootLayout({ children }) {
         </a>
 
         <a 
-          className="fixed right-3 bottom-4 z-50 sm:right-5 sm:bottom-6 md:right-6 md:bottom-8 transition-transform duration-300 hover:scale-125 hover:-translate-y-2 hover:-rotate-6 animate-floatingSmooth" 
+          className="fixed right-3 bottom-4 z-50 sm:right-5 sm:bottom-6 md:right-6 md:bottom-8 transition-transform duration-300 hover:scale-125 hover:-translate-y-2 hover:rotate-6 animate-floatingSmooth" 
           href="https://wa.me/+917462827259" 
           target="_blank"
           rel="noopener noreferrer"

@@ -136,8 +136,8 @@ export default function FeaturesSection() {
                     {item.title}
                   </h3>
 
-                  {/* Complete Full Paragraph Text without any line-clamp */}
-                  <p className="text-gray-500 text-xs sm:text-[13px] leading-relaxed font-normal font-poppins">
+                  {/* Paragraph text limited to 2 lines */}
+                  <p className="text-gray-500 text-xs sm:text-[13px] leading-relaxed font-normal font-poppins line-clamp-2">
                     {item.desc}
                   </p>
                 </div>

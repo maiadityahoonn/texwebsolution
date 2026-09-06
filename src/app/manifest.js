@@ -1,27 +1,40 @@
 export default function manifest() {
   return {
-    name: 'TexWeb Solution',
-    short_name: 'TexWeb',
-    description: 'From idea to launch, we design and develop tailor-made websites & apps that scale with your business.',
+    name: 'TexWeb Solution - Software & Growth Agency',
+    short_name: 'TexWeb Solution',
+    description: 'Bespoke custom web apps, SaaS prebuilts, AI automation & digital marketing for growing businesses.',
     start_url: '/',
     display: 'standalone',
     background_color: '#ffffff',
-    theme_color: '#3b82f6',
+    theme_color: '#dc2626',
+    orientation: 'portrait-primary',
     icons: [
+      {
+        src: '/favicon-16x16.png',
+        sizes: '16x16',
+        type: 'image/png',
+      },
       {
         src: '/favicon-32x32.png',
         sizes: '32x32',
         type: 'image/png',
       },
       {
+        src: '/favicon-48x48.png',
+        sizes: '48x48',
+        type: 'image/png',
+      },
+      {
         src: '/icon-192.png',
         sizes: '192x192',
         type: 'image/png',
+        purpose: 'any maskable'
       },
       {
         src: '/icon-512.png',
         sizes: '512x512',
         type: 'image/png',
+        purpose: 'any maskable'
       },
     ],
   }

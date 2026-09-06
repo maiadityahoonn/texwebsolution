@@ -3,13 +3,37 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Menu, X } from "lucide-react";
+import { Menu, X, ArrowRight } from "lucide-react";
 
 export default function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
   const [isVisible, setIsVisible] = useState(true);
   const [isScrolled, setIsScrolled] = useState(false);
+  const [showBanner, setShowBanner] = useState(false);
   const pathname = usePathname();
+
+  useEffect(() => {
+    // 1. Check if running in standalone app or already dismissed
+    const isStandalone = 
+      (typeof window !== "undefined" && window.matchMedia("(display-mode: standalone)").matches) ||
+      (typeof navigator !== "undefined" && navigator.standalone);
+
+    if (isStandalone || pathname === "/login") {
+      setShowBanner(false);
+    } else {
+      const dismissed = sessionStorage.getItem("texweb_top_banner_dismissed");
+      if (!dismissed) {
+        setShowBanner(true);
+      }
+    }
+  }, [pathname]);
+
+  const handleDismissBanner = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setShowBanner(false);
+    sessionStorage.setItem("texweb_top_banner_dismissed", "true");
+  };
 
   useEffect(() => {
     let lastScrollY = window.scrollY;
@@ -89,23 +113,63 @@ export default function Navbar() {
 
   return (
     <>
-      {/* Spacer to preserve natural layout height across all pages */}
-      <div className="w-full h-[76px] sm:h-[84px] shrink-0" aria-hidden="true" />
+      {/* Dynamic Spacer to preserve natural layout height with zero overlapping */}
+      <div 
+        className={`w-full shrink-0 transition-all duration-300 ${
+          showBanner ? "h-[124px] sm:h-[138px]" : "h-[76px] sm:h-[84px]"
+        }`} 
+        aria-hidden="true" 
+      />
 
       <header
-        className={`fixed top-0 left-0 right-0 w-full flex justify-center items-center z-[100] transition-all duration-300 ease-in-out ${isScrolled ? "py-2 sm:py-3" : "py-3.5 sm:py-4.5"
-          } ${isVisible
+        className={`fixed top-0 left-0 right-0 w-full flex flex-col items-center justify-center z-[100] transition-all duration-300 ease-in-out ${
+          showBanner
+            ? "pt-2 sm:pt-2.5 pb-2 sm:pb-3"
+            : (isScrolled ? "py-2 sm:py-3" : "py-3.5 sm:py-4.5")
+        } ${
+          isVisible
             ? "translate-y-0 opacity-100"
             : "-translate-y-full opacity-0 pointer-events-none"
-          }`}
+        }`}
         style={{ fontFamily: "Matter" }}
       >
+        {/* Top Announcement Pill Banner (Navbar ke upar) */}
+        {showBanner && (
+          <div className="w-full pt-2 sm:pt-2.5 px-3 sm:px-6 pb-1.5 sm:pb-2 shrink-0">
+            <div className="max-w-3xl mx-auto flex items-center justify-between gap-3 bg-[#FFFDFB] border border-stone-200/90 rounded-full px-4 py-1.5 sm:py-2 shadow-sm hover:shadow transition-all">
+              <div className="w-5 hidden sm:block shrink-0" aria-hidden="true" />
+              <Link
+                href="/download"
+                className="group flex-1 flex items-center justify-center gap-2 text-xs sm:text-sm text-gray-700 hover:text-red-600 transition-colors"
+              >
+                <img 
+                  src="/logo.png" 
+                  alt="TexWeb" 
+                  className="w-4 h-4 sm:w-5 sm:h-5 rounded-md object-contain shrink-0" 
+                />
+                <span className="text-gray-800 font-medium">The TexWeb mobile app is here.</span>
+                <span className="font-bold text-red-600 flex items-center gap-1 group-hover:underline underline-offset-2">
+                  Download it now <ArrowRight className="w-3.5 h-3.5 transition-transform duration-200 group-hover:translate-x-0.5" />
+                </span>
+              </Link>
+              <button
+                onClick={handleDismissBanner}
+                className="p-1 text-gray-400 hover:text-gray-700 rounded-full hover:bg-stone-100 transition-colors cursor-pointer shrink-0"
+                aria-label="Dismiss"
+              >
+                <X className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* Desktop Navigation */}
         <div
-          className={`hidden xl:flex items-center justify-center rounded-full px-10 xl:px-14 py-2.5 border transition-all duration-300 gap-7 xl:gap-9 ${isScrolled
+          className={`hidden xl:flex items-center justify-center rounded-full px-10 xl:px-14 py-2.5 border transition-all duration-300 gap-7 xl:gap-9 ${
+            isScrolled
               ? "bg-white/95 backdrop-blur-md border-gray-200/90 shadow-lg shadow-black/5"
               : "bg-white border-gray-200 shadow-sm"
-            }`}
+          }`}
         >
           <Link
             href="/prebuilt"

@@ -59,19 +59,19 @@ export default function Footer() {
 
           {/* Navigation Links Grid */}
           <div className="lg:col-span-2 flex justify-start lg:justify-end">
-            <div className="grid grid-cols-1 min-[420px]:grid-cols-2 gap-8 sm:gap-16 text-left min-[420px]:text-right">
-              <div>
+            <div className="grid grid-cols-1 min-[420px]:grid-cols-2 gap-8 sm:gap-16 text-left">
+              <div className="text-left min-[420px]:text-right">
                 <h4 className="text-gray-400 text-base font-medium mb-4">Links</h4>
                 <nav className="space-y-3">
                   {[
                     { name: "Home", href: "/" },
+                    { name: "Contact", href: "/contact" },
                     { name: "Prebuilt", href: "/prebuilt" },
+                    { name: "About Us", href: "/about-us" },
                     { name: "Customized", href: "/customized" },
                     { name: "AI Automation", href: "/ai-automation" },
                     { name: "Digital Marketing", href: "/digital-marketing" },
-                    { name: "Pricing & Plans (₹999)", href: "/pricing" },
-                    { name: "About Us", href: "/about-us" },
-                    { name: "Contact", href: "/contact" }
+                    { name: "Pricing & Plans (₹999)", href: "/pricing" }
                   ].map((link) => (
                     <Link
                       key={link.name}
@@ -85,12 +85,14 @@ export default function Footer() {
               </div>
 
               <div>
-                <h4 className="text-gray-400 text-base font-medium mb-4">More Resources</h4>
-                <nav className="space-y-3">
+                <h4 className="text-gray-400 text-base font-medium mb-4 text-left">More Resources</h4>
+                <nav className="space-y-3 text-left">
                   {[
-                    { name: "Terms & Conditions", href: "/terms" },
+                    { name: "Login", href: "/login" },
+                    { name: "Refund Policy", href: "/refund" },
                     { name: "Privacy Policy", href: "/privacy" },
-                    { name: "Refund Policy", href: "/refund" }
+                    { name: "Verify Certificate", href: "/verify/TEX-2026-DEV-108" },
+                    { name: "Terms & Conditions", href: "/terms" }
                   ].map((link) => (
                     <Link
                       key={link.name}
