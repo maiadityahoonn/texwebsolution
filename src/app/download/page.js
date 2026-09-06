@@ -133,8 +133,19 @@ export default function DownloadPage() {
           </a>
         </div>
 
-        <p className="text-xs sm:text-sm text-gray-500 font-poppins mt-4">
-          Direct 1-Tap Install & APK · Android 7.0+ & iOS
+        <div className="flex items-center justify-center gap-2 text-xs text-gray-500 mt-3 font-poppins">
+          <span>On Windows PC?</span>
+          <a
+            href="/texwebsolution.msix"
+            download="TexWebSolution.msix"
+            className="text-red-600 font-semibold hover:underline inline-flex items-center gap-1 cursor-pointer"
+          >
+            <Monitor className="w-3.5 h-3.5" /> Download Windows App (.msix)
+          </a>
+        </div>
+
+        <p className="text-xs sm:text-sm text-gray-500 font-poppins mt-3">
+          Direct 1-Tap Install, Android APK & Windows App
         </p>
         <p className="text-[11px] text-gray-400 font-poppins mt-0.5">
           Updated September 2026

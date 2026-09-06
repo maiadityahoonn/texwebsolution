@@ -1,0 +1,8 @@
+[{
+      "relation": ["delegate_permission/common.handle_all_urls"],
+      "target": {
+        "namespace": "android_app",
+        "package_name": "in.texwebsolution.twa",
+        "sha256_cert_fingerprints": ["AA:33:74:7C:3E:D9:E2:A4:A5:4E:BE:7E:D4:39:9C:22:CD:BA:EC:38:5E:B6:13:29:E5:13:7F:93:1E:1D:05:62"]
+      }
+    }]
