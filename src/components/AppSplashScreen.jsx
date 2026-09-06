@@ -43,18 +43,19 @@ export default function AppSplashScreen() {
 
       {/* Center Brand Icon & Typography */}
       <div className="relative z-10 flex flex-col items-center justify-center px-6">
-        <div className="relative p-4 bg-white rounded-3xl border border-gray-150 shadow-2xl shadow-red-500/15 mb-6 transition-transform hover:scale-105 duration-300">
+        {/* Full-size clean App Logo */}
+        <div className="relative mb-6 transition-transform hover:scale-105 duration-300">
           <img
             src="/logo.png"
             alt="TexWeb Solution"
-            className="w-20 h-20 sm:w-24 sm:h-24 object-contain"
+            className="w-24 h-24 sm:w-28 sm:h-28 rounded-3xl object-contain shadow-2xl shadow-red-600/20"
           />
         </div>
 
-        {/* Brand Name (Black TEXWEB + Red SOLUTION) */}
+        {/* Brand Name (Red TEXWEB + Black SOLUTION) */}
         <div className="flex items-center gap-2 text-2xl sm:text-3xl font-black tracking-[-0.04em] text-center leading-none mb-2.5">
-          <span className="text-gray-900">TEXWEB</span>
-          <span className="text-red-600">SOLUTION</span>
+          <span className="text-red-600">TEXWEB</span>
+          <span className="text-gray-900">SOLUTION</span>
         </div>
 
         {/* Tagline */}

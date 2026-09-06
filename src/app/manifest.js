@@ -7,7 +7,7 @@ export default function manifest() {
     id: '/',
     scope: '/',
     display: 'standalone',
-    display_override: ['tabbed', 'window-controls-overlay', 'standalone', 'minimal-ui'],
+    display_override: ['tabbed', 'window-controls-overlay', 'standalone', 'minimal-ui', 'browser'],
     orientation: 'portrait-primary',
     dir: 'ltr',
     lang: 'en-IN',
@@ -26,6 +26,9 @@ export default function manifest() {
     scope_extensions: [
       {
         origin: 'https://texwebsolution.in'
+      },
+      {
+        origin: 'https://*.texwebsolution.in'
       }
     ],
     note_taking: {
