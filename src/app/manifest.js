@@ -7,11 +7,30 @@ export default function manifest() {
     id: '/',
     scope: '/',
     display: 'standalone',
+    display_override: ['window-controls-overlay', 'standalone', 'minimal-ui'],
     orientation: 'portrait-primary',
+    dir: 'ltr',
+    lang: 'en-IN',
     background_color: '#ffffff',
     theme_color: '#ffffff',
-    lang: 'en-IN',
-    categories: ['business', 'productivity', 'utilities'],
+    categories: ['business', 'productivity', 'utilities', 'development'],
+    prefer_related_applications: false,
+    related_applications: [],
+    launch_handler: {
+      client_mode: ['navigate-existing', 'auto']
+    },
+    edge_side_panel: {
+      preferred_width: 480
+    },
+    share_target: {
+      action: '/contact',
+      method: 'GET',
+      params: {
+        title: 'title',
+        text: 'text',
+        url: 'url'
+      }
+    },
     icons: [
       {
         src: '/favicon-16x16.png',
