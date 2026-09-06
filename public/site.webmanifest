@@ -6,21 +6,70 @@
   "id": "/",
   "scope": "/",
   "display": "standalone",
-  "display_override": ["window-controls-overlay", "standalone", "minimal-ui"],
+  "display_override": ["tabbed", "window-controls-overlay", "standalone", "minimal-ui"],
   "orientation": "portrait-primary",
   "dir": "ltr",
   "lang": "en-IN",
   "background_color": "#ffffff",
   "theme_color": "#ffffff",
   "categories": ["business", "productivity", "utilities", "development"],
+  "iarc_rating_id": "e84b072d-71b3-4d3e-86ae-31a8ce4e53b7",
   "prefer_related_applications": false,
-  "related_applications": [],
+  "related_applications": [
+    {
+      "platform": "webapp",
+      "url": "https://texwebsolution.in/site.webmanifest",
+      "id": "texwebsolution.in"
+    }
+  ],
+  "scope_extensions": [
+    {
+      "origin": "https://texwebsolution.in"
+    }
+  ],
+  "note_taking": {
+    "new_note_url": "/login"
+  },
   "launch_handler": {
     "client_mode": ["navigate-existing", "auto"]
   },
   "edge_side_panel": {
     "preferred_width": 480
   },
+  "file_handlers": [
+    {
+      "action": "/contact",
+      "name": "Project Document",
+      "accept": {
+        "application/pdf": [".pdf"],
+        "image/*": [".png", ".jpg", ".jpeg", ".webp"]
+      }
+    }
+  ],
+  "protocol_handlers": [
+    {
+      "protocol": "web+texweb",
+      "url": "/?source=%s"
+    }
+  ],
+  "widgets": [
+    {
+      "name": "TexWeb Dashboard",
+      "description": "Quick workspace overview",
+      "tag": "dashboard",
+      "template": "widget",
+      "ms_ac_template": "/widget.json",
+      "data": "/widget-data.json",
+      "type": "application/json",
+      "screenshots": [
+        {
+          "src": "/logo.png",
+          "sizes": "1024x1024",
+          "label": "TexWeb Widget"
+        }
+      ]
+    }
+  ],
   "share_target": {
     "action": "/contact",
     "method": "GET",
@@ -68,14 +117,14 @@
   "screenshots": [
     {
       "src": "/customized/trendkromedia.jpg",
-      "sizes": "1280x720",
+      "sizes": "1024x754",
       "type": "image/jpeg",
       "form_factor": "wide",
       "label": "TexWeb Solution Web & App Engineering"
     },
     {
       "src": "/customized/sarvadnya.jpg",
-      "sizes": "1280x720",
+      "sizes": "1024x754",
       "type": "image/jpeg",
       "form_factor": "narrow",
       "label": "TexWeb Solution Workspace & SaaS Software"

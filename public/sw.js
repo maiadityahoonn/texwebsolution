@@ -91,3 +91,25 @@ self.addEventListener('notificationclick', (event) => {
     })
   );
 });
+
+// Background Sync (Offline form submission resilience)
+self.addEventListener('sync', (event) => {
+  if (event.tag === 'sync-leads' || event.tag === 'background-sync') {
+    event.waitUntil(
+      caches.open(CACHE_NAME).then((cache) => {
+        return cache.addAll(PRECACHE_ASSETS);
+      })
+    );
+  }
+});
+
+// Periodic Background Sync (Fresh updates for notifications & dashboard)
+self.addEventListener('periodicsync', (event) => {
+  if (event.tag === 'get-latest-updates' || event.tag === 'periodic-sync') {
+    event.waitUntil(
+      caches.open(CACHE_NAME).then((cache) => {
+        return cache.addAll(PRECACHE_ASSETS);
+      })
+    );
+  }
+});
