@@ -3,6 +3,7 @@ import { Poppins } from "next/font/google";
 import "./globals.css";
 import LeadCaptureModal from "@/components/LeadCaptureModal";
 import AiChatbotWidget from "@/components/AiChatbotWidget";
+import AppSplashScreen from "@/components/AppSplashScreen";
 
 const poppins = Poppins({
   subsets: ["latin"],
@@ -245,6 +246,9 @@ export default function RootLayout({ children }) {
         />
       </head>
       <body className="min-h-full flex flex-col bg-white text-gray-900 font-sans" suppressHydrationWarning>
+        {/* Native Mobile / Web App Animated Brand Splash Screen */}
+        <AppSplashScreen />
+
         {children}
         
         {/* Global Lead Capture Popup Modal */}
