@@ -1,3 +1,5 @@
+import Script from "next/script";
+
 export const metadata = {
   title: "Digital Marketing & SEO Services",
   description: "Drive targeted traffic, organic SEO rankings, social media growth, and paid campaigns with TexWeb Solution's digital marketing expertise.",
@@ -33,7 +35,8 @@ export default function DigitalMarketingLayout({ children }) {
 
   return (
     <>
-      <script
+      <Script
+        id="digital-marketing-breadcrumb-jsonld"
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />

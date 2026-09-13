@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import AnimatedCounter from "@/components/AnimatedCounter";
@@ -125,7 +126,7 @@ export default function ReelsCarousel({
                     className="relative flex items-center justify-center w-full h-full rounded-[26px] overflow-hidden group cursor-pointer border border-white/20 hover:border-red-500/80 transition-all duration-300"
                   >
                     {/* Clean Video Thumbnail */}
-                    <img
+                    <Image width={800} height={600}
                       src={reel.imageUrl}
                       alt="Instagram Reel"
                       className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-all duration-500 pointer-events-none"

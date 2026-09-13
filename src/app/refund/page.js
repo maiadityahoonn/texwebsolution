@@ -1,10 +1,19 @@
 "use client";
 
+import Image from "next/image";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
+import { useCmsContent } from "@/hooks/useCmsContent";
 import { Mail, PhoneCall } from "lucide-react";
 
 export default function RefundPage() {
+  const cms = useCmsContent();
+  const legal = cms.block("legal.refund", {
+    badge: "Payment & Cancellation Policy",
+    title: "Refund Policy",
+    subtitle: "Effective Date: January 2026 - TexWeb Solution Pvt. Ltd.",
+  });
+
   return (
     <div className="w-full flex flex-col bg-white">
       {/* Hero Header Wrapper */}
@@ -16,16 +25,16 @@ export default function RefundPage() {
 
         <div className="flex-1 flex flex-col justify-center items-center text-center px-4 sm:px-6 pt-12 pb-16">
           <div className="inline-block px-4 py-1 bg-red-50 text-red-600 border border-red-100 shadow-sm rounded-full font-semibold text-xs sm:text-sm font-[Matter] mb-4">
-            Payment & Cancellation Policy
+            {legal.badge}
           </div>
           <h1 
             className="text-3xl sm:text-5xl md:text-6xl font-bold bg-gradient-to-r from-gray-900 to-red-600 bg-clip-text text-transparent leading-tight pb-2" 
             style={{ fontFamily: "Matter, sans-serif" }}
           >
-            Refund Policy
+            {legal.title}
           </h1>
           <p className="mt-4 text-sm sm:text-base text-gray-600 max-w-xl mx-auto font-poppins font-light">
-            Effective Date: January 2026 • TexWeb Solution Pvt. Ltd.
+            {legal.subtitle}
           </p>
         </div>
       </div>
@@ -126,7 +135,7 @@ export default function RefundPage() {
                 </span>
               </p>
               <p className="flex items-center gap-2">
-                <img src="/common/WhatsApp.svg" alt="WhatsApp" className="w-4 h-4 object-contain shrink-0" />
+                <Image width={64} height={64} src="/common/WhatsApp.svg" alt="WhatsApp" className="w-4 h-4 object-contain shrink-0" />
                 <span>
                   <strong>Phone / WhatsApp:</strong>{" "}
                   <a href="https://wa.me/+917462827259" target="_blank" rel="noopener noreferrer" className="text-green-600 hover:underline">
@@ -154,3 +163,4 @@ export default function RefundPage() {
     </div>
   );
 }
+

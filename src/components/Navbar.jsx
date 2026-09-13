@@ -1,38 +1,54 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import Image from "next/image";
+import { useState, useEffect, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Menu, X, ArrowRight } from "lucide-react";
+
+let bannerListeners = [];
+const subscribeBanner = (callback) => {
+  bannerListeners.push(callback);
+  window.addEventListener("storage", callback);
+  return () => {
+    bannerListeners = bannerListeners.filter((l) => l !== callback);
+    window.removeEventListener("storage", callback);
+  };
+};
+
+const notifyBanner = () => {
+  bannerListeners.forEach((l) => l());
+};
+
+const getBannerSnapshot = () => {
+  if (typeof window === "undefined") return false;
+  const isStandalone =
+    window.matchMedia("(display-mode: standalone)").matches ||
+    (typeof navigator !== "undefined" && navigator.standalone);
+  if (isStandalone) return false;
+  return !sessionStorage.getItem("texweb_top_banner_dismissed");
+};
+
+const getBannerServerSnapshot = () => false;
 
 export default function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
   const [isVisible, setIsVisible] = useState(true);
   const [isScrolled, setIsScrolled] = useState(false);
-  const [showBanner, setShowBanner] = useState(false);
   const pathname = usePathname();
-
-  useEffect(() => {
-    // 1. Check if running in standalone app or already dismissed
-    const isStandalone = 
-      (typeof window !== "undefined" && window.matchMedia("(display-mode: standalone)").matches) ||
-      (typeof navigator !== "undefined" && navigator.standalone);
-
-    if (isStandalone || pathname === "/login") {
-      setShowBanner(false);
-    } else {
-      const dismissed = sessionStorage.getItem("texweb_top_banner_dismissed");
-      if (!dismissed) {
-        setShowBanner(true);
-      }
-    }
-  }, [pathname]);
+  const isPortal = pathname === "/login" || pathname?.startsWith("/admin");
+  const bannerAllowed = useSyncExternalStore(
+    subscribeBanner,
+    getBannerSnapshot,
+    getBannerServerSnapshot
+  );
+  const showBanner = !isPortal && bannerAllowed;
 
   const handleDismissBanner = (e) => {
     e.preventDefault();
     e.stopPropagation();
-    setShowBanner(false);
     sessionStorage.setItem("texweb_top_banner_dismissed", "true");
+    notifyBanner();
   };
 
   useEffect(() => {
@@ -142,7 +158,7 @@ export default function Navbar() {
                 href="/download"
                 className="group flex-1 flex items-center justify-center gap-2 text-xs sm:text-sm text-gray-700 hover:text-red-600 transition-colors"
               >
-                <img 
+                <Image width={64} height={64} 
                   src="/logo.png" 
                   alt="TexWeb" 
                   className="w-4 h-4 sm:w-5 sm:h-5 rounded-md object-contain shrink-0" 
@@ -199,23 +215,16 @@ export default function Navbar() {
             AI Automation
           </Link>
 
-          <Link href="/#home" className="flex items-center gap-[1px] group mx-3 lg:mx-5 shrink-0">
-            <img
-              alt="TexWebSolution Logo"
-              className="h-[40px] md:h-[48px] lg:h-[54px] w-auto rounded-xl transition-transform duration-300 group-hover:scale-105"
-              src="/logo.png"
+          <Link href="/#home" className="flex items-center group mx-3 lg:mx-5 shrink-0">
+            <Image
+              width={165}
+              height={48}
+              alt="TexWeb Solution"
+              className="h-[38px] md:h-[44px] lg:h-[48px] w-auto object-contain transition-transform duration-300 group-hover:scale-105"
+              src="/texweb-full-logo-original.png"
+              style={{ width: "auto" }}
+              priority
             />
-            <div
-              className="flex flex-col text-left justify-center ml-[-5px] md:ml-[-6px] lg:ml-[-6.5px]"
-              style={{ fontFamily: "Matter" }}
-            >
-              <span className="text-gray-900 font-black text-xl md:text-[23px] lg:text-[26px] tracking-[-0.08em] leading-none relative z-10">
-                TEXWEB
-              </span>
-              <span className="text-red-600 font-black text-[16px] md:text-[18.5px] lg:text-[21.5px] tracking-[-0.08em] uppercase leading-none mt-[-4px] md:mt-[-5px] lg:mt-[-6px] select-none relative z-0">
-                SOLUTION
-              </span>
-            </div>
           </Link>
 
           <Link
@@ -262,23 +271,16 @@ export default function Navbar() {
               : "bg-white border-gray-200 shadow-sm"
             }`}
         >
-          <Link href="/#home" className="flex items-center gap-[1px]">
-            <img
-              alt="TexWebSolution Logo"
-              className="h-[36px] min-w-[36px] min-[375px]:h-[40px] min-[375px]:min-w-[40px] min-[425px]:h-[44px] min-[425px]:min-w-[44px] md:h-[48px] md:min-w-[48px] w-auto rounded-xl"
-              src="/logo.png"
+          <Link href="/#home" className="flex items-center shrink-0">
+            <Image
+              width={140}
+              height={40}
+              alt="TexWeb Solution"
+              className="h-[32px] min-[375px]:h-[36px] min-[425px]:h-[40px] md:h-[44px] w-auto object-contain"
+              src="/texweb-full-logo-original.png"
+              style={{ width: "auto" }}
+              priority
             />
-            <div
-              className="flex flex-col text-left justify-center ml-[-4px] min-[375px]:ml-[-4.5px] min-[425px]:ml-[-5px] md:ml-[-5.5px]"
-              style={{ fontFamily: "Matter" }}
-            >
-              <span className="text-gray-900 font-black text-[18px] min-[375px]:text-[20px] min-[425px]:text-[22px] md:text-[24px] tracking-[-0.08em] leading-none relative z-10">
-                TEXWEB
-              </span>
-              <span className="text-red-600 font-black text-[14.5px] min-[375px]:text-[16px] min-[425px]:text-[18px] md:text-[19.5px] tracking-[-0.08em] uppercase leading-none mt-[-3px] min-[375px]:mt-[-3.5px] min-[425px]:mt-[-4px] md:mt-[-4.5px] select-none relative z-0">
-                SOLUTION
-              </span>
-            </div>
           </Link>
           <button
             onClick={() => setIsOpen(!isOpen)}

@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
@@ -118,7 +119,7 @@ export default function FeaturesSection() {
               <div>
                 {/* Balanced Thumbnail Container */}
                 <div className={`relative w-full h-32 sm:h-36 rounded-xl overflow-hidden bg-gradient-to-br from-neutral-50 to-neutral-100/70 p-2.5 flex items-center justify-center mb-3.5 transition-all duration-500 ${item.imgBgHover}`}>
-                  <img
+                  <Image width={800} height={600}
                     alt={item.title}
                     className="max-h-full max-w-full object-contain rounded-lg transition-transform duration-500 group-hover:scale-105"
                     src={item.image}

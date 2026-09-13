@@ -1,5 +1,7 @@
 "use client";
 
+import Image from "next/image";
+import { useCmsContent } from "@/hooks/useCmsContent";
 import Navbar from "@/components/Navbar";
 import CommonMarquee from "@/components/CommonMarquee";
 import ReelsCarousel from "@/components/ReelsCarousel";
@@ -96,6 +98,15 @@ const SERVICES = [
 ];
 
 export default function DigitalMarketingPage() {
+  const cms = useCmsContent();
+  const hero = cms.block("digital.hero", {
+    title: "Full-Service Digital Marketing & Social Media Growth",
+    subtitle: "From high-converting Meta & Google ad campaigns to cinematic video shooting, reel editing, brand identity creation, and full-scale social media management — we drive measurable revenue growth for your business.",
+  });
+  const cmsServices = cms.list("digital.services", "services", []);
+  const services = SERVICES.map((service, index) => ({ ...service, ...(cmsServices[index] || {}) }));
+  const faqs = cms.list("digital.faqs", "faqs", DIGITAL_MARKETING_FAQS);
+
   return (
     <div className="w-full flex flex-col bg-white">
       {/* Hero Header Wrapper */}
@@ -106,13 +117,13 @@ export default function DigitalMarketingPage() {
         <Navbar />
 
         {/* Floating Ornaments */}
-        <img
+        <Image width={240} height={240}
           src="/common/about_target.png"
           alt=""
           aria-hidden="true"
           className="hidden md:block absolute top-24 right-10 w-40 lg:w-52 opacity-90 animate-floatingSmooth pointer-events-none select-none drop-shadow-md"
         />
-        <img
+        <Image width={240} height={240}
           src="/common/about_chart.png"
           alt=""
           aria-hidden="true"
@@ -127,10 +138,10 @@ export default function DigitalMarketingPage() {
                 className="text-3xl sm:text-5xl md:text-6xl lg:text-7xl font-bold bg-gradient-to-r from-gray-900 to-red-600 bg-clip-text text-transparent leading-snug sm:leading-tight pb-2" 
                 style={{ fontFamily: "Matter, sans-serif" }}
               >
-                Full-Service Digital Marketing <br className="hidden sm:inline" /> & Social Media Growth
+                {hero.title}
               </h1>
               <p className="mt-4 sm:mt-6 text-sm sm:text-base md:text-lg text-gray-600 max-w-3xl mx-auto px-2 leading-relaxed font-poppins">
-                From high-converting Meta & Google ad campaigns to cinematic video shooting, reel editing, brand identity creation, and full-scale social media management — we drive measurable revenue growth for your business.
+                {hero.subtitle}
               </p>
             </div>
           </section>
@@ -183,7 +194,7 @@ export default function DigitalMarketingPage() {
         </h2>
 
         <div className="w-full max-w-7xl mx-auto px-0 sm:px-6 md:px-12 space-y-12 sm:space-y-16 md:space-y-20">
-          {SERVICES.map((service, index) => {
+          {services.map((service, index) => {
             const isImageLeft = index % 2 === 0;
 
             return (
@@ -197,7 +208,7 @@ export default function DigitalMarketingPage() {
                     isImageLeft ? "md:order-1" : "md:order-2"
                   }`}
                 >
-                  <img
+                  <Image width={800} height={600}
                     alt={service.imageAlt}
                     className="rounded-2xl w-full h-full object-cover hover:scale-[1.03] transition-all duration-300"
                     src={service.image}
@@ -239,7 +250,7 @@ export default function DigitalMarketingPage() {
                       rel="noopener noreferrer"
                       className="px-6 py-2.5 bg-red-600 text-white rounded-full shadow-md hover:scale-[1.05] hover:bg-red-700 active:scale-[0.96] transition-all duration-100 shadow-red-600/10 font-medium inline-flex items-center gap-2"
                     >
-                      <img src="/common/WhatsApp.svg" alt="WhatsApp" className="w-4 h-4 object-contain" />
+                      <Image width={64} height={64} src="/common/WhatsApp.svg" alt="WhatsApp" className="w-4 h-4 object-contain" />
                       <span>Enquire on WhatsApp</span>
                     </a>
                 </div>
@@ -257,13 +268,13 @@ export default function DigitalMarketingPage() {
       {/* Pricing CTA Banner */}
       <PricingCtaBanner
         badge="Marketing & Video Packages"
-        title="Scale Your Brand Reach with High-ROI Marketing Plans"
-        subtitle="Transparent pricing for social media handling, video reel production, and high-converting Meta & Google ad campaigns."
-        customWhatsappText="Hi TexWeb Solution, I'd like to discuss pricing for Digital Marketing & Video Services."
+        title={hero.ctaTitle || "Scale Your Brand Reach with High-ROI Marketing Plans"}
+        subtitle={hero.ctaSubtitle || "Transparent pricing for social media handling, video reel production, and high-converting Meta & Google ad campaigns."}
+        customWhatsappText={hero.whatsappText || "Hi TexWeb Solution, I'd like to discuss pricing for Digital Marketing & Video Services."}
       />
 
       {/* Digital Marketing Frequently Asked Questions (6 FAQs) */}
-      <FaqAccordion faqs={DIGITAL_MARKETING_FAQS} badge="Marketing FAQ" />
+      <FaqAccordion faqs={faqs} badge={hero.faqBadge || "Marketing FAQ"} />
 
       {/* Get In Touch section */}
       <GetInTouchSection />
@@ -273,3 +284,4 @@ export default function DigitalMarketingPage() {
     </div>
   );
 }
+

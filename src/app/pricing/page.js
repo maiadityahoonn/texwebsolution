@@ -1,5 +1,7 @@
 "use client";
 
+import Image from "next/image";
+import { useCmsContent } from "@/hooks/useCmsContent";
 import Navbar from "@/components/Navbar";
 import MonthlyPlans from "@/components/MonthlyPlans";
 import FaqAccordion from "@/components/FaqAccordion";
@@ -34,6 +36,13 @@ const PRICING_FAQS = [
 ];
 
 export default function PricingPage() {
+  const cms = useCmsContent();
+  const hero = cms.block("pricing.hero", {
+    title: "Transparent Pricing & Flexible Monthly Plans",
+    subtitle: "Choose the perfect digital & operations system for your business. From custom websites to complete automation and AI, scale without heavy upfront capital.",
+  });
+  const faqs = cms.list("pricing.faqs", "faqs", PRICING_FAQS);
+
   return (
     <div className="w-full flex flex-col bg-white">
       {/* Hero Header Wrapper (Matching Customized / Prebuilt / AI-Automation pages) */}
@@ -44,16 +53,20 @@ export default function PricingPage() {
         <Navbar />
 
         {/* Floating Ornaments */}
-        <img 
+        <Image 
           src="/common/pricing_tag.webp" 
           alt="Pricing Plan Badge" 
           aria-hidden="true" 
+          width={208}
+          height={208}
           className="hidden md:block absolute top-24 right-10 w-40 lg:w-52 opacity-95 animate-floatingSmooth pointer-events-none select-none drop-shadow-xl" 
         />
-        <img 
+        <Image 
           src="/common/pricing_calc.webp" 
           alt="Pricing Savings & Calculator" 
           aria-hidden="true" 
+          width={208}
+          height={208}
           className="hidden md:block absolute bottom-20 left-8 w-40 lg:w-52 opacity-95 animate-floatingSmooth pointer-events-none select-none drop-shadow-xl" 
           style={{ animationDelay: '1.5s' }} 
         />
@@ -65,10 +78,10 @@ export default function PricingPage() {
                 className="text-3xl sm:text-5xl md:text-6xl lg:text-7xl font-bold bg-gradient-to-r from-gray-900 to-red-600 bg-clip-text text-transparent leading-snug sm:leading-tight pb-2" 
                 style={{ fontFamily: "Matter, sans-serif" }}
               >
-                Transparent Pricing &amp; <br /> Flexible Monthly Plans
+                {hero.title}
               </h1>
               <p className="mt-4 sm:mt-6 text-sm sm:text-base md:text-lg text-gray-500/80 max-w-md sm:max-w-xl md:max-w-2xl mx-auto font-poppins font-light leading-relaxed">
-                Choose the perfect digital &amp; operations system for your business. From custom websites to complete automation and AI, scale without heavy upfront capital.
+                {hero.subtitle}
               </p>
             </div>
           </section>
@@ -111,7 +124,7 @@ export default function PricingPage() {
       <MonthlyPlans />
 
       {/* Pricing FAQs */}
-      <FaqAccordion faqs={PRICING_FAQS} badge="Pricing FAQ" />
+      <FaqAccordion faqs={faqs} badge={hero.faqBadge || "Pricing FAQ"} />
 
       {/* Get In Touch */}
       <GetInTouchSection />

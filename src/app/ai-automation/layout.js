@@ -1,3 +1,5 @@
+import Script from "next/script";
+
 export const metadata = {
   title: "AI Automation & Custom Chatbots",
   description: "Automate your customer service, business workflows, and lead generation with TexWeb Solution's custom AI chatbot and automation solutions.",
@@ -33,7 +35,8 @@ export default function AiAutomationLayout({ children }) {
 
   return (
     <>
-      <script
+      <Script
+        id="ai-automation-breadcrumb-jsonld"
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />

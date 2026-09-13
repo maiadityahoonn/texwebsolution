@@ -1,3 +1,5 @@
+import Script from "next/script";
+
 export const metadata = {
   title: "About Us",
   description: "Learn about TexWeb Solution. We specialize in custom web application development, prebuilt SaaS solutions, AI automation, and digital marketing.",
@@ -33,7 +35,8 @@ export default function AboutLayout({ children }) {
 
   return (
     <>
-      <script
+      <Script
+        id="about-breadcrumb-jsonld"
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />

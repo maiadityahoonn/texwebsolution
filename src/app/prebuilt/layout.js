@@ -1,3 +1,5 @@
+import Script from "next/script";
+
 export const metadata = {
   title: "Prebuilt SaaS Software & Applications",
   description: "Ready-to-launch prebuilt software solutions for businesses. Get custom SaaS applications, e-learning platforms, and e-commerce portals fast.",
@@ -33,7 +35,8 @@ export default function PrebuiltLayout({ children }) {
 
   return (
     <>
-      <script
+      <Script
+        id="prebuilt-breadcrumb-jsonld"
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />

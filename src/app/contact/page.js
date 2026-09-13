@@ -1,8 +1,10 @@
 "use client";
 
 import { useState } from "react";
+import Image from "next/image";
 import Navbar from "@/components/Navbar";
-import { addLead } from "@/utils/leadStorage";
+import { useCmsContent } from "@/hooks/useCmsContent";
+import { addLeadConfirmed } from "@/utils/leadStorage";
 import CommonMarquee from "@/components/CommonMarquee";
 import FaqAccordion from "@/components/FaqAccordion";
 import GetInTouchSection from "@/components/GetInTouchSection";
@@ -45,6 +47,13 @@ const SERVICE_OPTIONS = [
 ];
 
 export default function ContactPage() {
+  const cms = useCmsContent();
+  const hero = cms.block("contact.hero", {
+    title: "Let's Build Something Extraordinary Together",
+    subtitle: "Whether you need AI Automation, custom software engineering, high-ROI digital marketing, or ready-to-deploy prebuilt SaaS, our team is ready to scale your business.",
+  });
+  const faqs = cms.list("contact.faqs", "faqs", CONTACT_FAQS);
+  const serviceOptions = cms.list("contact.services", "options", SERVICE_OPTIONS);
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -72,22 +81,20 @@ export default function ContactPage() {
     setFormData((prev) => ({ ...prev, service: serviceName }));
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setIsSubmitting(true);
     setSubmitStatus(null);
 
-    // Save lead to central Admin storage
-    addLead({
-      name: formData.name,
-      email: formData.email,
-      phone: formData.phone,
-      service: formData.service,
-      source: "Contact Form",
-      notes: `${formData.subject ? `Subject: ${formData.subject}. ` : ''}${formData.message}`
-    });
-
-    setTimeout(() => {
+    try {
+      await addLeadConfirmed({
+        name: formData.name,
+        email: formData.email,
+        phone: formData.phone,
+        service: formData.service,
+        source: "Contact Form",
+        notes: `${formData.subject ? `Subject: ${formData.subject}. ` : ''}${formData.message}`
+      });
       setIsSubmitting(false);
       setSubmitStatus("success");
       setFormData({
@@ -98,7 +105,10 @@ export default function ContactPage() {
         subject: "",
         message: ""
       });
-    }, 1000);
+    } catch {
+      setIsSubmitting(false);
+      setSubmitStatus("error");
+    }
   };
 
   return (
@@ -111,8 +121,8 @@ export default function ContactPage() {
         <Navbar />
 
         {/* Floating Ornaments */}
-        <img src="/common/contact_mail.png" alt="" aria-hidden="true" className="hidden md:block absolute top-28 right-12 w-36 lg:w-48 opacity-80 animate-floatingSmooth pointer-events-none select-none mix-blend-multiply" />
-        <img src="/common/contact_chat.png" alt="" aria-hidden="true" className="hidden md:block absolute bottom-24 left-8 w-32 lg:w-44 opacity-70 animate-floatingSmooth pointer-events-none select-none mix-blend-multiply" style={{ animationDelay: '1s' }} />
+        <Image src="/common/contact_mail.png" alt="" aria-hidden="true" width={192} height={192} className="hidden md:block absolute top-28 right-12 w-36 lg:w-48 h-auto opacity-80 animate-floatingSmooth pointer-events-none select-none mix-blend-multiply" />
+        <Image src="/common/contact_chat.png" alt="" aria-hidden="true" width={176} height={176} className="hidden md:block absolute bottom-24 left-8 w-32 lg:w-44 h-auto opacity-70 animate-floatingSmooth pointer-events-none select-none mix-blend-multiply" style={{ animationDelay: '1s' }} />
 
         <div className="flex-1 flex flex-col justify-start pt-12 md:justify-center md:pt-0">
           <section className="flex flex-1 items-start md:items-center justify-start md:justify-center text-center px-4 sm:px-6 pt-12 sm:pt-14 md:pt-0">
@@ -121,10 +131,10 @@ export default function ContactPage() {
                 className="text-3xl sm:text-5xl md:text-6xl lg:text-7xl font-bold bg-gradient-to-r from-gray-900 via-gray-800 to-red-600 bg-clip-text text-transparent leading-snug sm:leading-tight pb-2" 
                 style={{ fontFamily: "Matter, sans-serif" }}
               >
-                Let&apos;s Build Something <br /> Extraordinary Together
+                {hero.title}
               </h1>
               <p className="mt-4 sm:mt-6 text-sm sm:text-base md:text-lg text-gray-500/80 max-w-md sm:max-w-xl md:max-w-2xl mx-auto font-poppins font-light leading-relaxed">
-                Whether you need AI Automation, custom software engineering, high-ROI digital marketing, or ready-to-deploy prebuilt SaaS, our team is ready to scale your business.
+                {hero.subtitle}
               </p>
             </div>
           </section>
@@ -216,7 +226,7 @@ export default function ContactPage() {
                 <div className="flex flex-col min-[420px]:flex-row min-[420px]:items-center justify-between gap-3">
                   <div className="flex items-center gap-4 min-w-0">
                     <div className="p-3 bg-green-50 rounded-xl group-hover:bg-green-100 transition-colors flex items-center justify-center">
-                      <img src="/common/WhatsApp.svg" alt="WhatsApp" className="w-[22px] h-[22px] object-contain" />
+                      <Image src="/common/WhatsApp.svg" alt="WhatsApp" width={22} height={22} className="w-[22px] h-[22px] object-contain" />
                     </div>
                     <div className="min-w-0">
                       <h4 className="font-semibold text-gray-800 text-sm sm:text-base font-[Matter]">WhatsApp Support</h4>
@@ -306,7 +316,7 @@ export default function ContactPage() {
                     What service are you looking for?
                   </label>
                   <div className="flex flex-wrap gap-2 pt-1">
-                    {SERVICE_OPTIONS.map((opt) => {
+                    {serviceOptions.map((opt) => {
                       const isSelected = formData.service === opt;
                       return (
                         <button
@@ -365,7 +375,7 @@ export default function ContactPage() {
                   {/* Phone Input */}
                   <div className="space-y-2">
                     <label htmlFor="phone" className="site-label font-semibold text-xs sm:text-sm font-[Matter] text-gray-700 flex items-center gap-1.5">
-                      <img src="/common/WhatsApp.svg" alt="WhatsApp" className="w-3.5 h-3.5 object-contain" />
+                      <Image src="/common/WhatsApp.svg" alt="WhatsApp" width={14} height={14} className="w-3.5 h-3.5 object-contain" />
                       <span>Phone / WhatsApp Number</span>
                     </label>
                     <input 
@@ -374,6 +384,7 @@ export default function ContactPage() {
                       name="phone"
                       value={formData.phone}
                       onChange={handleInputChange}
+                      required
                       placeholder="+91 98765 43210"
                       className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm placeholder-gray-400 focus:outline-none focus:border-red-500 focus:ring-2 focus:ring-red-100 transition-all font-poppins"
                     />
@@ -452,7 +463,7 @@ export default function ContactPage() {
 
       {/* Contact FAQs */}
       <div className="bg-neutral-50 border-y border-gray-100">
-        <FaqAccordion faqs={CONTACT_FAQS} badge="Contact FAQ" />
+        <FaqAccordion faqs={faqs} badge={hero.faqBadge || "Contact FAQ"} />
       </div>
 
       {/* Footer */}

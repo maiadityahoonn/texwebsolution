@@ -12,7 +12,7 @@
     "@supabase/supabase-js": "^2.109.0",
     "framer-motion": "^12.42.2",
     "lucide-react": "^1.25.0",
-    "next": "16.2.10",
+    "next": "^16.3.4",
     "react": "19.2.4",
     "react-dom": "19.2.4",
     "swiper": "^14.0.5"
@@ -20,7 +20,7 @@
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
     "eslint": "^9",
-    "eslint-config-next": "16.2.10",
+    "eslint-config-next": "^16.3.4",
     "tailwindcss": "^4"
   }
 }

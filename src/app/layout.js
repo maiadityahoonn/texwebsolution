@@ -1,8 +1,8 @@
 import localFont from "next/font/local";
 import { Poppins } from "next/font/google";
+import Script from "next/script";
 import "./globals.css";
-import LeadCaptureModal from "@/components/LeadCaptureModal";
-import AiChatbotWidget from "@/components/AiChatbotWidget";
+import PublicFloatingWidgets from "@/components/PublicFloatingWidgets";
 import AppSplashScreen from "@/components/AppSplashScreen";
 
 const poppins = Poppins({
@@ -214,7 +214,8 @@ export default function RootLayout({ children }) {
   return (
     <html
       lang="en"
-      className={`${poppins.variable} ${matter.variable} ${clashDisplay.variable} h-full scroll-smooth antialiased`}
+      className={`${poppins.variable} ${matter.variable} ${clashDisplay.variable} h-full scroll-smooth antialiased no-scrollbar`}
+      data-scroll-behavior="smooth"
       suppressHydrationWarning
     >
       <head>
@@ -230,68 +231,33 @@ export default function RootLayout({ children }) {
         <meta name="mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />
         <meta name="theme-color" content="#ffffff" />
-        <script
+        <Script
+          id="texweb-root-jsonld"
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLdData) }}
         />
-        <script
+        <Script
+          id="texweb-service-worker"
+          strategy="afterInteractive"
           dangerouslySetInnerHTML={{
             __html: `
               if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
                 window.addEventListener('load', function() {
-                  navigator.serviceWorker.register('/sw.js').catch(function(err) {
-                    console.log('SW registration error:', err);
-                  });
+                  navigator.serviceWorker.register('/sw.js').catch(function() {});
                 });
               }
             `,
           }}
         />
       </head>
-      <body className="min-h-full flex flex-col bg-white text-gray-900 font-sans" suppressHydrationWarning>
+      <body className="min-h-full flex flex-col bg-white text-gray-900 font-sans no-scrollbar" suppressHydrationWarning>
         {/* Native Mobile / Web App Animated Brand Splash Screen */}
         <AppSplashScreen />
 
         {children}
         
-        {/* Global Lead Capture Popup Modal */}
-        <LeadCaptureModal />
-
-        {/* Global Interactive AI Chatbot Widget */}
-        <AiChatbotWidget />
-
-        {/* Floating Social Media Buttons */}
-        <a 
-          className="fixed left-3 bottom-4 z-50 sm:left-5 sm:bottom-6 md:left-6 md:bottom-8 transition-transform duration-300 hover:scale-125 hover:-translate-y-2 hover:rotate-6 animate-floatingSmooth" 
-          href="https://www.instagram.com/texwebsolution.in/" 
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <div className="relative w-13 h-13 sm:w-12 sm:h-12 md:w-14 md:h-14 lg:w-14 lg:h-14">
-            <img 
-              alt="Instagram" 
-              className="object-contain drop-shadow-[0_0_8px_rgba(255,0,150,0.25)] hover:drop-shadow-[0_0_15px_rgba(255,50,180,0.45)] transition-all duration-300" 
-              src="/common/Insta.svg" 
-              style={{ position: "absolute", height: "100%", width: "100%", left: 0, top: 0, right: 0, bottom: 0, color: "transparent" }}
-            />
-          </div>
-        </a>
-
-        <a 
-          className="fixed right-3 bottom-4 z-50 sm:right-5 sm:bottom-6 md:right-6 md:bottom-8 transition-transform duration-300 hover:scale-125 hover:-translate-y-2 hover:rotate-6 animate-floatingSmooth" 
-          href="https://wa.me/+917462827259" 
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <div className="relative w-15 h-15 sm:w-12 sm:h-12 md:w-14 md:h-14 lg:w-16 lg:h-16">
-            <img 
-              alt="WhatsApp" 
-              className="object-contain drop-shadow-[0_0_8px_rgba(0,255,70,0.25)] hover:drop-shadow-[0_0_15px_rgba(0,255,100,0.45)] transition-all duration-300" 
-              src="/common/WhatsApp.svg" 
-              style={{ position: "absolute", height: "100%", width: "100%", left: 0, top: 0, right: 0, bottom: 0, color: "transparent" }}
-            />
-          </div>
-        </a>
+        {/* Floating Public Widgets (Instagram, AI Chatbot, WhatsApp, Lead Modal) - Only displayed on public website for non-logged-in visitors */}
+        <PublicFloatingWidgets />
       </body>
     </html>
   );

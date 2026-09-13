@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
+import Image from "next/image";
 import Navbar from "@/components/Navbar";
 import TeamSection from "@/components/TeamSection";
 import TestimonialsSwiper from "@/components/TestimonialsSwiper";
@@ -8,6 +9,7 @@ import PricingCtaBanner from "@/components/PricingCtaBanner";
 import GetInTouchSection from "@/components/GetInTouchSection";
 import Footer from "@/components/Footer";
 import Link from "next/link";
+import { useCmsContent } from "@/hooks/useCmsContent";
 import { 
   Code2, 
   Sparkles, 
@@ -122,14 +124,19 @@ function AnimatedCounter({ value, label }) {
 }
 
 export default function AboutUsPage() {
-  const stats = [
+  const cms = useCmsContent();
+  const aboutHero = cms.block("about.hero", {
+    title: "We Architect Digital Products & Empower Future Talent",
+    subtitle: "TexWeb Solution is a 360° technology firm specializing in custom web/app development, prebuilt SaaS platforms, AI automation workflows, and high-performance digital marketing — backed by our sister EdTech entity, Internship Catalyst.",
+  });
+  const stats = cms.list("about.stats", "stats", [
     { number: "20+", label: "Projects Delivered" },
     { number: "1.3L+", label: "Audience Reach" },
     { number: "15+", label: "Tech Experts" },
     { number: "99%", label: "Client Satisfaction" },
-  ];
+  ]);
 
-  const services = [
+  const defaultServices = [
     {
       title: "Custom Web & App Development",
       category: "Tailor-Made Solutions",
@@ -199,6 +206,8 @@ export default function AboutUsPage() {
       bgColor: "bg-orange-50"
     }
   ];
+  const cmsServices = cms.list("about.services", "services", []);
+  const services = defaultServices.map((service, index) => ({ ...service, ...(cmsServices[index] || {}) }));
 
   const advantageItems = [
     {
@@ -391,8 +400,8 @@ export default function AboutUsPage() {
         <Navbar />
 
         {/* Floating Ornaments */}
-        <img src="/common/about_target.png" alt="" aria-hidden="true" className="hidden md:block absolute top-28 right-12 w-36 lg:w-48 opacity-80 animate-floatingSmooth pointer-events-none select-none" />
-        <img src="/common/about_chart.png" alt="" aria-hidden="true" className="hidden md:block absolute bottom-24 left-8 w-32 lg:w-44 opacity-70 animate-floatingSmooth pointer-events-none select-none" style={{ animationDelay: '1.8s' }} />
+        <Image src="/common/about_target.png" alt="" aria-hidden="true" width={192} height={192} className="hidden md:block absolute top-28 right-12 w-36 lg:w-48 h-auto opacity-80 animate-floatingSmooth pointer-events-none select-none" />
+        <Image src="/common/about_chart.png" alt="" aria-hidden="true" width={176} height={176} className="hidden md:block absolute bottom-24 left-8 w-32 lg:w-44 h-auto opacity-70 animate-floatingSmooth pointer-events-none select-none" style={{ animationDelay: '1.8s' }} />
 
         <div className="flex-1 flex flex-col justify-start pt-12 md:justify-center md:pt-0">
           <section className="flex flex-1 items-start md:items-center justify-start md:justify-center text-center px-4 sm:px-6 pt-12 sm:pt-14 md:pt-0">
@@ -401,10 +410,10 @@ export default function AboutUsPage() {
                 className="text-3xl sm:text-5xl md:text-6xl lg:text-7xl font-bold bg-gradient-to-r from-gray-900 to-red-600 bg-clip-text text-transparent leading-snug sm:leading-tight pb-2" 
                 style={{ fontFamily: "Matter, sans-serif" }}
               >
-                We Architect Digital Products <br /> & Empower Future Talent
+                {aboutHero.title}
               </h1>
               <p className="mt-4 sm:mt-6 text-sm sm:text-base md:text-lg text-gray-600 max-w-2xl mx-auto font-poppins font-light leading-relaxed">
-                TexWeb Solution is a 360° technology firm specializing in custom web/app development, prebuilt SaaS platforms, AI automation workflows, and high-performance digital marketing — backed by our sister EdTech entity, <strong>Internship Catalyst</strong>.
+                {aboutHero.subtitle}
               </p>
             </div>
           </section>

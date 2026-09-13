@@ -1,0 +1,70 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="360" height="360" viewBox="0 0 360 360" fill="none" stroke="#000000" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+  <!-- Code brackets </> -->
+  <path d="M26 42l-9 9 9 9M46 42l9 9-9 9M39 39l-6 24" />
+  
+  <!-- Curly braces { } -->
+  <path d="M140 35c-4 0-7 3-7 7v5c0 4-3 7-7 7 4 0 7 3 7 7v5c0 4 3 7 7 7" />
+  <path d="M165 35c4 0 7 3 7 7v5c0 4 3 7 7 7-4 0-7 3-7 7v5c0 4-3 7-7 7" />
+  
+  <!-- Laptop -->
+  <rect x="250" y="35" width="36" height="22" rx="2" />
+  <path d="M242 57h52" />
+
+  <!-- Terminal window -->
+  <rect x="30" y="135" width="44" height="28" rx="4" />
+  <path d="M38 145l6 4-6 4M50 153h8" />
+
+  <!-- Database Cylinders -->
+  <ellipse cx="155" cy="135" rx="16" ry="6" />
+  <path d="M139 135v10c0 3.3 7.2 6 16 6s16-2.7 16-6v-10" />
+  <path d="M139 145v10c0 3.3 7.2 6 16 6s16-2.7 16-6v-10" />
+
+  <!-- Git Branch / Commits -->
+  <circle cx="265" cy="130" r="4" />
+  <circle cx="265" cy="160" r="4" />
+  <circle cx="285" cy="140" r="4" />
+  <path d="M265 134v22M265 150a12 12 0 0 0 12-10h8" />
+
+  <!-- Cloud / API -->
+  <path d="M42 245a12 12 0 0 1 22-4 10 10 0 0 1 16 9h-38z" />
+
+  <!-- Chip / CPU -->
+  <rect x="140" y="235" width="28" height="28" rx="4" />
+  <rect x="147" y="242" width="14" height="14" rx="1" />
+  <path d="M146 230v5M154 230v5M162 230v5M146 263v5M154 263v5M162 263v5M135 241h5M135 249h5M135 257h5M168 241h5M168 249h5M168 257h5" />
+
+  <!-- Bug / Debugging -->
+  <ellipse cx="265" cy="245" rx="8" ry="11" />
+  <path d="M260 238l-6-5M270 238l6-5M255 245h-6M275 245h6M258 252l-6 5M272 252l6 5" />
+
+  <!-- Tech Typography -->
+  <text x="85" y="95" font-family="monospace" font-size="11" font-weight="bold" stroke="none" fill="currentColor">1011</text>
+  <text x="200" y="105" font-family="monospace" font-size="10" font-weight="bold" stroke="none" fill="currentColor">&lt;/&gt;</text>
+  <text x="95" y="200" font-family="monospace" font-size="12" font-weight="bold" stroke="none" fill="currentColor">{ ; }</text>
+  <text x="205" y="210" font-family="monospace" font-size="11" font-weight="bold" stroke="none" fill="currentColor">npm</text>
+  <text x="305" y="95" font-family="monospace" font-size="10" font-weight="bold" stroke="none" fill="currentColor">git</text>
+
+  <!-- Network / Globe -->
+  <circle cx="315" cy="195" r="12" />
+  <ellipse cx="315" cy="195" rx="5" ry="12" />
+  <path d="M303 195h24" />
+
+  <!-- Rocket / Launch -->
+  <path d="M85 305l15-15c4-4 8-5 12-4l-3 7-5 2-2 5 7-3c1 4 0 8-4 12l-15 15-2-7-3-3-7-2z" />
+  
+  <!-- React Atom -->
+  <ellipse cx="215" cy="305" rx="16" ry="6" transform="rotate(30 215 305)" />
+  <ellipse cx="215" cy="305" rx="16" ry="6" transform="rotate(-30 215 305)" />
+  <circle cx="215" cy="305" r="2.5" fill="currentColor" />
+
+  <!-- Wifi waves -->
+  <path d="M305 285a20 20 0 0 1 20 0M310 292a12 12 0 0 1 10 0" />
+  <circle cx="315" cy="298" r="1.5" fill="currentColor" />
+
+  <!-- Mobile phone -->
+  <rect x="28" y="325" width="16" height="24" rx="3" />
+  <circle cx="36" cy="344" r="1" fill="currentColor" />
+
+  <!-- Hash / Tag -->
+  <path d="M142 328l-2 18M150 328l-2 18M138 333h16M136 341h16" />
+</svg>

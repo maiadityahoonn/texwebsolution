@@ -1,20 +1,30 @@
 "use client";
 
+import Image from "next/image";
 import { useEffect, useState } from "react";
 
 export default function AppSplashScreen() {
-  const [isVisible, setIsVisible] = useState(true);
-  const [shouldRender, setShouldRender] = useState(true);
+  const shouldShowSplash = () => (
+    typeof window !== "undefined" &&
+    (window.matchMedia("(display-mode: standalone)").matches ||
+      window.matchMedia("(display-mode: fullscreen)").matches ||
+      window.matchMedia("(display-mode: minimal-ui)").matches ||
+      window.navigator.standalone === true ||
+      document.referrer.includes("android-app://"))
+  );
+  const [isVisible, setIsVisible] = useState(shouldShowSplash);
+  const [shouldRender, setShouldRender] = useState(shouldShowSplash);
 
   useEffect(() => {
-    // Show splash on initial mount, then smooth fade out
+    if (!shouldShowSplash()) return;
+
     const timer = setTimeout(() => {
       setIsVisible(false);
-    }, 850);
+    }, 950);
 
     const removeTimer = setTimeout(() => {
       setShouldRender(false);
-    }, 1450);
+    }, 1550);
 
     return () => {
       clearTimeout(timer);
@@ -45,7 +55,7 @@ export default function AppSplashScreen() {
       <div className="relative z-10 flex flex-col items-center justify-center px-6">
         {/* Full-size clean App Logo */}
         <div className="relative mb-6 transition-transform hover:scale-105 duration-300">
-          <img
+          <Image width={64} height={64}
             src="/logo.png"
             alt="TexWeb Solution"
             className="w-28 h-28 sm:w-32 sm:h-32 rounded-3xl object-contain shadow-2xl shadow-red-600/20"

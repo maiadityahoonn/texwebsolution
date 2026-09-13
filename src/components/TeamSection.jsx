@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
@@ -58,7 +59,7 @@ export default function TeamSection({ limit, showSeeMore = false }) {
                   {/* Photo Container */}
                   <div className="relative w-full aspect-[4/5] rounded-[24px] overflow-hidden cursor-pointer bg-neutral-50">
                     <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent opacity-50 group-hover:opacity-75 transition-opacity duration-500 z-10 pointer-events-none" />
-                    <img
+                    <Image width={800} height={600}
                       alt={member.name}
                       className="w-full h-full object-cover transition-transform duration-700 ease-out group-hover:scale-105 filter group-hover:brightness-95"
                       src={member.image}
@@ -100,7 +101,7 @@ export default function TeamSection({ limit, showSeeMore = false }) {
             {/* Photo Container */}
             <div className="relative w-full aspect-[4/5] rounded-[24px] overflow-hidden cursor-pointer bg-neutral-50">
               <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent opacity-50 group-hover:opacity-75 transition-opacity duration-500 z-10 pointer-events-none" />
-              <img
+              <Image width={800} height={600}
                 alt={member.name}
                 className="w-full h-full object-cover transition-transform duration-700 ease-out group-hover:scale-105 filter group-hover:brightness-95"
                 src={member.image}

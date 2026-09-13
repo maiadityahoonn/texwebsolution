@@ -1,5 +1,7 @@
 "use client";
 
+import Image from "next/image";
+import { useCmsContent } from "@/hooks/useCmsContent";
 import Navbar from "@/components/Navbar";
 import CommonMarquee from "@/components/CommonMarquee";
 import CustomizedTabs from "@/components/CustomizedTabs";
@@ -33,6 +35,13 @@ const CUSTOMIZED_FAQS = [
 ];
 
 export default function CustomizedPage() {
+  const cms = useCmsContent();
+  const hero = cms.block("customized.hero", {
+    title: "Customized Development From Scratch",
+    subtitle: "We transform your unique ideas into powerful, scalable applications. Our team crafts tailor-made software solutions designed specifically for your business needs, from the first line of code to the final launch.",
+  });
+  const faqs = cms.list("customized.faqs", "faqs", CUSTOMIZED_FAQS);
+
   return (
     <div className="w-full flex flex-col bg-white">
       {/* Hero Header Wrapper */}
@@ -43,8 +52,8 @@ export default function CustomizedPage() {
         <Navbar />
 
         {/* Floating Ornaments */}
-        <img src="/common/customized_code.png" alt="" aria-hidden="true" className="hidden md:block absolute top-28 right-12 w-36 lg:w-48 opacity-80 animate-floatingSmooth pointer-events-none select-none" />
-        <img src="/common/customized_gears.png" alt="" aria-hidden="true" className="hidden md:block absolute bottom-24 left-8 w-32 lg:w-44 opacity-70 animate-floatingSmooth pointer-events-none select-none" style={{ animationDelay: '1.5s' }} />
+        <Image src="/common/customized_code.png" alt="" aria-hidden="true" width={192} height={192} className="hidden md:block absolute top-28 right-12 w-36 lg:w-48 h-auto opacity-80 animate-floatingSmooth pointer-events-none select-none" />
+        <Image src="/common/customized_gears.png" alt="" aria-hidden="true" width={176} height={176} className="hidden md:block absolute bottom-24 left-8 w-32 lg:w-44 h-auto opacity-70 animate-floatingSmooth pointer-events-none select-none" style={{ animationDelay: '1.5s' }} />
 
         <div className="flex-1 flex flex-col justify-start pt-12 md:justify-center md:pt-0">
           <section className="flex flex-1 items-start md:items-center justify-start md:justify-center text-center px-4 sm:px-6 pt-12 sm:pt-14 md:pt-0">
@@ -53,10 +62,10 @@ export default function CustomizedPage() {
                 className="text-3xl sm:text-5xl md:text-6xl lg:text-7xl font-bold bg-gradient-to-r from-gray-900 to-red-600 bg-clip-text text-transparent leading-snug sm:leading-tight pb-2" 
                 style={{ fontFamily: "Matter, sans-serif" }}
               >
-                Customized Development <br /> From Scratch
+                {hero.title}
               </h1>
               <p className="mt-4 sm:mt-6 text-sm sm:text-base md:text-lg text-gray-500/80 max-w-md sm:max-w-xl md:max-w-2xl mx-auto font-poppins font-light leading-relaxed">
-                We transform your unique ideas into powerful, scalable applications. Our team crafts tailor-made software solutions designed specifically for your business needs, from the first line of code to the final launch.
+                {hero.subtitle}
               </p>
             </div>
           </section>
@@ -108,13 +117,13 @@ export default function CustomizedPage() {
       {/* Pricing CTA Banner */}
       <PricingCtaBanner
         badge="Custom Development Pricing"
-        title="Need a Custom Website or App Tailored to Your Budget?"
-        subtitle="Get a transparent breakdown of development costs or use our instant interactive pricing calculator."
-        customWhatsappText="Hi TexWeb Solution, I'd like to get an estimate for a custom software project."
+        title={hero.ctaTitle || "Need a Custom Website or App Tailored to Your Budget?"}
+        subtitle={hero.ctaSubtitle || "Get a transparent breakdown of development costs or use our instant interactive pricing calculator."}
+        customWhatsappText={hero.whatsappText || "Hi TexWeb Solution, I'd like to get an estimate for a custom software project."}
       />
 
       {/* Custom Development FAQs */}
-      <FaqAccordion faqs={CUSTOMIZED_FAQS} badge="Custom Dev FAQ" />
+      <FaqAccordion faqs={faqs} badge={hero.faqBadge || "Custom Dev FAQ"} />
 
       {/* Get In Touch section */}
       <GetInTouchSection />

@@ -1,3 +1,5 @@
+import Script from "next/script";
+
 export const metadata = {
   title: "Pricing & Monthly Plans | Affordable Website & Automation Packages",
   description: "Transparent, flexible monthly website and business management plans starting at just ₹999/month. Tailored for any industry with zero heavy upfront costs.",
@@ -33,7 +35,8 @@ export default function PricingLayout({ children }) {
 
   return (
     <>
-      <script
+      <Script
+        id="pricing-breadcrumb-jsonld"
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />

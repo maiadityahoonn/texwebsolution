@@ -1,6 +1,8 @@
 "use client";
 
+import Image from "next/image";
 import { useState } from "react";
+import { useCmsContent } from "@/hooks/useCmsContent";
 import {
   Check,
   Minus,
@@ -103,18 +105,31 @@ const CURRENCIES = {
 };
 
 export default function MonthlyPlans() {
+  const cms = useCmsContent();
   const [selectedIndustry, setSelectedIndustry] = useState("all");
   const [selectedCurrency, setSelectedCurrency] = useState("inr");
   const [selectedBilling, setSelectedBilling] = useState("monthly"); // "monthly" | "yearly"
+  const pricingContent = cms.block("pricing.plans", {
+    badgeMonthly: "Subscription Packages",
+    badgeYearly: "Annual Value Packages",
+    title: "Tailored To Your Business",
+    subtitle: "Zero heavy upfront development costs. Complete website, client management, automation, and ongoing support with flexible billing options.",
+    customNote: "*Have a custom business model? We customize all features, forms, and workflows according to your specific requirements.",
+  });
+  const industries = cms.list("pricing.industries", "industries", INDUSTRIES);
+  const cmsWorkflowSteps = cms.list("pricing.workflow", "steps", []);
+  const workflowSteps = cmsWorkflowSteps.length ? WORKFLOW_STEPS.map((step, index) => ({ ...step, ...(cmsWorkflowSteps[index] || {}) })) : WORKFLOW_STEPS;
+  const comparisonRows = cms.list("pricing.comparison", "rows", COMPARISON_ROWS);
+  const currencies = cms.block("pricing.currencies", CURRENCIES);
 
-  const curr = CURRENCIES[selectedCurrency] || CURRENCIES.inr;
+  const curr = currencies[selectedCurrency] || currencies.inr || CURRENCIES.inr;
   const activePlans = selectedBilling === "yearly" ? curr.yearly : curr.monthly;
 
   const getWhatsAppLink = (planName, planKey) => {
     const plan = activePlans[planKey];
     const billingText = selectedBilling === "yearly" ? "Yearly Offer (2 Months Free)" : "Monthly Subscription";
     const industryText = selectedIndustry !== "all" 
-      ? ` for my ${INDUSTRIES.find(i => i.id === selectedIndustry)?.label.replace(/^[^\w\s]+/, "").trim()}` 
+      ? ` for my ${industries.find(i => i.id === selectedIndustry)?.label.replace(/^[^\w\s]+/, "").trim()}` 
       : "";
     const msg = `Hi TexWeb Team! I am interested in the ${planName} Plan (${plan.display} - ${billingText})${industryText}. Please share more details and help me get started.`;
     return `https://wa.me/917462827259?text=${encodeURIComponent(msg)}`;
@@ -134,19 +149,19 @@ export default function MonthlyPlans() {
         {/* Section Header */}
         <div className="text-center max-w-3xl mx-auto mb-8 sm:mb-10">
           <div className="inline-block px-4 py-1 bg-red-50 text-red-600 border border-red-100 shadow-sm rounded-full site-label font-semibold text-xs sm:text-sm font-[Matter] mb-3">
-            {selectedBilling === "yearly" ? "Annual Value Packages" : "Subscription Packages"}
+            {selectedBilling === "yearly" ? pricingContent.badgeYearly : pricingContent.badgeMonthly}
           </div>
 
           <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-[40px] font-bold text-center bg-gradient-to-r from-gray-900 to-red-600 bg-clip-text text-transparent leading-tight pb-1 mb-3">
-            Tailored To Your Business
+            {pricingContent.title}
           </h2>
           <p className="text-sm sm:text-base md:text-lg text-gray-500/80 max-w-md sm:max-w-xl md:max-w-2xl mx-auto font-poppins font-light leading-relaxed">
-            Zero heavy upfront development costs. Complete website, client management, automation, and ongoing support with flexible billing options.
+            {pricingContent.subtitle}
           </p>
 
           {/* Industry Pills Selector */}
           <div className="mt-6 flex flex-wrap justify-center gap-2 sm:gap-2.5">
-            {INDUSTRIES.map((ind) => {
+            {industries.map((ind) => {
               const active = selectedIndustry === ind.id;
               return (
                 <button
@@ -164,7 +179,7 @@ export default function MonthlyPlans() {
             })}
           </div>
           <p className="mt-2.5 text-xs text-gray-500 italic">
-            *Have a custom business model? We customize all features, forms, and workflows according to your specific requirements.
+            {pricingContent.customNote}
           </p>
 
           {/* Billing Cycle & Currency Switcher Controls - Directly above Cards */}
@@ -207,7 +222,7 @@ export default function MonthlyPlans() {
             <div className="flex items-center gap-2">
               <span className="text-xs font-bold text-gray-500 uppercase tracking-wider">Currency:</span>
               <div className="inline-flex p-1 bg-neutral-100 border border-gray-200 rounded-full shadow-inner gap-1">
-                {Object.entries(CURRENCIES).map(([key, c]) => {
+                {Object.entries(currencies).map(([key, c]) => {
                   const active = selectedCurrency === key;
                   return (
                     <button
@@ -319,7 +334,7 @@ export default function MonthlyPlans() {
                 rel="noopener noreferrer"
                 className="w-full py-3.5 px-6 rounded-2xl bg-gray-900 text-white font-semibold text-center text-sm hover:bg-red-600 transition-all duration-300 shadow-md hover:shadow-red-600/20 flex items-center justify-center gap-2 group"
               >
-                <img src="/common/WhatsApp.svg" alt="WhatsApp" className="w-4 h-4 object-contain shrink-0" />
+                <Image width={64} height={64} src="/common/WhatsApp.svg" alt="WhatsApp" className="w-4 h-4 object-contain shrink-0" />
                 <span>Start Basic at {activePlans.basic.display}{selectedBilling === "yearly" ? "/yr" : "/mo"}</span>
                 <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
               </a>
@@ -430,7 +445,7 @@ export default function MonthlyPlans() {
                 rel="noopener noreferrer"
                 className="w-full py-4 px-6 rounded-2xl bg-red-600 text-white font-semibold text-center text-sm hover:bg-red-700 transition-all duration-300 shadow-lg shadow-red-600/30 flex items-center justify-center gap-2 group"
               >
-                <img src="/common/WhatsApp.svg" alt="WhatsApp" className="w-4 h-4 object-contain shrink-0" />
+                <Image width={64} height={64} src="/common/WhatsApp.svg" alt="WhatsApp" className="w-4 h-4 object-contain shrink-0" />
                 <span>Get Standard at {activePlans.standard.display}{selectedBilling === "yearly" ? "/yr" : "/mo"}</span>
                 <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
               </a>
@@ -523,7 +538,7 @@ export default function MonthlyPlans() {
                 rel="noopener noreferrer"
                 className="w-full py-3.5 px-6 rounded-2xl bg-gray-900 text-white font-semibold text-center text-sm hover:bg-red-600 transition-all duration-300 shadow-md hover:shadow-red-600/20 flex items-center justify-center gap-2 group"
               >
-                <img src="/common/WhatsApp.svg" alt="WhatsApp" className="w-4 h-4 object-contain shrink-0" />
+                <Image width={64} height={64} src="/common/WhatsApp.svg" alt="WhatsApp" className="w-4 h-4 object-contain shrink-0" />
                 <span>Start Premium at {activePlans.premium.display}{selectedBilling === "yearly" ? "/yr" : "/mo"}</span>
                 <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
               </a>
@@ -547,7 +562,7 @@ export default function MonthlyPlans() {
           </div>
 
           <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-4 sm:gap-3">
-            {WORKFLOW_STEPS.map((wf, idx) => {
+            {workflowSteps.map((wf, idx) => {
               const Icon = wf.icon;
               return (
                 <div 
@@ -611,7 +626,7 @@ export default function MonthlyPlans() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
-                {COMPARISON_ROWS.map((row, idx) => (
+                {comparisonRows.map((row, idx) => (
                   <tr key={idx} className="hover:bg-neutral-50/60 transition-colors">
                     <td className="py-3 px-4 sm:px-6 font-medium text-gray-800 text-xs sm:text-sm">
                       {row.feature}
@@ -732,7 +747,7 @@ export default function MonthlyPlans() {
               rel="noopener noreferrer"
               className="w-full sm:w-auto px-7 py-3.5 rounded-full bg-red-600 hover:bg-red-700 text-white font-semibold text-sm transition-all shadow-md shadow-red-600/30 flex items-center justify-center gap-2.5 group"
             >
-              <img src="/common/WhatsApp.svg" alt="WhatsApp" className="w-5 h-5 object-contain" />
+              <Image width={64} height={64} src="/common/WhatsApp.svg" alt="WhatsApp" className="w-5 h-5 object-contain" />
               <span>Discuss on WhatsApp</span>
             </a>
             <a

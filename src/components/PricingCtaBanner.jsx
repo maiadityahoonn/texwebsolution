@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { ArrowRight, Sparkles, CheckCircle2, Calculator, ShieldCheck } from "lucide-react";
 
@@ -71,7 +72,7 @@ export default function PricingCtaBanner({
                 rel="noopener noreferrer"
                 className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-7 py-3.5 rounded-full bg-white/10 hover:bg-white/15 border border-white/20 text-white text-sm font-medium transition-all duration-200 hover:scale-105"
               >
-                <img src="/common/WhatsApp.svg" alt="WhatsApp" className="w-4 h-4 object-contain" />
+                <Image width={64} height={64} src="/common/WhatsApp.svg" alt="WhatsApp" className="w-4 h-4 object-contain" />
                 <span>Get Custom Quote</span>
               </a>
             </div>

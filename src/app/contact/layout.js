@@ -1,3 +1,5 @@
+import Script from "next/script";
+
 export const metadata = {
   title: "Contact Us",
   description: "Contact TexWeb Solution. From idea to launch, we design and develop tailor-made websites, apps, and digital growth strategies for your business.",
@@ -33,7 +35,8 @@ export default function ContactLayout({ children }) {
 
   return (
     <>
-      <script
+      <Script
+        id="contact-breadcrumb-jsonld"
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />

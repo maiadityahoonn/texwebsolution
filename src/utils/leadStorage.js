@@ -1,51 +1,8 @@
+import { createCloudLead } from "@/services/supabaseService";
+
 // Central Lead Management Utility for TexWeb Solution
 
-const INITIAL_SAMPLE_LEADS = [
-  {
-    id: "LEAD-1001",
-    date: "2026-07-24 14:30",
-    name: "Vikramaditya Roy",
-    phone: "+91 9830123456",
-    email: "vikram.roy@fintechsolutions.in",
-    service: "Custom Web & Mobile App",
-    source: "Popup Modal",
-    status: "New",
-    notes: "Requires custom Next.js web application and iOS mobile app for fintech portal."
-  },
-  {
-    id: "LEAD-1002",
-    date: "2026-07-24 16:15",
-    name: "Dr. Ananya Das",
-    phone: "+91 9748567890",
-    email: "ananya@healthclinic.org",
-    service: "AI & Workflow Automation",
-    source: "Chatbot (Ananya)",
-    status: "Contacted",
-    notes: "Interested in 24/7 WhatsApp AI Bot for appointment booking and automated patient follow-ups."
-  },
-  {
-    id: "LEAD-1003",
-    date: "2026-07-24 18:45",
-    name: "Rajesh Agarwal",
-    phone: "+91 9433098765",
-    email: "rajesh@retailmart.com",
-    service: "Prebuilt SaaS Platform",
-    source: "Contact Form",
-    status: "Converted",
-    notes: "Wants turnkey multi-vendor e-commerce software platform with 100% source code ownership."
-  },
-  {
-    id: "LEAD-1004",
-    date: "2026-07-25 01:10",
-    name: "Saurav Mukherjee",
-    phone: "+91 9874123987",
-    email: "saurav@growthmedia.co",
-    service: "Digital Marketing & Ads",
-    source: "Chatbot (Ananya)",
-    status: "In Progress",
-    notes: "Inquired about Meta ads management, Instagram Reels editing, and SEO optimizations."
-  }
-];
+const INITIAL_SAMPLE_LEADS = [];
 
 export function getLeads() {
   if (typeof window === "undefined") return INITIAL_SAMPLE_LEADS;
@@ -61,7 +18,7 @@ export function getLeads() {
   }
 }
 
-export function addLead({ name, phone, email = "", service = "Custom Web & Mobile App", source = "Website Form", notes = "" }) {
+export function addLead({ name, phone, email = "", service = "Custom Web & Mobile App", source = "Website Form", notes = "", syncCloud = true }) {
   const currentLeads = getLeads();
   const now = new Date();
   const formattedDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
@@ -81,8 +38,25 @@ export function addLead({ name, phone, email = "", service = "Custom Web & Mobil
   const updated = [newLead, ...currentLeads];
   if (typeof window !== "undefined") {
     localStorage.setItem("texweb_admin_leads", JSON.stringify(updated));
+    if (syncCloud) createCloudLead(newLead).catch(() => {});
   }
   return newLead;
+}
+
+export async function addLeadConfirmed(leadInput) {
+  const leadPayload = {
+    name: (leadInput.name || "").trim(),
+    phone: (leadInput.phone || "").trim(),
+    email: (leadInput.email || "").trim(),
+    service: leadInput.service || "Custom Web & Mobile App",
+    source: leadInput.source || "Website Form",
+    status: "New",
+    notes: (leadInput.notes || "").trim(),
+  };
+  if (typeof window === "undefined") return leadPayload;
+  const cloudLead = await createCloudLead(leadPayload);
+  if (!cloudLead) throw new Error("Cloud lead sync failed");
+  return cloudLead;
 }
 
 export function updateLeadStatus(leadId, newStatus) {

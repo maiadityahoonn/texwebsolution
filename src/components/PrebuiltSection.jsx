@@ -1,11 +1,17 @@
 "use client";
 
+import Image from "next/image";
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useCmsContent } from "@/hooks/useCmsContent";
+import { safeExternalUrl, safeInternalPath } from "@/lib/safeUrl";
 
 export default function PrebuiltSection() {
+  const cms = useCmsContent();
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
+  const cmsProducts = cms.list("prebuilt.products", "products", []);
+  const visibleProducts = cmsProducts.length ? cmsProducts : products;
 
   useEffect(() => {
     async function loadProducts() {
@@ -23,7 +29,7 @@ export default function PrebuiltSection() {
     loadProducts();
   }, []);
 
-  if (loading || products.length === 0) return null;
+  if ((loading && !cmsProducts.length) || visibleProducts.length === 0) return null;
 
   return (
     <section className="mt-8 sm:mt-10 w-full font-[Matter]" id="prebuilt">
@@ -31,7 +37,7 @@ export default function PrebuiltSection() {
 
         {/* Staggered detailed grid list */}
         <div className="w-full max-w-7xl mx-auto px-0 sm:px-6 md:px-12 space-y-14 sm:space-y-20 md:space-y-24">
-          {products.map((product, index) => {
+          {visibleProducts.map((product, index) => {
             // Alternate image left and right layout based on order or index
             const isImageLeft = index % 2 === 0;
 
@@ -46,7 +52,7 @@ export default function PrebuiltSection() {
                     isImageLeft ? "md:order-1" : "md:order-2"
                   }`}
                 >
-                  <img 
+                  <Image width={800} height={600} 
                     alt={product.imageAlt} 
                     className="rounded-2xl w-[90%] h-auto object-contain hover:scale-[1.03] transition-all duration-150" 
                     src={product.image}
@@ -80,7 +86,7 @@ export default function PrebuiltSection() {
 
                   <div className="flex justify-center md:justify-start">
                     {product.buttonLink.startsWith("http") ? (
-                      <a href={product.buttonLink} target="_blank" rel="noopener noreferrer">
+                      <a href={safeExternalUrl(product.buttonLink)} target="_blank" rel="noopener noreferrer">
                         <button 
                           className="px-6 py-2 bg-red-600 text-white rounded-full shadow-md hover:scale-[1.05] hover:bg-red-700 active:scale-[0.96] transition-all duration-100 shadow-red-600/10" 
                           style={{ fontFamily: "Matter" }}
@@ -89,7 +95,7 @@ export default function PrebuiltSection() {
                         </button>
                       </a>
                     ) : (
-                      <Link href={product.buttonLink}>
+                      <Link href={safeInternalPath(product.buttonLink, "/contact")}>
                         <button 
                           className="px-6 py-2 bg-red-600 text-white rounded-full shadow-md hover:scale-[1.05] hover:bg-red-700 active:scale-[0.96] transition-all duration-100 shadow-red-600/10" 
                           style={{ fontFamily: "Matter" }}

@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
+import { useCmsContent } from "@/hooks/useCmsContent";
 import { 
   Download, 
   Smartphone, 
@@ -25,31 +26,31 @@ import {
 } from "lucide-react";
 
 export default function DownloadPage() {
-  const [activeTab, setActiveTab] = useState("android"); // "android" | "ios" | "desktop"
+  const cms = useCmsContent();
+  const hero = cms.block("download.hero", {
+    badge: "Android & iOS Mobile App",
+    title: "TexWeb, now on your phone",
+    subtitle: "Run your whole workspace from your pocket - leads, projects, invoices and team credentials. Free install, straight to your phone.",
+    primaryCta: "1-Tap Install App",
+    installedCta: "App Installed",
+    secondaryCta: "Download APK",
+    footnote: "Direct 1-Tap Install, Android APK & Windows App",
+    updated: "Updated September 2026",
+  });
+  const [activeTab, setActiveTab] = useState(() => {
+    if (typeof navigator === "undefined") return "android";
+    const ua = navigator.userAgent.toLowerCase();
+    if (/iphone|ipad|ipod/.test(ua)) return "ios";
+    if (/android/.test(ua)) return "android";
+    return "desktop";
+  }); // "android" | "ios" | "desktop"
   const [deferredPrompt, setDeferredPrompt] = useState(null);
-  const [isInstalled, setIsInstalled] = useState(false);
+  const [isInstalled, setIsInstalled] = useState(() => (
+    (typeof window !== "undefined" && window.matchMedia("(display-mode: standalone)").matches) ||
+    (typeof navigator !== "undefined" && navigator.standalone)
+  ));
 
   useEffect(() => {
-    // Detect OS for default tab
-    if (typeof navigator !== "undefined") {
-      const ua = navigator.userAgent.toLowerCase();
-      if (/iphone|ipad|ipod/.test(ua)) {
-        setActiveTab("ios");
-      } else if (/android/.test(ua)) {
-        setActiveTab("android");
-      } else {
-        setActiveTab("desktop");
-      }
-    }
-
-    // Check if already standalone
-    const isStandalone = 
-      (typeof window !== "undefined" && window.matchMedia("(display-mode: standalone)").matches) ||
-      (typeof navigator !== "undefined" && navigator.standalone);
-    if (isStandalone) {
-      setIsInstalled(true);
-    }
-
     const handleBeforeInstallPrompt = (e) => {
       e.preventDefault();
       setDeferredPrompt(e);
@@ -99,16 +100,16 @@ export default function DownloadPage() {
         {/* Badge */}
         <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-red-50 border border-red-200/80 text-red-600 text-xs font-semibold mb-6">
           <Smartphone className="w-4 h-4" />
-          <span>Android & iOS Mobile App</span>
+          <span>{hero.badge}</span>
         </div>
 
         {/* Title */}
         <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black text-gray-900 tracking-tight leading-[1.1] mb-5" style={{ fontFamily: "Matter" }}>
-          TexWeb, now on your <span className="text-red-600">phone</span>
+          {hero.title}
         </h1>
 
         <p className="text-base sm:text-lg text-gray-600 max-w-2xl mx-auto leading-relaxed mb-8">
-          Run your whole workspace from your pocket — leads, projects, invoices and team credentials. Free install, straight to your phone.
+          {hero.subtitle}
         </p>
 
         {/* Action Buttons: 1-Tap Install + Direct APK */}
@@ -119,7 +120,7 @@ export default function DownloadPage() {
             style={{ fontFamily: "Matter" }}
           >
             <Smartphone className="w-5 h-5 text-white" />
-            <span>{isInstalled ? "App Installed ✓" : "1-Tap Install App"}</span>
+            <span>{isInstalled ? hero.installedCta : hero.primaryCta}</span>
           </button>
 
           <a
@@ -129,7 +130,7 @@ export default function DownloadPage() {
             style={{ fontFamily: "Matter" }}
           >
             <Download className="w-5 h-5 text-white" />
-            <span>Download APK</span>
+            <span>{hero.secondaryCta}</span>
           </a>
         </div>
 
@@ -145,10 +146,10 @@ export default function DownloadPage() {
         </div>
 
         <p className="text-xs sm:text-sm text-gray-500 font-poppins mt-3">
-          Direct 1-Tap Install, Android APK & Windows App
+          {hero.footnote}
         </p>
         <p className="text-[11px] text-gray-400 font-poppins mt-0.5">
-          Updated September 2026
+          {hero.updated}
         </p>
       </section>
 
@@ -304,3 +305,4 @@ export default function DownloadPage() {
     </div>
   );
 }
+

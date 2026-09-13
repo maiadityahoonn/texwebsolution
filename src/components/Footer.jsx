@@ -1,12 +1,44 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
+import { useState } from "react";
 import { Mail, PhoneCall } from "lucide-react";
 
 export default function Footer() {
-  const handleSubscribe = (e) => {
+  const [email, setEmail] = useState("");
+  const [status, setStatus] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+
+  const handleSubscribe = async (e) => {
     e.preventDefault();
-    alert("Subscribed successfully!");
+    if (!email.trim()) return;
+    setSubmitting(true);
+    setStatus("");
+    try {
+      const response = await fetch("/api/leads/create", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: "Newsletter Subscriber",
+          phone: "newsletter",
+          email,
+          service: "Newsletter Subscription",
+          source: "Footer Newsletter",
+          notes: "User subscribed from website footer.",
+        }),
+      });
+      if (!response.ok) {
+        const result = await response.json().catch(() => ({}));
+        throw new Error(result.error || "Subscription failed.");
+      }
+      setEmail("");
+      setStatus("Subscribed successfully.");
+    } catch (error) {
+      setStatus(error.message || "Unable to subscribe right now.");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -26,7 +58,7 @@ export default function Footer() {
                 </p>
                 <p>
                   <a href="https://wa.me/+917462827259" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 hover:text-green-600 transition-colors">
-                    <img src="/common/WhatsApp.svg" alt="WhatsApp" className="w-4 h-4 object-contain shrink-0" />
+                    <Image width={64} height={64} src="/common/WhatsApp.svg" alt="WhatsApp" className="w-4 h-4 object-contain shrink-0" />
                     <span>+91 7462827259 (WhatsApp)</span>
                   </a>
                 </p>
@@ -44,16 +76,20 @@ export default function Footer() {
                 <input
                   type="email"
                   placeholder="Enter your email address"
+                  value={email}
+                  onChange={(event) => setEmail(event.target.value)}
                   className="w-full min-w-0 pl-4 pr-2 py-3 text-sm text-gray-700 placeholder-gray-400 focus:outline-none md:px-7 md:py-4"
                   required
                 />
                 <button
                   type="submit"
+                  disabled={submitting}
                   className="w-full min-[420px]:w-auto bg-red-600 text-white px-5 py-3 rounded-full hover:bg-red-700 transition-colors shrink-0 text-sm md:px-8 shadow-sm shadow-red-600/10"
                 >
-                  Subscribe
+                  {submitting ? "Saving" : "Subscribe"}
                 </button>
               </div>
+              {status && <p className="mt-2 text-xs font-medium text-gray-500">{status}</p>}
             </form>
           </div>
 

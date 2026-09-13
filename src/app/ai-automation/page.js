@@ -1,5 +1,7 @@
 "use client";
 
+import Image from "next/image";
+import { useCmsContent } from "@/hooks/useCmsContent";
 import Navbar from "@/components/Navbar";
 import CommonMarquee from "@/components/CommonMarquee";
 import AiAutomationReviews from "@/components/AiAutomationReviews";
@@ -72,6 +74,15 @@ const SERVICES = [
 ];
 
 export default function AiAutomationPage() {
+  const cms = useCmsContent();
+  const hero = cms.block("ai.hero", {
+    title: "AI & Workflow Automation Solutions",
+    subtitle: "Supercharge your business productivity. We design, build, and deploy smart AI agents, automated workflows, and custom LLM integrations tailored for your operations.",
+  });
+  const cmsServices = cms.list("ai.services", "services", []);
+  const services = SERVICES.map((service, index) => ({ ...service, ...(cmsServices[index] || {}) }));
+  const faqs = cms.list("ai.faqs", "faqs", AI_FAQS);
+
   return (
     <div className="w-full flex flex-col bg-white">
       {/* Hero Header Wrapper */}
@@ -82,13 +93,13 @@ export default function AiAutomationPage() {
         <Navbar />
 
         {/* Floating Ornaments */}
-        <img 
+        <Image width={800} height={600} 
           src="/ai-automation/ai_ornament_right.webp" 
           alt="" 
           aria-hidden="true" 
           className="hidden md:block absolute top-28 right-8 w-36 lg:w-48 opacity-80 animate-floatingSmooth pointer-events-none select-none" 
         />
-        <img 
+        <Image width={800} height={600} 
           src="/ai-automation/ai_ornament_left.webp" 
           alt="" 
           aria-hidden="true" 
@@ -103,10 +114,10 @@ export default function AiAutomationPage() {
                 className="text-3xl sm:text-5xl md:text-6xl lg:text-7xl font-bold bg-gradient-to-r from-gray-900 to-red-600 bg-clip-text text-transparent leading-snug sm:leading-tight pb-2" 
                 style={{ fontFamily: "Matter, sans-serif" }}
               >
-                AI & Workflow <br /> Automation Solutions
+                {hero.title}
               </h1>
               <p className="mt-4 sm:mt-6 text-sm sm:text-base md:text-lg text-gray-500/80 max-w-md sm:max-w-xl md:max-w-2xl mx-auto font-poppins font-light leading-relaxed">
-                Supercharge your business productivity. We design, build, and deploy smart AI agents, automated workflows, and custom LLM integrations tailored for your operations.
+                {hero.subtitle}
               </p>
             </div>
           </section>
@@ -147,7 +158,7 @@ export default function AiAutomationPage() {
         </h2>
 
         <div className="w-full max-w-7xl mx-auto px-0 sm:px-6 md:px-12 space-y-12 sm:space-y-16 md:space-y-20">
-          {SERVICES.map((service, index) => {
+          {services.map((service, index) => {
             const isImageLeft = index % 2 === 0;
 
             return (
@@ -161,7 +172,7 @@ export default function AiAutomationPage() {
                     isImageLeft ? "md:order-1" : "md:order-2"
                   }`}
                 >
-                  <img 
+                  <Image width={800} height={600} 
                     alt={service.imageAlt} 
                     className="rounded-[24px] w-full h-full object-contain scale-[1.06] hover:scale-[1.10] transition-transform duration-300" 
                     src={service.image}
@@ -204,7 +215,7 @@ export default function AiAutomationPage() {
                       rel="noopener noreferrer"
                       className="px-6 py-2.5 bg-red-600 text-white rounded-full shadow-md hover:scale-[1.05] hover:bg-red-700 active:scale-[0.96] transition-all duration-100 shadow-red-600/10 font-medium inline-flex items-center gap-2"
                     >
-                      <img src="/common/WhatsApp.svg" alt="WhatsApp" className="w-4 h-4 object-contain" />
+                      <Image width={64} height={64} src="/common/WhatsApp.svg" alt="WhatsApp" className="w-4 h-4 object-contain" />
                       <span>Enquire on WhatsApp</span>
                     </a>
                 </div>
@@ -226,7 +237,7 @@ export default function AiAutomationPage() {
       />
 
       {/* AI Automation Frequently Asked Questions (6 FAQs) */}
-      <FaqAccordion faqs={AI_FAQS} badge="AI Automation FAQ" />
+      <FaqAccordion faqs={faqs} badge={hero.faqBadge || "AI Automation FAQ"} />
 
       {/* Get In Touch section */}
       <GetInTouchSection />

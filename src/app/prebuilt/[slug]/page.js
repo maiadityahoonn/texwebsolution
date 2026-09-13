@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useEffect, useState, use } from "react";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
@@ -7,6 +8,7 @@ import Link from "next/link";
 import PrebuiltReviews from "@/components/PrebuiltReviews";
 import FaqAccordion from "@/components/FaqAccordion";
 import GetInTouchSection from "@/components/GetInTouchSection";
+import { useCmsContent } from "@/hooks/useCmsContent";
 import { Sparkles, ArrowLeft } from "lucide-react";
 
 const PREBUILT_FAQS = [
@@ -34,8 +36,12 @@ const PREBUILT_FAQS = [
 
 export default function ProductDetailPage({ params: paramsPromise }) {
   const params = use(paramsPromise);
+  const cms = useCmsContent();
   const [product, setProduct] = useState(null);
   const [loading, setLoading] = useState(true);
+  const productOverride = cms.block(params?.slug ? `prebuilt.detail.${params.slug}` : "", {});
+  const visibleProduct = product ? { ...product, ...productOverride } : null;
+  const faqs = cms.list(params?.slug ? `prebuilt.detail.${params.slug}` : "prebuilt.faqs", "faqs", cms.list("prebuilt.faqs", "faqs", PREBUILT_FAQS));
 
   useEffect(() => {
     async function fetchProductDetails() {
@@ -68,7 +74,7 @@ export default function ProductDetailPage({ params: paramsPromise }) {
     );
   }
 
-  if (!product) {
+  if (!visibleProduct) {
     return (
       <div className="w-full min-h-screen flex flex-col bg-white">
         <Navbar />
@@ -119,26 +125,26 @@ export default function ProductDetailPage({ params: paramsPromise }) {
                 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold bg-gradient-to-r from-gray-900 via-gray-800 to-red-600 bg-clip-text text-transparent leading-tight pb-2"
                 style={{ fontFamily: "Matter, sans-serif" }}
               >
-                {product.title}
+                {visibleProduct.title}
               </h1>
               <p className="mt-4 text-base sm:text-lg text-gray-600/90 max-w-2xl font-poppins font-light leading-relaxed">
-                {product.subtitle}
+                {visibleProduct.subtitle}
               </p>
 
               {/* Action Buttons in Hero */}
               <div className="flex flex-col sm:flex-row sm:flex-wrap items-stretch sm:items-center gap-3 sm:gap-4 mt-8">
-                <Link href={`/contact?product=${encodeURIComponent(product.title)}`}>
+                <Link href={`/contact?product=${encodeURIComponent(visibleProduct.title)}`}>
                   <button className="w-full sm:w-auto px-8 py-3.5 bg-red-600 text-white rounded-full shadow-lg shadow-red-600/15 hover:bg-red-700 hover:scale-[1.02] active:scale-[0.98] transition-all font-semibold font-[Matter]">
                     Request a Demo
                   </button>
                 </Link>
                 <a
-                  href={`https://wa.me/+917462827259?text=Hi,%20I'm%20interested%20in%20the%20${encodeURIComponent(product.title)}`}
+                  href={`https://wa.me/+917462827259?text=Hi,%20I'm%20interested%20in%20the%20${encodeURIComponent(visibleProduct.title)}`}
                   target="_blank"
                   rel="noopener noreferrer"
                 >
                   <button className="w-full sm:w-auto px-8 py-3.5 bg-white border border-gray-200 text-gray-950 rounded-full shadow-sm hover:bg-neutral-50 hover:scale-[1.02] active:scale-[0.98] transition-all font-semibold font-[Matter] flex items-center justify-center gap-2">
-                    <img src="/common/WhatsApp.svg" alt="WhatsApp" className="w-5 h-5" /> WhatsApp Live
+                    <Image width={64} height={64} src="/common/WhatsApp.svg" alt="WhatsApp" className="w-5 h-5" /> WhatsApp Live
                   </button>
                 </a>
               </div>
@@ -146,7 +152,7 @@ export default function ProductDetailPage({ params: paramsPromise }) {
 
             {/* Right side: Mockup Phone Animation / Video */}
             <div className="md:col-span-5 flex justify-center items-center">
-              {product.phoneGif && product.phoneGif.endsWith(".mp4") ? (
+              {visibleProduct.phoneGif && visibleProduct.phoneGif.endsWith(".mp4") ? (
                 <div className="relative w-full max-w-[280px] sm:max-w-[320px] h-auto hover:scale-[1.03] transition-all duration-300 pointer-events-none select-none">
                   {/* Crisp Solid White Background strictly fitted inside phone screen bezel */}
                   <div className="absolute inset-x-[6.5%] inset-y-[2.8%] bg-white rounded-[30px] sm:rounded-[36px]" />
@@ -162,15 +168,15 @@ export default function ProductDetailPage({ params: paramsPromise }) {
                     className="relative z-10 w-full h-auto object-contain pointer-events-none select-none"
                     style={{ mixBlendMode: "multiply" }}
                   >
-                    <source src={product.phoneGif} type="video/mp4" />
+                    <source src={visibleProduct.phoneGif} type="video/mp4" />
                   </video>
                 </div>
-              ) : product.phoneGif ? (
+              ) : visibleProduct.phoneGif ? (
                 <div className="relative w-full max-w-[280px] sm:max-w-[320px] h-auto hover:scale-[1.03] transition-all duration-300">
                   <div className="absolute inset-x-[6.5%] inset-y-[2.8%] bg-white rounded-[30px] sm:rounded-[36px]" />
-                  <img
-                    src={product.phoneGif}
-                    alt={`${product.title} Demo`}
+                  <Image width={800} height={600}
+                    src={visibleProduct.phoneGif}
+                    alt={`${visibleProduct.title} Demo`}
                     className="relative z-10 w-full h-auto object-contain"
                     style={{ mixBlendMode: "multiply" }}
                   />
@@ -195,7 +201,7 @@ export default function ProductDetailPage({ params: paramsPromise }) {
           </h2>
 
           <div className="space-y-10 sm:space-y-14">
-            {product.offers.map((offer, index) => {
+            {visibleProduct.offers.map((offer, index) => {
               const isImageLeft = index % 2 === 0;
               return (
                 <div
@@ -209,7 +215,7 @@ export default function ProductDetailPage({ params: paramsPromise }) {
                   >
                     <div className="absolute inset-0 bg-gradient-to-tr from-red-500/5 via-rose-500/5 to-transparent rounded-3xl pointer-events-none"></div>
                     {offer.image ? (
-                      <img
+                      <Image width={800} height={600}
                         alt={offer.title}
                         className="rounded-xl w-[95%] h-auto object-contain hover:scale-[1.03] transition-all duration-300 shadow-xl relative z-10"
                         src={offer.image}
@@ -257,7 +263,7 @@ export default function ProductDetailPage({ params: paramsPromise }) {
       </section>
 
       {/* Why Choose Our Solution Section */}
-      {product.whyChooseUs && product.whyChooseUs.length > 0 && (
+      {visibleProduct.whyChooseUs && visibleProduct.whyChooseUs.length > 0 && (
         <section className="py-10 sm:py-12 bg-gradient-to-b from-neutral-50 to-white border-y border-gray-100 font-poppins">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 text-center">
             <span className="inline-block px-5 py-2 bg-red-50 text-red-600 border border-red-100/80 shadow-sm rounded-full site-label font-semibold text-xs sm:text-sm font-[Matter]">
@@ -268,7 +274,7 @@ export default function ProductDetailPage({ params: paramsPromise }) {
             </h2>
 
             <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-8 text-left">
-              {product.whyChooseUs.map((item, idx) => (
+              {visibleProduct.whyChooseUs.map((item, idx) => (
                 <div
                   key={idx}
                   className="bg-white p-8 rounded-3xl border border-neutral-100/80 hover:border-red-200/80 shadow-sm hover:shadow-lg hover:shadow-red-500/5 hover:-translate-y-1 transition-all duration-300 flex flex-col relative group overflow-hidden"
@@ -278,7 +284,7 @@ export default function ProductDetailPage({ params: paramsPromise }) {
 
                   <div className="w-12 h-12 rounded-2xl bg-red-50 text-red-600 flex items-center justify-center mb-6 shrink-0 shadow-sm group-hover:scale-105 group-hover:bg-red-600 group-hover:text-white transition-all duration-300">
                     {item.icon ? (
-                      <img src={item.icon} alt={item.title} className="w-6 h-6 object-contain group-hover:invert transition-all duration-300" />
+                      <Image width={800} height={600} src={item.icon} alt={item.title} className="w-6 h-6 object-contain group-hover:invert transition-all duration-300" />
                     ) : (
                       <Sparkles className="w-6 h-6" />
                     )}
@@ -303,7 +309,7 @@ export default function ProductDetailPage({ params: paramsPromise }) {
       <PrebuiltReviews />
 
       {/* FAQ Accordion */}
-      <FaqAccordion faqs={PREBUILT_FAQS} badge="SaaS FAQ" />
+      <FaqAccordion faqs={faqs} badge={visibleProduct.faqBadge || "SaaS FAQ"} />
 
       {/* Get In Touch section */}
       <GetInTouchSection />

@@ -1,5 +1,5 @@
 // TexWeb Solution PWA Service Worker
-const CACHE_NAME = 'texweb-cache-v1';
+const CACHE_NAME = 'texweb-cache-v2';
 const OFFLINE_URL = '/';
 
 const PRECACHE_ASSETS = [
@@ -9,6 +9,23 @@ const PRECACHE_ASSETS = [
   '/icon-192.png',
   '/icon-512.png',
 ];
+
+const CACHEABLE_PATHS = new Set(PRECACHE_ASSETS);
+
+function isCacheableRequest(request) {
+  if (request.method !== 'GET') return false;
+  const url = new URL(request.url);
+  return url.origin === self.location.origin && CACHEABLE_PATHS.has(url.pathname);
+}
+
+function safeClientUrl(value) {
+  try {
+    const url = new URL(value || '/', self.location.origin);
+    return url.origin === self.location.origin ? url.href : `${self.location.origin}/`;
+  } catch {
+    return `${self.location.origin}/`;
+  }
+}
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
@@ -34,12 +51,12 @@ self.addEventListener('activate', (event) => {
 
 self.addEventListener('fetch', (event) => {
   // Only handle GET requests
-  if (event.request.method !== 'GET') return;
+  if (!isCacheableRequest(event.request)) return;
 
   event.respondWith(
     fetch(event.request)
       .then((networkResponse) => {
-        // If response is valid, update cache clone for static assets
+        // If response is valid, update cache clone for allowlisted static assets
         if (networkResponse && networkResponse.status === 200 && networkResponse.type === 'basic') {
           const responseToCache = networkResponse.clone();
           caches.open(CACHE_NAME).then((cache) => {
@@ -62,22 +79,27 @@ self.addEventListener('fetch', (event) => {
 
 // Push Notification Listener (For future real-time task & meeting notifications)
 self.addEventListener('push', (event) => {
-  const data = event.data ? event.data.json() : { title: 'TexWeb Solution', body: 'New notification!' };
+  let data = { title: 'TexWeb Solution', body: 'New notification!', url: '/' };
+  try {
+    data = event.data ? { ...data, ...event.data.json() } : data;
+  } catch {
+    data = { title: 'TexWeb Solution', body: event.data?.text() || 'New notification!', url: '/' };
+  }
   const options = {
-    body: data.body,
+    body: String(data.body || 'New notification!').slice(0, 240),
     icon: '/icon-192.png',
     badge: '/favicon-48x48.png',
     vibrate: [100, 50, 100],
     data: {
-      url: data.url || '/'
+      url: safeClientUrl(data.url)
     }
   };
-  event.waitUntil(self.registration.showNotification(data.title, options));
+  event.waitUntil(self.registration.showNotification(String(data.title || 'TexWeb Solution').slice(0, 80), options));
 });
 
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
-  const urlToOpen = event.notification.data?.url || '/';
+  const urlToOpen = safeClientUrl(event.notification.data?.url);
   event.waitUntil(
     clients.matchAll({ type: 'window' }).then((windowClients) => {
       for (let client of windowClients) {

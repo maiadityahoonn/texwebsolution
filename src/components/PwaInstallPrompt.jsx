@@ -6,7 +6,10 @@ import { Download, X, Smartphone, Share, PlusSquare, Monitor, CheckCircle2 } fro
 export default function PwaInstallPrompt() {
   const [deferredPrompt, setDeferredPrompt] = useState(null);
   const [isVisible, setIsVisible] = useState(false);
-  const [isIos, setIsIos] = useState(false);
+  const [isIos] = useState(() => {
+    const userAgent = typeof navigator !== "undefined" ? navigator.userAgent.toLowerCase() : "";
+    return /iphone|ipad|ipod/.test(userAgent);
+  });
   const [showGuideModal, setShowGuideModal] = useState(false);
 
   useEffect(() => {
@@ -14,12 +17,7 @@ export default function PwaInstallPrompt() {
     if (typeof window !== "undefined" && "serviceWorker" in navigator) {
       navigator.serviceWorker
         .register("/sw.js")
-        .then((reg) => {
-          console.log("TexWeb PWA Service Worker Active:", reg.scope);
-        })
-        .catch((err) => {
-          console.warn("Service Worker registration error:", err);
-        });
+        .catch(() => {});
     }
 
     // 2. Check if already running in standalone mode (installed)
@@ -32,10 +30,6 @@ export default function PwaInstallPrompt() {
     }
 
     // 3. Detect iOS Safari
-    const userAgent = typeof navigator !== "undefined" ? navigator.userAgent.toLowerCase() : "";
-    const isIosDevice = /iphone|ipad|ipod/.test(userAgent);
-    setIsIos(isIosDevice);
-
     // 4. Capture native beforeinstallprompt (Chrome / Android / Edge)
     const handleBeforeInstallPrompt = (e) => {
       e.preventDefault();

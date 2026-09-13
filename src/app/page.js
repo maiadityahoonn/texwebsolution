@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useEffect, useState, useRef } from "react";
 import Navbar from "@/components/Navbar";
 import CommonMarquee from "@/components/CommonMarquee";
@@ -13,6 +14,8 @@ import HomePricingSection from "@/components/HomePricingSection";
 import FaqAccordion from "@/components/FaqAccordion";
 import GetInTouchSection from "@/components/GetInTouchSection";
 import Footer from "@/components/Footer";
+import { useCmsContent } from "@/hooks/useCmsContent";
+import { safeExternalUrl } from "@/lib/safeUrl";
 const FEATURED_CUSTOM_PROJECTS = [
   {
     title: "Sarvadnya Vidyapeeth",
@@ -75,6 +78,9 @@ const FEATURED_CUSTOM_PROJECTS = [
 export default function Home() {
   const gridRef = useRef(null);
   const [isVisible, setIsVisible] = useState(false);
+  const cms = useCmsContent();
+  const cmsHero = cms.block("homepage.hero");
+  const featuredProjects = cms.list("homepage.projects", "projects", FEATURED_CUSTOM_PROJECTS);
 
   useEffect(() => {
     const observer = new IntersectionObserver(
@@ -106,12 +112,21 @@ export default function Home() {
         <div className="flex flex-col items-center text-center px-4 justify-start bg-transparent pt-1 sm:pt-2 pb-6 sm:pb-8">
           <h1 className="sr-only">TexWeb Solution - Tailor-Made Website, Mobile App Development & Digital Marketing Agency</h1>
           <div className="relative w-full mx-auto -mt-1 sm:-mt-2 md:-mt-3 px-4 sm:px-8 max-w-full md:max-w-3xl lg:max-w-[740px]">
-            <img
+            <Image width={800} height={600}
               alt="TexWeb Solution - Custom Website and Mobile App Development Agency"
               className="w-full h-auto object-contain"
               src="/home/home.webp"
+              loading="eager"
+              fetchPriority="high"
             />
           </div>
+
+          {(cmsHero?.title || cmsHero?.subtitle) && (
+            <div className="max-w-2xl mx-auto px-4 -mt-2 sm:-mt-4 mb-3">
+              {cmsHero.title && <h2 className="text-lg sm:text-2xl font-bold text-gray-900 leading-tight" style={{ fontFamily: "Matter" }}>{cmsHero.title}</h2>}
+              {cmsHero.subtitle && <p className="text-xs sm:text-sm text-gray-600 mt-1 font-poppins">{cmsHero.subtitle}</p>}
+            </div>
+          )}
 
           <div className="flex space-x-3 sm:space-x-4 mt-[-3px] sm:mt-[-6px] lg:mt-[-9px] z-10">
             <a href="/customized">
@@ -119,7 +134,7 @@ export default function Home() {
                 className="w-32 py-3.5 text-sm sm:w-44 sm:text-base lg:py-4 bg-red-600 text-white rounded-full transition-transform hover:scale-105 hover:bg-red-700 shadow-md shadow-red-600/15"
                 style={{ fontFamily: "Matter", fontWeight: 500 }}
               >
-                Let&apos;s Explore
+                {cmsHero?.cta || "Let&apos;s Explore"}
               </button>
             </a>
             <a href="/contact">
@@ -134,9 +149,9 @@ export default function Home() {
 
           <div className="inline-flex items-center gap-2 sm:gap-4 mt-3">
             <div className="flex -space-x-3 scale-[0.85] sm:scale-90 origin-left">
-              <img className="w-8 h-8 sm:w-10 sm:h-10 rounded-full border-2 border-red-600 object-cover bg-white shadow-sm" src="/home/prof1.png" alt="Audience 1" />
-              <img className="w-8 h-8 sm:w-10 sm:h-10 rounded-full border-2 border-red-600 object-cover bg-white shadow-sm" src="/home/prof2.png" alt="Audience 2" />
-              <img className="w-8 h-8 sm:w-10 sm:h-10 rounded-full border-2 border-red-600 object-cover bg-white shadow-sm" src="/home/prof3.png" alt="Audience 3" />
+              <Image width={96} height={96} className="w-8 h-8 sm:w-10 sm:h-10 rounded-full border-2 border-red-600 object-cover bg-white shadow-sm" src="/home/prof1.png" alt="Audience 1" />
+              <Image width={96} height={96} className="w-8 h-8 sm:w-10 sm:h-10 rounded-full border-2 border-red-600 object-cover bg-white shadow-sm" src="/home/prof2.png" alt="Audience 2" />
+              <Image width={96} height={96} className="w-8 h-8 sm:w-10 sm:h-10 rounded-full border-2 border-red-600 object-cover bg-white shadow-sm" src="/home/prof3.png" alt="Audience 3" />
             </div>
             <p className="text-gray-700 text-sm sm:text-lg leading-none" style={{ fontFamily: "Matter" }}>
               Trusted by <AnimatedCounter target={90} suffix="k+" className="text-red-600 font-semibold" /> Audience
@@ -186,10 +201,10 @@ export default function Home() {
 
           <div className="max-w-6xl mx-auto px-4">
             <div className="grid gap-8 md:gap-10 justify-center grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
-              {FEATURED_CUSTOM_PROJECTS.slice(0, 6).map((project) => (
+              {featuredProjects.slice(0, 6).map((project) => (
                 <a
                   key={project.title}
-                  href={project.buttonLink}
+                  href={safeExternalUrl(project.buttonLink)}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="flex"
@@ -207,7 +222,7 @@ export default function Home() {
                             </svg>
                           </span>
                         </div>
-                        <img
+                        <Image width={800} height={600}
                           src={`/${project.image}`}
                           alt={project.title}
                           className="w-full h-auto transform group-hover:scale-105 transition-transform duration-700 ease-out"

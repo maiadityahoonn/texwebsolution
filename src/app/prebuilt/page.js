@@ -1,5 +1,7 @@
 "use client";
 
+import Image from "next/image";
+import { useCmsContent } from "@/hooks/useCmsContent";
 import Navbar from "@/components/Navbar";
 import CommonMarquee from "@/components/CommonMarquee";
 import PrebuiltSection from "@/components/PrebuiltSection";
@@ -33,6 +35,13 @@ const PREBUILT_FAQS = [
 ];
 
 export default function PrebuiltPage() {
+  const cms = useCmsContent();
+  const hero = cms.block("prebuilt.hero", {
+    title: "Prebuilt Saas Software for Startups",
+    subtitle: "Skip the long wait and high costs. Our prebuilt platforms help you go digital faster without compromising on quality.",
+  });
+  const faqs = cms.list("prebuilt.faqs", "faqs", PREBUILT_FAQS);
+
   return (
     <div className="w-full flex flex-col bg-white">
       {/* Hero Header Wrapper */}
@@ -43,8 +52,8 @@ export default function PrebuiltPage() {
         <Navbar />
 
         {/* Floating Ornaments */}
-        <img src="/common/prebuilt_db.png" alt="" aria-hidden="true" className="hidden md:block absolute top-28 right-12 w-36 lg:w-48 opacity-80 animate-floatingSmooth pointer-events-none select-none" />
-        <img src="/common/prebuilt_analytics.png" alt="" aria-hidden="true" className="hidden md:block absolute bottom-24 left-8 w-32 lg:w-44 opacity-70 animate-floatingSmooth pointer-events-none select-none" style={{ animationDelay: '1.2s' }} />
+        <Image src="/common/prebuilt_db.png" alt="" aria-hidden="true" width={192} height={192} className="hidden md:block absolute top-28 right-12 w-36 lg:w-48 h-auto opacity-80 animate-floatingSmooth pointer-events-none select-none" />
+        <Image src="/common/prebuilt_analytics.png" alt="" aria-hidden="true" width={176} height={176} className="hidden md:block absolute bottom-24 left-8 w-32 lg:w-44 h-auto opacity-70 animate-floatingSmooth pointer-events-none select-none" style={{ animationDelay: '1.2s' }} />
 
         <div className="flex-1 flex flex-col justify-start pt-12 md:justify-center md:pt-0">
           <section className="flex flex-1 items-start md:items-center justify-start md:justify-center text-center px-4 sm:px-6 pt-12 sm:pt-14 md:pt-0">
@@ -53,10 +62,10 @@ export default function PrebuiltPage() {
                 className="text-3xl sm:text-5xl md:text-6xl lg:text-7xl font-bold bg-gradient-to-r from-gray-900 to-red-600 bg-clip-text text-transparent leading-snug sm:leading-tight pb-2" 
                 style={{ fontFamily: "Matter, sans-serif" }}
               >
-                Prebuilt Saas Software for <br /> Startups
+                {hero.title}
               </h1>
               <p className="mt-4 sm:mt-6 text-sm sm:text-base md:text-lg text-gray-500/80 max-w-md sm:max-w-xl md:max-w-2xl mx-auto font-poppins font-light leading-relaxed">
-                Skip the long wait and high costs. Our prebuilt platforms help you go digital faster without compromising on quality.
+                {hero.subtitle}
               </p>
             </div>
           </section>
@@ -115,13 +124,13 @@ export default function PrebuiltPage() {
       {/* Pricing CTA Banner */}
       <PricingCtaBanner
         badge="SaaS & Prebuilt Pricing"
-        title="Ready to Launch Your SaaS at Unbeatable Prices?"
-        subtitle="Explore our transparent ready-to-deploy software packages or calculate your custom turnkey solution cost."
-        customWhatsappText="Hi TexWeb Solution, I'd like to discuss pricing for Prebuilt SaaS platforms."
+        title={hero.ctaTitle || "Ready to Launch Your SaaS at Unbeatable Prices?"}
+        subtitle={hero.ctaSubtitle || "Explore our transparent ready-to-deploy software packages or calculate your custom turnkey solution cost."}
+        customWhatsappText={hero.whatsappText || "Hi TexWeb Solution, I'd like to discuss pricing for Prebuilt SaaS platforms."}
       />
 
       {/* Frequently Asked Questions */}
-      <FaqAccordion faqs={PREBUILT_FAQS} badge="SaaS FAQ" />
+      <FaqAccordion faqs={faqs} badge={hero.faqBadge || "SaaS FAQ"} />
 
       {/* Get In Touch section */}
       <GetInTouchSection />

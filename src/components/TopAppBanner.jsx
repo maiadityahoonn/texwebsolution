@@ -1,32 +1,46 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useSyncExternalStore } from "react";
 import Link from "next/link";
 import { ArrowRight, X } from "lucide-react";
 
+let topBannerListeners = [];
+const subscribeTopBanner = (callback) => {
+  topBannerListeners.push(callback);
+  window.addEventListener("storage", callback);
+  return () => {
+    topBannerListeners = topBannerListeners.filter((l) => l !== callback);
+    window.removeEventListener("storage", callback);
+  };
+};
+
+const notifyTopBanner = () => {
+  topBannerListeners.forEach((l) => l());
+};
+
+const getTopBannerSnapshot = () => {
+  if (typeof window === "undefined") return false;
+  const isStandalone =
+    window.matchMedia("(display-mode: standalone)").matches ||
+    (typeof navigator !== "undefined" && navigator.standalone);
+  if (isStandalone) return false;
+  return !sessionStorage.getItem("texweb_top_banner_dismissed");
+};
+
+const getTopBannerServerSnapshot = () => false;
+
 export default function TopAppBanner() {
-  const [isVisible, setIsVisible] = useState(false);
-
-  useEffect(() => {
-    const isStandalone = 
-      (typeof window !== "undefined" && window.matchMedia("(display-mode: standalone)").matches) ||
-      (typeof navigator !== "undefined" && navigator.standalone);
-
-    if (isStandalone) {
-      return;
-    }
-
-    const dismissed = sessionStorage.getItem("texweb_top_banner_dismissed");
-    if (!dismissed) {
-      setIsVisible(true);
-    }
-  }, []);
+  const isVisible = useSyncExternalStore(
+    subscribeTopBanner,
+    getTopBannerSnapshot,
+    getTopBannerServerSnapshot
+  );
 
   const handleDismiss = (e) => {
     e.preventDefault();
     e.stopPropagation();
-    setIsVisible(false);
     sessionStorage.setItem("texweb_top_banner_dismissed", "true");
+    notifyTopBanner();
   };
 
   if (!isVisible) return null;

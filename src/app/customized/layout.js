@@ -1,3 +1,5 @@
+import Script from "next/script";
+
 export const metadata = {
   title: "Customized Web & Mobile App Development",
   description: "Bespoke full-stack web application and mobile app engineering tailored specifically to your enterprise and startup requirements.",
@@ -33,7 +35,8 @@ export default function CustomizedLayout({ children }) {
 
   return (
     <>
-      <script
+      <Script
+        id="customized-breadcrumb-jsonld"
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />

@@ -1,6 +1,9 @@
 "use client";
 
+import Image from "next/image";
 import { useState } from "react";
+import { useCmsContent } from "@/hooks/useCmsContent";
+import { safeExternalUrl } from "@/lib/safeUrl";
 
 const WEBSITES = [
   {
@@ -165,19 +168,26 @@ const APPLICATIONS = [
 ];
 
 export default function CustomizedTabs() {
+  const cms = useCmsContent();
   const [activeTab, setActiveTab] = useState("websites"); // "websites" or "applications"
 
-  const currentList = activeTab === "websites" ? WEBSITES : APPLICATIONS;
+  const websites = cms.list("customized.websites", "websites", WEBSITES);
+  const applications = cms.list("customized.applications", "applications", APPLICATIONS);
+  const section = cms.block("customized.projects", {
+    badge: "Customized Solutions",
+    title: "Tailored to your needs",
+  });
+  const currentList = activeTab === "websites" ? websites : applications;
 
   return (
     <section className="mt-4 w-full font-[Matter]" id="customized">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
         <div className="inline-block px-4 py-1 bg-red-50 text-red-600 border border-red-100 shadow-sm rounded-full site-label font-semibold text-xs sm:text-sm font-[Matter] mb-4">
-          Customized Solutions
+          {section.badge}
         </div>
         
         <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold text-center bg-gradient-to-r from-gray-900 to-red-600 bg-clip-text text-transparent mb-10 px-3 leading-tight pb-1">
-          Tailored to your needs
+          {section.title}
         </h2>
 
         {/* Tab Buttons */}
@@ -227,7 +237,7 @@ export default function CustomizedTabs() {
                     isImageLeft ? "md:order-1" : "md:order-2"
                   }`}
                 >
-                  <img 
+                  <Image width={800} height={600} 
                     alt={project.imageAlt} 
                     className="rounded-2xl max-h-full max-w-full h-auto w-auto object-contain hover:scale-[1.03] transition-all duration-150" 
                     src={project.image}
@@ -260,7 +270,7 @@ export default function CustomizedTabs() {
                   </ul>
 
                   <div className="flex justify-center md:justify-start">
-                    <a href={project.buttonLink} target="_blank" rel="noopener noreferrer">
+                    <a href={safeExternalUrl(project.buttonLink)} target="_blank" rel="noopener noreferrer">
                       <button 
                         className="px-6 py-2 bg-red-600 text-white rounded-full shadow-md hover:scale-[1.05] hover:bg-red-700 active:scale-[0.96] transition-all duration-100 shadow-red-600/10" 
                         style={{ fontFamily: "Matter" }}

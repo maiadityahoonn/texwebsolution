@@ -1,8 +1,9 @@
 "use client";
 
+import Image from "next/image";
 import { useState, useEffect } from "react";
 import { X, Sparkles, CheckCircle2, ArrowRight } from "lucide-react";
-import { addLead } from "@/utils/leadStorage";
+import { addLeadConfirmed } from "@/utils/leadStorage";
 
 export default function LeadCaptureModal() {
   const [isOpen, setIsOpen] = useState(false);
@@ -29,12 +30,11 @@ export default function LeadCaptureModal() {
     sessionStorage.setItem("texweb_lead_modal_dismissed", "true");
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (!formData.name || !formData.phone) return;
 
-    // Store lead directly in Central Admin Database
-    addLead({
+    await addLeadConfirmed({
       name: formData.name,
       phone: formData.phone,
       service: formData.service,
@@ -116,7 +116,7 @@ export default function LeadCaptureModal() {
 
               <div>
                 <label className="flex items-center gap-1.5 text-[11px] font-bold text-gray-700 uppercase tracking-wider mb-1">
-                  <img src="/common/WhatsApp.svg" alt="WhatsApp" className="w-3.5 h-3.5 object-contain" />
+                  <Image width={64} height={64} src="/common/WhatsApp.svg" alt="WhatsApp" className="w-3.5 h-3.5 object-contain" />
                   <span>Phone / WhatsApp Number *</span>
                 </label>
                 <input

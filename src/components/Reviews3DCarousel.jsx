@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Sparkles, CheckCircle2, Zap, Star, ArrowUpRight, ArrowLeft, ArrowRight, Quote } from "lucide-react";
@@ -172,7 +173,7 @@ export default function Reviews3DCarousel({
                     {/* Client Profile Footer */}
                     <div className="pt-4 border-t border-gray-100 flex items-center justify-between mt-auto">
                       <div className="flex items-center gap-3">
-                        <img
+                        <Image width={800} height={600}
                           src={item.image}
                           alt={item.name}
                           className="w-12 h-12 rounded-full object-cover border-2 border-red-500/30 shadow-md shrink-0"

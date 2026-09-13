@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useState, useEffect, useRef } from "react";
 import { 
   UserCheck, 
@@ -16,7 +17,8 @@ import {
   ThumbsUp,
   HelpCircle
 } from "lucide-react";
-import { addLead } from "@/utils/leadStorage";
+import { addLeadConfirmed } from "@/utils/leadStorage";
+import { safeExternalUrl } from "@/lib/safeUrl";
 
 // Helper function to format **bold** markdown cleanly without showing raw ** asterisks
 function formatChatMessage(text) {
@@ -412,7 +414,7 @@ export default function AiChatbotWidget() {
     if (fItem.type === "lead") {
       setShowLeadForm(true);
     } else if (fItem.type === "link") {
-      window.open(fItem.url, "_blank", "noopener,noreferrer");
+      window.open(safeExternalUrl(fItem.url), "_blank", "noopener,noreferrer");
     } else if (fItem.query) {
       handleSendMessage(fItem.query);
     }
@@ -431,7 +433,7 @@ export default function AiChatbotWidget() {
     }
   };
 
-  const handleLeadSubmit = (e) => {
+  const handleLeadSubmit = async (e) => {
     e.preventDefault();
     if (!leadInfo.name) return;
 
@@ -444,8 +446,7 @@ export default function AiChatbotWidget() {
     setPhoneError("");
     const formattedPhone = `${leadInfo.countryCode} ${leadInfo.phone}`;
 
-    // Store lead in Admin Database
-    addLead({
+    await addLeadConfirmed({
       name: leadInfo.name,
       phone: formattedPhone,
       service: leadInfo.service,
@@ -500,7 +501,7 @@ export default function AiChatbotWidget() {
           
           {/* Avatar Image inside Circle */}
           <div className="relative w-full h-full rounded-full overflow-hidden border-2 border-white/40">
-            <img src="/images/ananya_avatar.png" alt="Ananya Sharma" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+            <Image width={96} height={96} src="/images/ananya_avatar.png" alt="Ananya Sharma" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
           </div>
 
           {/* Active Online Green Dot */}
@@ -530,7 +531,7 @@ export default function AiChatbotWidget() {
           <div className="bg-gradient-to-r from-gray-950 via-gray-900 to-red-950 text-white p-4 shrink-0 border-b border-white/10 flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="relative w-10 h-10 rounded-full overflow-hidden border-2 border-red-500/60 shadow-md shrink-0">
-                <img src="/images/ananya_avatar.png" alt="Ananya Sharma" className="w-full h-full object-cover" />
+                <Image width={96} height={96} src="/images/ananya_avatar.png" alt="Ananya Sharma" className="w-full h-full object-cover" />
                 <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-emerald-400 rounded-full border border-gray-900" />
               </div>
               <div>
@@ -579,7 +580,7 @@ export default function AiChatbotWidget() {
                   <div className={`flex gap-2.5 ${msg.sender === "user" ? "justify-end" : "justify-start"}`}>
                     {msg.sender === "bot" && (
                       <div className="w-7 h-7 rounded-full overflow-hidden border border-gray-200 shrink-0 mt-1 shadow-xs">
-                        <img src="/images/ananya_avatar.png" alt="Ananya" className="w-full h-full object-cover" />
+                        <Image width={96} height={96} src="/images/ananya_avatar.png" alt="Ananya" className="w-full h-full object-cover" />
                       </div>
                     )}
 
@@ -644,7 +645,7 @@ export default function AiChatbotWidget() {
             {isTyping && (
               <div className="flex items-center gap-2 text-gray-500 text-xs italic">
                 <div className="w-7 h-7 rounded-full overflow-hidden border border-gray-200 shrink-0 shadow-xs">
-                  <img src="/images/ananya_avatar.png" alt="Ananya" className="w-full h-full object-cover" />
+                  <Image width={96} height={96} src="/images/ananya_avatar.png" alt="Ananya" className="w-full h-full object-cover" />
                 </div>
                 <div className="bg-white border border-gray-200 px-3.5 py-2.5 rounded-2xl flex items-center gap-1.5 shadow-xs">
                   <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-bounce" />
