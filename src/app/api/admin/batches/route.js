@@ -126,3 +126,93 @@ export async function GET(request) {
 
   return NextResponse.json({ batches: enriched });
 }
+
+export async function PATCH(request) {
+  const ip = getClientIp(request);
+  const limited = await checkApiRateLimit(`admin-batches-update:${ip}`, { limit: 40, windowMs: 60_000 });
+  if (!limited.allowed) {
+    return NextResponse.json(rateLimitResponse(limited), { status: 429 });
+  }
+
+  const admin = getAdminClient();
+  if (!admin) {
+    return NextResponse.json({ error: "Server admin key is not configured." }, { status: 500 });
+  }
+
+  const token = getBearerToken(request);
+  if (!token) {
+    return NextResponse.json({ error: "Missing authorization token." }, { status: 401 });
+  }
+
+  const {
+    data: { user: requester },
+    error: requesterError,
+  } = await admin.auth.getUser(token);
+
+  if (requesterError || !requester) {
+    return NextResponse.json({ error: "Invalid authorization token." }, { status: 401 });
+  }
+
+  const { data: requesterProfile } = await admin
+    .from("profiles")
+    .select("id, role")
+    .eq("id", requester.id)
+    .single();
+
+  const body = await request.json().catch(() => ({}));
+  const batchId = body.batch_id;
+  if (!batchId) {
+    return NextResponse.json({ error: "Missing batch id." }, { status: 400 });
+  }
+
+  const { data: batch, error: batchError } = await admin
+    .from("batches")
+    .select("*")
+    .eq("id", batchId)
+    .single();
+
+  if (batchError || !batch) {
+    return NextResponse.json({ error: "Batch not found." }, { status: 404 });
+  }
+
+  if (requesterProfile?.role === "hr") {
+    if (batch.hr_id !== requester.id) {
+      return NextResponse.json({ error: "You can assign mentors only for your assigned batches." }, { status: 403 });
+    }
+
+    const mentorId = body.mentor_id || null;
+    let mentor = null;
+    if (mentorId) {
+      const { data: mentorProfile, error: mentorError } = await admin
+        .from("profiles")
+        .select("id, full_name, email, role, domain, batch_id")
+        .eq("id", mentorId)
+        .single();
+      if (mentorError || mentorProfile?.role !== "mentor") {
+        return NextResponse.json({ error: "Select a valid mentor." }, { status: 400 });
+      }
+      mentor = mentorProfile;
+    }
+
+    const { data: updated, error: updateError } = await admin
+      .from("batches")
+      .update({ mentor_id: mentorId, updated_at: new Date().toISOString() })
+      .eq("id", batchId)
+      .select("*")
+      .single();
+
+    if (updateError) {
+      return NextResponse.json({ error: updateError.message || "Unable to assign mentor." }, { status: 400 });
+    }
+
+    return NextResponse.json({
+      batch: {
+        ...updated,
+        hr: publicProfile(requesterProfile),
+        mentor: publicProfile(mentor),
+      },
+    });
+  }
+
+  return NextResponse.json({ error: "Only assigned HR can assign batch mentors here." }, { status: 403 });
+}

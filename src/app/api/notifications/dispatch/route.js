@@ -5,7 +5,7 @@ import { safeExternalUrl, safeInternalPath } from "@/lib/safeUrl";
 import { getBearerToken, getClientIp, isBodyTooLarge, isJsonRequest } from "@/lib/apiSecurity";
 
 const ALLOWED_CHANNELS = new Set(["email", "whatsapp"]);
-const ALLOWED_TYPES = new Set(["task", "meeting", "message", "certificate", "lead", "general"]);
+const ALLOWED_TYPES = new Set(["task", "meeting", "message", "certificate", "lead", "general", "announcement", "file"]);
 
 function getAdminClient() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -255,8 +255,9 @@ export async function POST(request) {
         type: notificationType,
         link_url: notificationLink,
         delivery_channels: ["in_app", ...channels],
+        metadata: body.metadata && typeof body.metadata === "object" ? body.metadata : {},
       }])
-      .select("id, user_id, title, message, type, link_url, created_by")
+      .select("id, user_id, title, message, type, link_url, created_by, metadata")
       .single();
 
     if (createError) {

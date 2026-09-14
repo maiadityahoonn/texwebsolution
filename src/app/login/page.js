@@ -22,6 +22,7 @@ import {
   Camera,
   Clock,
   Compass,
+  Copy,
   CreditCard,
   Database,
   ExternalLink,
@@ -62,8 +63,14 @@ import {
   Trash2,
   Upload,
   Edit3,
+  Pencil,
+  Save,
   Play,
   Pause,
+  Paperclip,
+  Download,
+  File,
+  Image as ImageIcon,
 } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import Pagination from "@/components/Pagination";
@@ -75,7 +82,8 @@ import InternOverview from "@/components/batch/InternOverview";
 import TeamLeaderOverview from "@/components/batch/TeamLeaderOverview";
 import MentorOverview from "@/components/batch/MentorOverview";
 import HrOverview from "@/components/batch/HrOverview";
-import WhatsAppBatchChat from "@/components/batch/WhatsAppBatchChat";
+import SupervisionPulsePanel from "@/components/batch/SupervisionPulsePanel";
+import TexAppBatchChat from "@/components/batch/TexAppBatchChat";
 import { supabase } from "@/lib/supabase";
 import { safeExternalUrl, safeInternalPath } from "@/lib/safeUrl";
 import { processImageToWebp } from "@/lib/imageProcessor";
@@ -93,12 +101,15 @@ import {
   getAuditLogs,
   getBatches,
   getBatchWorkspace,
+  getVisibleBatchEscalations,
   getAttendance,
   getCmsContent,
   getCmsVersions,
   getCloudLeads,
   getDailyUpdates,
   getMeetings,
+  getBatchMessageSummary,
+  getDirectMessageSummary,
   getMessages,
   getNotificationQueue,
   getNotifications,
@@ -114,11 +125,14 @@ import {
   markAttendance,
   retryNotificationQueueItem,
   sendRealtimeMessage,
+  updateRealtimeMessage,
+  markDirectMessagesRead,
   submitTaskWork,
   createCloudTask,
   createAuditLog,
   updateCloudTaskStatus,
   uploadSubmissionFile,
+  uploadBatchFile,
   updateUserProfile,
   uploadAvatarImage,
   uploadTaskReferenceFile,
@@ -140,6 +154,32 @@ const ROLE_LABELS = {
   hr: "HR Manager",
   intern: "Intern",
 };
+
+const MESSAGE_EDIT_WINDOW_MS = 60 * 1000;
+
+function emptyBatchWorkspaceData() {
+  return {
+    messages: [],
+    announcements: [],
+    resources: [],
+    escalations: [],
+    history: [],
+  };
+}
+
+function chatTimestamp(value) {
+  const time = new Date(value || 0).getTime();
+  return Number.isNaN(time) ? 0 : time;
+}
+
+function chatPreview(item, fallback = "No messages yet") {
+  if (!item) return fallback;
+  if (item.is_deleted) return "Message deleted";
+  if (item.message) return item.message;
+  if (item.attachment_name) return item.attachment_name;
+  if (item.attachment_type) return "Attachment";
+  return fallback;
+}
 
 const DOMAIN_OPTIONS = [
   { value: "frontend_dev", label: "Frontend Development" },
@@ -315,7 +355,10 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
   }
 
   function openDirectChatWithUser(userId) {
-    if (!userId) return;
+    if (!userId || !["super_admin", "hr", "mentor"].includes(userProfile?.role)) {
+      setToast("Direct chat is available only for Super Admin, HR, and Mentor.");
+      return;
+    }
     setChatChannelTab("direct");
     setSelectedContactId(userId);
     selectSection("chat");
@@ -350,18 +393,52 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
   const [toast, setToast] = useState("");
   const [selectedBatchId, setSelectedBatchId] = useState("");
   const [batchWorkspaceTab, setBatchWorkspaceTab] = useState("overview");
-  const [batchWorkspaceData, setBatchWorkspaceData] = useState({
-    messages: [],
-    announcements: [],
-    resources: [],
-    escalations: [],
-    history: [],
-  });
+  const [batchWorkspaceData, setBatchWorkspaceData] = useState(() => emptyBatchWorkspaceData());
+  const [batchWorkspaceBatchId, setBatchWorkspaceBatchId] = useState("");
+  const [loadingBatchWorkspaceId, setLoadingBatchWorkspaceId] = useState("");
+  const batchWorkspaceCacheRef = useRef({});
+  const batchWorkspaceRequestRef = useRef("");
+  const [accessibleEscalations, setAccessibleEscalations] = useState([]);
   const [batchMessageText, setBatchMessageText] = useState("");
   const [batchAnnouncementForm, setBatchAnnouncementForm] = useState({ title: "", body: "", category: "announcement", link_url: "", pinned: false });
   const [batchResourceForm, setBatchResourceForm] = useState({ title: "", category: "technical_guides", description: "", link_url: "", file_url: "" });
-  const [batchEscalationForm, setBatchEscalationForm] = useState({ issue: "", category: "general", priority: "medium", description: "", related_member_id: "", related_task_id: "" });
+  const [batchEscalationModalOpen, setBatchEscalationModalOpen] = useState(false);
+  const [batchEscalationForm, setBatchEscalationForm] = useState({ batch_id: "", assigned_to: "", issue: "", category: "general", priority: "medium", description: "", related_member_id: "", related_task_id: "" });
+  const [escalationResolutionModal, setEscalationResolutionModal] = useState(null);
   const [batchTransferForm, setBatchTransferForm] = useState({ member_id: "", to_batch_id: "", note: "" });
+
+  // Batch Announcement Attachments & Pagination
+  const [announcementAttachment, setAnnouncementAttachment] = useState({
+    file: null,
+    previewUrl: "",
+    fileName: "",
+    fileType: "",
+    uploading: false,
+  });
+  const [announcementsPage, setAnnouncementsPage] = useState(1);
+  const [announcementsPerPage, setAnnouncementsPerPage] = useState(5);
+
+  // Batch Files / Resources Uploads, Filtering & Pagination
+  const [batchResourceFile, setBatchResourceFile] = useState({
+    file: null,
+    previewUrl: "",
+    fileName: "",
+    fileType: "",
+    uploading: false,
+  });
+  const [filesPage, setFilesPage] = useState(1);
+  const [filesPerPage, setFilesPerPage] = useState(10);
+  const [filesCategoryFilter, setFilesCategoryFilter] = useState("all");
+  const [filesSearch, setFilesSearch] = useState("");
+  const [selectedSidebarBatchId, setSelectedSidebarBatchId] = useState("");
+  const [editingAnnouncement, setEditingAnnouncement] = useState(null);
+  const [editingResource, setEditingResource] = useState(null);
+
+  // Batch Overview Activity Tab Search, Filtering & Pagination (Admin & HR)
+  const [batchActivitySearch, setBatchActivitySearch] = useState("");
+  const [batchActivityCategory, setBatchActivityCategory] = useState("all");
+  const [batchActivityPage, setBatchActivityPage] = useState(1);
+  const [batchActivityPerPage, setBatchActivityPerPage] = useState(10);
 
   // Modals
   const [newTaskModal, setNewTaskModal] = useState(false);
@@ -381,11 +458,19 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
   const [taskDetailsModal, setTaskDetailsModal] = useState(null);
   const [globalSearchOpen, setGlobalSearchOpen] = useState(false);
   const [globalSearchTerm, setGlobalSearchTerm] = useState("");
+  const [confirmModal, setConfirmModal] = useState(null);
+  const [shareLinkModal, setShareLinkModal] = useState(null);
 
   const [selectedContactId, setSelectedContactId] = useState("");
   const [chatChannelTab, setChatChannelTab] = useState("batches");
   const [chatSearchQuery, setChatSearchQuery] = useState("");
   const [chatText, setChatText] = useState("");
+  const [batchChatMeta, setBatchChatMeta] = useState({});
+  const [directChatMeta, setDirectChatMeta] = useState({});
+  const [onlineUserIds, setOnlineUserIds] = useState([]);
+  const [typingUsers, setTypingUsers] = useState([]);
+  const typingChannelRef = useRef(null);
+  const typingStopTimerRef = useRef(null);
 
   // Resizable WhatsApp Chat Sidebar (Left Panel)
   const [chatSidebarWidth, setChatSidebarWidth] = useState(() => {
@@ -606,8 +691,21 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
   const canUseCrm = ["sales", "sales_executive", "telecaller"].includes(userProfile?.domain);
   const canUseCms = false;
   const canSeeOperations = isHrRole || isMentor || isTeamLeader || currentRole === "intern";
-  const canUseMessages = !isAdminRole;
+  const canUseMessages = true;
   const canUseAlerts = true;
+  const canAccessDirectChat = Boolean(isAdminRole || isHrRole || isMentor);
+
+  useEffect(() => {
+    if (batchWorkspaceTab === "activity" && !isAdminRole && !isHrRole) {
+      setBatchWorkspaceTab("overview");
+    }
+  }, [batchWorkspaceTab, isAdminRole, isHrRole]);
+
+  useEffect(() => {
+    if (canAccessDirectChat) return;
+    if (chatChannelTab === "direct") setChatChannelTab("batches");
+    if (selectedContactId) setSelectedContactId("");
+  }, [canAccessDirectChat, chatChannelTab, selectedContactId]);
   const memberRoleOptions = useMemo(() => {
     if (isAdminRole) return [["hr", "HR Manager"]];
     if (isHrRole) return [["mentor", "Mentor"], ["intern", "Intern"]];
@@ -630,17 +728,69 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
   }, [batches, currentRole, isHrRole, isMentor, isTeamLeader, sessionUser?.id, userProfile?.batch_id]);
 
   const ownedBatches = useMemo(() => batches.filter((batch) => ownedBatchIds.has(batch.id)), [batches, ownedBatchIds]);
+  const escalationBatchOptions = useMemo(() => {
+    if (isAdminRole) return batches;
+    if (isHrRole || isMentor) return ownedBatches;
+    if (isTeamLeader) return batches.filter((batch) => batch.id === userProfile?.batch_id);
+    return [];
+  }, [batches, currentRole, isAdminRole, isHrRole, isMentor, isTeamLeader, ownedBatches, userProfile?.batch_id]);
+
+  const accessibleFileBatches = useMemo(() => {
+    if (isAdminRole || isHrRole) return batches;
+    if (isMentor) {
+      const mb = batches.filter((b) => b.mentor_id === userProfile?.id || b.mentor_ids?.includes(userProfile?.id) || ownedBatchIds.has(b.id));
+      return mb.length > 0 ? mb : ownedBatches;
+    }
+    if (isTeamLeader || currentRole === "intern") {
+      const userBatch = batches.find((b) => b.id === userProfile?.batch_id);
+      return userBatch ? [userBatch] : [];
+    }
+    return batches;
+  }, [batches, currentRole, isAdminRole, isHrRole, isMentor, isTeamLeader, ownedBatchIds, ownedBatches, userProfile?.batch_id, userProfile?.id]);
+
+  const selectedEscalationBatch = useMemo(() => {
+    const targetId = batchEscalationForm.batch_id || escalationBatchOptions[0]?.id || "";
+    return escalationBatchOptions.find((batch) => batch.id === targetId) || null;
+  }, [batchEscalationForm.batch_id, escalationBatchOptions]);
+
+  const escalationBatchMembers = useMemo(() => {
+    if (!selectedEscalationBatch?.id) return [];
+    return profiles.filter((profile) => profile.batch_id === selectedEscalationBatch.id);
+  }, [profiles, selectedEscalationBatch?.id]);
+
+  const escalationAssigneeOptions = useMemo(() => {
+    if (!selectedEscalationBatch?.id) return [];
+    const linkedIds = [
+      selectedEscalationBatch.hr_id,
+      selectedEscalationBatch.mentor_id,
+      selectedEscalationBatch.tl_id,
+    ].filter(Boolean);
+    const candidates = profiles.filter((profile) => {
+      if (profile.id === sessionUser?.id) return false;
+      if (profile.role === "intern") return false;
+      if (profile.role === "super_admin") return true;
+      if (linkedIds.includes(profile.id)) return true;
+      if (profile.batch_id === selectedEscalationBatch.id && ["hr", "mentor", "team_leader"].includes(profile.role)) return true;
+      return false;
+    });
+    return candidates.filter((profile, index, list) => profile?.id && list.findIndex((item) => item.id === profile.id) === index);
+  }, [profiles, selectedEscalationBatch, sessionUser?.id]);
+
+  const selectedEscalationAssignee = useMemo(() => {
+    return escalationAssigneeOptions.find((profile) => profile.id === batchEscalationForm.assigned_to) || null;
+  }, [batchEscalationForm.assigned_to, escalationAssigneeOptions]);
 
   const allSupervisedSubmissions = useMemo(() => {
     return submissions.filter((s) => {
       const task = tasks.find((t) => t.id === s.task_id);
       if (!task) return false;
       if (isAdminRole) return true;
+      if (isHrRole) return ownedBatchIds.has(task.batch_id);
       if (isMentor) return ownedBatchIds.has(task.batch_id);
       if (isTeamLeader) return userProfile?.batch_id === task.batch_id;
       return false;
     });
-  }, [submissions, tasks, isAdminRole, isMentor, isTeamLeader, ownedBatchIds, userProfile?.batch_id]);
+  }, [submissions, tasks, isAdminRole, isHrRole, isMentor, isTeamLeader, ownedBatchIds, userProfile?.batch_id]);
 
   const pendingSubmissionsCount = useMemo(() => {
     return allSupervisedSubmissions.filter((s) => {
@@ -650,14 +800,11 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
   }, [allSupervisedSubmissions, tasks]);
 
   const mentorReviewCenterData = useMemo(() => {
-    const escalations = (batchWorkspaceData.escalations || []).filter((e) => {
-      if (isAdminRole) return true;
-      if (isMentor) return ownedBatchIds.has(e.batch_id);
-      if (isTeamLeader) return userProfile?.batch_id === e.batch_id;
-      return false;
+    const escalations = (accessibleEscalations || []).filter((e) => {
+      return e.created_by === sessionUser?.id || e.assigned_to === sessionUser?.id;
     });
     const openEscalations = escalations.filter((e) => e.status === "open");
-    const criticalEscalations = escalations.filter((e) => e.priority === "critical" || e.priority === "high");
+    const criticalEscalations = escalations.filter((e) => ["critical", "urgent", "high"].includes(e.priority));
     const resolvedEscalations = escalations.filter((e) => e.status === "resolved");
 
     return {
@@ -665,14 +812,16 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
       open: openEscalations,
       critical: criticalEscalations,
       resolved: resolvedEscalations,
+      raisedByMe: escalations.filter((e) => e.created_by === sessionUser?.id),
+      assignedToMe: escalations.filter((e) => e.assigned_to === sessionUser?.id),
       total: openEscalations.length,
     };
-  }, [batchWorkspaceData.escalations, isAdminRole, isMentor, isTeamLeader, ownedBatchIds, userProfile?.batch_id]);
+  }, [accessibleEscalations, sessionUser?.id]);
 
   const mentorAtRiskMembers = useMemo(() => {
-    if (!isMentor) return [];
+    if (!isAdminRole && !isHrRole && !isMentor) return [];
     const batchInterns = profiles.filter(
-      (p) => p.role === "intern" && ownedBatchIds.has(p.batch_id)
+      (p) => p.role === "intern" && (isAdminRole || ownedBatchIds.has(p.batch_id))
     );
     return batchInterns
       .map((intern) => {
@@ -701,7 +850,7 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
       })
       .filter((m) => m.riskLevel !== "good")
       .sort((a, b) => (a.riskLevel === "critical" ? -1 : 1));
-  }, [isMentor, profiles, ownedBatchIds, attendance, tasks]);
+  }, [isAdminRole, isHrRole, isMentor, profiles, ownedBatchIds, attendance, tasks]);
 
   const filteredTaskSubmissions = useMemo(() => {
     return allSupervisedSubmissions.filter((s) => {
@@ -733,6 +882,8 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
     if (reviewCenterTab === "open") list = mentorReviewCenterData.open;
     else if (reviewCenterTab === "critical") list = mentorReviewCenterData.critical;
     else if (reviewCenterTab === "resolved") list = mentorReviewCenterData.resolved;
+    else if (reviewCenterTab === "mine") list = mentorReviewCenterData.raisedByMe;
+    else if (reviewCenterTab === "assigned") list = mentorReviewCenterData.assignedToMe;
 
     return list.filter((e) => {
       if (reviewCenterBatchFilter !== "all" && e.batch_id !== reviewCenterBatchFilter) return false;
@@ -859,112 +1010,29 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
     return visibleProfiles;
   }, [isAdminRole, isHrRole, isMentor, isTeamLeader, ownedBatchIds, visibleProfiles]);
 
+  const hrAssignableMentors = useMemo(() => {
+    if (!isHrRole) return [];
+    const mentorIdsFromHrBatches = new Set(
+      batches
+        .filter((batch) => ownedBatchIds.has(batch.id))
+        .map((batch) => batch.mentor_id || batch.mentor?.id)
+        .filter(Boolean)
+    );
+    return profiles
+      .filter(
+        (profile) =>
+          profile.role === "mentor" &&
+          (ownedBatchIds.has(profile.batch_id) || mentorIdsFromHrBatches.has(profile.id))
+      )
+      .filter((profile, index, list) => profile?.id && list.findIndex((item) => item.id === profile.id) === index);
+  }, [batches, isHrRole, ownedBatchIds, profiles]);
+
   const chatContacts = useMemo(() => {
-    if (!sessionUser?.id || !userProfile) return [];
-    if (isAdminRole) {
-      return visibleProfiles.filter(
-        (p) => p.id !== sessionUser.id && ["hr", "mentor", "team_leader"].includes(p.role)
-      );
-    }
-
-    const isAssignedMemberToMentor = (profile) => {
-      if (profile.role !== "intern") return false;
-      return (
-        ownedBatchIds.has(profile.batch_id) ||
-        profile.assigned_mentor_id === sessionUser.id ||
-        batches.some((b) => b.mentor_id === sessionUser.id && b.id === profile.batch_id)
-      );
-    };
-
-    const isAssignedTlToMentor = (profile) => {
-      if (profile.role !== "team_leader") return false;
-      return (
-        ownedBatchIds.has(profile.batch_id) ||
-        profile.assigned_mentor_id === sessionUser.id ||
-        batches.some((b) => b.mentor_id === sessionUser.id && (b.tl_id === profile.id || b.id === profile.batch_id))
-      );
-    };
-
-    const isAssignedMemberToTl = (profile) => {
-      if (profile.role !== "intern") return false;
-      return (
-        profile.batch_id === userProfile.batch_id ||
-        profile.assigned_tl_id === sessionUser.id ||
-        batches.some((b) => b.tl_id === sessionUser.id && b.id === profile.batch_id)
-      );
-    };
-
-    // 1. HR Manager: Can chat with Mentors, TLs, and Members (Interns)
-    if (isHrRole) {
-      return visibleProfiles.filter(
-        (p) => p.id !== sessionUser.id && ["mentor", "team_leader", "intern"].includes(p.role)
-      );
-    }
-
-    // 2. Mentor: Can chat with HR, Assigned TLs, and Assigned Members (PRD §25: No random cross-batch chat)
-    if (isMentor) {
-      return visibleProfiles.filter((p) => {
-        if (p.id === sessionUser.id) return false;
-        if (p.role === "hr") return true;
-        if (isAssignedTlToMentor(p)) return true;
-        if (isAssignedMemberToMentor(p)) return true;
-        return false;
-      });
-    }
-
-    // 3. Team Leader: Can chat with HR, Assigned Mentor, and Assigned Members in same batch
-    if (isTeamLeader) {
-      return visibleProfiles.filter((p) => {
-        if (p.id === sessionUser.id) return false;
-        if (p.role === "hr") return true;
-        if (
-          p.role === "mentor" &&
-          (p.id === userProfile.assigned_mentor_id ||
-            ownedBatchIds.has(p.batch_id) ||
-            batches.some((b) => b.id === userProfile.batch_id && b.mentor_id === p.id))
-        ) {
-          return true;
-        }
-        if (isAssignedMemberToTl(p)) return true;
-        return false;
-      });
-    }
-
-    // 4. Member / Intern: Can ONLY chat with HR, Assigned Mentor, and Assigned TL (PRD §25: STRICTLY no random other batch members)
-    if (currentRole === "intern") {
-      const myBatch = batches.find((b) => b.id === userProfile.batch_id);
-      return visibleProfiles.filter((p) => {
-        if (p.id === sessionUser.id) return false;
-        if (p.role === "hr") return true;
-        if (
-          p.role === "mentor" &&
-          (p.id === userProfile.assigned_mentor_id || p.id === myBatch?.mentor_id)
-        ) {
-          return true;
-        }
-        if (
-          p.role === "team_leader" &&
-          (p.id === userProfile.assigned_tl_id || p.id === myBatch?.tl_id || p.batch_id === userProfile.batch_id)
-        ) {
-          return true;
-        }
-        return false;
-      });
-    }
-
-    return [];
-  }, [
-    isAdminRole,
-    isHrRole,
-    isMentor,
-    isTeamLeader,
-    currentRole,
-    sessionUser?.id,
-    userProfile,
-    visibleProfiles,
-    ownedBatchIds,
-    batches,
-  ]);
+    if (!sessionUser?.id || !userProfile || !canAccessDirectChat) return [];
+    return profiles
+      .filter((p) => p?.id && p.id !== sessionUser.id)
+      .filter((p, index, list) => list.findIndex((item) => item.id === p.id) === index);
+  }, [sessionUser?.id, userProfile, canAccessDirectChat, profiles]);
 
   const availableChatBatches = useMemo(() => {
     return batches.filter(
@@ -972,21 +1040,137 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
     );
   }, [batches, isAdminRole, isHrRole, ownedBatchIds, userProfile?.batch_id]);
 
+  const availableChatBatchIds = useMemo(() => availableChatBatches.map((batch) => batch.id).filter(Boolean), [availableChatBatches]);
+
+  const batchNotificationMeta = useMemo(() => {
+    const meta = {};
+    (notifications || []).forEach((item) => {
+      const batchId =
+        item?.metadata?.batch_id ||
+        (() => {
+          try {
+            const url = new URL(item?.link_url || "", "https://texweb.local");
+            return url.searchParams.get("batch_id");
+          } catch {
+            return "";
+          }
+        })();
+      if (!batchId) return;
+      const existing = meta[batchId] || { unreadCount: 0, lastMessageTime: 0, lastMessagePreview: "" };
+      const itemTime = chatTimestamp(item.created_at);
+      meta[batchId] = {
+        unreadCount: existing.unreadCount + (item.is_read ? 0 : 1),
+        lastMessageTime: Math.max(existing.lastMessageTime || 0, itemTime),
+        lastMessagePreview: itemTime >= (existing.lastMessageTime || 0) ? item.title || item.message || "New notification" : existing.lastMessagePreview,
+      };
+    });
+    return meta;
+  }, [notifications]);
+
+  // Sort batches dynamically: Most recent message appears on top (WhatsApp style)
+  const sortedChatBatches = useMemo(() => {
+    return [...availableChatBatches].sort((a, b) => {
+      const timeA = Math.max(
+        chatTimestamp(batchChatMeta[a.id]?.lastMessageTime),
+        chatTimestamp(batchNotificationMeta[a.id]?.lastMessageTime),
+        chatTimestamp(a.updated_at || a.created_at)
+      );
+      const timeB = Math.max(
+        chatTimestamp(batchChatMeta[b.id]?.lastMessageTime),
+        chatTimestamp(batchNotificationMeta[b.id]?.lastMessageTime),
+        chatTimestamp(b.updated_at || b.created_at)
+      );
+      return timeB - timeA;
+    });
+  }, [availableChatBatches, batchChatMeta, batchNotificationMeta]);
+
   const filteredChatBatches = useMemo(() => {
-    if (!chatSearchQuery.trim()) return availableChatBatches;
+    if (!chatSearchQuery.trim()) return sortedChatBatches;
     const q = chatSearchQuery.toLowerCase();
-    return availableChatBatches.filter(
+    return sortedChatBatches.filter(
       (b) => b.name?.toLowerCase().includes(q) || b.domain?.toLowerCase().includes(q)
     );
-  }, [availableChatBatches, chatSearchQuery]);
+  }, [sortedChatBatches, chatSearchQuery]);
+
+  // Sort contacts dynamically: Most recent message appears on top (WhatsApp style)
+  const sortedChatContacts = useMemo(() => {
+    return [...chatContacts].sort((a, b) => {
+      const timeA = chatTimestamp(directChatMeta[a.id]?.lastMessageTime);
+      const timeB = chatTimestamp(directChatMeta[b.id]?.lastMessageTime);
+      if (timeA !== timeB) return timeB - timeA;
+      return (a.full_name || "").localeCompare(b.full_name || "");
+    });
+  }, [chatContacts, directChatMeta]);
 
   const filteredChatContacts = useMemo(() => {
-    if (!chatSearchQuery.trim()) return chatContacts;
+    if (!chatSearchQuery.trim()) return sortedChatContacts;
     const q = chatSearchQuery.toLowerCase();
-    return chatContacts.filter(
-      (c) => c.full_name?.toLowerCase().includes(q) || c.email?.toLowerCase().includes(q) || c.role?.toLowerCase().includes(q)
+    return sortedChatContacts.filter(
+      (c) =>
+        c.full_name?.toLowerCase().includes(q) ||
+        c.email?.toLowerCase().includes(q) ||
+        c.role?.toLowerCase().includes(q) ||
+        c.domain?.toLowerCase().includes(q)
     );
-  }, [chatContacts, chatSearchQuery]);
+  }, [sortedChatContacts, chatSearchQuery]);
+
+  useEffect(() => {
+    if (!sessionUser?.id || availableChatBatchIds.length === 0) {
+      setBatchChatMeta({});
+      return undefined;
+    }
+    let cancelled = false;
+    async function loadBatchChatSummary() {
+      const rows = await getBatchMessageSummary(availableChatBatchIds);
+      if (cancelled) return;
+      const nextMeta = {};
+      (rows || []).forEach((item) => {
+        if (!item?.batch_id) return;
+        const existing = nextMeta[item.batch_id];
+        if (existing && chatTimestamp(existing.lastMessageTime) >= chatTimestamp(item.created_at)) return;
+        nextMeta[item.batch_id] = {
+          lastMessageTime: item.created_at,
+          lastMessagePreview: chatPreview(item),
+          lastMessageSenderId: item.sender_id || "",
+        };
+      });
+      setBatchChatMeta(nextMeta);
+    }
+    loadBatchChatSummary();
+    return () => {
+      cancelled = true;
+    };
+  }, [sessionUser?.id, availableChatBatchIds]);
+
+  useEffect(() => {
+    if (!sessionUser?.id || !canAccessDirectChat) {
+      setDirectChatMeta({});
+      return undefined;
+    }
+    let cancelled = false;
+    async function loadDirectChatSummary() {
+      const rows = await getDirectMessageSummary(sessionUser.id);
+      if (cancelled) return;
+      const nextMeta = {};
+      (rows || []).forEach((item) => {
+        const otherId = item.sender_id === sessionUser.id ? item.receiver_id : item.sender_id;
+        if (!otherId) return;
+        const existing = nextMeta[otherId] || { unreadCount: 0, lastMessageTime: 0, lastMessagePreview: "" };
+        const itemTime = chatTimestamp(item.created_at);
+        nextMeta[otherId] = {
+          unreadCount: existing.unreadCount + (item.receiver_id === sessionUser.id && !item.is_read ? 1 : 0),
+          lastMessageTime: itemTime > chatTimestamp(existing.lastMessageTime) ? item.created_at : existing.lastMessageTime,
+          lastMessagePreview: itemTime > chatTimestamp(existing.lastMessageTime) ? chatPreview(item) : existing.lastMessagePreview,
+          lastMessageSenderId: itemTime > chatTimestamp(existing.lastMessageTime) ? item.sender_id : existing.lastMessageSenderId,
+        };
+      });
+      setDirectChatMeta(nextMeta);
+    }
+    loadDirectChatSummary();
+    return () => {
+      cancelled = true;
+    };
+  }, [sessionUser?.id, canAccessDirectChat]);
 
   const combinedMembers = useMemo(() => {
     return memberDirectory.map((profile) => {
@@ -1047,10 +1231,23 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
 
   const selectedBatchMembers = useMemo(() => {
     if (!selectedBatch?.id) return [];
-    return profiles
-      .filter((profile) => profile.batch_id === selectedBatch.id || selectedBatch.members?.some((member) => member.id === profile.id))
+    const members = profiles.filter((profile) =>
+      profile.batch_id === selectedBatch.id ||
+      selectedBatch.members?.some((member) => member.id === profile.id) ||
+      selectedBatch.hr_id === profile.id ||
+      selectedBatch.mentor_id === profile.id ||
+      selectedBatch.team_leader_id === profile.id ||
+      selectedBatch.trainer_id === profile.id
+    );
+
+    // If current logged-in user is part of the batch workspace or is viewing this batch chat (Admin, HR, Mentor, TL, intern)
+    if (userProfile?.id && !members.some((m) => m.id === userProfile.id)) {
+      members.push(userProfile);
+    }
+
+    return members
       .filter((profile, index, list) => profile?.id && list.findIndex((item) => item.id === profile.id) === index);
-  }, [profiles, selectedBatch]);
+  }, [profiles, selectedBatch, userProfile]);
 
   const selectedBatchTasks = useMemo(() => {
     if (!selectedBatch?.id) return [];
@@ -1072,46 +1269,317 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
     return dailyUpdates.filter((update) => update.batch_id === selectedBatch.id || update.batch?.id === selectedBatch.id);
   }, [dailyUpdates, selectedBatch?.id]);
 
+  const selectedMemberProfile = useMemo(() => {
+    if (!selectedMemberModal?.id) return null;
+    const liveProfile = profiles.find((profile) => profile.id === selectedMemberModal.id);
+    const batch = batches.find((item) => item.id === (liveProfile?.batch_id || selectedMemberModal.batch_id));
+    return {
+      ...selectedMemberModal,
+      ...(liveProfile || {}),
+      batch_id: liveProfile?.batch_id || selectedMemberModal.batch_id || "",
+      batch_name: batch?.name || liveProfile?.batch_name || selectedMemberModal.batch_name || "",
+    };
+  }, [batches, profiles, selectedMemberModal]);
+
+  const selectedMemberBatch = useMemo(() => {
+    if (!selectedMemberProfile?.batch_id) return null;
+    return batches.find((batch) => batch.id === selectedMemberProfile.batch_id) || null;
+  }, [batches, selectedMemberProfile?.batch_id]);
+
+  const selectedMemberAssignedBatches = useMemo(() => {
+    if (!selectedMemberProfile?.id || selectedMemberProfile.role !== "hr") return [];
+    return batches
+      .filter((batch) => batch.hr_id === selectedMemberProfile.id || batch.hr?.id === selectedMemberProfile.id)
+      .map((batch) => ({
+        ...batch,
+        assigned_mentor: resolveBatchLead(batch, "mentor"),
+        assigned_tl: resolveBatchLead(batch, "team_leader"),
+        intern_count: profiles.filter((profile) => profile.role === "intern" && profile.batch_id === batch.id).length,
+        team_leader_count: profiles.filter((profile) => profile.role === "team_leader" && profile.batch_id === batch.id).length,
+      }));
+  }, [batches, profiles, selectedMemberProfile?.id, selectedMemberProfile?.role]);
+
+  const selectedMemberResponsibilityMap = useMemo(() => {
+    if (!selectedMemberBatch) return null;
+    return {
+      hr: resolveBatchLead(selectedMemberBatch, "hr"),
+      mentor:
+        resolveBatchLead(selectedMemberBatch, "mentor") ||
+        profiles.find((profile) => profile.id === selectedMemberProfile?.assigned_mentor_id) ||
+        null,
+      tl:
+        resolveBatchLead(selectedMemberBatch, "team_leader") ||
+        profiles.find((profile) => profile.id === selectedMemberProfile?.assigned_tl_id) ||
+        null,
+    };
+  }, [profiles, selectedMemberBatch, selectedMemberProfile?.assigned_mentor_id, selectedMemberProfile?.assigned_tl_id]);
+
+  const selectedMemberTasks = useMemo(() => {
+    if (!selectedMemberProfile?.id) return [];
+    return tasks.filter(
+      (task) =>
+        task.assigned_to === selectedMemberProfile.id ||
+        task.assigned_to_profile?.id === selectedMemberProfile.id ||
+        (selectedMemberProfile.role === "intern" &&
+          task.visible_to_interns &&
+          task.batch_id &&
+          task.batch_id === selectedMemberProfile.batch_id)
+    );
+  }, [selectedMemberProfile, tasks]);
+
+  const selectedMemberSubmissions = useMemo(() => {
+    if (!selectedMemberProfile?.id) return [];
+    return submissions.filter(
+      (submission) =>
+        submission.intern_id === selectedMemberProfile.id ||
+        submission.user_id === selectedMemberProfile.id ||
+        submission.intern?.id === selectedMemberProfile.id ||
+        selectedMemberTasks.some((task) => task.id === submission.task_id)
+    );
+  }, [selectedMemberProfile?.id, selectedMemberTasks, submissions]);
+
+  const selectedMemberReviews = useMemo(() => {
+    if (!selectedMemberProfile?.id) return [];
+    const submissionIds = new Set(selectedMemberSubmissions.map((submission) => submission.id).filter(Boolean));
+    return taskReviews.filter(
+      (review) =>
+        review.user_id === selectedMemberProfile.id ||
+        review.submission?.intern_id === selectedMemberProfile.id ||
+        review.submission?.user_id === selectedMemberProfile.id ||
+        submissionIds.has(review.submission_id)
+    );
+  }, [selectedMemberProfile?.id, selectedMemberSubmissions, taskReviews]);
+
+  const selectedMemberAttendance = useMemo(() => {
+    if (!selectedMemberProfile?.id) return [];
+    return attendance.filter((item) => item.user_id === selectedMemberProfile.id);
+  }, [attendance, selectedMemberProfile?.id]);
+
   const selectedBatchActivity = useMemo(() => {
     if (!selectedBatch?.id) return [];
+
+    // 1. Audit logs for this batch
     const batchLogs = auditLogs
       .filter((log) => {
         const metadataBatchId = log.metadata?.batch_id || log.metadata?.batchId;
-        return log.entity_id === selectedBatch.id || metadataBatchId === selectedBatch.id || log.summary?.toLowerCase().includes(selectedBatch.name?.toLowerCase() || "");
+        return (
+          log.entity_id === selectedBatch.id ||
+          metadataBatchId === selectedBatch.id ||
+          (log.summary && log.summary.toLowerCase().includes(selectedBatch.name?.toLowerCase() || ""))
+        );
       })
       .map((log) => ({
-        id: log.id,
-        type: log.action || "activity",
+        id: `audit-${log.id}`,
+        category: "audit",
+        categoryLabel: "Audit Log",
         title: log.summary || log.action || "Activity recorded",
+        description: log.action ? `Action: ${log.action}` : "",
         meta: log.actor?.full_name || ROLE_LABELS[log.actor_role] || "System",
         date: log.created_at,
+        badgeColor: "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300",
       }));
-    const taskItems = selectedBatchTasks.slice(0, 8).map((task) => ({
+
+    // 2. Announcements
+    const announcementItems = (batchWorkspaceData.announcements || []).map((ann) => ({
+      id: `ann-${ann.id}`,
+      category: "announcements",
+      categoryLabel: "Announcement",
+      title: ann.title || "Batch Announcement",
+      description: ann.body || "",
+      meta: `Posted by ${ann.author?.full_name || "Lead"}`,
+      file: ann.file_name ? { name: ann.file_name, url: ann.file_url } : null,
+      date: ann.created_at,
+      badgeColor: "bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-950/40 dark:text-purple-300 dark:border-purple-800",
+    }));
+
+    // 3. Resources / Files
+    const resourceItems = (batchWorkspaceData.resources || []).map((res) => ({
+      id: `res-${res.id}`,
+      category: "files",
+      categoryLabel: "File / Resource",
+      title: res.title || res.file_name || "Resource Shared",
+      description: res.description || (res.category ? `Category: ${res.category.replaceAll("_", " ")}` : ""),
+      meta: `Shared by ${res.uploader?.full_name || "Instructor"}`,
+      file: res.file_name ? { name: res.file_name, url: res.file_url } : null,
+      date: res.created_at,
+      badgeColor: "bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/40 dark:text-blue-300 dark:border-blue-800",
+    }));
+
+    // 4. Tasks
+    const taskItems = selectedBatchTasks.map((task) => ({
       id: `task-${task.id}`,
-      type: "task",
-      title: `Task ${task.status || "updated"}: ${task.title}`,
-      meta: task.assigned_to_profile?.full_name || "Batch task",
-      date: task.updated_at || task.created_at,
+      category: "tasks",
+      categoryLabel: "Task",
+      title: `Task: ${task.title}`,
+      description: task.description || "",
+      meta: `Assigned to ${task.assigned_to_profile?.full_name || "Whole Batch"} • Priority: ${task.priority || "medium"} • Status: ${task.status || "active"}`,
+      date: task.created_at || task.updated_at,
+      badgeColor: "bg-red-50 text-red-700 border-red-200 dark:bg-red-950/40 dark:text-red-400 dark:border-red-900",
     }));
-    const meetingItems = selectedBatchMeetings.slice(0, 8).map((meeting) => ({
+
+    // 5. Intern Submissions
+    const submissionItems = submissions
+      .filter((sub) => {
+        const t = tasks.find((x) => x.id === sub.task_id);
+        return t && t.batch_id === selectedBatch.id;
+      })
+      .map((sub) => {
+        const t = tasks.find((x) => x.id === sub.task_id);
+        return {
+          id: `sub-${sub.id}`,
+          category: "submissions",
+          categoryLabel: "Work Submission",
+          title: `Submission for "${t?.title || "Task"}"`,
+          description: sub.notes || (sub.submission_url ? `URL: ${sub.submission_url}` : ""),
+          meta: `Submitted by ${sub.intern?.full_name || "Intern"} • Status: ${sub.status || "submitted"}`,
+          date: sub.submitted_at || sub.created_at,
+          badgeColor: "bg-indigo-50 text-indigo-700 border-indigo-200 dark:bg-indigo-950/40 dark:text-indigo-300 dark:border-indigo-800",
+        };
+      });
+
+    // 6. Task Reviews & Feedback
+    const reviewItems = taskReviews
+      .filter((rev) => {
+        const sub = submissions.find((s) => s.id === rev.submission_id);
+        const t = sub ? tasks.find((x) => x.id === sub.task_id) : null;
+        return t && t.batch_id === selectedBatch.id;
+      })
+      .map((rev) => ({
+        id: `rev-${rev.id}`,
+        category: "reviews",
+        categoryLabel: "Task Review",
+        title: `Task Graded: ${rev.status || "Reviewed"}`,
+        description: rev.feedback || "",
+        meta: `Rating: ${rev.rating || 5}/5 by ${rev.reviewer?.full_name || "Reviewer"}`,
+        date: rev.created_at,
+        badgeColor: "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800",
+      }));
+
+    // 7. Meetings & Classes
+    const meetingItems = selectedBatchMeetings.map((meeting) => ({
       id: `meeting-${meeting.id}`,
-      type: "meeting",
-      title: meeting.title,
-      meta: meeting.attendee_id ? "Personal meeting" : "Batch meeting",
-      date: meeting.scheduled_at || meeting.created_at,
+      category: "meetings",
+      categoryLabel: "Class / Meeting",
+      title: `Meeting: ${meeting.title}`,
+      description: meeting.topic ? `Topic: ${meeting.topic}` : "",
+      meta: `${meeting.attendee_id ? "1:1 Session" : "Batch Class"} • Scheduled: ${localDate(meeting.scheduled_at)}`,
+      date: meeting.created_at || meeting.scheduled_at,
+      badgeColor: "bg-cyan-50 text-cyan-700 border-cyan-200 dark:bg-cyan-950/40 dark:text-cyan-300 dark:border-cyan-800",
     }));
-    const reportItems = selectedBatchDailyUpdates.slice(0, 8).map((update) => ({
+
+    // 8. Daily Reports
+    const reportItems = selectedBatchDailyUpdates.map((update) => ({
       id: `daily-${update.id}`,
-      type: "report",
-      title: update.reviewed_at ? "Daily report reviewed" : "Daily report submitted",
-      meta: update.tl?.full_name || "Team leader",
+      category: "reports",
+      categoryLabel: update.reviewed_at ? "Report Reviewed" : "Daily Report",
+      title: `Daily Report from ${update.tl?.full_name || "Team Leader"}`,
+      description: update.summary || update.completed_tasks || "",
+      meta: `TL: ${update.tl?.full_name || "Team Leader"}${update.reviewer_comment ? ` • Feedback: "${update.reviewer_comment}"` : ""}`,
       date: update.reviewed_at || update.created_at,
+      badgeColor: "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800",
     }));
-    return [...batchLogs, ...taskItems, ...meetingItems, ...reportItems]
+
+    // 9. Escalations
+    const escalationItems = (batchWorkspaceData.escalations || []).map((esc) => ({
+      id: `esc-${esc.id}`,
+      category: "escalations",
+      categoryLabel: "Escalation",
+      title: `Escalation: ${esc.issue || "Issue Raised"}`,
+      description: esc.description || "",
+      meta: `Priority: ${esc.priority || "medium"} • Status: ${esc.status || "open"} • Assigned to ${esc.assignee?.full_name || "Lead"}`,
+      date: esc.created_at,
+      badgeColor: "bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950/40 dark:text-rose-300 dark:border-rose-900",
+    }));
+
+    // 10. Member Assignment History
+    const historyItems = (batchWorkspaceData.history || []).map((item) => ({
+      id: `hist-${item.id}`,
+      category: "members",
+      categoryLabel: "Member Update",
+      title: `${(item.assignment_type || "assignment").replaceAll("_", " ")} recorded`,
+      description: item.note || "",
+      meta: item.new_user?.full_name || item.member?.full_name || "Batch member update",
+      date: item.created_at,
+      badgeColor: "bg-teal-50 text-teal-700 border-teal-200 dark:bg-teal-950/40 dark:text-teal-300 dark:border-teal-800",
+    }));
+
+    // 11. Batch Initialized
+    const batchCreatedItem = selectedBatch.created_at
+      ? [
+          {
+            id: `batch-init-${selectedBatch.id}`,
+            category: "batch",
+            categoryLabel: "Cohort Initialized",
+            title: `Batch "${selectedBatch.name}" was initialized`,
+            description: `Domain: ${selectedBatch.domain === "web_dev" ? "Web Development" : selectedBatch.domain || "Technology"} • Starts: ${selectedBatch.starts_at || "Immediate"}`,
+            meta: "Batch lifecycle started",
+            date: selectedBatch.created_at,
+            badgeColor: "bg-red-50 text-red-700 border-red-200 dark:bg-red-950/40 dark:text-red-400 dark:border-red-900",
+          },
+        ]
+      : [];
+
+    return [
+      ...batchCreatedItem,
+      ...batchLogs,
+      ...announcementItems,
+      ...resourceItems,
+      ...taskItems,
+      ...submissionItems,
+      ...reviewItems,
+      ...meetingItems,
+      ...reportItems,
+      ...escalationItems,
+      ...historyItems,
+    ]
       .filter((item) => item.date)
-      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-      .slice(0, 12);
-  }, [auditLogs, selectedBatch, selectedBatchDailyUpdates, selectedBatchMeetings, selectedBatchTasks]);
+      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  }, [
+    auditLogs,
+    batchWorkspaceData.announcements,
+    batchWorkspaceData.escalations,
+    batchWorkspaceData.history,
+    batchWorkspaceData.resources,
+    selectedBatch,
+    selectedBatchDailyUpdates,
+    selectedBatchMeetings,
+    selectedBatchTasks,
+    submissions,
+    taskReviews,
+    tasks,
+  ]);
+
+  const filteredBatchActivities = useMemo(() => {
+    let list = selectedBatchActivity;
+    if (batchActivityCategory !== "all") {
+      if (batchActivityCategory === "tasks_and_work") {
+        list = list.filter((item) => ["tasks", "submissions", "reviews"].includes(item.category));
+      } else if (batchActivityCategory === "governance") {
+        list = list.filter((item) => ["escalations", "members", "audit", "batch"].includes(item.category));
+      } else {
+        list = list.filter((item) => item.category === batchActivityCategory);
+      }
+    }
+    if (batchActivitySearch.trim()) {
+      const q = batchActivitySearch.toLowerCase();
+      list = list.filter(
+        (item) =>
+          item.title?.toLowerCase().includes(q) ||
+          item.description?.toLowerCase().includes(q) ||
+          item.meta?.toLowerCase().includes(q) ||
+          item.categoryLabel?.toLowerCase().includes(q)
+      );
+    }
+    return list;
+  }, [selectedBatchActivity, batchActivityCategory, batchActivitySearch]);
+
+  const totalBatchActivitiesCount = filteredBatchActivities.length;
+  const totalBatchActivityPages = Math.max(1, Math.ceil(totalBatchActivitiesCount / batchActivityPerPage));
+  const safeBatchActivityPage = Math.min(Math.max(1, batchActivityPage), totalBatchActivityPages);
+  const startBatchActivityIdx = totalBatchActivitiesCount === 0 ? 0 : (safeBatchActivityPage - 1) * batchActivityPerPage;
+  const paginatedBatchActivities = useMemo(() => {
+    return filteredBatchActivities.slice(startBatchActivityIdx, startBatchActivityIdx + batchActivityPerPage);
+  }, [filteredBatchActivities, startBatchActivityIdx, batchActivityPerPage]);
 
   const selectedBatchHealth = useMemo(() => {
     const totalTasks = selectedBatchTasks.length;
@@ -1192,25 +1660,76 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
     return [selectedBatch.hr_id, selectedBatch.mentor_id, selectedBatch.tl_id].includes(sessionUser.id);
   }, [isAdminRole, selectedBatch, sessionUser?.id]);
 
+  // Only Admin, HR, and Mentor can create announcements or upload resources per batch
+  const canPostBatchNotice = useMemo(() => {
+    if (!selectedBatch || !sessionUser?.id) return false;
+    if (isAdminRole || isHrRole) return true;
+    if (isMentor) {
+      if (selectedBatch.mentor_id === sessionUser.id) return true;
+      if (ownedBatches.some((b) => b.id === selectedBatch.id)) return true;
+    }
+    return false;
+  }, [isAdminRole, isHrRole, isMentor, selectedBatch, sessionUser?.id, ownedBatches]);
+
+  const activeBatchWorkspaceData = useMemo(() => {
+    if (!selectedBatch?.id) return emptyBatchWorkspaceData();
+    if (batchWorkspaceBatchId === selectedBatch.id) return batchWorkspaceData;
+    return batchWorkspaceCacheRef.current[selectedBatch.id] || emptyBatchWorkspaceData();
+  }, [batchWorkspaceBatchId, batchWorkspaceData, selectedBatch?.id]);
+
+  const isSelectedBatchWorkspaceLoading = Boolean(
+    selectedBatch?.id && loadingBatchWorkspaceId === selectedBatch.id
+  );
+
+  useEffect(() => {
+    if (!batchWorkspaceBatchId || loadingBatchWorkspaceId === batchWorkspaceBatchId) return;
+    batchWorkspaceCacheRef.current[batchWorkspaceBatchId] = batchWorkspaceData;
+  }, [batchWorkspaceBatchId, batchWorkspaceData, loadingBatchWorkspaceId]);
+
   const selectedBatchAnnouncements = useMemo(() => {
     if (!selectedBatch?.id) return [];
-    const liveAnnouncements = (batchWorkspaceData.announcements || []).map((item) => ({
+    return (activeBatchWorkspaceData.announcements || []).map((item) => ({
       ...item,
-      message: item.body,
+      message: item.body || item.message,
       source: "batch",
     }));
-    const notificationAnnouncements = notifications
-      .filter((item) => item.link_url?.includes("section=batches") || item.link_url?.includes("section=batch_workspace") || item.message?.toLowerCase().includes(selectedBatch.name?.toLowerCase() || ""))
-      .slice(0, 5);
-    return [...liveAnnouncements, ...notificationAnnouncements].slice(0, 8);
-  }, [batchWorkspaceData.announcements, notifications, selectedBatch]);
+  }, [activeBatchWorkspaceData.announcements, selectedBatch]);
 
-  async function refreshBatchWorkspace(batchId = selectedBatch?.id) {
+  async function refreshBatchWorkspace(batchId = selectedBatch?.id, options = {}) {
     if (!batchId) return;
+    const cached = batchWorkspaceCacheRef.current[batchId];
+    const silent = Boolean(options.silent);
+    if (cached && !silent) {
+      setBatchWorkspaceData(cached);
+      setBatchWorkspaceBatchId(batchId);
+    } else if (!silent) {
+      setBatchWorkspaceData(emptyBatchWorkspaceData());
+      setBatchWorkspaceBatchId(batchId);
+    }
+
+    const requestId = `${batchId}:${Date.now()}:${Math.random()}`;
+    batchWorkspaceRequestRef.current = requestId;
+    if (!silent) setLoadingBatchWorkspaceId(batchId);
+
     const data = await getBatchWorkspace(batchId);
-    setBatchWorkspaceData(data);
+    batchWorkspaceCacheRef.current[batchId] = data;
+    if (batchWorkspaceRequestRef.current === requestId || selectedBatch?.id === batchId) {
+      setBatchWorkspaceData(data);
+      setBatchWorkspaceBatchId(batchId);
+      setLoadingBatchWorkspaceId((current) => (current === batchId ? "" : current));
+    }
+    return data;
   }
   const loadBatchWorkspaceData = refreshBatchWorkspace;
+
+  async function refreshAccessibleEscalations() {
+    const escalations = await getVisibleBatchEscalations();
+    setAccessibleEscalations(
+      (escalations || [])
+      .filter((item, index, list) => item?.id && list.findIndex((entry) => entry.id === item.id) === index)
+      .sort((a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime())
+    );
+  }
 
   const filteredMembers = useMemo(() => {
     let list = combinedMembers;
@@ -1347,18 +1866,94 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
   }, [certificates, memberFilter, searchQuery]);
 
   const filteredAuditLogs = useMemo(() => {
-    let list = auditLogs;
+    const knownEntityIds = new Set((auditLogs || []).map((l) => l.entity_id).filter(Boolean));
+
+    // A to Z Website & Portal Activities
+    const websiteLeadLogs = (leads || []).map((lead) => ({
+      id: `lead-${lead.id || lead.created_at}`,
+      entity_id: lead.id,
+      action: "website_inquiry",
+      summary: `Website inquiry from ${lead.full_name || lead.name || "Visitor"} (${lead.email || "No email"}) for ${lead.domain || lead.service || "General inquiry"}`,
+      actor: { full_name: lead.full_name || lead.name || "Website Lead", role: "lead" },
+      actor_role: "visitor",
+      source: "Website",
+      created_at: lead.created_at || new Date().toISOString(),
+    }));
+
+    const certificateLogs = (certificates || []).map((cert) => ({
+      id: `cert-${cert.id || cert.certificate_code}`,
+      entity_id: cert.id,
+      action: "certificate_issued",
+      summary: `Certificate issued for ${cert.intern_name} (${cert.certificate_code}) - Grade: ${cert.performance_grade || "A+"}`,
+      actor: { full_name: cert.issued_by_name || "HR Manager", role: "hr" },
+      actor_role: "hr",
+      source: "Portal",
+      created_at: cert.created_at || new Date().toISOString(),
+    }));
+
+    const memberLogs = (profiles || []).map((p) => ({
+      id: `profile-${p.id}`,
+      entity_id: p.id,
+      action: "user_registered",
+      summary: `Account registered: ${p.full_name} (${p.email}) as ${ROLE_LABELS[p.role] || p.role}`,
+      actor: { full_name: p.full_name, role: p.role },
+      actor_role: p.role,
+      source: "Auth",
+      created_at: p.created_at || new Date().toISOString(),
+    }));
+
+    const cmsLogs = (cmsVersions || []).map((v) => ({
+      id: `cms-${v.id || v.created_at}`,
+      entity_id: v.id,
+      action: "cms_updated",
+      summary: `Website block '${v.key}' published / updated`,
+      actor: v.editor || { full_name: "Admin", role: "super_admin" },
+      actor_role: "super_admin",
+      source: "Website CMS",
+      created_at: v.created_at || new Date().toISOString(),
+    }));
+
+    const batchLogs = (batches || []).map((b) => ({
+      id: `batch-${b.id}`,
+      entity_id: b.id,
+      action: "batch_created",
+      summary: `Batch '${b.name}' initialized (${b.domain === "web_dev" ? "Web Development" : b.domain})`,
+      actor: { full_name: "Super Admin", role: "super_admin" },
+      actor_role: "super_admin",
+      source: "Batches",
+      created_at: b.created_at || new Date().toISOString(),
+    }));
+
+    // Deduplicate against explicit auditLogs
+    const extraLogs = [
+      ...websiteLeadLogs,
+      ...certificateLogs,
+      ...memberLogs,
+      ...cmsLogs,
+      ...batchLogs,
+    ].filter((item) => !knownEntityIds.has(item.entity_id));
+
+    const normalizedAudit = (auditLogs || []).map((log) => ({
+      ...log,
+      source: log.source || (log.entity_type === "lead" ? "Website" : log.entity_type === "cms" ? "Website CMS" : "System"),
+    }));
+
+    let allLogs = [...normalizedAudit, ...extraLogs]
+      .filter((item) => item.created_at)
+      .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
-      list = list.filter(
+      allLogs = allLogs.filter(
         (a) =>
           a.action?.toLowerCase().includes(q) ||
           a.summary?.toLowerCase().includes(q) ||
-          a.actor?.full_name?.toLowerCase().includes(q)
+          a.actor?.full_name?.toLowerCase().includes(q) ||
+          a.source?.toLowerCase().includes(q)
       );
     }
-    return list;
-  }, [auditLogs, searchQuery]);
+    return allLogs;
+  }, [auditLogs, batches, certificates, cmsVersions, leads, profiles, searchQuery]);
 
   const filteredCmsContent = useMemo(() => {
     let list = cmsContent;
@@ -1506,28 +2101,33 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
     return currentSectionRecords.slice(startIndex, endIndex);
   }, [currentSectionRecords, startIndex, endIndex]);
 
-  const selectedContact = chatContacts.find((profile) => profile.id === selectedContactId);
+  const selectedContact = chatContacts.find((profile) => profile.id === selectedContactId) || profiles.find((profile) => profile.id === selectedContactId);
   const unreadCount = notifications.filter((item) => !item.is_read).length;
 
   const allowedSections = useMemo(() => {
     const sections = ["overview", "settings"];
     if (isMentor) {
       sections.push("review_center", "task_submissions", "at_risk_watchlist");
-    } else if (isTeamLeader || isAdminRole) {
+    } else if (isTeamLeader) {
       sections.push("task_submissions");
+    }
+    if (isAdminRole || isHrRole) {
+      sections.push("review_center", "at_risk_watchlist");
     }
     if (canSeeOperations) {
       if (!isHrRole) sections.push("tasks");
-      sections.push("daily_updates");
+      if (isMentor || isTeamLeader) sections.push("daily_updates");
       sections.push("classes", "attendance");
     }
     if (canViewAllTeam) sections.push("members");
     if (isHrRole) sections.push("hr_mentors", "hr_interns");
     if (canViewBatches) sections.push("batches", "batch_workspace");
+    if (!sections.includes("batch_workspace")) sections.push("batch_workspace");
+    sections.push("batch_files");
     if (canIssueCertificates) sections.push("certificates");
     if (canUseMessages) sections.push("chat");
     if (canUseAlerts) sections.push("alerts");
-    if (isAdminRole || isTeamLeader) sections.push("audit");
+    if (isAdminRole) sections.push("audit");
     return sections;
   }, [canIssueCertificates, canSeeOperations, canUseAlerts, canUseMessages, canViewAllTeam, canViewBatches, isAdminRole, isHrRole, isMentor, isTeamLeader]);
 
@@ -1553,18 +2153,18 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
     }
   }, [cmsForm]);
 
-  const metrics = useMemo(() => {
+  const dashboardMetrics = useMemo(() => {
+    const mentorCount = profiles.filter((member) => member.role === "mentor").length;
+    const internCount = profiles.filter((member) => ["intern", "team_leader"].includes(member.role)).length;
     if (isAdminRole) {
       return [
-        { label: "HR Managers", value: combinedMembers.length, sub: "Registered HR accounts", color: "text-gray-900 dark:text-white" },
-        { label: "Batches", value: batches.length, sub: "Active training batches", color: "text-red-600" },
-        { label: "Activity Logs", value: auditLogs.length, sub: "System events recorded", color: "text-blue-600" },
-        { label: "Status", value: "Active", sub: "Workspace operational", color: "text-emerald-600" },
+        { label: "Assigned Batches", value: batches.length, sub: "Cohorts assigned across domains", color: "text-gray-900 dark:text-white" },
+        { label: "HR Managers", value: profiles.filter((member) => member.role === "hr").length, sub: "HR Operations Team", color: "text-red-600" },
+        { label: "Mentors & Interns", value: mentorCount + internCount, sub: "Total technical workforce", color: "text-blue-600" },
+        { label: "Audit & Site Events", value: filteredAuditLogs.length, sub: "A to Z system & website activity", color: "text-emerald-600" },
       ];
     }
     if (isHrRole) {
-      const mentorCount = combinedMembers.filter((member) => member.role === "mentor").length;
-      const internCount = combinedMembers.filter((member) => ["intern", "team_leader"].includes(member.role)).length;
       return [
         { label: "Assigned Batches", value: batches.length, sub: "Cohorts assigned by Super Admin", color: "text-gray-900 dark:text-white" },
         { label: "Mentors", value: mentorCount, sub: "Mentors added batch by batch", color: "text-red-600" },
@@ -1588,7 +2188,9 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
       { label: canUseCrm ? "Website Client Leads" : "Meetings", value: canUseCrm ? leads.length : meetings.length, sub: canUseCrm ? "Inbound Contact & CRM Requests" : "Live sessions and check-ins", color: "text-blue-600" },
       { label: "Completed Deliverables", value: approvedTasks, sub: "Verified & Approved Milestones", color: "text-emerald-600" },
     ];
-  }, [auditLogs.length, batches.length, canUseCrm, certificates.length, combinedMembers, isAdminRole, isHrRole, isMentor, leads.length, meetings.length, ownedBatches.length, tasks]);
+  }, [batches.length, canUseCrm, certificates.length, combinedMembers, filteredAuditLogs.length, isAdminRole, isHrRole, isMentor, leads.length, meetings.length, ownedBatches.length, profiles, tasks]);
+
+  const metrics = dashboardMetrics;
 
   const dashboardAnalytics = useMemo(() => {
     const attendanceTotal = attendance.length || 0;
@@ -1623,23 +2225,23 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
     try {
       const role = profile?.role || "intern";
       const domain = profile?.domain;
-      const shouldLoadTasks = ["mentor", "team_leader", "intern"].includes(role);
-      const shouldLoadMeetings = ["hr", "mentor", "team_leader", "intern"].includes(role);
-      const shouldLoadAttendance = ["hr", "mentor", "team_leader", "intern"].includes(role);
-      const shouldLoadOperations = shouldLoadTasks || shouldLoadMeetings || shouldLoadAttendance;
+      const shouldLoadTasks = ["super_admin", "hr", "mentor", "team_leader", "intern"].includes(role);
+      const shouldLoadMeetings = ["super_admin", "hr", "mentor", "team_leader", "intern"].includes(role);
+      const shouldLoadAttendance = ["super_admin", "hr", "mentor", "team_leader", "intern"].includes(role);
+      const shouldLoadOperations = true;
       const shouldLoadPeople = ["super_admin", "hr", "mentor", "team_leader"].includes(role);
       const shouldLoadBatches = ["super_admin", "hr", "mentor", "team_leader", "intern"].includes(role);
-      const shouldLoadCrmSummary = ["sales", "sales_executive", "telecaller"].includes(domain);
-      const shouldLoadCertificates = role === "hr";
-      const shouldLoadGovernance = ["super_admin", "team_leader"].includes(role);
+      const shouldLoadCrmSummary = ["sales", "sales_executive", "telecaller"].includes(domain) || role === "super_admin";
+      const shouldLoadCertificates = role === "hr" || role === "super_admin";
+      const shouldLoadGovernance = role === "super_admin";
       const [leadsData, certsData, profilesData, notificationsData, batchesData, cmsData, cmsVersionsData, auditData, queueData] = await Promise.all([
         shouldLoadCrmSummary ? getCloudLeads() : Promise.resolve([]),
         shouldLoadCertificates ? getCertificates() : Promise.resolve([]),
         shouldLoadPeople ? getProfiles() : Promise.resolve([]),
         getNotifications(user.id),
         shouldLoadBatches ? getBatches(user.id, role) : Promise.resolve([]),
-        Promise.resolve([]),
-        Promise.resolve([]),
+        shouldLoadGovernance ? getCmsContent() : Promise.resolve([]),
+        shouldLoadGovernance ? getCmsVersions() : Promise.resolve([]),
         shouldLoadGovernance ? getAuditLogs() : Promise.resolve([]),
         shouldLoadGovernance ? getNotificationQueue() : Promise.resolve([]),
       ]);
@@ -1780,15 +2382,35 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
         .channel(`admin-governance-${sessionUser.id}`)
         .on("postgres_changes", { event: "*", schema: "public", table: "profiles" }, () => loadDashboardData())
         .on("postgres_changes", { event: "*", schema: "public", table: "batches" }, () => loadDashboardData())
-        .on("postgres_changes", { event: "*", schema: "public", table: "batch_messages" }, () => refreshBatchWorkspace())
-        .on("postgres_changes", { event: "*", schema: "public", table: "batch_announcements" }, () => refreshBatchWorkspace())
-        .on("postgres_changes", { event: "*", schema: "public", table: "batch_resources" }, () => refreshBatchWorkspace())
-        .on("postgres_changes", { event: "*", schema: "public", table: "batch_escalations" }, () => refreshBatchWorkspace())
-        .on("postgres_changes", { event: "*", schema: "public", table: "batch_assignment_history" }, () => refreshBatchWorkspace())
+        .on("postgres_changes", { event: "*", schema: "public", table: "tasks" }, () => loadDashboardData())
+        .on("postgres_changes", { event: "*", schema: "public", table: "task_submissions" }, () => loadDashboardData())
+        .on("postgres_changes", { event: "*", schema: "public", table: "task_reviews" }, () => loadDashboardData())
+        .on("postgres_changes", { event: "*", schema: "public", table: "attendance" }, () => loadDashboardData())
+        .on("postgres_changes", { event: "*", schema: "public", table: "daily_updates" }, () => loadDashboardData())
+        .on("postgres_changes", { event: "*", schema: "public", table: "batch_messages" }, (payload) => {
+          const item = payload.new || payload.old;
+          rememberBatchChatActivity(item);
+          refreshBatchWorkspace(undefined, { silent: true });
+        })
+        .on("postgres_changes", { event: "*", schema: "public", table: "batch_announcements" }, () => refreshBatchWorkspace(undefined, { silent: true }))
+        .on("postgres_changes", { event: "*", schema: "public", table: "batch_resources" }, () => refreshBatchWorkspace(undefined, { silent: true }))
+        .on("postgres_changes", { event: "*", schema: "public", table: "batch_escalations" }, () => {
+          refreshBatchWorkspace(undefined, { silent: true });
+          refreshAccessibleEscalations();
+        })
+        .on("postgres_changes", { event: "*", schema: "public", table: "batch_assignment_history" }, () => refreshBatchWorkspace(undefined, { silent: true }))
         .on("postgres_changes", { event: "*", schema: "public", table: "audit_logs" }, () => loadDashboardData())
         .on("postgres_changes", { event: "*", schema: "public", table: "notifications", filter: `user_id=eq.${sessionUser.id}` }, (payload) => {
           loadDashboardData();
           if (payload.new?.title) setToast(payload.new.title);
+        })
+        .on("postgres_changes", { event: "*", schema: "public", table: "messages" }, (payload) => {
+          const item = payload.new || payload.old;
+          if (item?.sender_id === sessionUser.id || item?.receiver_id === sessionUser.id) {
+            rememberDirectChatActivity(item);
+            if (selectedContactId) loadMessages(selectedContactId);
+            if (item?.receiver_id === sessionUser.id) setToast("New message received");
+          }
         })
         .subscribe();
 
@@ -1797,7 +2419,9 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
 
     const channel = supabase
       .channel(`workspace-${sessionUser.id}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "profiles" }, () => loadDashboardData())
       .on("postgres_changes", { event: "*", schema: "public", table: "tasks" }, () => loadDashboardData())
+      .on("postgres_changes", { event: "*", schema: "public", table: "task_submissions" }, () => loadDashboardData())
       .on("postgres_changes", { event: "*", schema: "public", table: "meetings" }, () => loadDashboardData())
       .on("postgres_changes", { event: "*", schema: "public", table: "leads" }, () => loadDashboardData())
       .on("postgres_changes", { event: "*", schema: "public", table: "batches" }, () => loadDashboardData())
@@ -1805,11 +2429,18 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
       .on("postgres_changes", { event: "*", schema: "public", table: "daily_updates" }, () => loadDashboardData())
       .on("postgres_changes", { event: "*", schema: "public", table: "task_reviews" }, () => loadDashboardData())
       .on("postgres_changes", { event: "*", schema: "public", table: "attendance" }, () => loadDashboardData())
-      .on("postgres_changes", { event: "*", schema: "public", table: "batch_messages" }, () => refreshBatchWorkspace())
-      .on("postgres_changes", { event: "*", schema: "public", table: "batch_announcements" }, () => refreshBatchWorkspace())
-      .on("postgres_changes", { event: "*", schema: "public", table: "batch_resources" }, () => refreshBatchWorkspace())
-      .on("postgres_changes", { event: "*", schema: "public", table: "batch_escalations" }, () => refreshBatchWorkspace())
-      .on("postgres_changes", { event: "*", schema: "public", table: "batch_assignment_history" }, () => refreshBatchWorkspace())
+      .on("postgres_changes", { event: "*", schema: "public", table: "batch_messages" }, (payload) => {
+        const item = payload.new || payload.old;
+        rememberBatchChatActivity(item);
+        refreshBatchWorkspace(undefined, { silent: true });
+      })
+      .on("postgres_changes", { event: "*", schema: "public", table: "batch_announcements" }, () => refreshBatchWorkspace(undefined, { silent: true }))
+      .on("postgres_changes", { event: "*", schema: "public", table: "batch_resources" }, () => refreshBatchWorkspace(undefined, { silent: true }))
+      .on("postgres_changes", { event: "*", schema: "public", table: "batch_escalations" }, () => {
+        refreshBatchWorkspace(undefined, { silent: true });
+        refreshAccessibleEscalations();
+      })
+      .on("postgres_changes", { event: "*", schema: "public", table: "batch_assignment_history" }, () => refreshBatchWorkspace(undefined, { silent: true }))
       .on("postgres_changes", { event: "*", schema: "public", table: "cms_content" }, () => loadDashboardData())
       .on("postgres_changes", { event: "*", schema: "public", table: "notifications", filter: `user_id=eq.${sessionUser.id}` }, (payload) => {
         loadDashboardData();
@@ -1818,6 +2449,7 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
       .on("postgres_changes", { event: "*", schema: "public", table: "messages" }, (payload) => {
         const item = payload.new || payload.old;
         if (item?.sender_id === sessionUser.id || item?.receiver_id === sessionUser.id) {
+          rememberDirectChatActivity(item);
           loadMessages(selectedContactId);
           if (item?.receiver_id === sessionUser.id) setToast("New message received");
         }
@@ -1838,14 +2470,147 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
     if (!sessionUser || !selectedBatch?.id) return undefined;
     let cancelled = false;
     async function loadSelectedBatchWorkspace() {
-      const data = await getBatchWorkspace(selectedBatch.id);
-      if (!cancelled) setBatchWorkspaceData(data);
+      if (cancelled) return;
+      await refreshBatchWorkspace(selectedBatch.id);
     }
     loadSelectedBatchWorkspace();
+
+    const batchChannel = supabase
+      .channel(`batch-live-sync-${selectedBatch.id}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "batch_announcements", filter: `batch_id=eq.${selectedBatch.id}` }, () => {
+        refreshBatchWorkspace(selectedBatch.id, { silent: true });
+      })
+      .on("postgres_changes", { event: "*", schema: "public", table: "batch_resources", filter: `batch_id=eq.${selectedBatch.id}` }, () => {
+        refreshBatchWorkspace(selectedBatch.id, { silent: true });
+      })
+      .on("postgres_changes", { event: "*", schema: "public", table: "batch_messages", filter: `batch_id=eq.${selectedBatch.id}` }, () => {
+        refreshBatchWorkspace(selectedBatch.id, { silent: true });
+      })
+      .subscribe();
+
+    return () => {
+      cancelled = true;
+      supabase.removeChannel(batchChannel);
+    };
+  }, [sessionUser, selectedBatch?.id]);
+
+  useEffect(() => {
+    if (!sessionUser?.id || (!selectedBatch?.id && !selectedContactId)) {
+      const resetTimer = window.setTimeout(() => {
+        setOnlineUserIds([]);
+        setTypingUsers([]);
+      }, 0);
+      return () => window.clearTimeout(resetTimer);
+    }
+
+    const roomId = selectedContactId
+      ? [sessionUser.id, selectedContactId].sort().join("-")
+      : selectedBatch.id;
+    const channel = supabase.channel(`chat-presence-${roomId}`, {
+      config: { presence: { key: sessionUser.id } },
+    });
+
+    const syncPresence = () => {
+      const state = channel.presenceState();
+      const entries = Object.values(state).flat();
+      setOnlineUserIds(entries.map((entry) => entry.user_id).filter(Boolean));
+      setTypingUsers(
+        entries
+          .filter((entry) => entry.typing && entry.user_id !== sessionUser.id)
+          .map((entry) => ({ id: entry.user_id, name: entry.name }))
+      );
+    };
+
+    channel
+      .on("presence", { event: "sync" }, syncPresence)
+      .subscribe((status) => {
+        if (status === "SUBSCRIBED") {
+          channel.track({
+            user_id: sessionUser.id,
+            name: userProfile?.full_name || "Member",
+            typing: false,
+            online_at: new Date().toISOString(),
+          });
+        }
+      });
+
+    typingChannelRef.current = channel;
+    return () => {
+      if (typingStopTimerRef.current) {
+        clearTimeout(typingStopTimerRef.current);
+        typingStopTimerRef.current = null;
+      }
+      typingChannelRef.current = null;
+      setOnlineUserIds([]);
+      setTypingUsers([]);
+      supabase.removeChannel(channel);
+    };
+  }, [sessionUser?.id, selectedBatch?.id, selectedContactId, userProfile?.full_name]);
+
+  function publishTyping(isTyping) {
+    const channel = typingChannelRef.current;
+    if (!channel || !sessionUser?.id) return;
+    channel.track({
+      user_id: sessionUser.id,
+      name: userProfile?.full_name || "Member",
+      typing: isTyping,
+      online_at: new Date().toISOString(),
+    });
+    if (typingStopTimerRef.current) clearTimeout(typingStopTimerRef.current);
+    if (isTyping) {
+      typingStopTimerRef.current = setTimeout(() => publishTyping(false), 1800);
+    }
+  }
+
+  function rememberBatchChatActivity(item) {
+    if (!item?.batch_id) return;
+    setBatchChatMeta((prev) => ({
+      ...prev,
+      [item.batch_id]: {
+        ...(prev[item.batch_id] || {}),
+        lastMessageTime: item.created_at || new Date().toISOString(),
+        lastMessagePreview: chatPreview(item),
+        lastMessageSenderId: item.sender_id || prev[item.batch_id]?.lastMessageSenderId || "",
+      },
+    }));
+  }
+
+  function rememberDirectChatActivity(item) {
+    if (!item?.sender_id || !item?.receiver_id || !sessionUser?.id) return;
+    const otherId = item.sender_id === sessionUser.id ? item.receiver_id : item.sender_id;
+    if (!otherId) return;
+    setDirectChatMeta((prev) => {
+      const existing = prev[otherId] || {};
+      const incomingUnread = item.receiver_id === sessionUser.id && selectedContactId !== otherId && !item.is_read ? 1 : 0;
+      return {
+        ...prev,
+        [otherId]: {
+          ...existing,
+          unreadCount: (existing.unreadCount || 0) + incomingUnread,
+          lastMessageTime: item.created_at || new Date().toISOString(),
+          lastMessagePreview: chatPreview(item),
+          lastMessageSenderId: item.sender_id,
+        },
+      };
+    });
+  }
+
+  useEffect(() => {
+    if (!sessionUser) return undefined;
+    let cancelled = false;
+    async function loadAccessibleBatchEscalations() {
+      const visibleEscalations = await getVisibleBatchEscalations();
+      if (cancelled) return;
+      const escalations = (visibleEscalations || [])
+        .filter((item, index, list) => item?.id && list.findIndex((entry) => entry.id === item.id) === index)
+        .sort((a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime());
+      setAccessibleEscalations(escalations);
+    }
+    loadAccessibleBatchEscalations();
     return () => {
       cancelled = true;
     };
-  }, [sessionUser, selectedBatch?.id]);
+  }, [sessionUser]);
 
   useEffect(() => {
     if (!sessionUser || typeof window === "undefined") return;
@@ -1940,6 +2705,17 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
     try {
       const data = await getMessages(sessionUser.id, contactId);
       setMessages(data || []);
+      const latest = (data || [])[data?.length - 1];
+      setDirectChatMeta((prev) => ({
+        ...prev,
+        [contactId]: {
+          ...(prev[contactId] || {}),
+          unreadCount: 0,
+          lastMessageTime: latest?.created_at || prev[contactId]?.lastMessageTime || 0,
+          lastMessagePreview: latest ? chatPreview(latest) : prev[contactId]?.lastMessagePreview || "",
+          lastMessageSenderId: latest?.sender_id || prev[contactId]?.lastMessageSenderId || "",
+        },
+      }));
     } catch (err) {
       console.warn("Failed to load messages:", err?.message || err);
     }
@@ -1949,6 +2725,13 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
     loadMessages(selectedContactId);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedContactId]);
+
+  useEffect(() => {
+    if (activeSection === "chat" && !selectedBatchId && !selectedContactId && availableChatBatches.length > 0) {
+      setSelectedBatchId(availableChatBatches[0].id);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeSection, selectedBatchId, selectedContactId, availableChatBatches]);
 
   async function handleSignIn(e) {
     e.preventDefault();
@@ -2656,15 +3439,29 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
       return;
     }
 
-    const updates = {
-      mentor_id: assignLeadsForm.mentor_id || null,
-      tl_id: assignLeadsModal.tl_id || null,
-      updated_at: new Date().toISOString(),
-    };
+    if (assignLeadsForm.mentor_id && (!assignedMentor || assignedMentor.role !== "mentor")) {
+      setToast("Select a valid mentor.");
+      return;
+    }
 
-    const updated = await updateBatch(assignLeadsModal.id, updates);
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+    const response = await fetch("/api/admin/batches", {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${session?.access_token || ""}`,
+      },
+      body: JSON.stringify({
+        batch_id: assignLeadsModal.id,
+        mentor_id: assignLeadsForm.mentor_id || null,
+      }),
+    });
+    const result = await response.json().catch(() => ({}));
+    const updated = result.batch || null;
     if (!updated) {
-      setToast("Failed to assign leads.");
+      setToast(result.error || "Failed to assign leads.");
       return;
     }
 
@@ -2856,9 +3653,13 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
     }
     try {
       await navigator.clipboard.writeText(link);
-      setToast("Attendance verification link copied.");
+      setToast("Attendance verification link copied to clipboard.");
     } catch {
-      window.prompt("Attendance verification link", link);
+      setShareLinkModal({
+        title: "Attendance Verification Link",
+        subtitle: `Verification link for ${meeting?.title || "meeting"}`,
+        link,
+      });
     }
   }
 
@@ -3039,7 +3840,9 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
       message: chatText.trim(),
     };
     const saved = await sendRealtimeMessage(msg);
-    setMessages([...(messages || []), saved || { ...msg, id: Date.now(), created_at: new Date().toISOString() }]);
+    const newMsg = saved || { ...msg, id: Date.now(), created_at: new Date().toISOString() };
+    setMessages([...(messages || []), newMsg]);
+    rememberDirectChatActivity(newMsg);
     setChatText("");
   }
 
@@ -3056,6 +3859,7 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
       return;
     }
     setBatchWorkspaceData((prev) => ({ ...prev, messages: [...(prev.messages || []), result.message] }));
+    rememberBatchChatActivity(result.message);
     setBatchMessageText("");
     setToast("Batch message sent.");
   }
@@ -3063,56 +3867,266 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
   async function handleCreateBatchAnnouncement(e) {
     e.preventDefault();
     if (!selectedBatch?.id) return;
+
+    let attachmentUrl = null;
+    let attachmentName = null;
+    let attachmentType = null;
+
+    if (announcementAttachment.file) {
+      setAnnouncementAttachment((prev) => ({ ...prev, uploading: true }));
+      const uploaded = await uploadBatchFile(announcementAttachment.file, selectedBatch.id);
+      if (uploaded?.file_url) {
+        attachmentUrl = uploaded.file_url;
+        attachmentName = uploaded.file_name;
+        attachmentType = uploaded.file_type;
+      }
+      setAnnouncementAttachment((prev) => ({ ...prev, uploading: false }));
+    }
+
     const result = await createBatchWorkspaceItem({
       type: "announcement",
       batch_id: selectedBatch.id,
       ...batchAnnouncementForm,
+      attachment_url: attachmentUrl,
+      attachment_name: attachmentName,
+      attachment_type: attachmentType,
     });
     if (!result?.announcement) {
-      setToast("Announcement could not be published.");
+      setToast(result?.error || "Announcement could not be published.");
       return;
     }
     setBatchWorkspaceData((prev) => ({ ...prev, announcements: [result.announcement, ...(prev.announcements || [])] }));
     setBatchAnnouncementForm({ title: "", body: "", category: "announcement", link_url: "", pinned: false });
+    setAnnouncementAttachment({ file: null, previewUrl: "", fileName: "", fileType: "", uploading: false });
     setToast("Announcement published.");
   }
 
   async function handleCreateBatchResource(e) {
     e.preventDefault();
-    if (!selectedBatch?.id) return;
+    const targetBatchId = selectedBatch?.id || selectedSidebarBatchId;
+    if (!targetBatchId) return;
+
+    let fileUrl = batchResourceForm.file_url || null;
+    let fileName = null;
+
+    if (batchResourceFile.file) {
+      setBatchResourceFile((prev) => ({ ...prev, uploading: true }));
+      const uploaded = await uploadBatchFile(batchResourceFile.file, targetBatchId);
+      if (uploaded?.file_url) {
+        fileUrl = uploaded.file_url;
+        fileName = uploaded.file_name;
+      }
+      setBatchResourceFile((prev) => ({ ...prev, uploading: false }));
+    }
+
     const result = await createBatchWorkspaceItem({
       type: "resource",
-      batch_id: selectedBatch.id,
+      batch_id: targetBatchId,
       ...batchResourceForm,
+      file_url: fileUrl,
+      file_name: fileName || batchResourceForm.title,
     });
     if (!result?.resource) {
-      setToast("Resource could not be added.");
+      setToast(result?.error || "Resource could not be added.");
       return;
     }
     setBatchWorkspaceData((prev) => ({ ...prev, resources: [result.resource, ...(prev.resources || [])] }));
     setBatchResourceForm({ title: "", category: "technical_guides", description: "", link_url: "", file_url: "" });
+    setBatchResourceFile({ file: null, fileName: "", fileType: "", uploading: false });
     setToast("Resource added.");
+  }
+
+  function handleDeleteBatchAnnouncement(item) {
+    if (!item?.id || !selectedBatch?.id) return;
+    setConfirmModal({
+      title: "Delete Announcement",
+      itemName: item.title,
+      message: "This announcement and its attached resources will be permanently removed for all members in this batch.",
+      confirmText: "Delete Announcement",
+      danger: true,
+      onConfirm: async () => {
+        const result = await createBatchWorkspaceItem({
+          type: "delete_announcement",
+          id: item.id,
+          batch_id: selectedBatch.id,
+        });
+        if (result?.success) {
+          setBatchWorkspaceData((prev) => ({
+            ...prev,
+            announcements: (prev.announcements || []).filter((a) => a.id !== item.id),
+          }));
+          setToast("Announcement deleted.");
+        } else {
+          setToast(result?.error || "Failed to delete announcement.");
+        }
+      },
+    });
+  }
+
+  async function handleUpdateBatchAnnouncement(e) {
+    e.preventDefault();
+    if (!editingAnnouncement?.id || !selectedBatch?.id) return;
+
+    let attachmentUrl = editingAnnouncement.attachment_url || null;
+    let attachmentName = editingAnnouncement.attachment_name || null;
+    let attachmentType = editingAnnouncement.attachment_type || null;
+
+    if (editingAnnouncement.file) {
+      setEditingAnnouncement((prev) => ({ ...prev, uploading: true }));
+      const uploaded = await uploadBatchFile(editingAnnouncement.file, selectedBatch.id);
+      if (uploaded?.file_url) {
+        attachmentUrl = uploaded.file_url;
+        attachmentName = uploaded.file_name;
+        attachmentType = uploaded.file_type;
+      }
+      setEditingAnnouncement((prev) => ({ ...prev, uploading: false }));
+    }
+
+    const result = await createBatchWorkspaceItem({
+      type: "update_announcement",
+      id: editingAnnouncement.id,
+      batch_id: selectedBatch.id,
+      title: editingAnnouncement.title,
+      body: editingAnnouncement.body,
+      category: editingAnnouncement.category,
+      link_url: editingAnnouncement.link_url,
+      pinned: editingAnnouncement.pinned,
+      attachment_url: attachmentUrl,
+      attachment_name: attachmentName,
+      attachment_type: attachmentType,
+    });
+
+    if (result?.announcement) {
+      setBatchWorkspaceData((prev) => ({
+        ...prev,
+        announcements: (prev.announcements || []).map((a) => (a.id === result.announcement.id ? result.announcement : a)),
+      }));
+      setEditingAnnouncement(null);
+      setToast("Announcement updated.");
+    } else {
+      setToast(result?.error || "Failed to update announcement.");
+    }
+  }
+
+  function handleDeleteBatchResource(item) {
+    const targetBatchId = selectedBatch?.id || selectedSidebarBatchId;
+    if (!item?.id || !targetBatchId) return;
+    setConfirmModal({
+      title: "Delete File / Resource",
+      itemName: item.title,
+      message: "This file will be permanently removed from the batch workspace and will no longer be accessible to members.",
+      confirmText: "Delete File",
+      danger: true,
+      onConfirm: async () => {
+        const result = await createBatchWorkspaceItem({
+          type: "delete_resource",
+          id: item.id,
+          batch_id: targetBatchId,
+        });
+        if (result?.success) {
+          setBatchWorkspaceData((prev) => ({
+            ...prev,
+            resources: (prev.resources || []).filter((r) => r.id !== item.id),
+          }));
+          setToast("File deleted.");
+        } else {
+          setToast(result?.error || "Failed to delete file.");
+        }
+      },
+    });
+  }
+
+  async function handleUpdateBatchResource(e) {
+    e.preventDefault();
+    const targetBatchId = selectedBatch?.id || selectedSidebarBatchId;
+    if (!editingResource?.id || !targetBatchId) return;
+
+    let fileUrl = editingResource.file_url || null;
+    let fileName = editingResource.file_name || null;
+
+    if (editingResource.file) {
+      setEditingResource((prev) => ({ ...prev, uploading: true }));
+      const uploaded = await uploadBatchFile(editingResource.file, targetBatchId);
+      if (uploaded?.file_url) {
+        fileUrl = uploaded.file_url;
+        fileName = uploaded.file_name;
+      }
+      setEditingResource((prev) => ({ ...prev, uploading: false }));
+    }
+
+    const result = await createBatchWorkspaceItem({
+      type: "update_resource",
+      id: editingResource.id,
+      batch_id: targetBatchId,
+      title: editingResource.title,
+      category: editingResource.category,
+      description: editingResource.description,
+      link_url: editingResource.link_url,
+      file_url: fileUrl,
+      file_name: fileName || editingResource.title,
+    });
+
+    if (result?.resource) {
+      setBatchWorkspaceData((prev) => ({
+        ...prev,
+        resources: (prev.resources || []).map((r) => (r.id === result.resource.id ? result.resource : r)),
+      }));
+      setEditingResource(null);
+      setToast("File updated.");
+    } else {
+      setToast(result?.error || "Failed to update file.");
+    }
+  }
+
+  function openRaiseEscalationModal(batchId = selectedBatch?.id || escalationBatchOptions[0]?.id || "") {
+    if (currentRole === "intern") {
+      setToast("Intern escalation is handled through TL or Mentor.");
+      return;
+    }
+    const batch = escalationBatchOptions.find((item) => item.id === batchId) || escalationBatchOptions[0] || null;
+    setBatchEscalationForm({
+      batch_id: batch?.id || "",
+      assigned_to: "",
+      issue: "",
+      category: "general",
+      priority: "medium",
+      description: "",
+      related_member_id: "",
+      related_task_id: "",
+    });
+    setBatchEscalationModalOpen(true);
   }
 
   async function handleCreateBatchEscalation(e) {
     e.preventDefault();
-    if (!selectedBatch?.id) return;
+    const targetBatchId = batchEscalationForm.batch_id || selectedBatch?.id;
+    if (!targetBatchId) {
+      setToast("Please select a batch for this escalation.");
+      return;
+    }
     const result = await createBatchWorkspaceItem({
       type: "escalation",
-      batch_id: selectedBatch.id,
       ...batchEscalationForm,
+      batch_id: targetBatchId,
+      assigned_to: batchEscalationForm.assigned_to || null,
     });
     if (!result?.escalation) {
       setToast("Escalation could not be created.");
       return;
     }
     setBatchWorkspaceData((prev) => ({ ...prev, escalations: [result.escalation, ...(prev.escalations || [])] }));
-    setBatchEscalationForm({ issue: "", category: "general", priority: "medium", description: "", related_member_id: "", related_task_id: "" });
+    setAccessibleEscalations((prev) => [result.escalation, ...prev.filter((item) => item.id !== result.escalation.id)]);
+    setBatchEscalationForm({ batch_id: "", assigned_to: "", issue: "", category: "general", priority: "medium", description: "", related_member_id: "", related_task_id: "" });
+    setBatchEscalationModalOpen(false);
     setToast("Escalation opened.");
   }
 
   async function handleUpdateBatchEscalationStatus(escalation, status) {
-    const saved = await updateBatchEscalation({ id: escalation.id, status });
+    if (status === "resolved" && !escalationResolutionText.trim()) {
+      setToast("Resolution comment is required.");
+      return;
+    }
+    const saved = await updateBatchEscalation({ id: escalation.id, status, resolution: escalationResolutionText });
     if (!saved) {
       setToast("Escalation update failed.");
       return;
@@ -3121,6 +4135,9 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
       ...prev,
       escalations: (prev.escalations || []).map((item) => (item.id === saved.id ? { ...item, ...saved } : item)),
     }));
+    setAccessibleEscalations((prev) => prev.map((item) => (item.id === saved.id ? { ...item, ...saved } : item)));
+    setEscalationResolutionModal(null);
+    setEscalationResolutionText("");
     setToast("Escalation updated.");
   }
 
@@ -3181,7 +4198,7 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
 
   return (
     <div
-      className={`min-h-screen font-sans transition-colors duration-150 no-scrollbar ${isDark
+      className={`min-h-screen font-sans transition-colors duration-150 ${isDark
         ? "bg-[#070707] text-stone-100"
         : "bg-white text-gray-800"
         }`}
@@ -3195,7 +4212,7 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
       )}
 
       {sessionUser ? (
-        <div className="min-h-screen relative no-scrollbar flex flex-col">
+        <div className="min-h-screen relative flex flex-col">
           {/* Floating Menu Toggle button when sidebar is closed (works on all devices) */}
           {!sidebarOpen && (
             <div className="fixed top-3.5 left-3.5 z-40 animate-fadeIn md:hidden">
@@ -3307,8 +4324,8 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
                 <span className="admin-sidebar-item-label">Dashboard</span>
               </button>
 
-              {/* Category 2: Supervision & Review (Mentors / TLs / Admins) */}
-              {(isMentor || isTeamLeader || isAdminRole) && (
+              {/* Category 2: Supervision & Review */}
+              {(isMentor || isTeamLeader || isHrRole || isAdminRole) && (
                 <>
                   <div className="admin-sidebar-divider border-t border-gray-100 dark:border-slate-800/80 my-2 mx-1" />
                   <div className="admin-sidebar-group-header px-3 pt-2 pb-1">
@@ -3317,29 +4334,44 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
                     </span>
                   </div>
 
-                  {/* Task Submissions */}
                   <button
-                    onClick={() => selectSection("task_submissions")}
-                    aria-label="Task Submissions"
-                    title="Task Submissions"
-                    className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl transition cursor-pointer ${activeSection === "task_submissions"
-                      ? "text-gray-900 dark:text-white font-semibold bg-gray-100/90 dark:bg-slate-800 shadow-2xs"
-                      : "text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-50 dark:hover:bg-slate-800/60"
-                      }`}
+                    onClick={() => openRaiseEscalationModal()}
+                    aria-label="Raise Escalation"
+                    title="Raise Escalation"
+                    className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl transition cursor-pointer text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-50 dark:hover:bg-slate-800/60"
                   >
                     <div className="flex items-center gap-3.5">
-                      <Send className="w-5 h-5 shrink-0 stroke-[1.75] text-indigo-500" />
-                      <span className="admin-sidebar-item-label">Task Submissions</span>
+                      <AlertCircle className="w-5 h-5 shrink-0 stroke-[1.75] text-red-500" />
+                      <span className="admin-sidebar-item-label">Raise Escalation</span>
                     </div>
-                    {pendingSubmissionsCount > 0 && (
-                      <span className="text-[11px] font-bold text-indigo-600 bg-indigo-50 dark:bg-indigo-950/50 px-2 py-0.5 rounded-full border border-indigo-200/60 dark:border-indigo-900/60 animate-pulse">
-                        {pendingSubmissionsCount}
-                      </span>
-                    )}
+                    <Plus className="w-3.5 h-3.5 text-gray-400" />
                   </button>
 
-                  {/* Review Center (Mentors only) */}
-                  {isMentor && (
+                  {/* Task Submissions */}
+                  {(isMentor || isTeamLeader) && (
+                    <button
+                      onClick={() => selectSection("task_submissions")}
+                      aria-label="Task Submissions"
+                      title="Task Submissions"
+                      className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl transition cursor-pointer ${activeSection === "task_submissions"
+                        ? "text-gray-900 dark:text-white font-semibold bg-gray-100/90 dark:bg-slate-800 shadow-2xs"
+                        : "text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-50 dark:hover:bg-slate-800/60"
+                        }`}
+                    >
+                      <div className="flex items-center gap-3.5">
+                        <Send className="w-5 h-5 shrink-0 stroke-[1.75] text-indigo-500" />
+                        <span className="admin-sidebar-item-label">Task Submissions</span>
+                      </div>
+                      {pendingSubmissionsCount > 0 && (
+                        <span className="text-[11px] font-bold text-indigo-600 bg-indigo-50 dark:bg-indigo-950/50 px-2 py-0.5 rounded-full border border-indigo-200/60 dark:border-indigo-900/60 animate-pulse">
+                          {pendingSubmissionsCount}
+                        </span>
+                      )}
+                    </button>
+                  )}
+
+                  {/* Review Center */}
+                  {(isMentor || isHrRole || isAdminRole) && (
                     <button
                       onClick={() => selectSection("review_center")}
                       aria-label="Review Center"
@@ -3361,8 +4393,8 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
                     </button>
                   )}
 
-                  {/* At-Risk Watchlist (Mentors only) */}
-                  {isMentor && (
+                  {/* At-Risk Watchlist */}
+                  {(isMentor || isHrRole || isAdminRole) && (
                     <button
                       onClick={() => selectSection("at_risk_watchlist")}
                       aria-label="At-Risk Watchlist"
@@ -3419,6 +4451,25 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
                     </button>
                   )}
 
+                  {/* Batch Files (Accessible to Admin, HR, Mentor, TL, and Intern) */}
+                  <button
+                    onClick={() => selectSection("batch_files")}
+                    aria-label="Batch Files"
+                    title="Batch Files"
+                    className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl transition cursor-pointer ${activeSection === "batch_files"
+                      ? "text-gray-900 dark:text-white font-semibold bg-gray-100/90 dark:bg-slate-800 shadow-2xs"
+                      : "text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-50 dark:hover:bg-slate-800/60"
+                      }`}
+                  >
+                    <div className="flex items-center gap-3.5">
+                      <Folder className="w-5 h-5 shrink-0 stroke-[1.75] text-amber-500" />
+                      <span className="admin-sidebar-item-label">Batch Files</span>
+                    </div>
+                    <span className="text-[10px] font-bold text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/50 px-2 py-0.5 rounded-full border border-amber-200/60 dark:border-amber-900/60">
+                      Docs
+                    </span>
+                  </button>
+
                   {/* Tasks */}
                   {canSeeOperations && !isHrRole && (
                     <button
@@ -3442,8 +4493,8 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
                     </button>
                   )}
 
-                  {/* Daily Updates */}
-                  {canSeeOperations && (
+                  {/* Daily Updates (Strictly Mentor and TL only) */}
+                  {(isMentor || isTeamLeader) && (
                     <button
                       onClick={() => selectSection("daily_updates")}
                       aria-label="Daily Updates"
@@ -3616,8 +4667,8 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
                   {canUseMessages && (
                     <button
                       onClick={() => selectSection("chat")}
-                      aria-label="Messages"
-                      title="Messages"
+                      aria-label="Chat"
+                      title="Chat"
                       className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl transition cursor-pointer ${activeSection === "chat"
                         ? "text-gray-900 dark:text-white font-semibold bg-gray-100/90 dark:bg-slate-800 shadow-2xs"
                         : "text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-50 dark:hover:bg-slate-800/60"
@@ -3625,7 +4676,7 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
                     >
                       <div className="flex items-center gap-3.5">
                         <MessageSquare className="w-5 h-5 shrink-0 stroke-[1.75]" />
-                        <span className="admin-sidebar-item-label">Messages</span>
+                        <span className="admin-sidebar-item-label">Chat</span>
                       </div>
                     </button>
                   )}
@@ -3683,7 +4734,7 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
               )}
 
               {/* Audit Logs */}
-              {(isAdminRole || isTeamLeader) && (
+              {isAdminRole && (
                 <button
                   onClick={() => selectSection("audit")}
                   aria-label="Audit Logs"
@@ -3867,19 +4918,13 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
 
           {/* Main Content Area: Transitions cleanly when sidebar collapses/expands */}
           <main className={`flex-1 min-w-0 max-w-full transition-all duration-300 ${sidebarOpen ? "md:ml-64 sm:md:ml-68" : "ml-0 md:ml-[72px]"
-            } ${activeSection === "chat"
-              ? "h-[100dvh] max-h-[100dvh] overflow-hidden flex flex-col p-3 sm:p-4 lg:p-6"
-              : "pt-3 sm:pt-4 px-2 sm:px-3 lg:px-4 pb-5"
-            }`}>
+            } ${activeSection === "chat" ? "h-screen max-h-screen overflow-hidden pt-2 sm:pt-3 px-2 sm:px-3 lg:px-4 pb-2 flex flex-col" : "min-h-screen pt-3 sm:pt-4 px-2 sm:px-3 lg:px-4 pb-12"}`}>
             <div
-              className={`transition-colors min-w-0 max-w-full overflow-hidden ${activeSection === "chat"
-                ? "h-full max-h-full flex-1 flex flex-col min-h-0"
-                : "p-2 sm:p-3 lg:p-4 space-y-4"
-                } ${isDark ? "bg-transparent text-slate-100" : "bg-transparent text-gray-900"}`}
+              className={`transition-colors min-w-0 max-w-full ${activeSection === "chat" ? "flex-1 min-h-0 flex flex-col space-y-2 p-1 sm:p-2" : "p-2 sm:p-3 lg:p-4 space-y-4"} ${isDark ? "bg-transparent text-slate-100" : "bg-transparent text-gray-900"}`}
             >
-              {/* 1. Header Banner of the Card with Title + Contextual Actions (Hidden in dedicated Chat view) */}
+              {/* 1. Header Banner of the Card with Title + Contextual Actions (Hidden in Chat) */}
               {activeSection !== "chat" && (
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-gray-100 dark:border-slate-800">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-gray-100 dark:border-slate-800 shrink-0">
                   <div>
                     {/* Role & Department Badges */}
                     <div className="flex items-center gap-2 mb-2">
@@ -3904,9 +4949,10 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
                       {activeSection === "hr_mentors" && "Mentors"}
                       {activeSection === "hr_interns" && "Interns"}
                       {activeSection === "batches" && "Batches"}
+                      {activeSection === "batch_files" && "Batch Files & Knowledge Base"}
                       {activeSection === "batch_workspace" && (selectedBatch?.name || "Batch Workspace")}
                       {activeSection === "attendance" && "Attendance"}
-                      {activeSection === "chat" && "Messages"}
+                      {activeSection === "chat" && "Chat & Messages"}
                       {activeSection === "alerts" && "Notifications"}
                       {activeSection === "cms" && "Website Content"}
                       {activeSection === "certificates" && "Certificates"}
@@ -3917,7 +4963,7 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
                     <p className="text-xs text-gray-500 dark:text-slate-400 mt-1 max-w-2xl leading-relaxed">
                       {activeSection === "overview" && (isAdminRole ? "Overview of HR managers, training batches, and recent activity." : "Overview of team members, tasks, and updates.")}
                       {activeSection === "task_submissions" && "Dedicated console to inspect submitted links, project deliverables, and grade intern task submissions."}
-                      {activeSection === "review_center" && "Review and resolve batch escalations, critical roadblocks, and urgent issues escalated by Team Leaders."}
+                      {activeSection === "review_center" && "Review and resolve batch escalations, critical roadblocks, and urgent issues escalated by batch managers."}
                       {activeSection === "at_risk_watchlist" && "Centralized monitoring of interns with low attendance (<70%) or blocked tasks requiring mentor intervention."}
                       {activeSection === "crm" && "View customer inquiries from the website."}
                       {activeSection === "tasks" && "View and manage assigned tasks."}
@@ -3927,9 +4973,10 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
                       {activeSection === "hr_mentors" && "Add and manage mentors batch by batch."}
                       {activeSection === "hr_interns" && "Add and manage interns inside admin-assigned batches."}
                       {activeSection === "batches" && (isAdminRole ? "Create batches and assign HR managers." : "View batches assigned to you.")}
+                      {activeSection === "batch_files" && "Technical guides, guidelines, task files, and batch knowledge base documents connected batch by batch."}
                       {activeSection === "batch_workspace" && "Batch operating workspace for people, responsibility, tasks, meetings, reports, communication, and activity."}
                       {activeSection === "attendance" && "Daily attendance records."}
-                      {activeSection === "chat" && "Direct messaging with team members."}
+                      {activeSection === "chat" && "Direct and batch messaging with team members."}
                       {activeSection === "alerts" && "Recent notifications and updates."}
                       {activeSection === "cms" && "Edit website text and banners."}
                       {activeSection === "certificates" && "Verified certificates issued to candidates."}
@@ -4103,7 +5150,7 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
 
               {/* 1.5. Branded Hero Welcome Card - ONLY on Admin Dashboard Overview */}
               {activeSection === "overview" && isAdminRole && (
-                <div className="relative overflow-hidden rounded-2xl border border-gray-200/90 dark:border-slate-800 bg-gradient-to-r from-red-50/70 via-rose-50/40 to-amber-50/30 dark:from-red-950/25 dark:via-slate-900 dark:to-slate-900/90 p-4 sm:p-5 backdrop-blur-xs transition-all shadow-2xs">
+                <div className="relative overflow-hidden rounded-2xl border border-gray-200/90 dark:border-slate-800 bg-gradient-to-r from-red-50/70 via-rose-50/40 to-amber-50/30 dark:from-red-950/20 dark:via-transparent dark:to-transparent p-4 sm:p-5 backdrop-blur-xs transition-all shadow-2xs">
                   <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                     <div className="flex items-center gap-3.5 min-w-0">
                       <div className="min-w-0">
@@ -4123,7 +5170,7 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
                     </div>
 
                     <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
-                      <div className="px-3 py-1.5 rounded-xl bg-white/90 dark:bg-slate-900/90 border border-gray-200/80 dark:border-slate-800 flex items-center gap-2 text-xs text-gray-600 dark:text-slate-300 shadow-2xs">
+                      <div className="px-3 py-1.5 rounded-xl bg-white/90 dark:bg-transparent border border-gray-200/80 dark:border-slate-800 flex items-center gap-2 text-xs text-gray-600 dark:text-slate-300 shadow-2xs">
                         <Clock className="w-3.5 h-3.5 text-red-600" />
                         <span className="font-semibold text-[11px]">
                           {new Date().toLocaleDateString("en-IN", { weekday: "short", day: "numeric", month: "short", year: "numeric" })}
@@ -4137,7 +5184,7 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
               {/* 2. Stat Metric Cards - ONLY on Admin Dashboard Overview */}
               {activeSection === "overview" && isAdminRole && (
                 <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
-                  {metrics.map((m, mIdx) => {
+                  {dashboardMetrics.map((m, mIdx) => {
                     const icons = [Users, Folder, Briefcase, Activity];
                     const IconComp = icons[mIdx % icons.length];
                     return (
@@ -4168,8 +5215,8 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
                 </div>
               )}
 
-              {/* 3. Search & Filter Bar (Only for tables, not alerts, chat, settings, or non-admin overview) */}
-              {activeSection !== "alerts" && activeSection !== "chat" && activeSection !== "settings" && activeSection !== "batch_workspace" && (activeSection !== "overview" || isAdminRole) && (
+              {/* 3. Search & Filter Bar (Only for tables, not alerts, chat, settings, batch files, or non-admin overview) */}
+              {activeSection !== "alerts" && activeSection !== "chat" && activeSection !== "settings" && activeSection !== "batch_workspace" && activeSection !== "batch_files" && activeSection !== "review_center" && activeSection !== "task_submissions" && activeSection !== "at_risk_watchlist" && (activeSection !== "overview" || isAdminRole) && (
                 <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
                   <div className="relative flex-1">
                     <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-500 pointer-events-none" />
@@ -4289,6 +5336,8 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
                             submission: { icon: FileText, color: "text-indigo-600 dark:text-indigo-400", bg: "bg-indigo-50 dark:bg-indigo-950/40 border-indigo-200 dark:border-indigo-900", badge: "bg-indigo-50 text-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-300 border-indigo-200 dark:border-indigo-900", label: "Submission" },
                             certificate: { icon: Award, color: "text-amber-600 dark:text-amber-400", bg: "bg-amber-50 dark:bg-amber-950/40 border-amber-200 dark:border-amber-900", badge: "bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300 border-amber-200 dark:border-amber-900", label: "Certificate" },
                             lead: { icon: Users, color: "text-emerald-600 dark:text-emerald-400", bg: "bg-emerald-50 dark:bg-emerald-950/40 border-emerald-200 dark:border-emerald-900", badge: "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 border-emerald-200 dark:border-emerald-900", label: "Lead" },
+                            announcement: { icon: Bell, color: "text-amber-600 dark:text-amber-400", bg: "bg-amber-50 dark:bg-amber-950/40 border-amber-200 dark:border-amber-900", badge: "bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300 border-amber-200 dark:border-amber-900", label: "Announcement" },
+                            file: { icon: Folder, color: "text-indigo-600 dark:text-indigo-400", bg: "bg-indigo-50 dark:bg-indigo-950/40 border-indigo-200 dark:border-indigo-900", badge: "bg-indigo-50 text-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-300 border-indigo-200 dark:border-indigo-900", label: "Batch File" },
                           }[n.type] || { icon: Bell, color: "text-red-600 dark:text-red-400", bg: "bg-red-50 dark:bg-red-950/40 border-red-200 dark:border-red-900", badge: "bg-red-50 text-red-700 dark:bg-red-950/40 dark:text-red-300 border-red-200 dark:border-red-900", label: "Alert" };
                           const IconComp = typeStyles.icon;
 
@@ -4319,6 +5368,38 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
                                       </span>
                                     )}
                                   </div>
+
+                                  {/* Author Role Chip, Batch Chip & Attachment Indicator */}
+                                  {(n.metadata?.creator_name || n.metadata?.batch_name) && (
+                                    <div className="flex items-center gap-1.5 flex-wrap w-full mt-1 mb-1.5">
+                                      {n.metadata?.creator_name && (
+                                        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10.5px] font-bold border ${
+                                          ["super_admin", "admin"].includes(n.metadata.creator_role)
+                                            ? "bg-red-50 text-red-700 dark:bg-red-950/50 dark:text-red-300 border-red-200 dark:border-red-900"
+                                            : n.metadata.creator_role === "mentor"
+                                            ? "bg-indigo-50 text-indigo-700 dark:bg-indigo-950/50 dark:text-indigo-300 border-indigo-200 dark:border-indigo-900"
+                                            : "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300 border-emerald-200 dark:border-emerald-900"
+                                        }`}>
+                                          <UserCheck className="w-3 h-3" />
+                                          <span>
+                                            [{ROLE_LABELS[n.metadata.creator_role] || n.metadata.creator_role || "Author"}] {n.metadata.creator_name}
+                                          </span>
+                                        </span>
+                                      )}
+                                      {n.metadata?.batch_name && (
+                                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10.5px] font-bold bg-gray-100 text-gray-700 dark:bg-slate-800 dark:text-slate-300 border border-gray-200 dark:border-slate-700">
+                                          <Folder className="w-3 h-3 text-amber-500" />
+                                          <span>Batch: {n.metadata.batch_name}</span>
+                                        </span>
+                                      )}
+                                      {n.metadata?.attachment_url && (
+                                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10.5px] font-bold bg-blue-50 text-blue-700 dark:bg-blue-950/50 dark:text-blue-300 border border-blue-200 dark:border-blue-900">
+                                          <Paperclip className="w-3 h-3" />
+                                          <span>{n.metadata.attachment_name || "Attachment"}</span>
+                                        </span>
+                                      )}
+                                    </div>
+                                  )}
                                   <p className="text-xs text-gray-600 dark:text-slate-300 leading-relaxed break-words">
                                     {n.message}
                                   </p>
@@ -4488,7 +5569,7 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
                                 value={profileEditForm.full_name}
                                 onChange={(e) => setProfileEditForm({ ...profileEditForm, full_name: e.target.value })}
                                 placeholder="Your Full Name"
-                                className="w-full p-2.5 rounded-xl border border-gray-200 dark:border-slate-700 bg-transparent dark:bg-transparent text-xs focus:bg-white/60 dark:focus:bg-slate-900/60 focus:outline-none focus:border-red-600"
+                                className="w-full p-2.5 rounded-xl border border-gray-200 dark:border-slate-700 bg-transparent dark:bg-transparent text-xs focus:bg-white/60 dark:focus:bg-transparent focus:outline-none focus:border-red-600"
                               />
                             </div>
 
@@ -4499,7 +5580,7 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
                                 value={profileEditForm.phone}
                                 onChange={(e) => setProfileEditForm({ ...profileEditForm, phone: e.target.value })}
                                 placeholder="+91 98765 43210"
-                                className="w-full p-2.5 rounded-xl border border-gray-200 dark:border-slate-700 bg-transparent dark:bg-transparent text-xs focus:bg-white/60 dark:focus:bg-slate-900/60 focus:outline-none focus:border-red-600"
+                                className="w-full p-2.5 rounded-xl border border-gray-200 dark:border-slate-700 bg-transparent dark:bg-transparent text-xs focus:bg-white/60 dark:focus:bg-transparent focus:outline-none focus:border-red-600"
                               />
                             </div>
                           </div>
@@ -4621,7 +5702,7 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
                                   value={changePasswordForm.password}
                                   onChange={(e) => setChangePasswordForm({ ...changePasswordForm, password: e.target.value })}
                                   placeholder="Min 8 characters"
-                                  className="w-full p-2.5 pr-10 rounded-xl border border-gray-200 dark:border-slate-700 bg-transparent dark:bg-transparent text-xs focus:bg-white/60 dark:focus:bg-slate-900/60 focus:outline-none focus:border-red-600"
+                                  className="w-full p-2.5 pr-10 rounded-xl border border-gray-200 dark:border-slate-700 bg-transparent dark:bg-transparent text-xs focus:bg-white/60 dark:focus:bg-transparent focus:outline-none focus:border-red-600"
                                 />
                                 <button
                                   type="button"
@@ -4641,7 +5722,7 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
                                 value={changePasswordForm.confirm}
                                 onChange={(e) => setChangePasswordForm({ ...changePasswordForm, confirm: e.target.value })}
                                 placeholder="Repeat new password"
-                                className="w-full p-2.5 rounded-xl border border-gray-200 dark:border-slate-700 bg-transparent dark:bg-transparent text-xs focus:bg-white/60 dark:focus:bg-slate-900/60 focus:outline-none focus:border-red-600"
+                                className="w-full p-2.5 rounded-xl border border-gray-200 dark:border-slate-700 bg-transparent dark:bg-transparent text-xs focus:bg-white/60 dark:focus:bg-transparent focus:outline-none focus:border-red-600"
                               />
                             </div>
                           </div>
@@ -4683,258 +5764,12 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
                 </div>
               )}
 
-              {/* DEDICATED WHATSAPP WEB MESSAGING SECTION (PRD §24, §25, §26) */}
+              {/* DEDICATED WHATSAPP WEB MESSAGING SECTION - Matching Batch Overview Chat Tab 1:1 */}
               {activeSection === "chat" && (
-                <div
-                  ref={chatContainerRef}
-                  style={{ "--chat-sidebar-width": `${chatSidebarWidth}px` }}
-                  className={`rounded-3xl border border-gray-200/80 dark:border-slate-800/80 overflow-hidden bg-white dark:bg-slate-900 shadow-none flex flex-col lg:flex-row flex-1 h-[calc(100dvh-1.5rem)] sm:h-[calc(100dvh-2rem)] lg:h-[calc(100dvh-3rem)] max-h-[calc(100dvh-1.5rem)] sm:max-h-[calc(100dvh-2rem)] lg:max-h-[calc(100dvh-3rem)] min-h-0 animate-fadeIn ${
-                    isDraggingChatDivider ? "select-none cursor-col-resize" : ""
-                  }`}
-                >
-
-                  {/* Left Column: WhatsApp Conversations & Channels List */}
-                  <div className={`w-full lg:w-[var(--chat-sidebar-width,360px)] lg:border-r-0 border-r border-gray-200/80 dark:border-slate-800/80 flex-col h-full min-h-0 bg-gray-50/50 dark:bg-[#18150f]/50 shrink-0 ${(selectedContactId || (selectedBatch && !selectedContactId)) ? "hidden lg:flex" : "flex"
-                    }`}>
-                    {/* Top Header of Left Column */}
-                    <div className="p-3 sm:p-3.5 border-b border-gray-200/80 dark:border-slate-800/80 flex items-center justify-between gap-3 bg-white dark:bg-[#18150f]">
-                      <div className="flex items-center gap-2.5 min-w-0">
-                        <div className="w-9 h-9 rounded-full bg-gradient-to-tr from-red-600 to-rose-600 text-white font-black text-xs flex items-center justify-center shrink-0">
-                          {userProfile?.avatar_url ? (
-                            /* eslint-disable-next-line @next/next/no-img-element */
-                            <img src={userProfile.avatar_url} alt="Profile" className="w-full h-full object-cover rounded-full" />
-                          ) : (
-                            (userProfile?.full_name || sessionUser?.email || "U")[0]?.toUpperCase()
-                          )}
-                        </div>
-                        <div className="min-w-0">
-                          <h3 className="font-bold text-xs truncate text-gray-900 dark:text-white">
-                            {userProfile?.full_name || "My Workspace"}
-                          </h3>
-                          <span className="text-[10px] text-red-600 dark:text-red-400 font-bold flex items-center gap-1">
-                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                            Online • {ROLE_LABELS[currentRole] || currentRole}
-                          </span>
-                        </div>
-                      </div>
-
-                      {/* Sync Conversations Button */}
-                      <button
-                        type="button"
-                        onClick={() => {
-                          if (selectedContactId) loadMessages(selectedContactId);
-                          if (selectedBatch?.id) loadBatchWorkspaceData(selectedBatch.id);
-                          setToast("Messages refreshed.");
-                        }}
-                        className="p-1.5 rounded-xl hover:bg-gray-100 dark:hover:bg-slate-800 text-gray-500 hover:text-gray-900 dark:text-slate-400 dark:hover:text-white transition cursor-pointer"
-                        title="Refresh conversation list"
-                      >
-                        <RefreshCw className="w-4 h-4" />
-                      </button>
-                    </div>
-
-                    {/* Mode Tabs: Batch Groups vs Direct Messages */}
-                    <div className="p-2 border-b border-gray-200/80 dark:border-slate-800/80 grid grid-cols-2 gap-1.5 bg-white dark:bg-[#18150f]">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setChatChannelTab("batches");
-                          setSelectedContactId("");
-                        }}
-                        className={`py-1.5 px-3 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer shadow-none ${chatChannelTab === "batches"
-                          ? "bg-gradient-to-r from-red-600 to-rose-600 text-white"
-                          : "text-gray-600 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-800"
-                          }`}
-                      >
-                        <Users className="w-3.5 h-3.5" />
-                        <span>Batch Groups</span>
-                        {availableChatBatches.length > 0 && (
-                          <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono ${chatChannelTab === "batches" ? "bg-white/20 text-white" : "bg-gray-200 dark:bg-slate-800 text-gray-600 dark:text-slate-400"
-                            }`}>
-                            {availableChatBatches.length}
-                          </span>
-                        )}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setChatChannelTab("direct")}
-                        className={`py-1.5 px-3 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer shadow-none ${chatChannelTab === "direct"
-                          ? "bg-gradient-to-r from-red-600 to-rose-600 text-white"
-                          : "text-gray-600 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-800"
-                          }`}
-                      >
-                        <MessageSquare className="w-3.5 h-3.5" />
-                        <span>Direct (1-on-1)</span>
-                        {chatContacts.length > 0 && (
-                          <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono ${chatChannelTab === "direct" ? "bg-white/20 text-white" : "bg-gray-200 dark:bg-slate-800 text-gray-600 dark:text-slate-400"
-                            }`}>
-                            {chatContacts.length}
-                          </span>
-                        )}
-                      </button>
-                    </div>
-
-                    {/* Search contacts / groups */}
-                    <div className="p-2 border-b border-gray-200/80 dark:border-slate-800/80">
-                      <div className="relative">
-                        <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                        <input
-                          type="text"
-                          placeholder={chatChannelTab === "batches" ? "Search batch groups..." : "Search permitted members..."}
-                          value={chatSearchQuery}
-                          onChange={(e) => setChatSearchQuery(e.target.value)}
-                          className="w-full pl-8 pr-7 py-1.5 rounded-xl text-xs bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 focus:outline-none focus:border-red-500 focus:ring-1 focus:ring-red-500/20 shadow-none"
-                        />
-                        {chatSearchQuery && (
-                          <button
-                            type="button"
-                            onClick={() => setChatSearchQuery("")}
-                            className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                          >
-                            <X className="w-3 h-3" />
-                          </button>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* List of Channels / Contacts */}
-                    <div className="flex-1 overflow-y-auto min-h-0 p-2 space-y-1.5">
-                      {chatChannelTab === "batches" ? (
-                        filteredChatBatches.length === 0 ? (
-                          <div className="py-12 px-4 text-center text-xs text-gray-400 dark:text-slate-500">
-                            No batch groups found.
-                          </div>
-                        ) : (
-                          filteredChatBatches.map((b) => {
-                            const isSelected = selectedBatch?.id === b.id && !selectedContactId;
-                            return (
-                              <button
-                                key={b.id}
-                                type="button"
-                                onClick={() => {
-                                  setSelectedBatchId(b.id);
-                                  setSelectedContactId("");
-                                  loadBatchWorkspaceData(b.id);
-                                }}
-                                className={`w-full flex items-center gap-3 p-2.5 rounded-2xl text-left transition cursor-pointer shadow-none ${isSelected
-                                  ? "bg-red-50 text-red-950 dark:bg-red-500/10 dark:text-red-100 border border-red-300 dark:border-red-500/30"
-                                  : "hover:bg-gray-100 dark:hover:bg-slate-800/60 border border-transparent"
-                                  }`}
-                              >
-                                <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-red-600 to-rose-600 text-white font-black flex items-center justify-center shrink-0 shadow-none">
-                                  <Users className="w-5 h-5" />
-                                </div>
-                                <div className="min-w-0 flex-1">
-                                  <div className="flex items-center justify-between gap-1 mb-0.5">
-                                    <span className="font-bold text-xs truncate text-gray-900 dark:text-white">
-                                      {b.name}
-                                    </span>
-                                    <span className="text-[10px] text-red-600 dark:text-red-400 font-bold uppercase">Batch</span>
-                                  </div>
-                                  <p className="text-[11px] text-gray-500 dark:text-slate-400 truncate">
-                                    {domainLabel(b.domain)} • Official Batch Group
-                                  </p>
-                                </div>
-                              </button>
-                            );
-                          })
-                        )
-                      ) : (
-                        filteredChatContacts.length === 0 ? (
-                          <div className="py-12 px-4 text-center text-xs text-gray-400 dark:text-slate-500">
-                            {chatSearchQuery ? "No matching contacts found." : "No permitted direct contacts available."}
-                          </div>
-                        ) : (
-                          filteredChatContacts.map((c) => {
-                            const isSelected = selectedContactId === c.id;
-                            return (
-                              <button
-                                key={c.id}
-                                type="button"
-                                onClick={() => {
-                                  setSelectedContactId(c.id);
-                                  loadMessages(c.id);
-                                }}
-                                className={`w-full flex items-center gap-3 p-2.5 rounded-2xl text-left transition cursor-pointer shadow-none ${isSelected
-                                  ? "bg-red-50 text-red-950 dark:bg-red-500/10 dark:text-red-100 border border-red-300 dark:border-red-500/30"
-                                  : "hover:bg-gray-100 dark:hover:bg-slate-800/60 border border-transparent"
-                                  }`}
-                              >
-                                <div className="relative shrink-0">
-                                  <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-red-600 to-rose-600 text-white font-black text-xs flex items-center justify-center shadow-none">
-                                    {c.full_name?.charAt(0)?.toUpperCase() || "U"}
-                                  </div>
-                                  <span className="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-emerald-500 ring-2 ring-white dark:ring-slate-900" />
-                                </div>
-                                <div className="min-w-0 flex-1">
-                                  <div className="flex items-center justify-between gap-1 mb-0.5">
-                                    <span className="font-bold text-xs truncate text-gray-900 dark:text-white">
-                                      {c.full_name}
-                                    </span>
-                                    <span className={`text-[9.5px] px-1.5 py-0.2 rounded-md border font-semibold ${c.role === "mentor"
-                                      ? "bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-950/40 dark:text-purple-300 dark:border-purple-900"
-                                      : c.role === "team_leader"
-                                        ? "bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/40 dark:text-blue-300 dark:border-blue-900"
-                                        : c.role === "hr"
-                                          ? "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-900"
-                                          : "bg-red-50 text-red-700 border-red-200 dark:bg-red-950/40 dark:text-red-300 dark:border-red-900"
-                                      }`}>
-                                      {ROLE_LABELS[c.role] || c.role}
-                                    </span>
-                                  </div>
-                                  <p className="text-[11px] text-gray-500 dark:text-slate-400 truncate">
-                                    {c.email}
-                                  </p>
-                                </div>
-                              </button>
-                            );
-                          })
-                        )
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Desktop Resizable Splitter Handle (Hover: ↔️ col-resize cursor & drag handle) */}
-                  <div
-                    role="separator"
-                    aria-orientation="vertical"
-                    aria-valuenow={chatSidebarWidth}
-                    title="Drag left or right to resize sidebar (Double-click to reset to 360px)"
-                    onMouseDown={(e) => {
-                      e.preventDefault();
-                      setIsDraggingChatDivider(true);
-                    }}
-                    onDoubleClick={() => setChatSidebarWidth(360)}
-                    className={`hidden lg:flex w-2.5 -mx-1.25 z-30 cursor-col-resize relative items-center justify-center transition-colors group select-none shrink-0 ${
-                      isDraggingChatDivider ? "bg-red-500/20" : "hover:bg-red-500/20"
-                    }`}
-                  >
-                    {/* Visual 1px boundary line */}
-                    <div
-                      className={`w-[1px] h-full transition-colors ${
-                        isDraggingChatDivider ? "bg-red-600" : "bg-gray-200/80 dark:bg-slate-800/80 group-hover:bg-red-500"
-                      }`}
-                    />
-
-                    {/* Grip handle pill showing resize dots on hover / drag */}
-                    <div
-                      className={`absolute top-1/2 -translate-y-1/2 w-4 h-10 rounded-full bg-white dark:bg-[#202c33] border border-gray-300 dark:border-slate-700 shadow-md flex items-center justify-center transition-all pointer-events-none ${
-                        isDraggingChatDivider
-                          ? "opacity-100 ring-2 ring-red-500/40 scale-105"
-                          : "opacity-0 group-hover:opacity-100 group-hover:scale-100"
-                      }`}
-                    >
-                      <div className="flex gap-0.5 items-center">
-                        <span className="w-0.5 h-3.5 bg-gray-400 dark:bg-slate-400 rounded-full" />
-                        <span className="w-0.5 h-3.5 bg-gray-400 dark:bg-slate-400 rounded-full" />
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Right Column: Active WhatsApp Chat Area */}
-                  <div className={`relative h-full max-h-full overflow-hidden min-w-0 min-h-0 flex-1 ${(selectedContactId || (selectedBatch && !selectedContactId)) ? "flex flex-col" : "hidden lg:flex lg:flex-col"
-                    }`}>
-                    {selectedContactId ? (
+                <div className="flex-1 min-h-0 grid grid-cols-1 xl:grid-cols-[1fr_320px] gap-3 animate-fadeIn">
+                  {/* Left Column: Active WhatsApp Chat Area */}
+                  <div className="h-full min-h-0 rounded-3xl overflow-hidden border border-gray-200/80 dark:border-slate-800/80 flex flex-col relative shadow-none">
+                    {selectedContactId && canAccessDirectChat ? (
                       (() => {
                         const activeContact = profiles.find((p) => p.id === selectedContactId) || chatContacts.find((c) => c.id === selectedContactId);
                         if (!activeContact) {
@@ -4945,7 +5780,7 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
                           );
                         }
                         return (
-                          <WhatsAppBatchChat
+                          <TexAppBatchChat
                             mode="direct"
                             contact={activeContact}
                             currentUser={sessionUser}
@@ -4955,6 +5790,9 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
                             messages={messages}
                             onBack={() => setSelectedContactId("")}
                             onRefresh={() => loadMessages(activeContact.id)}
+                            onlineUserIds={onlineUserIds}
+                            typingUsers={typingUsers}
+                            onTyping={publishTyping}
                             onSendMessage={async (payload) => {
                               const msg = {
                                 sender_id: sessionUser.id,
@@ -4973,60 +5811,56 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
                                 sender: userProfile,
                               };
                               setMessages((prev) => [...(prev || []), newMsg]);
+                              rememberDirectChatActivity(newMsg);
                               return true;
                             }}
-                            availableChats={{ contacts: chatContacts, batches: batches }}
+                            availableChats={{ contacts: canAccessDirectChat ? chatContacts : [], batches: batches }}
+                            onMarkRead={() => markDirectMessagesRead(activeContact.id, sessionUser.id)}
+                            onEditMessage={async (messageId, text) => {
+                              const target = messages.find((m) => m.id === messageId);
+                              if (!target) return false;
+                              const created = new Date(target.created_at).getTime();
+                              if (Number.isNaN(created) || Date.now() - created > MESSAGE_EDIT_WINDOW_MS) {
+                                setToast("Edit time window has expired.");
+                                return false;
+                              }
+                              const saved = await updateRealtimeMessage(messageId, {
+                                message: text,
+                                original_message: target.original_message || target.message,
+                                edited_at: new Date().toISOString(),
+                              });
+                              if (!saved) {
+                                setToast("Message could not be edited.");
+                                return false;
+                              }
+                              setMessages((prev) => (prev || []).map((m) => (m.id === messageId ? { ...m, ...saved } : m)));
+                              return true;
+                            }}
+                            onPinMessage={async (messageId, isPinned) => {
+                              const saved = await updateRealtimeMessage(messageId, { is_pinned: isPinned });
+                              if (saved) {
+                                setMessages((prev) => (prev || []).map((m) => (m.id === messageId ? { ...m, is_pinned: isPinned } : m)));
+                                setToast(isPinned ? "Message pinned." : "Message unpinned.");
+                              }
+                            }}
                             onDeleteMessage={async ({ messageIds, deleteType }) => {
                               if (deleteType === "for_everyone") {
-                                try {
-                                  // Fetch original messages so real typed message is permanently saved in audit_logs
-                                  const { data: origMsgs } = await supabase
-                                    .from("messages")
-                                    .select("id, sender_id, receiver_id, message, attachment_url, created_at")
-                                    .in("id", messageIds);
-
-                                  if (origMsgs && origMsgs.length) {
-                                    for (const om of origMsgs) {
-                                      await supabase.from("audit_logs").insert([{
-                                        actor_id: sessionUser.id,
-                                        actor_role: userProfile?.role || "user",
-                                        action: "chat.delete_message",
-                                        entity_type: "direct_message",
-                                        entity_id: om.id,
-                                        summary: `${userProfile?.full_name || "User"} deleted message: "${om.message}"`,
-                                        metadata: {
-                                          original_sender_id: om.sender_id,
-                                          receiver_id: om.receiver_id,
-                                          original_message: om.message,
-                                          attachment_url: om.attachment_url,
-                                          sent_at: om.created_at,
-                                          deleted_at: new Date().toISOString(),
-                                        },
-                                      }]);
-                                    }
-                                  }
-
-                                  await supabase
-                                    .from("messages")
-                                    .update({
-                                      message: "This message was deleted",
-                                      attachment_url: null,
-                                      attachment_name: null,
-                                      attachment_type: null,
-                                    })
-                                    .in("id", messageIds);
-                                } catch (e) {
-                                  console.warn("Delete message error:", e);
+                                for (const mId of messageIds) {
+                                  await updateRealtimeMessage(mId, {
+                                    is_deleted: true,
+                                    deleted_at: new Date().toISOString(),
+                                    deleted_by: sessionUser.id,
+                                  });
                                 }
                                 setMessages((prev) =>
                                   (prev || []).map((m) =>
                                     messageIds.includes(m.id)
                                       ? {
                                         ...m,
-                                        message: "This message was deleted",
-                                        attachment_url: null,
-                                        attachment_name: null,
-                                        attachment_type: null,
+                                        is_deleted: true,
+                                        deleted_at: new Date().toISOString(),
+                                        deleted_by: sessionUser.id,
+                                        is_pinned: false,
                                       }
                                       : m
                                   )
@@ -5068,7 +5902,8 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
                         );
                       })()
                     ) : selectedBatch ? (
-                      <WhatsAppBatchChat
+                      <>
+                      <TexAppBatchChat
                         mode="batch"
                         batch={selectedBatch}
                         currentUser={sessionUser}
@@ -5076,10 +5911,21 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
                         batchMembers={selectedBatchMembers}
                         batchTasks={selectedBatchTasks}
                         batchMeetings={selectedBatchMeetings}
-                        messages={batchWorkspaceData.messages || []}
-                        availableChats={{ contacts: chatContacts, batches: batches }}
+                        messages={activeBatchWorkspaceData.messages || []}
+                        availableChats={{ contacts: canAccessDirectChat ? chatContacts : [], batches: batches }}
+                        onOpenDirectChat={canAccessDirectChat ? (member) => {
+                          setActiveSection("chat");
+                          setSelectedContactId(member.id);
+                          setSelectedBatchId("");
+                        } : null}
+                        onUpdateBatchInfo={(updatedBatch) => {
+                          setBatches((prev) => (prev || []).map((b) => (b.id === updatedBatch.id ? { ...b, ...updatedBatch } : b)));
+                        }}
                         onBack={() => setSelectedBatchId("")}
                         onRefresh={() => loadBatchWorkspaceData(selectedBatch.id)}
+                        onlineUserIds={onlineUserIds}
+                        typingUsers={typingUsers}
+                        onTyping={publishTyping}
                         onSendMessage={async (payload) => {
                           const result = await createBatchWorkspaceItem({
                             type: "message",
@@ -5091,6 +5937,7 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
                               ...prev,
                               messages: [...(prev.messages || []), result.message],
                             }));
+                            rememberBatchChatActivity(result.message);
                             return true;
                           }
                           setToast("Batch message could not be sent.");
@@ -5113,6 +5960,27 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
                             setToast(isPinned ? "Message pinned to batch notice." : "Message unpinned.");
                           }
                         }}
+                        onMarkRead={() => createBatchWorkspaceItem({
+                          type: "read_messages",
+                          batch_id: selectedBatch.id,
+                        })}
+                        onEditMessage={async (messageId, text) => {
+                          const result = await createBatchWorkspaceItem({
+                            type: "edit_message",
+                            batch_id: selectedBatch.id,
+                            message_id: messageId,
+                            message: text,
+                          });
+                          if (result?.message) {
+                            setBatchWorkspaceData((prev) => ({
+                              ...prev,
+                              messages: (prev.messages || []).map((m) => (m.id === messageId ? result.message : m)),
+                            }));
+                            return true;
+                          }
+                          setToast("Message could not be edited.");
+                          return false;
+                        }}
                         onDeleteMessage={async ({ messageIds, deleteType }) => {
                           if (deleteType === "for_everyone") {
                             await createBatchWorkspaceItem({
@@ -5127,12 +5995,9 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
                                 messageIds.includes(m.id)
                                   ? {
                                     ...m,
-                                    message: "This message was deleted",
-                                    attachment_url: null,
-                                    attachment_name: null,
-                                    attachment_type: null,
-                                    reference_type: "none",
-                                    reference_id: null,
+                                    is_deleted: true,
+                                    deleted_at: new Date().toISOString(),
+                                    deleted_by: sessionUser.id,
                                     is_pinned: false,
                                   }
                                   : m
@@ -5177,51 +6042,209 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
                         localDate={localDate}
                         canManage={canManageSelectedBatch}
                       />
+                      {isSelectedBatchWorkspaceLoading && (
+                        <div className="absolute top-3 left-1/2 -translate-x-1/2 z-20 px-3 py-1.5 rounded-full bg-white/90 dark:bg-[#18150f]/90 border border-gray-200 dark:border-[#3a3020] text-[11px] font-bold text-gray-600 dark:text-[#f4ead2] shadow-sm flex items-center gap-2">
+                          <RefreshCw className="w-3.5 h-3.5 animate-spin text-red-500" />
+                          <span>Loading batch chat...</span>
+                        </div>
+                      )}
+                      </>
                     ) : (
-                      <div className="h-full flex flex-col items-center justify-center p-8 text-center bg-gray-50/40 dark:bg-slate-900/30">
-                        <div className="w-20 h-20 rounded-3xl bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-400 flex items-center justify-center mb-5 ring-8 ring-red-500/5 shadow-none">
-                          <MessageSquare className="w-10 h-10" />
+                      <div className="h-full flex flex-col items-center justify-center p-8 text-center bg-gray-50/40 dark:bg-transparent">
+                        <div className="w-16 h-16 rounded-2xl bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-400 flex items-center justify-center mb-4 shadow-none">
+                          <MessageSquare className="w-8 h-8" />
                         </div>
-                        <h2 className="text-lg font-black text-gray-900 dark:text-white">
-                          TexWeb Workspace Messaging
+                        <h2 className="text-base font-bold text-gray-900 dark:text-white">
+                          No active batch selected
                         </h2>
-                        <p className="text-xs text-gray-500 dark:text-slate-400 max-w-md mt-1.5 leading-relaxed">
-                          Select an official Batch Group or a team member from the left panel to begin collaboration with realtime messaging, quoted replies, file attachments, and code sharing.
+                        <p className="text-xs text-gray-500 dark:text-slate-400 max-w-sm mt-1">
+                          Select a batch or team member from the right panel to begin chatting.
                         </p>
-
-                        {/* Quick Jump Suggestions */}
-                        <div className="mt-6 flex flex-wrap items-center justify-center gap-2">
-                          {availableChatBatches.length > 0 && (
-                            <button
-                              type="button"
-                              onClick={() => {
-                                const b = availableChatBatches[0];
-                                setSelectedBatchId(b.id);
-                                setSelectedContactId("");
-                                loadBatchWorkspaceData(b.id);
-                              }}
-                              className="px-3.5 py-2 rounded-xl text-xs font-bold bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 text-white shadow-none transition flex items-center gap-1.5 cursor-pointer"
-                            >
-                              <Users className="w-3.5 h-3.5" />
-                              <span>Open {availableChatBatches[0].name}</span>
-                            </button>
-                          )}
-                          {chatContacts.length > 0 && (
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setChatChannelTab("direct");
-                                setSelectedContactId(chatContacts[0].id);
-                              }}
-                              className="px-3.5 py-2 rounded-xl text-xs font-bold border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-gray-50 dark:hover:bg-slate-700 text-gray-800 dark:text-white transition flex items-center gap-1.5 cursor-pointer shadow-none"
-                            >
-                              <MessageSquare className="w-3.5 h-3.5 text-red-600" />
-                              <span>Chat with {chatContacts[0].full_name?.split(" ")[0]}</span>
-                            </button>
-                          )}
-                        </div>
                       </div>
                     )}
+                  </div>
+
+                  {/* Right Column: Channels & Contacts List matching Batch Overview Chat Tab */}
+                  <div className="rounded-3xl border border-gray-200/80 dark:border-slate-800/80 p-4 space-y-3 bg-white/50 dark:bg-transparent backdrop-blur-xs flex flex-col h-full min-h-0">
+                    <div className="flex items-center justify-between gap-2 pb-1 border-b border-gray-100 dark:border-slate-800/80">
+                      <div>
+                        <h3 className="text-sm font-black text-gray-900 dark:text-white mb-0.5">Chat Channels</h3>
+                        <p className="text-[11px] text-gray-500 dark:text-slate-400">PRD §24, §25: Group & 1-on-1 Messages</p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (selectedContactId) loadMessages(selectedContactId);
+                          if (selectedBatch?.id) loadBatchWorkspaceData(selectedBatch.id);
+                          setToast("Messages refreshed.");
+                        }}
+                        className="p-1.5 rounded-xl text-gray-500 hover:text-gray-900 dark:text-slate-400 dark:hover:text-white transition cursor-pointer"
+                        title="Refresh"
+                      >
+                        <RefreshCw className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+
+                    {/* Mode Toggle: Batches vs Direct */}
+                    <div className={`${canAccessDirectChat ? "grid-cols-2" : "grid-cols-1"} grid gap-1.5 p-1 rounded-2xl bg-gray-100/80 dark:bg-slate-800/60 text-xs font-bold shrink-0`}>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setChatChannelTab("batches");
+                          setSelectedContactId("");
+                        }}
+                        className={`py-1.5 px-2 rounded-xl transition flex items-center justify-center gap-1.5 cursor-pointer ${
+                          !selectedContactId && chatChannelTab === "batches"
+                            ? "bg-white dark:bg-slate-700 text-red-600 dark:text-red-400 shadow-2xs"
+                            : "text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white"
+                        }`}
+                      >
+                        <Folder className="w-3.5 h-3.5" />
+                        <span>Batches</span>
+                        {availableChatBatches.length > 0 && (
+                          <span className="text-[10px] px-1.5 py-0.2 rounded-full font-mono bg-black/5 dark:bg-white/10">
+                            {availableChatBatches.length}
+                          </span>
+                        )}
+                      </button>
+                      {canAccessDirectChat && (
+                        <button
+                          type="button"
+                          onClick={() => setChatChannelTab("direct")}
+                          className={`py-1.5 px-2 rounded-xl transition flex items-center justify-center gap-1.5 cursor-pointer ${
+                            selectedContactId || chatChannelTab === "direct"
+                              ? "bg-white dark:bg-slate-700 text-red-600 dark:text-red-400 shadow-2xs"
+                              : "text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white"
+                          }`}
+                        >
+                          <Users className="w-3.5 h-3.5" />
+                          <span>Direct</span>
+                          {chatContacts.length > 0 && (
+                            <span className="text-[10px] px-1.5 py-0.2 rounded-full font-mono bg-black/5 dark:bg-white/10">
+                              {chatContacts.length}
+                            </span>
+                          )}
+                        </button>
+                      )}
+                    </div>
+
+                    {/* Search filter for channels */}
+                    <div className="relative shrink-0">
+                      <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                      <input
+                        type="text"
+                        placeholder="Search channels or contacts..."
+                        value={chatSearchQuery}
+                        onChange={(e) => setChatSearchQuery(e.target.value)}
+                        className="w-full pl-8 pr-3 py-1.5 rounded-xl border border-gray-200/80 dark:border-slate-800 bg-transparent text-xs placeholder-gray-400 dark:placeholder-slate-500 focus:outline-none focus:border-red-500"
+                      />
+                    </div>
+
+                    {/* Channel List */}
+                    <div className="space-y-2 text-xs overflow-y-auto pr-1 flex-1">
+                      {chatChannelTab === "batches" ? (
+                        filteredChatBatches.length === 0 ? (
+                          <div className="text-center py-6 text-xs text-gray-400">No matching batches found.</div>
+                        ) : (
+                          filteredChatBatches.map((b) => {
+                            const isSelected = !selectedContactId && selectedBatch?.id === b.id;
+                            const messageMeta = batchChatMeta[b.id] || {};
+                            const notificationMeta = batchNotificationMeta[b.id] || {};
+                            const useNotificationPreview = chatTimestamp(notificationMeta.lastMessageTime) > chatTimestamp(messageMeta.lastMessageTime);
+                            const latestPreview = useNotificationPreview ? notificationMeta.lastMessagePreview : messageMeta.lastMessagePreview;
+                            const unreadBadge = notificationMeta.unreadCount || 0;
+                            return (
+                              <button
+                                key={b.id}
+                                type="button"
+                                onClick={() => {
+                                  setSelectedBatchId(b.id);
+                                  setSelectedContactId("");
+                                }}
+                                className={`w-full flex items-center justify-between gap-2 p-2.5 rounded-2xl border transition cursor-pointer text-left ${
+                                  isSelected
+                                    ? "bg-red-50 text-red-950 dark:bg-red-500/10 dark:text-red-100 border-red-300 dark:border-red-500/30 font-bold"
+                                    : "border-gray-200/80 dark:border-slate-800 hover:border-red-400 dark:hover:border-slate-700"
+                                }`}
+                              >
+                                <div className="flex items-center gap-2.5 min-w-0">
+                                  <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-red-600 to-rose-600 text-white font-black text-xs flex items-center justify-center shrink-0">
+                                    <Folder className="w-4 h-4" />
+                                  </div>
+                                  <div className="min-w-0">
+                                    <div className="font-bold text-xs truncate">{b.name}</div>
+                                    <div className="text-[10px] text-gray-400 truncate">{latestPreview || domainLabel(b.domain)}</div>
+                                    {latestPreview && (
+                                      <div className="text-[9.5px] text-gray-400 truncate">{domainLabel(b.domain)}</div>
+                                    )}
+                                  </div>
+                                </div>
+                                <div className="flex flex-col items-end gap-1 shrink-0">
+                                  {unreadBadge > 0 && (
+                                    <span className="min-w-5 h-5 px-1.5 rounded-full bg-red-600 text-white text-[10px] font-black flex items-center justify-center">
+                                      {unreadBadge > 99 ? "99+" : unreadBadge}
+                                    </span>
+                                  )}
+                                  <span className={`text-[10px] px-2 py-0.5 rounded-full border font-semibold ${
+                                    isSelected ? "bg-red-600 text-white border-red-600" : "bg-gray-100 dark:bg-slate-800 border-gray-200 dark:border-slate-700 text-gray-600 dark:text-slate-400"
+                                  }`}>
+                                    {b.status || "active"}
+                                  </span>
+                                </div>
+                              </button>
+                            );
+                          })
+                        )
+                      ) : (
+                        filteredChatContacts.length === 0 ? (
+                          <div className="text-center py-6 text-xs text-gray-400">No matching contacts.</div>
+                        ) : (
+                          filteredChatContacts.map((contact) => {
+                            const isSelected = selectedContactId === contact.id;
+                            const meta = directChatMeta[contact.id] || {};
+                            const unreadBadge = meta.unreadCount || 0;
+                            return (
+                              <button
+                                key={contact.id}
+                                type="button"
+                                onClick={() => {
+                                  setSelectedContactId(contact.id);
+                                  loadMessages(contact.id);
+                                }}
+                                className={`w-full flex items-center justify-between gap-2 p-2.5 rounded-2xl border transition cursor-pointer text-left ${
+                                  isSelected
+                                    ? "bg-red-50 text-red-950 dark:bg-red-500/10 dark:text-red-100 border-red-300 dark:border-red-500/30 font-bold"
+                                    : "border-gray-200/80 dark:border-slate-800 hover:border-emerald-500"
+                                }`}
+                              >
+                                <div className="flex items-center gap-2.5 min-w-0">
+                                  <div className="w-8 h-8 rounded-full bg-emerald-600 text-white font-black text-xs flex items-center justify-center shrink-0">
+                                    {contact.full_name?.charAt(0) || "U"}
+                                  </div>
+                                  <div className="min-w-0">
+                                    <div className={`font-bold text-xs truncate ${isSelected ? "text-red-700 dark:text-red-300" : "text-gray-900 dark:text-white"}`}>{contact.full_name}</div>
+                                    <div className="text-[10px] text-gray-400 truncate">{meta.lastMessagePreview || contact.email}</div>
+                                    {meta.lastMessagePreview && (
+                                      <div className="text-[9.5px] text-gray-400 truncate">{contact.email}</div>
+                                    )}
+                                  </div>
+                                </div>
+                                <div className="flex flex-col items-end gap-1 shrink-0">
+                                  {unreadBadge > 0 && (
+                                    <span className="min-w-5 h-5 px-1.5 rounded-full bg-emerald-600 text-white text-[10px] font-black flex items-center justify-center">
+                                      {unreadBadge > 99 ? "99+" : unreadBadge}
+                                    </span>
+                                  )}
+                                  <span className="text-[10px] px-2 py-0.5 rounded-full border font-semibold text-gray-500 dark:text-slate-400">
+                                    {ROLE_LABELS[contact.role] || contact.role}
+                                  </span>
+                                </div>
+                              </button>
+                            );
+                          })
+                        )
+                      )}
+                    </div>
                   </div>
                 </div>
               )}
@@ -5236,65 +6259,67 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
                     </div>
                   ) : (
                     <>
-                      <div className="grid grid-cols-1 xl:grid-cols-[1.25fr_0.75fr] gap-4">
-                        <div className="rounded-2xl border border-gray-200/80 dark:border-slate-800/80 p-4 bg-transparent dark:bg-transparent">
-                          <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
-                            <div className="min-w-0">
-                              <div className="flex flex-wrap items-center gap-2 mb-2">
-                                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-bold bg-red-50 text-red-700 dark:bg-red-500/10 dark:text-red-400 border border-red-200 dark:border-red-500/20">
-                                  <Folder className="w-3.5 h-3.5" />
-                                  {selectedBatch.name}
-                                </span>
-                                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-semibold bg-slate-50 text-slate-700 dark:bg-slate-800 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
-                                  {domainLabel(selectedBatch.domain)}
-                                </span>
-                                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-semibold bg-gray-50 text-gray-700 dark:bg-slate-900 dark:text-slate-300 border border-gray-200 dark:border-slate-800 capitalize">
-                                  {selectedBatch.batch_type || "internship"}
-                                </span>
-                                <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10.5px] font-bold uppercase border ${selectedBatch.status === "active" ? "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800" : "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800"
-                                  }`}>
-                                  {selectedBatch.status || "active"}
-                                </span>
-                              </div>
-                              <div className="text-xs text-gray-500 dark:text-slate-400">
-                                Batch ID: <span className="font-mono">{selectedBatch.id}</span>
-                              </div>
-                              <div className="text-xs text-gray-500 dark:text-slate-400 mt-1">
-                                Start: {selectedBatch.starts_at || "Immediate"} · End: {selectedBatch.ends_at || "Open"}
-                              </div>
-                            </div>
-                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 min-w-0">
-                              {[
-                                ["Members", selectedBatchMembers.length],
-                                ["Active", selectedBatchHealth.totalTasks - selectedBatchHealth.completedTasks],
-                                ["Pending", selectedBatchHealth.submittedTasks + selectedBatchHealth.pendingReports],
-                                ["Overdue", selectedBatchHealth.overdueTasks],
-                              ].map(([label, value]) => (
-                                <div key={label} className="rounded-xl border border-gray-200 dark:border-slate-800 px-3 py-2 text-center">
-                                  <div className="text-lg font-black text-gray-900 dark:text-white">{value}</div>
-                                  <div className="text-[10px] font-bold uppercase text-gray-400 dark:text-slate-500">{label}</div>
+                      {batchWorkspaceTab !== "chat" && (
+                        <div className="grid grid-cols-1 xl:grid-cols-[1.25fr_0.75fr] gap-4">
+                          <div className="rounded-2xl border border-gray-200/80 dark:border-slate-800/80 p-4 bg-transparent dark:bg-transparent">
+                            <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
+                              <div className="min-w-0">
+                                <div className="flex flex-wrap items-center gap-2 mb-2">
+                                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-bold bg-red-50 text-red-700 dark:bg-red-500/10 dark:text-red-400 border border-red-200 dark:border-red-500/20">
+                                    <Folder className="w-3.5 h-3.5" />
+                                    {selectedBatch.name}
+                                  </span>
+                                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-semibold bg-slate-50 text-slate-700 dark:bg-slate-800 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
+                                    {domainLabel(selectedBatch.domain)}
+                                  </span>
+                                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-semibold bg-gray-50 text-gray-700 dark:bg-slate-900 dark:text-slate-300 border border-gray-200 dark:border-slate-800 capitalize">
+                                    {selectedBatch.batch_type || "internship"}
+                                  </span>
+                                  <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10.5px] font-bold uppercase border ${selectedBatch.status === "active" ? "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800" : "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800"
+                                    }`}>
+                                    {selectedBatch.status || "active"}
+                                  </span>
                                 </div>
-                              ))}
+                                <div className="text-xs text-gray-500 dark:text-slate-400">
+                                  Batch ID: <span className="font-mono">{selectedBatch.id}</span>
+                                </div>
+                                <div className="text-xs text-gray-500 dark:text-slate-400 mt-1">
+                                  Start: {selectedBatch.starts_at || "Immediate"} · End: {selectedBatch.ends_at || "Open"}
+                                </div>
+                              </div>
+                              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 min-w-0">
+                                {[
+                                  ["Members", selectedBatchMembers.length],
+                                  ["Active", selectedBatchHealth.totalTasks - selectedBatchHealth.completedTasks],
+                                  ["Pending", selectedBatchHealth.submittedTasks + selectedBatchHealth.pendingReports],
+                                  ["Overdue", selectedBatchHealth.overdueTasks],
+                                ].map(([label, value]) => (
+                                  <div key={label} className="rounded-xl border border-gray-200 dark:border-slate-800 px-3 py-2 text-center">
+                                    <div className="text-lg font-black text-gray-900 dark:text-white">{value}</div>
+                                    <div className="text-[10px] font-bold uppercase text-gray-400 dark:text-slate-500">{label}</div>
+                                  </div>
+                                ))}
+                              </div>
                             </div>
                           </div>
-                        </div>
 
-                        <div className="rounded-2xl border border-gray-200/80 dark:border-slate-800/80 p-4 bg-transparent dark:bg-transparent">
-                          <div className="text-[11px] font-bold uppercase tracking-wider text-gray-400 dark:text-slate-500 mb-3">Responsibility Map</div>
-                          {[
-                            ["HR", resolveBatchLead(selectedBatch, "hr")],
-                            ["Mentor", resolveBatchLead(selectedBatch, "mentor")],
-                            ["Team Leader", resolveBatchLead(selectedBatch, "team_leader")],
-                          ].map(([label, person]) => (
-                            <div key={label} className="flex items-center justify-between gap-3 py-2 border-b border-gray-100 dark:border-slate-800 last:border-0">
-                              <span className="text-xs font-bold text-gray-500 dark:text-slate-400">{label}</span>
-                              <span className="text-xs font-bold text-gray-900 dark:text-white truncate max-w-[180px]" title={person?.email || person?.full_name || "Unassigned"}>
-                                {person?.full_name || "Unassigned"}
-                              </span>
-                            </div>
-                          ))}
+                          <div className="rounded-2xl border border-gray-200/80 dark:border-slate-800/80 p-4 bg-transparent dark:bg-transparent">
+                            <div className="text-[11px] font-bold uppercase tracking-wider text-gray-400 dark:text-slate-500 mb-3">Responsibility Map</div>
+                            {[
+                              ["HR", resolveBatchLead(selectedBatch, "hr")],
+                              ["Mentor", resolveBatchLead(selectedBatch, "mentor")],
+                              ["Team Leader", resolveBatchLead(selectedBatch, "team_leader")],
+                            ].map(([label, person]) => (
+                              <div key={label} className="flex items-center justify-between gap-3 py-2 border-b border-gray-100 dark:border-slate-800 last:border-0">
+                                <span className="text-xs font-bold text-gray-500 dark:text-slate-400">{label}</span>
+                                <span className="text-xs font-bold text-gray-900 dark:text-white truncate max-w-[180px]" title={person?.email || person?.full_name || "Unassigned"}>
+                                  {person?.full_name || "Unassigned"}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
                         </div>
-                      </div>
+                      )}
 
                       <div className="flex gap-2 overflow-x-auto pb-1">
                         {[
@@ -5303,19 +6328,17 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
                           ["tasks", CheckSquare, "Tasks"],
                           ["meetings", Video, "Meetings"],
                           ["attendance", ShieldCheck, "Attendance"],
-                          ["reports", FileText, "Daily Reports"],
+                          ...((isMentor || isTeamLeader) ? [["reports", FileText, "Daily Reports"]] : []),
                           ["chat", MessageSquare, "Chat"],
-                          ["files", Folder, "Files"],
                           ["announcements", Bell, "Announcements"],
-                          ["performance", TrendingUp, "Performance"],
-                          ["activity", Activity, "Activity"],
+                          ...((isAdminRole || isHrRole) ? [["activity", Activity, "Activity"]] : []),
                         ].map(([key, IconComp, label]) => (
                           <button
                             key={key}
                             type="button"
                             onClick={() => setBatchWorkspaceTab(key)}
                             className={`inline-flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-bold border whitespace-nowrap transition-all ${batchWorkspaceTab === key
-                              ? "bg-red-600 text-white border-red-600 shadow-md shadow-red-500/20"
+                              ? "bg-red-600 text-white border-red-600"
                               : "bg-transparent text-gray-600 dark:text-slate-300 border-gray-200 dark:border-slate-800 hover:border-red-300 dark:hover:border-red-900"
                               }`}
                           >
@@ -5356,7 +6379,7 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
                             {[
                               ["Task Completion", `${selectedBatchHealth.taskCompletion}%`],
                               ["Meeting Attendance", `${selectedBatchHealth.attendancePercent}%`],
-                              ["Daily Reports", `${selectedBatchDailyUpdates.length - selectedBatchHealth.pendingReports}/${selectedBatchDailyUpdates.length}`],
+                              ...((isMentor || isTeamLeader) ? [["Daily Reports", `${selectedBatchDailyUpdates.length - selectedBatchHealth.pendingReports}/${selectedBatchDailyUpdates.length}`]] : []),
                               ["Needs Attention", selectedBatchHealth.needsAttention],
                               ["At Risk", selectedBatchHealth.atRisk],
                             ].map(([label, value]) => (
@@ -5454,7 +6477,7 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
                         </div>
                       )}
 
-                      {batchWorkspaceTab === "reports" && (
+                      {batchWorkspaceTab === "reports" && (isMentor || isTeamLeader) && (
                         <div className="space-y-2">
                           {selectedBatchDailyUpdates.map((update) => (
                             <div key={update.id} className="rounded-2xl border border-gray-200/80 dark:border-slate-800/80 p-4">
@@ -5475,9 +6498,9 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
                       )}
 
                       {batchWorkspaceTab === "chat" && (
-                        <div className="grid grid-cols-1 xl:grid-cols-[1fr_320px] gap-4 animate-fadeIn h-[calc(100dvh-13rem)] min-h-[550px] max-h-[850px]">
+                        <div className={`grid grid-cols-1 ${canAccessDirectChat ? "xl:grid-cols-[1fr_320px]" : ""} gap-4 animate-fadeIn h-[calc(100dvh-13.5rem)] min-h-[450px]`}>
                           <div className="h-full min-h-0 rounded-3xl overflow-hidden border border-gray-200/80 dark:border-slate-800/80 flex flex-col relative shadow-none">
-                            <WhatsAppBatchChat
+                            <TexAppBatchChat
                             mode="batch"
                             batch={selectedBatch}
                             currentUser={sessionUser}
@@ -5485,20 +6508,34 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
                             batchMembers={selectedBatchMembers}
                             batchTasks={selectedBatchTasks}
                             batchMeetings={selectedBatchMeetings}
-                            messages={batchWorkspaceData.messages || []}
+                        messages={activeBatchWorkspaceData.messages || []}
+                            availableChats={{ contacts: canAccessDirectChat ? chatContacts : [], batches: batches }}
+                            onOpenDirectChat={canAccessDirectChat ? (member) => {
+                              setActiveSection("chat");
+                              setSelectedContactId(member.id);
+                              setSelectedBatchId("");
+                            } : null}
+                            onUpdateBatchInfo={(updatedBatch) => {
+                              setBatches((prev) => (prev || []).map((b) => (b.id === updatedBatch.id ? { ...b, ...updatedBatch } : b)));
+                            }}
+                            onRefresh={() => loadBatchWorkspaceData(selectedBatch.id)}
+                            onlineUserIds={onlineUserIds}
+                            typingUsers={typingUsers}
+                            onTyping={publishTyping}
                             onSendMessage={async (payload) => {
                               const result = await createBatchWorkspaceItem({
                                 type: "message",
                                 batch_id: selectedBatch.id,
                                 ...payload,
                               });
-                              if (result?.message) {
-                                setBatchWorkspaceData((prev) => ({
-                                  ...prev,
-                                  messages: [...(prev.messages || []), result.message],
-                                }));
-                                return true;
-                              }
+                            if (result?.message) {
+                              setBatchWorkspaceData((prev) => ({
+                                ...prev,
+                                messages: [...(prev.messages || []), result.message],
+                              }));
+                              rememberBatchChatActivity(result.message);
+                              return true;
+                            }
                               setToast("Batch message could not be sent.");
                               return false;
                             }}
@@ -5519,7 +6556,27 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
                                 setToast(isPinned ? "Message pinned to batch notice." : "Message unpinned.");
                               }
                             }}
-                            availableChats={{ contacts: chatContacts, batches: batches }}
+                            onMarkRead={() => createBatchWorkspaceItem({
+                              type: "read_messages",
+                              batch_id: selectedBatch.id,
+                            })}
+                            onEditMessage={async (messageId, text) => {
+                              const result = await createBatchWorkspaceItem({
+                                type: "edit_message",
+                                batch_id: selectedBatch.id,
+                                message_id: messageId,
+                                message: text,
+                              });
+                              if (result?.message) {
+                                setBatchWorkspaceData((prev) => ({
+                                  ...prev,
+                                  messages: (prev.messages || []).map((m) => (m.id === messageId ? result.message : m)),
+                                }));
+                                return true;
+                              }
+                              setToast("Message could not be edited.");
+                              return false;
+                            }}
                             onDeleteMessage={async ({ messageIds, deleteType }) => {
                               if (deleteType === "for_everyone") {
                                 await createBatchWorkspaceItem({
@@ -5534,12 +6591,9 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
                                     messageIds.includes(m.id)
                                       ? {
                                         ...m,
-                                        message: "This message was deleted",
-                                        attachment_url: null,
-                                        attachment_name: null,
-                                        attachment_type: null,
-                                        reference_type: "none",
-                                        reference_id: null,
+                                        is_deleted: true,
+                                        deleted_at: new Date().toISOString(),
+                                        deleted_by: sessionUser.id,
                                         is_pinned: false,
                                       }
                                       : m
@@ -5584,17 +6638,24 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
                             localDate={localDate}
                             canManage={canManageSelectedBatch}
                           />
+                          {isSelectedBatchWorkspaceLoading && (
+                            <div className="absolute top-3 left-1/2 -translate-x-1/2 z-20 px-3 py-1.5 rounded-full bg-white/90 dark:bg-[#18150f]/90 border border-gray-200 dark:border-[#3a3020] text-[11px] font-bold text-gray-600 dark:text-[#f4ead2] shadow-sm flex items-center gap-2">
+                              <RefreshCw className="w-3.5 h-3.5 animate-spin text-red-500" />
+                              <span>Loading batch chat...</span>
+                            </div>
+                          )}
                           </div>
-                          <div className="rounded-3xl border border-gray-200/80 dark:border-slate-800/80 p-4 space-y-3 bg-white/50 dark:bg-slate-900/50 backdrop-blur-xs flex flex-col h-full min-h-0">
+                          {canAccessDirectChat && (
+                          <div className="rounded-3xl border border-gray-200/80 dark:border-slate-800/80 p-4 space-y-3 bg-white/50 dark:bg-transparent backdrop-blur-xs flex flex-col h-full min-h-0">
                             <div>
                               <h3 className="text-sm font-black text-gray-900 dark:text-white mb-0.5">Personal Chat Channels</h3>
                               <p className="text-[11px] text-gray-500 dark:text-slate-400">PRD §25: Permitted 1-on-1 private messaging.</p>
                             </div>
                             <div className="space-y-2 text-xs overflow-y-auto pr-1 flex-1">
-                              {chatContacts.length === 0 ? (
+                              {sortedChatContacts.length === 0 ? (
                                 <div className="text-center py-6 text-xs text-gray-400">No permitted direct contacts.</div>
                               ) : (
-                                chatContacts.map((contact) => (
+                                sortedChatContacts.map((contact) => (
                                   <button
                                     key={contact.id}
                                     onClick={() => {
@@ -5620,209 +6681,430 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
                               )}
                             </div>
                           </div>
-                        </div>
-                      )}
-
-                      {batchWorkspaceTab === "files" && (
-                        <div className="grid grid-cols-1 lg:grid-cols-[360px_1fr] gap-4">
-                          {canManageSelectedBatch && (
-                            <form onSubmit={handleCreateBatchResource} className="rounded-2xl border border-gray-200/80 dark:border-slate-800/80 p-4 space-y-3">
-                              <h3 className="text-sm font-black text-gray-900 dark:text-white">Add Knowledge Resource</h3>
-                              <InputField label="Title" value={batchResourceForm.title} onChange={(v) => setBatchResourceForm({ ...batchResourceForm, title: v })} required />
-                              <SelectField label="Category" value={batchResourceForm.category} onChange={(v) => setBatchResourceForm({ ...batchResourceForm, category: v })} options={[
-                                ["technical_guides", "Technical Guides"],
-                                ["task_guidelines", "Task Guidelines"],
-                                ["git_guidelines", "Git Guidelines"],
-                                ["learning_material", "Learning Material"],
-                                ["important_documents", "Important Documents"],
-                                ["useful_links", "Useful Links"],
-                                ["other", "Other"],
-                              ]} />
-                              <InputField label="Link URL" type="url" value={batchResourceForm.link_url} onChange={(v) => setBatchResourceForm({ ...batchResourceForm, link_url: v })} />
-                              <textarea rows={3} value={batchResourceForm.description} onChange={(event) => setBatchResourceForm({ ...batchResourceForm, description: event.target.value })} placeholder="Short note" className="w-full p-2.5 rounded-xl border border-gray-200 dark:border-slate-700 bg-transparent text-xs focus:outline-none focus:border-red-600" />
-                              <button type="submit" className="w-full px-3 py-2 rounded-xl text-xs font-bold bg-red-600 text-white">Add Resource</button>
-                            </form>
                           )}
-                          <div className="rounded-2xl border border-gray-200/80 dark:border-slate-800/80 p-4">
-                            <h3 className="text-sm font-black text-gray-900 dark:text-white mb-3">Files, Links & Knowledge Base</h3>
-                            <div className="space-y-2">
-                              {[...(batchWorkspaceData.resources || []), ...selectedBatchTasks.filter((task) => task.reference_url || task.file_name).map((task) => ({
-                                id: `task-${task.id}`,
-                                title: task.file_name || task.title,
-                                description: task.description,
-                                link_url: task.reference_url,
-                                category: "task_reference",
-                              }))].map((item) => (
-                                <div key={item.id} className="flex items-start justify-between gap-3 py-2 border-b border-gray-100 dark:border-slate-800">
-                                  <div className="min-w-0">
-                                    <div className="text-xs font-bold text-gray-900 dark:text-white truncate">{item.title}</div>
-                                    <div className="text-[11px] text-gray-500 dark:text-slate-400 truncate">{item.category?.replaceAll("_", " ") || "resource"} {item.description ? `- ${item.description}` : ""}</div>
-                                  </div>
-                                  {item.link_url && <a href={safeExternalUrl(item.link_url)} target="_blank" rel="noreferrer" className="text-xs font-bold text-red-600">Open</a>}
-                                </div>
-                              ))}
-                            </div>
-                          </div>
                         </div>
                       )}
 
-                      {batchWorkspaceTab === "announcements" && (
-                        <div className="grid grid-cols-1 lg:grid-cols-[360px_1fr] gap-4">
-                          {canManageSelectedBatch && (
-                            <form onSubmit={handleCreateBatchAnnouncement} className="rounded-2xl border border-gray-200/80 dark:border-slate-800/80 p-4 space-y-3">
-                              <h3 className="text-sm font-black text-gray-900 dark:text-white">Post Notice</h3>
-                              <InputField label="Title" value={batchAnnouncementForm.title} onChange={(v) => setBatchAnnouncementForm({ ...batchAnnouncementForm, title: v })} required />
-                              <SelectField label="Category" value={batchAnnouncementForm.category} onChange={(v) => setBatchAnnouncementForm({ ...batchAnnouncementForm, category: v })} options={[
-                                ["announcement", "Announcement"],
-                                ["important_link", "Important Link"],
-                                ["rule", "Rule"],
-                                ["resource", "Resource"],
-                                ["pinned", "Pinned Information"],
-                              ]} />
-                              <InputField label="Optional Link" type="url" value={batchAnnouncementForm.link_url} onChange={(v) => setBatchAnnouncementForm({ ...batchAnnouncementForm, link_url: v })} />
-                              <textarea rows={4} value={batchAnnouncementForm.body} onChange={(event) => setBatchAnnouncementForm({ ...batchAnnouncementForm, body: event.target.value })} placeholder="Announcement body" required className="w-full p-2.5 rounded-xl border border-gray-200 dark:border-slate-700 bg-transparent text-xs focus:outline-none focus:border-red-600" />
-                              <label className="flex items-center gap-2 text-xs font-bold text-gray-700 dark:text-slate-300">
-                                <input type="checkbox" checked={batchAnnouncementForm.pinned} onChange={(event) => setBatchAnnouncementForm({ ...batchAnnouncementForm, pinned: event.target.checked })} />
-                                Pin this notice
-                              </label>
-                              <button type="submit" className="w-full px-3 py-2 rounded-xl text-xs font-bold bg-red-600 text-white">Publish</button>
-                            </form>
-                          )}
-                          <div className="rounded-2xl border border-gray-200/80 dark:border-slate-800/80 p-4">
-                            <h3 className="text-sm font-black text-gray-900 dark:text-white mb-3">Batch Notice Board</h3>
-                            <div className="space-y-2">
-                              {selectedBatchAnnouncements.map((item) => (
-                                <div key={item.id} className="p-3 rounded-xl border border-gray-200 dark:border-slate-800">
-                                  <div className="flex items-center justify-between gap-2">
-                                    <div className="text-xs font-black text-gray-900 dark:text-white">{item.title}</div>
-                                    {(item.pinned || item.category === "pinned") && <span className="text-[10px] font-bold text-red-600">Pinned</span>}
-                                  </div>
-                                  <div className="text-xs text-gray-500 dark:text-slate-400 mt-1">{item.message || item.body}</div>
-                                  {item.link_url && <a href={safeExternalUrl(item.link_url)} target="_blank" rel="noreferrer" className="inline-flex mt-2 text-xs font-bold text-red-600">Open Link</a>}
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        </div>
-                      )}
+                      {batchWorkspaceTab === "announcements" && (() => {
+                        const totalAnnouncementsCount = selectedBatchAnnouncements.length;
+                        const safeAnnouncePage = Math.min(Math.max(1, announcementsPage), Math.max(1, Math.ceil(totalAnnouncementsCount / announcementsPerPage)));
+                        const startIdx = (safeAnnouncePage - 1) * announcementsPerPage;
+                        const paginatedAnnouncements = selectedBatchAnnouncements.slice(startIdx, startIdx + announcementsPerPage);
 
-                      {["performance", "activity"].includes(batchWorkspaceTab) && (
-                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                          <div className="rounded-2xl border border-gray-200/80 dark:border-slate-800/80 p-4">
-                            <h3 className="text-sm font-black text-gray-900 dark:text-white mb-3">
-                              {batchWorkspaceTab === "files" ? "Files & Links" : batchWorkspaceTab === "announcements" ? "Notice Board" : batchWorkspaceTab === "performance" ? "Performance Signals" : "Recent Activity"}
-                            </h3>
-                            {batchWorkspaceTab === "files" && (
-                              <div className="space-y-2">
-                                {selectedBatchTasks.filter((task) => task.reference_url || task.file_name).map((task) => (
-                                  <div key={task.id} className="flex items-center justify-between gap-3 py-2 border-b border-gray-100 dark:border-slate-800">
-                                    <span className="text-xs font-bold text-gray-700 dark:text-slate-300 truncate">{task.file_name || task.reference_url}</span>
-                                    {task.reference_url && <a href={safeExternalUrl(task.reference_url)} target="_blank" rel="noreferrer" className="text-xs font-bold text-red-600">Open</a>}
-                                  </div>
-                                ))}
-                              </div>
-                            )}
-                            {batchWorkspaceTab === "announcements" && (
-                              <div className="space-y-2">
-                                {(selectedBatchAnnouncements.length ? selectedBatchAnnouncements : notifications.slice(0, 3)).map((item) => (
-                                  <div key={item.id} className="py-2 border-b border-gray-100 dark:border-slate-800">
-                                    <div className="text-xs font-bold text-gray-900 dark:text-white">{item.title}</div>
-                                    <div className="text-xs text-gray-500 dark:text-slate-400">{item.message}</div>
-                                  </div>
-                                ))}
-                              </div>
-                            )}
-                            {batchWorkspaceTab === "performance" && (
-                              <div className="space-y-4">
-                                <div className="grid grid-cols-3 gap-2">
-                                  <div className="rounded-xl border border-emerald-200 dark:border-emerald-900 bg-emerald-50 dark:bg-emerald-950/30 p-3">
-                                    <div className="text-lg font-black text-emerald-700 dark:text-emerald-300">{Math.max(0, selectedBatchMembers.length - selectedBatchHealth.needsAttention)}</div>
-                                    <div className="text-[10px] font-bold text-emerald-700 dark:text-emerald-300">On Track</div>
-                                  </div>
-                                  <div className="rounded-xl border border-amber-200 dark:border-amber-900 bg-amber-50 dark:bg-amber-950/30 p-3">
-                                    <div className="text-lg font-black text-amber-700 dark:text-amber-300">{selectedBatchHealth.needsAttention}</div>
-                                    <div className="text-[10px] font-bold text-amber-700 dark:text-amber-300">Attention</div>
-                                  </div>
-                                  <div className="rounded-xl border border-rose-200 dark:border-rose-900 bg-rose-50 dark:bg-rose-950/30 p-3">
-                                    <div className="text-lg font-black text-rose-700 dark:text-rose-300">{selectedBatchHealth.atRisk}</div>
-                                    <div className="text-[10px] font-bold text-rose-700 dark:text-rose-300">At Risk</div>
-                                  </div>
+                        return (
+                          <div className={`grid grid-cols-1 ${canPostBatchNotice ? "lg:grid-cols-[360px_1fr]" : "grid-cols-1"} gap-4`}>
+                            {canPostBatchNotice && (
+                              <form onSubmit={handleCreateBatchAnnouncement} className="rounded-2xl border border-gray-200/80 dark:border-slate-800/80 p-4 space-y-3 bg-white/50 dark:bg-transparent">
+                                <div className="flex items-center justify-between">
+                                  <h3 className="text-sm font-black text-gray-900 dark:text-white">Post Notice</h3>
+                                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-red-50 text-red-600 dark:bg-red-950/50 dark:text-red-400">
+                                    Broadcast
+                                  </span>
                                 </div>
-                                <form onSubmit={handleCreateBatchEscalation} className="space-y-2 rounded-xl border border-gray-200 dark:border-slate-800 p-3">
-                                  <h4 className="text-xs font-black text-gray-900 dark:text-white">Open Escalation</h4>
-                                  <InputField label="Issue" value={batchEscalationForm.issue} onChange={(v) => setBatchEscalationForm({ ...batchEscalationForm, issue: v })} required />
-                                  <div className="grid grid-cols-2 gap-2">
-                                    <SelectField label="Priority" value={batchEscalationForm.priority} onChange={(v) => setBatchEscalationForm({ ...batchEscalationForm, priority: v })} options={[["low", "Low"], ["medium", "Medium"], ["high", "High"], ["urgent", "Urgent"]]} />
-                                    <SelectField label="Related Member" value={batchEscalationForm.related_member_id} onChange={(v) => setBatchEscalationForm({ ...batchEscalationForm, related_member_id: v })} options={[["", "None"], ...selectedBatchMembers.map((member) => [member.id, member.full_name])]} />
-                                  </div>
-                                  <textarea rows={3} value={batchEscalationForm.description} onChange={(event) => setBatchEscalationForm({ ...batchEscalationForm, description: event.target.value })} placeholder="Describe blocker or concern" className="w-full p-2.5 rounded-xl border border-gray-200 dark:border-slate-700 bg-transparent text-xs focus:outline-none focus:border-red-600" />
-                                  <button type="submit" className="w-full px-3 py-2 rounded-xl text-xs font-bold bg-red-600 text-white">Create Escalation</button>
-                                </form>
-                                {isHrRole && (
-                                  <form onSubmit={handleTransferBatchMember} className="space-y-2 rounded-xl border border-gray-200 dark:border-slate-800 p-3">
-                                    <h4 className="text-xs font-black text-gray-900 dark:text-white">Batch Transfer</h4>
-                                    <SelectField label="Member" value={batchTransferForm.member_id} onChange={(v) => setBatchTransferForm({ ...batchTransferForm, member_id: v })} options={[["", "Select member"], ...selectedBatchMembers.filter((member) => ["intern", "team_leader"].includes(member.role)).map((member) => [member.id, member.full_name])]} />
-                                    <SelectField label="Target Batch" value={batchTransferForm.to_batch_id} onChange={(v) => setBatchTransferForm({ ...batchTransferForm, to_batch_id: v })} options={[["", "Select target batch"], ...ownedBatches.filter((batch) => batch.id !== selectedBatch.id).map((batch) => [batch.id, batch.name])]} />
-                                    <InputField label="Note" value={batchTransferForm.note} onChange={(v) => setBatchTransferForm({ ...batchTransferForm, note: v })} />
-                                    <button type="submit" className="w-full px-3 py-2 rounded-xl text-xs font-bold bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900">Transfer</button>
-                                  </form>
-                                )}
-                              </div>
-                            )}
-                            {batchWorkspaceTab === "activity" && (
-                              <div className="space-y-2">
-                                {selectedBatchActivity.map((item) => (
-                                  <div key={item.id} className="flex items-start gap-3 py-2 border-b border-gray-100 dark:border-slate-800">
-                                    <Activity className="w-3.5 h-3.5 text-red-600 mt-0.5 shrink-0" />
-                                    <div className="min-w-0">
-                                      <div className="text-xs font-bold text-gray-900 dark:text-white truncate">{item.title}</div>
-                                      <div className="text-[11px] text-gray-500 dark:text-slate-400">{item.meta} · {localDate(item.date)}</div>
-                                    </div>
-                                  </div>
-                                ))}
-                                {(batchWorkspaceData.history || []).map((item) => (
-                                  <div key={`history-${item.id}`} className="flex items-start gap-3 py-2 border-b border-gray-100 dark:border-slate-800">
-                                    <Repeat className="w-3.5 h-3.5 text-amber-600 mt-0.5 shrink-0" />
-                                    <div className="min-w-0">
-                                      <div className="text-xs font-bold text-gray-900 dark:text-white truncate">
-                                        {item.assignment_type?.replaceAll("_", " ")} history
+                                <InputField label="Title" value={batchAnnouncementForm.title} onChange={(v) => setBatchAnnouncementForm({ ...batchAnnouncementForm, title: v })} required />
+                                <SelectField label="Category" value={batchAnnouncementForm.category} onChange={(v) => setBatchAnnouncementForm({ ...batchAnnouncementForm, category: v })} options={[
+                                  ["announcement", "Announcement"],
+                                  ["important_link", "Important Link"],
+                                  ["rule", "Rule"],
+                                  ["pinned", "Pinned Information"],
+                                ]} />
+
+                                {/* Optional Attachment: PDF, Image, Document */}
+                                <div className="space-y-1.5">
+                                  <label className="text-xs font-bold text-gray-700 dark:text-slate-300 flex items-center justify-between">
+                                    <span>Attachment (PDF / Image / Doc)</span>
+                                    <span className="text-[10px] text-gray-400 font-normal">Optional</span>
+                                  </label>
+                                  <div className="relative">
+                                    <input
+                                      type="file"
+                                      accept=".pdf,image/*,.doc,.docx,.txt,.xlsx,.zip"
+                                      onChange={(e) => {
+                                        const file = e.target.files?.[0];
+                                        if (file) {
+                                          const previewUrl = file.type.startsWith("image/") ? URL.createObjectURL(file) : "";
+                                          setAnnouncementAttachment({
+                                            file,
+                                            previewUrl,
+                                            fileName: file.name,
+                                            fileType: file.type || file.name.split(".").pop(),
+                                            uploading: false,
+                                          });
+                                        }
+                                      }}
+                                      className="hidden"
+                                      id="batch-announcement-file-input"
+                                    />
+                                    {announcementAttachment.file ? (
+                                      <div className="flex items-center justify-between p-2.5 rounded-xl border border-red-200 dark:border-red-900/60 bg-red-50/50 dark:bg-red-950/20 text-xs">
+                                        <div className="flex items-center gap-2 min-w-0">
+                                          {announcementAttachment.previewUrl ? (
+                                            <img src={announcementAttachment.previewUrl} alt="Preview" className="w-7 h-7 rounded object-cover border" />
+                                          ) : (
+                                            <FileText className="w-4 h-4 text-red-600 shrink-0" />
+                                          )}
+                                          <span className="font-bold text-red-950 dark:text-red-200 truncate">{announcementAttachment.fileName}</span>
+                                        </div>
+                                        <button
+                                          type="button"
+                                          onClick={() => setAnnouncementAttachment({ file: null, previewUrl: "", fileName: "", fileType: "", uploading: false })}
+                                          className="p-1 hover:text-red-600 text-gray-400"
+                                        >
+                                          <X className="w-4 h-4" />
+                                        </button>
                                       </div>
-                                      <div className="text-[11px] text-gray-500 dark:text-slate-400">
-                                        {item.new_user?.full_name || item.member?.full_name || "Batch assignment"} - {localDate(item.created_at)}
-                                      </div>
-                                    </div>
-                                  </div>
-                                ))}
-                              </div>
-                            )}
-                          </div>
-                          <div className="rounded-2xl border border-gray-200/80 dark:border-slate-800/80 p-4">
-                            <h3 className="text-sm font-black text-gray-900 dark:text-white mb-3">Review Center</h3>
-                            {[
-                              ["Daily Reports", selectedBatchReviews.reports.length],
-                              ["Task Submissions", selectedBatchReviews.submissions.length],
-                              ["Changes Requested", selectedBatchReviews.changes.length],
-                              ["Escalations", (batchWorkspaceData.escalations || []).filter((item) => !["resolved", "closed"].includes(item.status)).length + selectedBatchReviews.escalations.length],
-                            ].map(([label, value]) => (
-                              <div key={label} className="flex items-center justify-between py-2 border-b border-gray-100 dark:border-slate-800 last:border-0">
-                                <span className="text-xs text-gray-500 dark:text-slate-400">{label}</span>
-                                <span className="text-xs font-black text-gray-900 dark:text-white">{value}</span>
-                              </div>
-                            ))}
-                            <div className="mt-4 space-y-2">
-                              {(batchWorkspaceData.escalations || []).slice(0, 6).map((item) => (
-                                <div key={item.id} className="rounded-xl border border-gray-200 dark:border-slate-800 p-3">
-                                  <div className="flex items-start justify-between gap-2">
-                                    <div className="min-w-0">
-                                      <div className="text-xs font-black text-gray-900 dark:text-white truncate">{item.issue}</div>
-                                      <div className="text-[11px] text-gray-500 dark:text-slate-400">{item.priority} - {item.status}</div>
-                                    </div>
-                                    {canManageSelectedBatch && !["resolved", "closed"].includes(item.status) && (
-                                      <button onClick={() => handleUpdateBatchEscalationStatus(item, "resolved")} className="text-[11px] font-bold text-emerald-600">Resolve</button>
+                                    ) : (
+                                      <label
+                                        htmlFor="batch-announcement-file-input"
+                                        className="flex items-center justify-center gap-2 p-3 border border-dashed border-gray-300 dark:border-slate-700 rounded-xl hover:border-red-500 hover:bg-gray-50 dark:hover:bg-slate-800/50 cursor-pointer transition text-xs text-gray-500 dark:text-slate-400 font-medium"
+                                      >
+                                        <Paperclip className="w-4 h-4 text-gray-400" />
+                                        <span>Attach PDF, Document, or Image</span>
+                                      </label>
                                     )}
                                   </div>
                                 </div>
+
+                                <InputField label="Optional Link" type="url" value={batchAnnouncementForm.link_url} onChange={(v) => setBatchAnnouncementForm({ ...batchAnnouncementForm, link_url: v })} placeholder="https://..." />
+                                <textarea rows={4} value={batchAnnouncementForm.body} onChange={(event) => setBatchAnnouncementForm({ ...batchAnnouncementForm, body: event.target.value })} placeholder="Announcement body..." required className="w-full p-2.5 rounded-xl border border-gray-200 dark:border-slate-700 bg-transparent text-xs focus:outline-none focus:border-red-600" />
+                                <label className="flex items-center gap-2 text-xs font-bold text-gray-700 dark:text-slate-300 cursor-pointer">
+                                  <input type="checkbox" checked={batchAnnouncementForm.pinned} onChange={(event) => setBatchAnnouncementForm({ ...batchAnnouncementForm, pinned: event.target.checked })} />
+                                  <span>Pin this notice to top</span>
+                                </label>
+                                <button
+                                  type="submit"
+                                  disabled={announcementAttachment.uploading}
+                                  className="w-full px-3 py-2 rounded-xl text-xs font-bold bg-red-600 hover:bg-red-700 text-white disabled:opacity-50 flex items-center justify-center gap-2 cursor-pointer transition"
+                                >
+                                  {announcementAttachment.uploading ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
+                                  <span>{announcementAttachment.uploading ? "Uploading & Publishing..." : "Publish Announcement"}</span>
+                                </button>
+                              </form>
+                            )}
+
+                            <div className="rounded-2xl border border-gray-200/80 dark:border-slate-800/80 p-4 space-y-3 bg-white/50 dark:bg-transparent">
+                              <div className="flex items-center justify-between gap-3">
+                                <div>
+                                  <h3 className="text-sm font-black text-gray-900 dark:text-white">Batch Notice Board</h3>
+                                  <p className="text-[11px] text-gray-500 dark:text-slate-400">Announcements, rule changes, and notifications.</p>
+                                </div>
+                                <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-gray-100 dark:bg-slate-800 text-gray-700 dark:text-slate-300">
+                                  {totalAnnouncementsCount} Notices
+                                </span>
+                              </div>
+
+                              {totalAnnouncementsCount === 0 ? (
+                                <div className="text-center py-10 text-xs text-gray-400 border border-dashed border-gray-200 dark:border-slate-800 rounded-xl">
+                                  No announcements posted in this batch yet.
+                                </div>
+                              ) : (
+                                <>
+                                  <div className="space-y-3">
+                                    {paginatedAnnouncements.map((item) => {
+                                      const isImg = item.attachment_url && (
+                                        item.attachment_type?.startsWith("image") ||
+                                        item.attachment_url.startsWith("data:image") ||
+                                        item.attachment_url.match(/\.(jpg|jpeg|png|webp|gif)($|\?)/i) ||
+                                        item.attachment_name?.match(/\.(jpg|jpeg|png|webp|gif)$/i)
+                                      );
+
+                                      return (
+                                        <div key={item.id} className="p-3.5 rounded-xl border border-gray-200 dark:border-slate-800 bg-transparent space-y-2">
+                                          <div className="flex items-center justify-between gap-2 flex-wrap">
+                                            <div className="flex items-center gap-2 flex-wrap">
+                                              <span className="text-xs font-black text-gray-900 dark:text-white">{item.title}</span>
+                                              {(item.pinned || item.category === "pinned") && (
+                                                <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-red-50 text-red-600 dark:bg-red-950/40 dark:text-red-300 border border-red-200 dark:border-red-900">
+                                                  Pinned
+                                                </span>
+                                              )}
+                                              <span className="text-[10px] font-semibold px-1.5 py-0.2 rounded bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-slate-300 uppercase">
+                                                {item.category?.replaceAll("_", " ")}
+                                              </span>
+                                            </div>
+                                            <div className="flex items-center gap-2">
+                                              {item.created_at && (
+                                                <span className="text-[10px] text-gray-400 font-mono">
+                                                  {localDate(item.created_at)}
+                                                </span>
+                                              )}
+                                              {(["super_admin", "hr", "admin"].includes(currentRole) || item.created_by === sessionUser?.id || item.creator?.id === sessionUser?.id) && (
+                                                <div className="flex items-center gap-1 ml-1">
+                                                  <button
+                                                    type="button"
+                                                    onClick={() => setEditingAnnouncement({
+                                                      id: item.id,
+                                                      title: item.title,
+                                                      body: item.message || item.body,
+                                                      category: item.category || "announcement",
+                                                      link_url: item.link_url || "",
+                                                      pinned: Boolean(item.pinned),
+                                                      attachment_url: item.attachment_url || "",
+                                                      attachment_name: item.attachment_name || "",
+                                                      attachment_type: item.attachment_type || "",
+                                                      file: null,
+                                                      previewUrl: item.attachment_url || "",
+                                                      uploading: false,
+                                                    })}
+                                                    className="p-1 rounded-md text-gray-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950/40 transition"
+                                                    title="Edit announcement"
+                                                  >
+                                                    <Edit3 className="w-3.5 h-3.5" />
+                                                  </button>
+                                                  <button
+                                                    type="button"
+                                                    onClick={() => handleDeleteBatchAnnouncement(item)}
+                                                    className="p-1 rounded-md text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40 transition"
+                                                    title="Delete announcement"
+                                                  >
+                                                    <Trash2 className="w-3.5 h-3.5" />
+                                                  </button>
+                                                </div>
+                                              )}
+                                            </div>
+                                          </div>
+
+                                          {/* Creator Chip if available */}
+                                          {item.creator?.full_name && (
+                                            <div className="flex items-center gap-1 text-[11px] text-gray-500 dark:text-slate-400">
+                                              <span className="font-bold text-gray-700 dark:text-slate-300">
+                                                [{ROLE_LABELS[item.creator.role] || item.creator.role}]
+                                              </span>
+                                              <span>{item.creator.full_name}</span>
+                                            </div>
+                                          )}
+
+                                          <div className="text-xs text-gray-600 dark:text-slate-300 leading-relaxed whitespace-pre-wrap">
+                                            {item.message || item.body}
+                                          </div>
+
+                                          {/* Attachment Download / View Button (Unified for Images, PDFs, and Docs) */}
+                                          {item.attachment_url && (
+                                            <div className="pt-1">
+                                              <a
+                                                href={safeExternalUrl(item.attachment_url)}
+                                                target="_blank"
+                                                rel="noreferrer"
+                                                className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl border border-blue-200 dark:border-blue-900 bg-blue-50/50 dark:bg-blue-950/30 text-xs font-bold text-blue-700 dark:text-blue-300 hover:bg-blue-100 transition"
+                                              >
+                                                {isImg ? <ImageIcon className="w-3.5 h-3.5 text-emerald-600" /> : <FileText className="w-3.5 h-3.5 text-blue-600" />}
+                                                <span className="truncate max-w-xs">{item.attachment_name || (isImg ? "Download / View Image" : "Download Document")}</span>
+                                                <Download className="w-3 h-3 ml-1 text-blue-500" />
+                                              </a>
+                                            </div>
+                                          )}
+
+                                          {item.link_url && (
+                                            <a
+                                              href={safeExternalUrl(item.link_url)}
+                                              target="_blank"
+                                              rel="noreferrer"
+                                              className="inline-flex items-center gap-1.5 text-xs font-bold text-red-600 hover:underline pt-1"
+                                            >
+                                              <span>Open Link</span>
+                                              <ExternalLink className="w-3 h-3" />
+                                            </a>
+                                          )}
+                                        </div>
+                                      );
+                                    })}
+                                  </div>
+
+                                  <Pagination
+                                    currentPage={safeAnnouncePage}
+                                    totalItems={totalAnnouncementsCount}
+                                    rowsPerPage={announcementsPerPage}
+                                    onPageChange={setAnnouncementsPage}
+                                    onRowsPerPageChange={(v) => {
+                                      setAnnouncementsPerPage(v);
+                                      setAnnouncementsPage(1);
+                                    }}
+                                    rowsPerPageOptions={[5, 10, 20]}
+                                    itemName="announcements"
+                                  />
+                                </>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })()}
+
+                      {batchWorkspaceTab === "activity" && (isAdminRole || isHrRole) && (
+                        <div className="space-y-4">
+                          {/* Batch Activity Header & Search/Filter Controls */}
+                          <div className="p-4 rounded-2xl border border-gray-200/80 dark:border-slate-800/80 bg-white/40 dark:bg-transparent space-y-3.5">
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                              <div>
+                                <h3 className="text-sm font-black text-gray-900 dark:text-white flex items-center gap-2">
+                                  <Activity className="w-4 h-4 text-red-600 dark:text-red-400" />
+                                  <span>Batch Activity &amp; Audit Trail (A to Z)</span>
+                                </h3>
+                                <p className="text-xs text-gray-500 dark:text-slate-400 mt-0.5">
+                                  Complete chronological record of all events, tasks, submissions, reports, files, meetings and changes for {selectedBatch?.name || "this cohort"}.
+                                </p>
+                              </div>
+                              <div className="relative w-full sm:w-64 shrink-0">
+                                <Search className="w-3.5 h-3.5 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                                <input
+                                  type="text"
+                                  placeholder="Search batch activities..."
+                                  value={batchActivitySearch}
+                                  onChange={(e) => {
+                                    setBatchActivitySearch(e.target.value);
+                                    setBatchActivityPage(1);
+                                  }}
+                                  className="w-full pl-8 pr-3 py-1.5 rounded-xl text-xs bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:border-red-500"
+                                />
+                              </div>
+                            </div>
+
+                            {/* Category Filter Chips */}
+                            <div className="flex items-center gap-1.5 overflow-x-auto pb-1 text-xs">
+                              {[
+                                ["all", "All Events", selectedBatchActivity.length],
+                                ["announcements", "Announcements", selectedBatchActivity.filter((x) => x.category === "announcements").length],
+                                ["files", "Files & Resources", selectedBatchActivity.filter((x) => x.category === "files").length],
+                                ["tasks_and_work", "Tasks & Submissions", selectedBatchActivity.filter((x) => ["tasks", "submissions", "reviews"].includes(x.category)).length],
+                                ["reports", "Daily Reports", selectedBatchActivity.filter((x) => x.category === "reports").length],
+                                ["meetings", "Classes & Meets", selectedBatchActivity.filter((x) => x.category === "meetings").length],
+                                ["governance", "Governance & History", selectedBatchActivity.filter((x) => ["escalations", "members", "audit", "batch"].includes(x.category)).length],
+                              ].map(([catKey, catLabel, catCount]) => (
+                                <button
+                                  key={catKey}
+                                  type="button"
+                                  onClick={() => {
+                                    setBatchActivityCategory(catKey);
+                                    setBatchActivityPage(1);
+                                  }}
+                                  className={`px-3 py-1 rounded-xl font-bold whitespace-nowrap transition-all border flex items-center gap-1.5 cursor-pointer ${batchActivityCategory === catKey
+                                    ? "bg-red-600 text-white border-red-600 shadow-xs"
+                                    : "bg-gray-100/80 hover:bg-gray-200/80 dark:bg-slate-800 dark:hover:bg-slate-700 text-gray-600 dark:text-slate-300 border-gray-200 dark:border-slate-700"
+                                    }`}
+                                >
+                                  <span>{catLabel}</span>
+                                  <span className={`text-[10px] px-1.5 py-0.2 rounded-full ${batchActivityCategory === catKey
+                                    ? "bg-white/20 text-white"
+                                    : "bg-gray-200 dark:bg-slate-700 text-gray-700 dark:text-slate-300"
+                                    }`}>
+                                    {catCount}
+                                  </span>
+                                </button>
                               ))}
+                            </div>
+                          </div>
+
+                          {/* Activity Content Grid */}
+                          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                            {/* Left Feed (2 cols) */}
+                            <div className="lg:col-span-2 space-y-3">
+                              {paginatedBatchActivities.length === 0 ? (
+                                <div className="p-8 text-center rounded-2xl border border-gray-200/80 dark:border-slate-800/80 bg-white/30 dark:bg-transparent">
+                                  <Activity className="w-8 h-8 text-gray-300 dark:text-slate-600 mx-auto mb-2" />
+                                  <div className="text-xs font-bold text-gray-700 dark:text-slate-300">No batch activities found</div>
+                                  <p className="text-[11px] text-gray-400 mt-1">
+                                    {batchActivitySearch.trim() ? "Try modifying your search keywords or clearing filters." : "Activities will populate automatically as work happens in this batch."}
+                                  </p>
+                                </div>
+                              ) : (
+                                paginatedBatchActivities.map((item) => {
+                                  return (
+                                    <div
+                                      key={item.id}
+                                      className="p-3.5 rounded-2xl border border-gray-200/80 dark:border-slate-800/80 bg-white/60 dark:bg-transparent hover:border-red-300 dark:hover:border-slate-700 transition space-y-2"
+                                    >
+                                      <div className="flex items-start justify-between gap-3">
+                                        <div className="flex items-center gap-2 min-w-0">
+                                          <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-[10.5px] font-bold border ${item.badgeColor || "bg-gray-100 text-gray-700 dark:bg-slate-800 dark:text-slate-300 border-gray-200 dark:border-slate-700"}`}>
+                                            {item.categoryLabel || "Activity"}
+                                          </span>
+                                          <span className="text-xs font-bold text-gray-900 dark:text-white truncate">
+                                            {item.title}
+                                          </span>
+                                        </div>
+                                        <span className="text-[11px] font-mono text-gray-400 dark:text-slate-400 shrink-0 flex items-center gap-1">
+                                          <Clock className="w-3 h-3 text-gray-400" />
+                                          {localDate(item.date)}
+                                        </span>
+                                      </div>
+
+                                      {item.description && (
+                                        <p className="text-xs text-gray-600 dark:text-slate-300 line-clamp-2 leading-relaxed pl-1">
+                                          {item.description}
+                                        </p>
+                                      )}
+
+                                      <div className="flex items-center justify-between gap-2 pt-1 border-t border-gray-100 dark:border-slate-800/60 text-[11px] text-gray-500 dark:text-slate-400 flex-wrap">
+                                        <div className="flex items-center gap-1.5 min-w-0">
+                                          <span className="font-semibold text-gray-700 dark:text-slate-300 truncate">
+                                            {item.meta}
+                                          </span>
+                                        </div>
+                                        {item.file?.url && (
+                                          <a
+                                            href={safeExternalUrl(item.file.url)}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900 hover:underline shrink-0"
+                                          >
+                                            <Paperclip className="w-3 h-3" />
+                                            <span className="max-w-[130px] truncate">{item.file.name || "Attachment"}</span>
+                                          </a>
+                                        )}
+                                      </div>
+                                    </div>
+                                  );
+                                })
+                              )}
+
+                              {/* Batch Activity Pagination */}
+                              <Pagination
+                                currentPage={safeBatchActivityPage}
+                                totalItems={totalBatchActivitiesCount}
+                                rowsPerPage={batchActivityPerPage}
+                                onPageChange={setBatchActivityPage}
+                                onRowsPerPageChange={(v) => {
+                                  setBatchActivityPerPage(v);
+                                  setBatchActivityPage(1);
+                                }}
+                                rowsPerPageOptions={[10, 20, 50]}
+                                itemName="activities"
+                              />
+                            </div>
+
+                            {/* Right Column: Batch Intelligence & Review Center */}
+                            <div className="space-y-4">
+                              <div className="rounded-2xl border border-gray-200/80 dark:border-slate-800/80 p-4 bg-white/40 dark:bg-transparent space-y-3">
+                                <h3 className="text-sm font-black text-gray-900 dark:text-white">Batch Activity Breakdown</h3>
+                                {[
+                                  ["Total Recorded Events", selectedBatchActivity.length],
+                                  ["Announcements", selectedBatchActivity.filter((x) => x.category === "announcements").length],
+                                  ["Files & Technical Guides", selectedBatchActivity.filter((x) => x.category === "files").length],
+                                  ["Batch Tasks", selectedBatchTasks.length],
+                                  ["Student Submissions", selectedBatchActivity.filter((x) => x.category === "submissions").length],
+                                  ["Daily Reports", selectedBatchDailyUpdates.length],
+                                  ["Classes & Meetings", selectedBatchMeetings.length],
+                                  ["Escalations / History", (batchWorkspaceData.escalations?.length || 0) + (batchWorkspaceData.history?.length || 0)],
+                                ].map(([label, value]) => (
+                                  <div key={label} className="flex items-center justify-between py-1.5 border-b border-gray-100 dark:border-slate-800 last:border-0 text-xs">
+                                    <span className="text-gray-500 dark:text-slate-400">{label}</span>
+                                    <span className="font-black text-gray-900 dark:text-white">{value}</span>
+                                  </div>
+                                ))}
+                              </div>
+
+                              <div className="rounded-2xl border border-gray-200/80 dark:border-slate-800/80 p-4 bg-white/40 dark:bg-transparent space-y-3">
+                                <h3 className="text-sm font-black text-gray-900 dark:text-white">Review Center (Batch Level)</h3>
+                                {[
+                                  ["Daily Reports Pending", selectedBatchReviews.reports.length],
+                                  ["Task Submissions Needing Review", selectedBatchReviews.submissions.length],
+                                  ["Changes Requested", selectedBatchReviews.changes.length],
+                                ].map(([label, value]) => (
+                                  <div key={label} className="flex items-center justify-between py-1.5 border-b border-gray-100 dark:border-slate-800 last:border-0 text-xs">
+                                    <span className="text-gray-500 dark:text-slate-400">{label}</span>
+                                    <span className={`font-black ${value > 0 ? "text-amber-600 dark:text-amber-400" : "text-gray-900 dark:text-white"}`}>{value}</span>
+                                  </div>
+                                ))}
+                              </div>
                             </div>
                           </div>
                         </div>
@@ -5832,7 +7114,535 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
                 </div>
               )}
 
+              {/* Dedicated Batch Files & Knowledge Base Section */}
+              {activeSection === "batch_files" && (
+                <div className="space-y-5 animate-fadeIn">
+                  {/* Top Bar: Batch Switcher & Navigation */}
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-2xl border border-gray-200/80 dark:border-slate-800/80 bg-white/50 dark:bg-transparent">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-xl bg-red-50 dark:bg-red-950/40 text-red-600 dark:text-red-400 flex items-center justify-center border border-red-200 dark:border-red-900 shadow-2xs shrink-0">
+                        <Folder className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <h2 className="text-base font-black text-gray-900 dark:text-white">Batch Files & Resources</h2>
+                          {selectedBatch && (
+                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-red-50 text-red-700 dark:bg-red-950/50 dark:text-red-300 border border-red-200 dark:border-red-900 uppercase">
+                              {selectedBatch.batch_type || "Internship"}
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-xs text-gray-500 dark:text-slate-400">
+                          Official documents, guides, guidelines, and learning materials connected batch by batch.
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
+                      {/* Batch Selector Dropdown */}
+                      {accessibleFileBatches.length > 1 ? (
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-xs font-bold text-gray-500 dark:text-slate-400">Batch:</span>
+                          <select
+                            value={selectedBatch?.id || ""}
+                            onChange={(e) => {
+                              const newId = e.target.value;
+                              setSelectedBatchId(newId);
+                              setSelectedSidebarBatchId(newId);
+                              loadBatchWorkspaceData(newId);
+                            }}
+                            className="px-3 py-2 text-xs font-bold rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-gray-900 dark:text-white focus:outline-none focus:border-red-500 shadow-2xs cursor-pointer"
+                          >
+                            {accessibleFileBatches.map((b) => (
+                              <option key={b.id} value={b.id}>
+                                {b.name} ({b.domain?.replace("_", " ")})
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      ) : selectedBatch ? (
+                        <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-red-200 dark:border-red-900 bg-red-50 dark:bg-red-950/30 text-xs font-bold text-red-700 dark:text-red-300">
+                          <Folder className="w-3.5 h-3.5" />
+                          <span>{selectedBatch.name}</span>
+                        </div>
+                      ) : null}
+
+                      {selectedBatch && (
+                        <button
+                          type="button"
+                          onClick={() => selectSection("batch_workspace")}
+                          className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:border-red-500 text-gray-700 dark:text-slate-200 transition cursor-pointer shadow-2xs shrink-0"
+                        >
+                          <span>Workspace</span>
+                          <ArrowRight className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  {!selectedBatch ? (
+                    <div className="text-center py-16 px-4 border border-dashed border-gray-200 dark:border-slate-800 rounded-2xl bg-white/50 dark:bg-transparent">
+                      <Folder className="w-10 h-10 text-gray-400 mx-auto mb-3" />
+                      <div className="text-sm font-bold text-gray-900 dark:text-white">No assigned batch found</div>
+                      <p className="text-xs text-gray-500 dark:text-slate-400 mt-1 max-w-sm mx-auto">
+                        Please contact an Administrator or HR Manager to assign you to an active batch.
+                      </p>
+                    </div>
+                  ) : (() => {
+                    // Combine workspace resources and task attachments
+                    const allBatchFiles = [
+                      ...(batchWorkspaceData.resources || []).map((r) => ({
+                        id: r.id,
+                        title: r.title,
+                        category: r.category || "technical_guides",
+                        description: r.description,
+                        link_url: r.link_url,
+                        file_url: r.file_url,
+                        file_name: r.file_name,
+                        creator: r.creator,
+                        created_at: r.created_at,
+                        is_task_reference: false,
+                      })),
+                      ...selectedBatchTasks.filter((task) => task.reference_url || task.file_name).map((task) => ({
+                        id: `task-${task.id}`,
+                        title: task.file_name || task.title,
+                        category: "task_reference",
+                        description: task.description,
+                        link_url: task.reference_url,
+                        file_url: task.reference_url,
+                        file_name: task.file_name,
+                        creator: null,
+                        created_at: task.created_at,
+                        is_task_reference: true,
+                      })),
+                    ];
+
+                    const filteredFiles = allBatchFiles.filter((item) => {
+                      if (filesCategoryFilter !== "all" && item.category !== filesCategoryFilter) return false;
+                      if (filesSearch.trim()) {
+                        const q = filesSearch.toLowerCase();
+                        const matchTitle = item.title?.toLowerCase().includes(q);
+                        const matchDesc = item.description?.toLowerCase().includes(q);
+                        const matchFile = item.file_name?.toLowerCase().includes(q);
+                        const matchAuthor = item.creator?.full_name?.toLowerCase().includes(q);
+                        if (!matchTitle && !matchDesc && !matchFile && !matchAuthor) return false;
+                      }
+                      return true;
+                    });
+
+                    const totalFilesCount = filteredFiles.length;
+                    const safeFilesPage = Math.min(Math.max(1, filesPage), Math.max(1, Math.ceil(totalFilesCount / filesPerPage)));
+                    const startIdx = (safeFilesPage - 1) * filesPerPage;
+                    const paginatedFiles = filteredFiles.slice(startIdx, startIdx + filesPerPage);
+
+                    return (
+                      <div className="space-y-4">
+                        {/* View-only banner for TL & Intern */}
+                        {!canPostBatchNotice && (
+                          <div className="p-4 rounded-2xl border border-blue-200/80 dark:border-blue-900/60 bg-blue-50/40 dark:bg-blue-950/20 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                            <div className="flex items-center gap-3">
+                              <div className="w-8 h-8 rounded-xl bg-blue-100 dark:bg-blue-900/50 text-blue-600 dark:text-blue-300 flex items-center justify-center shrink-0">
+                                <ShieldCheck className="w-4 h-4" />
+                              </div>
+                              <div>
+                                <h4 className="text-xs font-bold text-gray-900 dark:text-white">Batch Knowledge Base & File Archive</h4>
+                                <p className="text-[11px] text-gray-500 dark:text-slate-400">
+                                  Official materials, guidelines, and reference files shared by Admin, HR, and Mentors.
+                                </p>
+                              </div>
+                            </div>
+                            <span className="text-[10px] font-bold px-2.5 py-1 rounded-lg bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-800 shrink-0">
+                              View-Only Archive
+                            </span>
+                          </div>
+                        )}
+
+                        {/* Search & Category Filter Toolbar */}
+                        <div className="p-4 rounded-2xl border border-gray-200/80 dark:border-slate-800/80 bg-white/50 dark:bg-transparent space-y-3">
+                          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+                            <div className="relative flex-1">
+                              <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                              <input
+                                type="text"
+                                value={filesSearch}
+                                onChange={(e) => {
+                                  setFilesSearch(e.target.value);
+                                  setFilesPage(1);
+                                }}
+                                placeholder="Search files by title, description, filename, or author..."
+                                className="w-full pl-9 pr-8 py-2 text-xs rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:border-red-500 transition"
+                              />
+                              {filesSearch && (
+                                <button
+                                  type="button"
+                                  onClick={() => setFilesSearch("")}
+                                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 p-0.5"
+                                >
+                                  <X className="w-3.5 h-3.5" />
+                                </button>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-2 shrink-0">
+                              <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-gray-100 dark:bg-slate-800 text-gray-700 dark:text-slate-300">
+                                {totalFilesCount} {totalFilesCount === 1 ? "File" : "Files"}
+                              </span>
+                            </div>
+                          </div>
+
+                          {/* Category Filter Pills */}
+                          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 text-xs">
+                            {[
+                              ["all", "All Files"],
+                              ["technical_guides", "Technical Guides"],
+                              ["task_guidelines", "Task Guidelines"],
+                              ["git_guidelines", "Git Guidelines"],
+                              ["learning_material", "Learning Material"],
+                              ["important_documents", "Documents"],
+                              ["useful_links", "Useful Links"],
+                              ["task_reference", "Task References"],
+                              ["other", "Other"],
+                            ].map(([catKey, catLabel]) => {
+                              const isActive = filesCategoryFilter === catKey;
+                              return (
+                                <button
+                                  key={catKey}
+                                  type="button"
+                                  onClick={() => {
+                                    setFilesCategoryFilter(catKey);
+                                    setFilesPage(1);
+                                  }}
+                                  className={`px-2.5 py-1 rounded-lg font-bold whitespace-nowrap transition cursor-pointer border text-[11px] ${
+                                    isActive
+                                      ? "bg-red-600 text-white border-red-600 shadow-2xs"
+                                      : "bg-transparent text-gray-600 dark:text-slate-300 border-gray-200 dark:border-slate-700 hover:border-gray-300 dark:hover:border-slate-600"
+                                  }`}
+                                >
+                                  {catLabel}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+
+                        {/* Main Grid: Upload Form (Admin/HR/Mentor only) + Files Grid */}
+                        <div className={`grid grid-cols-1 ${canPostBatchNotice ? "lg:grid-cols-[380px_1fr]" : "grid-cols-1"} gap-5`}>
+                          {/* Upload Form - strictly for Admin, HR, Mentor */}
+                          {canPostBatchNotice && (
+                            <form onSubmit={handleCreateBatchResource} className="rounded-2xl border border-gray-200/80 dark:border-slate-800/80 p-4 space-y-3 bg-white/50 dark:bg-transparent h-fit sticky top-20">
+                              <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-2">
+                                  <Upload className="w-4 h-4 text-red-600" />
+                                  <h3 className="text-sm font-black text-gray-900 dark:text-white">Upload / Add File</h3>
+                                </div>
+                                <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-red-50 text-red-600 dark:bg-red-950/50 dark:text-red-400 uppercase">
+                                  Manager
+                                </span>
+                              </div>
+                              <InputField label="Title" value={batchResourceForm.title} onChange={(v) => setBatchResourceForm({ ...batchResourceForm, title: v })} placeholder="e.g. Git Workflow Guide" required />
+                              <SelectField label="Category" value={batchResourceForm.category} onChange={(v) => setBatchResourceForm({ ...batchResourceForm, category: v })} options={[
+                                ["technical_guides", "Technical Guides"],
+                                ["task_guidelines", "Task Guidelines"],
+                                ["git_guidelines", "Git Guidelines"],
+                                ["learning_material", "Learning Material"],
+                                ["important_documents", "Important Documents"],
+                                ["useful_links", "Useful Links"],
+                                ["other", "Other"],
+                              ]} />
+
+                              {/* Upload File (PDF, Image, Document) */}
+                              <div className="space-y-1.5">
+                                <label className="text-xs font-bold text-gray-700 dark:text-slate-300 flex items-center justify-between">
+                                  <span>Attach File (PDF / Image / Doc)</span>
+                                  <span className="text-[10px] text-gray-400 font-normal">Optional</span>
+                                </label>
+                                <div className="relative">
+                                  <input
+                                    type="file"
+                                    accept=".pdf,image/*,.doc,.docx,.txt,.xlsx,.zip"
+                                    onChange={(e) => {
+                                      const file = e.target.files?.[0];
+                                      if (file) {
+                                        const previewUrl = file.type.startsWith("image/") ? URL.createObjectURL(file) : "";
+                                        setBatchResourceFile({
+                                          file,
+                                          previewUrl,
+                                          fileName: file.name,
+                                          fileType: file.type || file.name.split(".").pop(),
+                                          uploading: false,
+                                        });
+                                      }
+                                    }}
+                                    className="hidden"
+                                    id="batch-files-page-resource-file-input"
+                                  />
+                                  {batchResourceFile.file ? (
+                                    <div className="flex items-center justify-between p-2.5 rounded-xl border border-indigo-200 dark:border-indigo-900 bg-indigo-50/50 dark:bg-indigo-950/20 text-xs">
+                                      <div className="flex items-center gap-2 min-w-0">
+                                        {batchResourceFile.previewUrl ? (
+                                          <img src={batchResourceFile.previewUrl} alt="Preview" className="w-7 h-7 rounded object-cover border" />
+                                        ) : (
+                                          <FileText className="w-4 h-4 text-indigo-600 shrink-0" />
+                                        )}
+                                        <span className="font-bold text-indigo-950 dark:text-indigo-200 truncate">{batchResourceFile.fileName}</span>
+                                      </div>
+                                      <button
+                                        type="button"
+                                        onClick={() => setBatchResourceFile({ file: null, previewUrl: "", fileName: "", fileType: "", uploading: false })}
+                                        className="p-1 hover:text-red-600 text-gray-400"
+                                      >
+                                        <X className="w-4 h-4" />
+                                      </button>
+                                    </div>
+                                  ) : (
+                                    <label
+                                      htmlFor="batch-files-page-resource-file-input"
+                                      className="flex items-center justify-center gap-2 p-3 border border-dashed border-gray-300 dark:border-slate-700 rounded-xl hover:border-red-500 hover:bg-gray-50 dark:hover:bg-slate-800/50 cursor-pointer transition text-xs text-gray-500 dark:text-slate-400 font-medium"
+                                    >
+                                      <Upload className="w-4 h-4 text-gray-400" />
+                                      <span>Click to attach PDF, doc or image</span>
+                                    </label>
+                                  )}
+                                </div>
+                              </div>
+
+                              <InputField label="Or External Link URL" type="url" value={batchResourceForm.link_url} onChange={(v) => setBatchResourceForm({ ...batchResourceForm, link_url: v })} placeholder="https://..." />
+                              <textarea
+                                rows={3}
+                                value={batchResourceForm.description}
+                                onChange={(event) => setBatchResourceForm({ ...batchResourceForm, description: event.target.value })}
+                                placeholder="Short description, guidelines or instructions for this file"
+                                className="w-full p-2.5 rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:border-red-600 transition"
+                              />
+                              <button
+                                type="submit"
+                                disabled={batchResourceFile.uploading}
+                                className="w-full px-3.5 py-2.5 rounded-xl text-xs font-bold bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 text-white disabled:opacity-50 flex items-center justify-center gap-2 cursor-pointer transition shadow-md shadow-red-500/20 active:scale-95"
+                              >
+                                {batchResourceFile.uploading ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Upload className="w-3.5 h-3.5" />}
+                                <span>{batchResourceFile.uploading ? "Uploading File..." : "Share with Batch"}</span>
+                              </button>
+                            </form>
+                          )}
+
+                          {/* Files List & Cards */}
+                          <div className="space-y-4">
+                            {paginatedFiles.length === 0 ? (
+                              <div className="text-center py-16 px-4 border border-dashed border-gray-200 dark:border-slate-800 rounded-2xl bg-white/50 dark:bg-transparent">
+                                <Folder className="w-10 h-10 text-gray-400 mx-auto mb-3" />
+                                <div className="text-sm font-bold text-gray-900 dark:text-white">
+                                  {filesSearch || filesCategoryFilter !== "all" ? "No matching files found" : "No files shared yet"}
+                                </div>
+                                <p className="text-xs text-gray-500 dark:text-slate-400 mt-1 max-w-sm mx-auto">
+                                  {canPostBatchNotice
+                                    ? "Upload technical guides, references, or study documents using the form."
+                                    : "Files shared by your mentors and managers will appear here."}
+                                </p>
+                              </div>
+                            ) : (
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+                                {paginatedFiles.map((item) => {
+                                  const isImg = item.file_url && (
+                                    item.file_url.startsWith("data:image") ||
+                                    item.file_url.match(/\.(jpeg|jpg|gif|png|webp)($|\?)/i) ||
+                                    item.file_name?.match(/\.(jpeg|jpg|gif|png|webp)$/i)
+                                  );
+                                  const isPdf = item.file_url && (
+                                    item.file_url.startsWith("data:application/pdf") ||
+                                    item.file_url.match(/\.pdf($|\?)/i) ||
+                                    item.file_name?.match(/\.pdf$/i)
+                                  );
+
+                                  return (
+                                    <div
+                                      key={item.id}
+                                      className="rounded-2xl border border-gray-200/80 dark:border-slate-800/80 p-4 bg-white/50 dark:bg-transparent hover:border-red-300 dark:hover:border-red-900/60 transition flex flex-col justify-between gap-3 shadow-2xs group"
+                                    >
+                                      <div className="space-y-2">
+                                        <div className="flex items-start justify-between gap-2">
+                                          <div className="flex items-start gap-2.5 min-w-0">
+                                            <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 border ${
+                                              isPdf
+                                                ? "bg-red-50 text-red-600 border-red-200 dark:bg-red-950/40 dark:text-red-400 dark:border-red-900"
+                                                : isImg
+                                                ? "bg-emerald-50 text-emerald-600 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-400 dark:border-emerald-900"
+                                                : item.is_task_reference
+                                                ? "bg-purple-50 text-purple-600 border-purple-200 dark:bg-purple-950/40 dark:text-purple-400 dark:border-purple-900"
+                                                : item.file_url
+                                                ? "bg-blue-50 text-blue-600 border-blue-200 dark:bg-blue-950/40 dark:text-blue-400 dark:border-blue-900"
+                                                : "bg-amber-50 text-amber-600 border-amber-200 dark:bg-amber-950/40 dark:text-amber-400 dark:border-amber-900"
+                                            }`}>
+                                              {isPdf ? (
+                                                <FileText className="w-4 h-4" />
+                                              ) : isImg ? (
+                                                <ImageIcon className="w-4 h-4" />
+                                              ) : item.is_task_reference ? (
+                                                <CheckSquare className="w-4 h-4" />
+                                              ) : item.file_url ? (
+                                                <File className="w-4 h-4" />
+                                              ) : (
+                                                <ExternalLink className="w-4 h-4" />
+                                              )}
+                                            </div>
+                                            <div className="min-w-0">
+                                              <h4 className="text-xs font-black text-gray-900 dark:text-white truncate group-hover:text-red-600 dark:group-hover:text-red-400 transition-colors" title={item.title}>
+                                                {item.title}
+                                              </h4>
+                                              <div className="flex items-center gap-1.5 flex-wrap mt-0.5">
+                                                <span className="text-[9.5px] font-bold px-1.5 py-0.2 rounded bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-slate-300 uppercase">
+                                                  {item.category?.replaceAll("_", " ")}
+                                                </span>
+                                                {item.is_task_reference && (
+                                                  <span className="text-[9.5px] font-bold px-1.5 py-0.2 rounded bg-purple-50 text-purple-700 dark:bg-purple-950/40 dark:text-purple-300 border border-purple-200 dark:border-purple-900">
+                                                    Task File
+                                                  </span>
+                                                )}
+                                              </div>
+                                            </div>
+                                          </div>
+
+                                          {item.created_at && (
+                                            <span className="text-[10px] text-gray-400 font-mono shrink-0">
+                                              {localDate(item.created_at)}
+                                            </span>
+                                          )}
+                                        </div>
+
+                                        {/* Author Role Chip */}
+                                        {item.creator?.full_name && (
+                                          <div className="flex items-center gap-1 text-[11px] text-gray-500 dark:text-slate-400">
+                                            <span className={`px-1.5 py-0.2 rounded font-bold text-[10px] border ${
+                                              ["super_admin", "admin"].includes(item.creator.role)
+                                                ? "bg-red-50 text-red-700 dark:bg-red-950/50 dark:text-red-300 border-red-200 dark:border-red-900"
+                                                : item.creator.role === "mentor"
+                                                ? "bg-indigo-50 text-indigo-700 dark:bg-indigo-950/50 dark:text-indigo-300 border-indigo-200 dark:border-indigo-900"
+                                                : "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300 border-emerald-200 dark:border-emerald-900"
+                                            }`}>
+                                              {ROLE_LABELS[item.creator.role] || item.creator.role}
+                                            </span>
+                                            <span className="truncate">{item.creator.full_name}</span>
+                                          </div>
+                                        )}
+
+                                        {item.description && (
+                                          <p className="text-xs text-gray-600 dark:text-slate-300 line-clamp-2 leading-relaxed">
+                                            {item.description}
+                                          </p>
+                                        )}
+
+                                      </div>
+
+                                      {/* Action Buttons: Download or Open External + Edit/Delete */}
+                                      <div className="flex items-center justify-between gap-2 pt-2 border-t border-gray-100 dark:border-slate-800 flex-wrap">
+                                        <div className="flex items-center gap-2 flex-wrap">
+                                          {item.file_url && (
+                                            <a
+                                              href={safeExternalUrl(item.file_url)}
+                                              target="_blank"
+                                              rel="noreferrer"
+                                              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-blue-200 dark:border-blue-900 bg-blue-50/60 dark:bg-blue-950/30 text-xs font-bold text-blue-700 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-900/50 transition cursor-pointer shadow-2xs"
+                                            >
+                                              <Download className="w-3.5 h-3.5" />
+                                              <span>Download / View</span>
+                                            </a>
+                                          )}
+                                          {item.link_url && item.link_url !== item.file_url && (
+                                            <a
+                                              href={safeExternalUrl(item.link_url)}
+                                              target="_blank"
+                                              rel="noreferrer"
+                                              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-gray-200 dark:border-slate-700 bg-gray-50 dark:bg-slate-800 text-xs font-bold text-gray-700 dark:text-slate-200 hover:text-red-600 dark:hover:text-red-400 transition cursor-pointer shadow-2xs"
+                                            >
+                                              <ExternalLink className="w-3.5 h-3.5" />
+                                              <span>Open Link</span>
+                                            </a>
+                                          )}
+                                        </div>
+
+                                        {!item.is_task_reference && (["super_admin", "hr", "admin"].includes(currentRole) || item.created_by === sessionUser?.id || item.creator?.id === sessionUser?.id) && (
+                                          <div className="flex items-center gap-1 ml-auto">
+                                            <button
+                                              type="button"
+                                              onClick={() => setEditingResource({
+                                                id: item.id,
+                                                title: item.title,
+                                                category: item.category || "technical_guides",
+                                                description: item.description || "",
+                                                link_url: item.link_url || "",
+                                                file_url: item.file_url || "",
+                                                file_name: item.file_name || "",
+                                                file: null,
+                                                previewUrl: item.file_url || "",
+                                                uploading: false,
+                                              })}
+                                              className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-bold text-gray-600 dark:text-slate-300 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950/40 border border-gray-200 dark:border-slate-700 transition cursor-pointer"
+                                              title="Edit file details"
+                                            >
+                                              <Edit3 className="w-3 h-3" />
+                                              <span>Edit</span>
+                                            </button>
+                                            <button
+                                              type="button"
+                                              onClick={() => handleDeleteBatchResource(item)}
+                                              className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-bold text-gray-600 dark:text-slate-300 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40 border border-gray-200 dark:border-slate-700 transition cursor-pointer"
+                                              title="Delete file"
+                                            >
+                                              <Trash2 className="w-3 h-3" />
+                                              <span>Delete</span>
+                                            </button>
+                                          </div>
+                                        )}
+                                      </div>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            )}
+
+                            {/* Pagination */}
+                            <Pagination
+                              currentPage={safeFilesPage}
+                              totalItems={totalFilesCount}
+                              rowsPerPage={filesPerPage}
+                              onPageChange={setFilesPage}
+                              onRowsPerPageChange={(v) => {
+                                setFilesPerPage(v);
+                                setFilesPage(1);
+                              }}
+                              rowsPerPageOptions={[5, 10, 20, 50]}
+                              itemName="files"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })()}
+                </div>
+              )}
+
               {/* Dedicated Overview Panels for Intern, Team Leader, Mentor, and HR */}
+              {activeSection === "overview" && isAdminRole && (
+                <SupervisionPulsePanel
+                  title="Workspace Risk & Escalation Panel"
+                  subtitle="High-level view of open escalations, risk alerts, and pending daily updates across batches."
+                  batches={batches}
+                  profiles={profiles}
+                  tasks={tasks}
+                  submissions={submissions}
+                  dailyUpdates={dailyUpdates}
+                  escalations={accessibleEscalations}
+                  attendanceRecords={attendance}
+                  showSubmissions={false}
+                  onOpenWorkspace={(batchId) => openBatchWorkspace(batchId)}
+                  onOpenMemberProfile={(member) => setSelectedMemberModal(member)}
+                  onNavigateSection={(section) => {
+                    if (section === "review_center" || section === "at_risk_watchlist") return;
+                    selectSection(section);
+                  }}
+                  isDark={isDark}
+                  domainLabel={domainLabel}
+                />
+              )}
+
               {activeSection === "overview" && currentRole === "intern" && (
                 <InternOverview
                   userProfile={userProfile}
@@ -5886,7 +7696,7 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
                   tasks={tasks}
                   submissions={submissions}
                   dailyUpdates={dailyUpdates}
-                  escalations={batchWorkspaceData.escalations || []}
+                  escalations={accessibleEscalations}
                   attendanceRecords={attendance}
                   onOpenWorkspace={(batchId) => openBatchWorkspace(batchId)}
                   onOpenMemberProfile={(member) => setSelectedMemberModal(member)}
@@ -5905,33 +7715,69 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
               )}
 
               {activeSection === "overview" && isHrRole && (
-                <HrOverview
-                  userProfile={userProfile}
-                  batches={ownedBatches}
-                  profiles={profiles}
-                  attendanceRecords={attendance}
-                  certificates={certificates}
-                  onOpenWorkspace={(batchId) => openBatchWorkspace(batchId)}
-                  onOpenMemberProfile={(member) => setSelectedMemberModal(member)}
-                  onAddMentor={() => openEnrollMemberModal("mentor")}
-                  onAddIntern={() => openEnrollMemberModal("intern")}
-                  onAssignMentor={(batch) => openAssignLeadsModal(batch)}
-                  onSelectSection={selectSection}
-                  isDark={isDark}
-                  domainLabel={domainLabel}
-                  localDate={localDate}
-                />
+                <div className="space-y-6">
+                  <SupervisionPulsePanel
+                    title="HR Risk & Escalation Panel"
+                    subtitle="Track open escalations, risk alerts, and pending daily reports for HR-assigned batches."
+                    batches={ownedBatches}
+                    profiles={visibleProfiles}
+                    tasks={tasks}
+                    submissions={submissions}
+                    dailyUpdates={dailyUpdates}
+                    escalations={accessibleEscalations}
+                    attendanceRecords={attendance}
+                    showSubmissions={false}
+                    onOpenWorkspace={(batchId) => openBatchWorkspace(batchId)}
+                    onOpenMemberProfile={(member) => setSelectedMemberModal(member)}
+                    onNavigateSection={(section) => {
+                      if (section === "review_center" || section === "at_risk_watchlist") return;
+                      selectSection(section);
+                    }}
+                    isDark={isDark}
+                    domainLabel={domainLabel}
+                  />
+                  <HrOverview
+                    userProfile={userProfile}
+                    batches={ownedBatches}
+                    profiles={visibleProfiles}
+                    attendanceRecords={attendance}
+                    certificates={certificates}
+                    onOpenWorkspace={(batchId) => openBatchWorkspace(batchId)}
+                    onOpenMemberProfile={(member) => setSelectedMemberModal(member)}
+                    onAddMentor={() => openEnrollMemberModal("mentor")}
+                    onAddIntern={() => openEnrollMemberModal("intern")}
+                    onAssignMentor={(batch) => openAssignLeadsModal(batch)}
+                    onSelectSection={selectSection}
+                    isDark={isDark}
+                    domainLabel={domainLabel}
+                    localDate={localDate}
+                  />
+                </div>
               )}
 
               {/* 4.4. DEDICATED SUPERVISOR REVIEW & ESCALATION CENTER */}
               {activeSection === "review_center" && (
                 <div className="space-y-6 animate-fadeIn">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div>
+                      <h2 className="text-lg font-black text-gray-900 dark:text-white">Escalation Review</h2>
+                      <p className="text-xs text-gray-500 dark:text-slate-400 mt-0.5">Raise and track batch-wise blockers, alerts, and urgent issues.</p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => openRaiseEscalationModal()}
+                      className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs font-bold transition self-start sm:self-center"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                      <span>Raise Escalation</span>
+                    </button>
+                  </div>
                   {/* Top Summary Metrics */}
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
                     <div
                       onClick={() => setReviewCenterTab("open")}
                       className={`p-4 rounded-2xl border transition cursor-pointer ${reviewCenterTab === "open" ? "border-amber-500 shadow-md ring-2 ring-amber-500/20" : "hover:border-amber-300"
-                        } ${isDark ? "bg-slate-900/80 border-slate-800" : "bg-white border-gray-200/80"} shadow-sm`}
+                        } ${isDark ? "bg-transparent border-slate-800/80" : "bg-white border-gray-200/80"} shadow-sm`}
                     >
                       <div className="flex items-center justify-between text-xs font-bold uppercase tracking-wider text-amber-600">
                         <span>Open Escalations</span>
@@ -5946,7 +7792,7 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
                     <div
                       onClick={() => setReviewCenterTab("critical")}
                       className={`p-4 rounded-2xl border transition cursor-pointer ${reviewCenterTab === "critical" ? "border-red-500 shadow-md ring-2 ring-red-500/20" : "hover:border-red-300"
-                        } ${isDark ? "bg-slate-900/80 border-slate-800" : "bg-white border-gray-200/80"} shadow-sm`}
+                        } ${isDark ? "bg-transparent border-slate-800/80" : "bg-white border-gray-200/80"} shadow-sm`}
                     >
                       <div className="flex items-center justify-between text-xs font-bold uppercase tracking-wider text-red-600">
                         <span>Critical Priority</span>
@@ -5961,7 +7807,7 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
                     <div
                       onClick={() => setReviewCenterTab("resolved")}
                       className={`p-4 rounded-2xl border transition cursor-pointer ${reviewCenterTab === "resolved" ? "border-emerald-500 shadow-md ring-2 ring-emerald-500/20" : "hover:border-emerald-300"
-                        } ${isDark ? "bg-slate-900/80 border-slate-800" : "bg-white border-gray-200/80"} shadow-sm`}
+                        } ${isDark ? "bg-transparent border-slate-800/80" : "bg-white border-gray-200/80"} shadow-sm`}
                     >
                       <div className="flex items-center justify-between text-xs font-bold uppercase tracking-wider text-emerald-600">
                         <span>Resolved Issues</span>
@@ -5975,7 +7821,7 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
                   </div>
 
                   {/* Filter and Search Bar */}
-                  <div className={`p-4 rounded-2xl border ${isDark ? "bg-slate-900/80 border-slate-800" : "bg-white border-gray-200/80"} shadow-sm flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3`}>
+                  <div className={`p-4 rounded-2xl border ${isDark ? "bg-transparent border-slate-800/80" : "bg-white border-gray-200/80"} shadow-sm flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3`}>
                     <div className="flex items-center gap-1.5 p-1 rounded-xl bg-gray-100 dark:bg-slate-800 text-xs font-bold overflow-x-auto">
                       <button
                         onClick={() => setReviewCenterTab("all")}
@@ -5997,6 +7843,20 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
                           }`}
                       >
                         Critical & High ({mentorReviewCenterData.critical.length})
+                      </button>
+                      <button
+                        onClick={() => setReviewCenterTab("mine")}
+                        className={`px-3 py-1.5 rounded-lg transition shrink-0 ${reviewCenterTab === "mine" ? "bg-white dark:bg-slate-700 text-red-600 shadow-xs" : "text-gray-500 hover:text-gray-900 dark:text-slate-400"
+                          }`}
+                      >
+                        Raised By Me ({mentorReviewCenterData.raisedByMe.length})
+                      </button>
+                      <button
+                        onClick={() => setReviewCenterTab("assigned")}
+                        className={`px-3 py-1.5 rounded-lg transition shrink-0 ${reviewCenterTab === "assigned" ? "bg-white dark:bg-slate-700 text-blue-600 shadow-xs" : "text-gray-500 hover:text-gray-900 dark:text-slate-400"
+                          }`}
+                      >
+                        Assigned To Me ({mentorReviewCenterData.assignedToMe.length})
                       </button>
                       <button
                         onClick={() => setReviewCenterTab("resolved")}
@@ -6035,7 +7895,7 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
                   </div>
 
                   {/* Escalations Section */}
-                  <div className={`p-5 rounded-2xl border ${isDark ? "bg-slate-900/80 border-slate-800" : "bg-white border-gray-200/80"} shadow-sm space-y-4`}>
+                  <div className={`p-5 rounded-2xl border ${isDark ? "bg-transparent border-slate-800/80" : "bg-white border-gray-200/80"} shadow-sm space-y-4`}>
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
                         <AlertCircle className="w-4 h-4 text-amber-600" />
@@ -6056,6 +7916,10 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
                         {paginatedReviewCenterEscalations.map((esc) => {
                           const batch = batches.find((b) => b.id === esc.batch_id);
                           const isResolved = esc.status === "resolved";
+                          const isRaisedByMe = esc.created_by === sessionUser?.id;
+                          const isAssignedToMe = esc.assigned_to === sessionUser?.id;
+                          const priorityKey = (esc.priority || "medium").toLowerCase();
+                          const canResolveEscalation = isAssignedToMe && !isRaisedByMe && !isResolved;
 
                           return (
                             <div
@@ -6071,11 +7935,13 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
                                     {esc.issue}
                                   </span>
                                   <div className="flex items-center gap-1.5 shrink-0">
-                                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${esc.priority === "critical"
+                                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${["critical", "urgent"].includes(priorityKey)
                                       ? "bg-red-100 text-red-800 dark:bg-red-900/60 dark:text-red-200"
-                                      : esc.priority === "high"
+                                      : priorityKey === "high"
                                         ? "bg-orange-100 text-orange-800 dark:bg-orange-900/60 dark:text-orange-200"
-                                        : "bg-amber-100 text-amber-800 dark:bg-amber-900/60 dark:text-amber-200"
+                                        : priorityKey === "medium"
+                                          ? "bg-amber-100 text-amber-800 dark:bg-amber-900/60 dark:text-amber-200"
+                                          : "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-200"
                                       }`}>
                                       {esc.priority || "Medium"}
                                     </span>
@@ -6090,26 +7956,68 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
                                   Batch: <span className="font-semibold text-gray-600 dark:text-slate-300">{batch?.name || "Batch"}</span> • Category: <span className="uppercase font-semibold">{esc.category || "General"}</span>
                                 </div>
 
+                                <div className="flex flex-wrap items-center gap-1.5 text-[10.5px]">
+                                  {isRaisedByMe && (
+                                    <span className="px-2 py-0.5 rounded-full bg-sky-100 text-sky-800 dark:bg-sky-900/50 dark:text-sky-200 font-bold">
+                                      Raised by me
+                                    </span>
+                                  )}
+                                  {isAssignedToMe && (
+                                    <span className="px-2 py-0.5 rounded-full bg-violet-100 text-violet-800 dark:bg-violet-900/50 dark:text-violet-200 font-bold">
+                                      Assigned to me
+                                    </span>
+                                  )}
+                                  {esc.creator?.full_name && !isRaisedByMe && (
+                                    <span className="px-2 py-0.5 rounded-full bg-gray-100 text-gray-700 dark:bg-slate-800 dark:text-slate-300 font-semibold">
+                                      Raised by {esc.creator.full_name}
+                                    </span>
+                                  )}
+                                  {esc.assignee?.full_name && !isAssignedToMe && (
+                                    <span className="px-2 py-0.5 rounded-full bg-gray-100 text-gray-700 dark:bg-slate-800 dark:text-slate-300 font-semibold">
+                                      Assigned to {esc.assignee.full_name}
+                                    </span>
+                                  )}
+                                </div>
+
                                 {esc.description && (
-                                  <p className="text-gray-700 dark:text-slate-300 text-xs mt-1 leading-relaxed bg-white/70 dark:bg-slate-900/50 p-2.5 rounded-lg border border-amber-100 dark:border-amber-900/30">
+                                  <p className="text-gray-700 dark:text-slate-300 text-xs mt-1 leading-relaxed bg-white/70 dark:bg-transparent p-2.5 rounded-lg border border-amber-100 dark:border-amber-900/30">
                                     {esc.description}
+                                  </p>
+                                )}
+
+                                {isResolved && esc.resolution && (
+                                  <p className="text-emerald-800 dark:text-emerald-200 text-xs mt-1 leading-relaxed bg-emerald-50/80 dark:bg-emerald-950/30 p-2.5 rounded-lg border border-emerald-200 dark:border-emerald-900/40">
+                                    <span className="font-bold">Resolution:</span> {esc.resolution}
                                   </p>
                                 )}
                               </div>
 
-                              <div className="flex items-center justify-end gap-2 pt-2 border-t border-amber-200/60 dark:border-amber-900/40">
-                                <button
-                                  type="button"
-                                  onClick={() => handleUpdateBatchEscalationStatus(esc, isResolved ? "open" : "resolved")}
-                                  className={`px-3.5 py-1.5 rounded-xl font-bold text-xs flex items-center gap-1.5 transition active:scale-95 cursor-pointer shadow-2xs ${isResolved
-                                    ? "bg-gray-100 dark:bg-slate-800 text-gray-700 dark:text-slate-300 hover:bg-gray-200"
-                                    : "bg-emerald-600 hover:bg-emerald-500 text-white"
-                                    }`}
-                                >
-                                  <CheckCircle2 className="w-3.5 h-3.5" />
-                                  <span>{isResolved ? "Re-open Issue" : "Mark as Resolved"}</span>
-                                </button>
-                              </div>
+                              {(canResolveEscalation || (isResolved && !isRaisedByMe)) && (
+                                <div className="flex items-center justify-end gap-2 pt-2 border-t border-amber-200/60 dark:border-amber-900/40">
+                                  {isResolved ? (
+                                    <button
+                                      type="button"
+                                      onClick={() => handleUpdateBatchEscalationStatus(esc, "open")}
+                                      className="px-3.5 py-1.5 rounded-xl font-bold text-xs flex items-center gap-1.5 transition active:scale-95 cursor-pointer shadow-2xs bg-gray-100 dark:bg-slate-800 text-gray-700 dark:text-slate-300 hover:bg-gray-200"
+                                    >
+                                      <CheckCircle2 className="w-3.5 h-3.5" />
+                                      <span>Re-open Issue</span>
+                                    </button>
+                                  ) : (
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        setEscalationResolutionModal(esc);
+                                        setEscalationResolutionText(esc.resolution || "");
+                                      }}
+                                      className="px-3.5 py-1.5 rounded-xl font-bold text-xs flex items-center gap-1.5 transition active:scale-95 cursor-pointer shadow-2xs bg-emerald-600 hover:bg-emerald-500 text-white"
+                                    >
+                                      <CheckCircle2 className="w-3.5 h-3.5" />
+                                      <span>Mark as Resolved</span>
+                                    </button>
+                                  )}
+                                </div>
+                              )}
                             </div>
                           );
                         })}
@@ -6141,7 +8049,7 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
                     <div
                       onClick={() => setTaskSubmissionsTab("pending")}
                       className={`p-4 rounded-2xl border transition cursor-pointer ${taskSubmissionsTab === "pending" ? "border-indigo-500 shadow-md ring-2 ring-indigo-500/20" : "hover:border-indigo-300"
-                        } ${isDark ? "bg-slate-900/80 border-slate-800" : "bg-white border-gray-200/80"} shadow-sm`}
+                        } ${isDark ? "bg-transparent border-slate-800/80" : "bg-white border-gray-200/80"} shadow-sm`}
                     >
                       <div className="flex items-center justify-between text-xs font-bold uppercase tracking-wider text-indigo-600">
                         <span>Pending Review</span>
@@ -6156,7 +8064,7 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
                     <div
                       onClick={() => setTaskSubmissionsTab("approved")}
                       className={`p-4 rounded-2xl border transition cursor-pointer ${taskSubmissionsTab === "approved" ? "border-emerald-500 shadow-md ring-2 ring-emerald-500/20" : "hover:border-emerald-300"
-                        } ${isDark ? "bg-slate-900/80 border-slate-800" : "bg-white border-gray-200/80"} shadow-sm`}
+                        } ${isDark ? "bg-transparent border-slate-800/80" : "bg-white border-gray-200/80"} shadow-sm`}
                     >
                       <div className="flex items-center justify-between text-xs font-bold uppercase tracking-wider text-emerald-600">
                         <span>Approved Submissions</span>
@@ -6171,7 +8079,7 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
                     <div
                       onClick={() => setTaskSubmissionsTab("all")}
                       className={`p-4 rounded-2xl border transition cursor-pointer ${taskSubmissionsTab === "all" ? "border-slate-500 shadow-md ring-2 ring-slate-500/20" : "hover:border-slate-300"
-                        } ${isDark ? "bg-slate-900/80 border-slate-800" : "bg-white border-gray-200/80"} shadow-sm`}
+                        } ${isDark ? "bg-transparent border-slate-800/80" : "bg-white border-gray-200/80"} shadow-sm`}
                     >
                       <div className="flex items-center justify-between text-xs font-bold uppercase tracking-wider text-gray-500">
                         <span>Total Submissions</span>
@@ -6185,7 +8093,7 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
                   </div>
 
                   {/* Filter and Search Bar */}
-                  <div className={`p-4 rounded-2xl border ${isDark ? "bg-slate-900/80 border-slate-800" : "bg-white border-gray-200/80"} shadow-sm flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3`}>
+                  <div className={`p-4 rounded-2xl border ${isDark ? "bg-transparent border-slate-800/80" : "bg-white border-gray-200/80"} shadow-sm flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3`}>
                     <div className="flex items-center gap-1.5 p-1 rounded-xl bg-gray-100 dark:bg-slate-800 text-xs font-bold overflow-x-auto">
                       <button
                         onClick={() => setTaskSubmissionsTab("pending")}
@@ -6238,7 +8146,7 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
                   </div>
 
                   {/* Submissions Cards */}
-                  <div className={`p-5 rounded-2xl border ${isDark ? "bg-slate-900/80 border-slate-800" : "bg-white border-gray-200/80"} shadow-sm space-y-4`}>
+                  <div className={`p-5 rounded-2xl border ${isDark ? "bg-transparent border-slate-800/80" : "bg-white border-gray-200/80"} shadow-sm space-y-4`}>
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
                         <CheckSquare className="w-4 h-4 text-indigo-600" />
@@ -6295,7 +8203,7 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
                                   </span>
                                 </div>
 
-                                <div className="p-3 rounded-xl bg-white dark:bg-slate-900/70 border border-gray-100 dark:border-slate-800 space-y-1.5">
+                                <div className="p-3 rounded-xl bg-white dark:bg-transparent border border-gray-100 dark:border-slate-800 space-y-1.5">
                                   <div className="font-bold text-gray-900 dark:text-white text-xs">
                                     {task?.title || "Task Submission"}
                                   </div>
@@ -6390,7 +8298,7 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
                 <div className="space-y-6 animate-fadeIn">
                   {/* Top Metric Cards */}
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
-                    <div className={`p-4 rounded-2xl border ${isDark ? "bg-slate-900/80 border-slate-800" : "bg-white border-gray-200/80"} shadow-sm`}>
+                    <div className={`p-4 rounded-2xl border ${isDark ? "bg-transparent border-slate-800/80" : "bg-white border-gray-200/80"} shadow-sm`}>
                       <div className="flex items-center justify-between text-xs font-bold uppercase tracking-wider text-gray-500">
                         <span>Supervised Interns</span>
                         <Users className="w-4 h-4 text-indigo-600" />
@@ -6404,7 +8312,7 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
                     <div
                       onClick={() => setAtRiskTab("critical")}
                       className={`p-4 rounded-2xl border transition cursor-pointer ${atRiskTab === "critical" ? "border-red-500 ring-2 ring-red-500/20" : "hover:border-red-300"
-                        } ${isDark ? "bg-slate-900/80 border-slate-800" : "bg-white border-gray-200/80"} shadow-sm`}
+                        } ${isDark ? "bg-transparent border-slate-800/80" : "bg-white border-gray-200/80"} shadow-sm`}
                     >
                       <div className="flex items-center justify-between text-xs font-bold uppercase tracking-wider text-red-600">
                         <span>Critical Risk</span>
@@ -6419,7 +8327,7 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
                     <div
                       onClick={() => setAtRiskTab("warning")}
                       className={`p-4 rounded-2xl border transition cursor-pointer ${atRiskTab === "warning" ? "border-amber-500 ring-2 ring-amber-500/20" : "hover:border-amber-300"
-                        } ${isDark ? "bg-slate-900/80 border-slate-800" : "bg-white border-gray-200/80"} shadow-sm`}
+                        } ${isDark ? "bg-transparent border-slate-800/80" : "bg-white border-gray-200/80"} shadow-sm`}
                     >
                       <div className="flex items-center justify-between text-xs font-bold uppercase tracking-wider text-amber-600">
                         <span>Warning Level</span>
@@ -6434,7 +8342,7 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
                     <div
                       onClick={() => setAtRiskTab("all")}
                       className={`p-4 rounded-2xl border transition cursor-pointer ${atRiskTab === "all" ? "border-emerald-500 ring-2 ring-emerald-500/20" : "hover:border-emerald-300"
-                        } ${isDark ? "bg-slate-900/80 border-slate-800" : "bg-white border-gray-200/80"} shadow-sm`}
+                        } ${isDark ? "bg-transparent border-slate-800/80" : "bg-white border-gray-200/80"} shadow-sm`}
                     >
                       <div className="flex items-center justify-between text-xs font-bold uppercase tracking-wider text-emerald-600">
                         <span>Healthy Standing</span>
@@ -6448,7 +8356,7 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
                   </div>
 
                   {/* Filter and Search Bar */}
-                  <div className={`p-4 rounded-2xl border ${isDark ? "bg-slate-900/80 border-slate-800" : "bg-white border-gray-200/80"} shadow-sm flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3`}>
+                  <div className={`p-4 rounded-2xl border ${isDark ? "bg-transparent border-slate-800/80" : "bg-white border-gray-200/80"} shadow-sm flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3`}>
                     <div className="flex items-center gap-1.5 p-1 rounded-xl bg-gray-100 dark:bg-slate-800 text-xs font-bold">
                       <button
                         onClick={() => setAtRiskTab("all")}
@@ -6502,7 +8410,7 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
 
                   {/* Intern Cards Grid */}
                   {filteredAtRiskMembers.length === 0 ? (
-                    <div className={`p-8 text-center rounded-2xl border ${isDark ? "bg-slate-900/60 border-slate-800" : "bg-white border-gray-200/80"} flex flex-col items-center gap-2`}>
+                    <div className={`p-8 text-center rounded-2xl border ${isDark ? "bg-transparent border-slate-800/80" : "bg-white border-gray-200/80"} flex flex-col items-center gap-2`}>
                       <div className="w-12 h-12 rounded-full bg-emerald-100 dark:bg-emerald-950/60 text-emerald-600 flex items-center justify-center">
                         <CheckCircle2 className="w-6 h-6" />
                       </div>
@@ -6564,7 +8472,7 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
                             {/* Signals: Attendance & Overdue Tasks */}
                             <div className="grid grid-cols-2 gap-2.5">
                               {/* Attendance Signal */}
-                              <div className="p-2.5 rounded-xl bg-white dark:bg-slate-900/80 border border-gray-200/80 dark:border-slate-800 space-y-1.5">
+                              <div className="p-2.5 rounded-xl bg-white dark:bg-transparent border border-gray-200/80 dark:border-slate-800 space-y-1.5">
                                 <div className="flex items-center justify-between text-[11px]">
                                   <span className="text-gray-400 font-semibold">Attendance</span>
                                   <span className={`font-bold ${member.attendanceRate < 70 ? "text-red-600" : "text-amber-600"
@@ -6585,7 +8493,7 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
                               </div>
 
                               {/* Overdue Tasks Signal */}
-                              <div className="p-2.5 rounded-xl bg-white dark:bg-slate-900/80 border border-gray-200/80 dark:border-slate-800 space-y-1">
+                              <div className="p-2.5 rounded-xl bg-white dark:bg-transparent border border-gray-200/80 dark:border-slate-800 space-y-1">
                                 <div className="flex items-center justify-between text-[11px]">
                                   <span className="text-gray-400 font-semibold">Overdue Tasks</span>
                                   <span className={`font-bold ${member.overdueCount > 0 ? "text-red-600" : "text-emerald-600"
@@ -6663,7 +8571,7 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
               )}
 
               {/* 5. Main Data Table (for all list sections, plus admin overview) */}
-              {activeSection !== "alerts" && activeSection !== "chat" && activeSection !== "settings" && activeSection !== "batch_workspace" && activeSection !== "review_center" && activeSection !== "task_submissions" && activeSection !== "at_risk_watchlist" && (activeSection !== "overview" || isAdminRole) && (
+              {activeSection !== "alerts" && activeSection !== "chat" && activeSection !== "settings" && activeSection !== "batch_workspace" && activeSection !== "batch_files" && activeSection !== "review_center" && activeSection !== "task_submissions" && activeSection !== "at_risk_watchlist" && (activeSection !== "overview" || isAdminRole) && (
                 <div className="space-y-3 w-full max-w-full">
                   {/* Table header meta & horizontal scroll helper */}
                   <div className="flex flex-wrap items-center justify-between gap-2 text-[11px] text-gray-500 dark:text-slate-400 px-1 select-none">
@@ -6763,6 +8671,7 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
                                 <th className="py-3.5 px-4">Summary</th>
                                 <th className="py-3.5 px-4">Date & Time</th>
                                 <th className="py-3.5 px-4 text-center">Status</th>
+                                <th className="py-3.5 px-4 text-right">Source</th>
                               </>
                             ) : (
                               <>
@@ -6965,7 +8874,7 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
                                           Reviewed
                                         </span>
                                         <p className="text-[11px] text-gray-500 dark:text-slate-400 truncate mt-0.5" title={update.reviewer_comment}>
-                                          "{update.reviewer_comment}"
+                                          &quot;{update.reviewer_comment}&quot;
                                         </p>
                                       </div>
                                     ) : (
@@ -7501,42 +9410,66 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
 
                           {/* SECTION: AUDIT */}
                           {activeSection === "audit" &&
-                            paginatedRecords.map((a, idx) => (
-                              <tr key={a.id} className="hover:bg-red-50/15 dark:hover:bg-slate-800/40 transition group whitespace-nowrap">
-                                <td className="py-3.5 px-4 text-center font-bold text-gray-400 text-xs whitespace-nowrap">{startIndex + idx + 1}</td>
-                                <td className="py-3.5 px-4 whitespace-nowrap">
-                                  <div className="flex items-center gap-2">
-                                    <div className="w-7 h-7 rounded-lg bg-gray-100 dark:bg-slate-800 text-gray-700 dark:text-slate-300 text-xs font-bold flex items-center justify-center shrink-0 border border-gray-200 dark:border-slate-700">
-                                      {(a.actor?.full_name || "S")[0]?.toUpperCase()}
+                            paginatedRecords.map((a, idx) => {
+                              const sourceColor =
+                                a.source === "Website"
+                                  ? "bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/40 dark:text-blue-300 dark:border-blue-900"
+                                  : a.source === "Website CMS"
+                                  ? "bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-950/40 dark:text-purple-300 dark:border-purple-900"
+                                  : a.source === "Portal"
+                                  ? "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-900"
+                                  : a.source === "Auth"
+                                  ? "bg-teal-50 text-teal-700 border-teal-200 dark:bg-teal-950/40 dark:text-teal-300 dark:border-teal-900"
+                                  : a.source === "Batches"
+                                  ? "bg-red-50 text-red-700 border-red-200 dark:bg-red-950/40 dark:text-red-400 dark:border-red-900"
+                                  : "bg-slate-100 text-slate-700 border-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700";
+
+                              return (
+                                <tr key={a.id || idx} className="hover:bg-red-50/15 dark:hover:bg-slate-800/40 transition group whitespace-nowrap">
+                                  <td className="py-3.5 px-4 text-center font-bold text-gray-400 text-xs whitespace-nowrap">{startIndex + idx + 1}</td>
+                                  <td className="py-3.5 px-4 whitespace-nowrap">
+                                    <div className="flex items-center gap-2">
+                                      <div className="w-7 h-7 rounded-lg bg-gray-100 dark:bg-slate-800 text-gray-700 dark:text-slate-300 text-xs font-bold flex items-center justify-center shrink-0 border border-gray-200 dark:border-slate-700">
+                                        {(a.actor?.full_name || "S")[0]?.toUpperCase()}
+                                      </div>
+                                      <div className="min-w-0">
+                                        <span className="font-bold text-xs text-gray-900 dark:text-white max-w-[130px] truncate block" title={a.actor?.full_name || "System"}>
+                                          {a.actor?.full_name || "System"}
+                                        </span>
+                                        <span className="text-[10.5px] text-gray-400 dark:text-slate-500 capitalize block">
+                                          {ROLE_LABELS[a.actor_role || a.actor?.role] || a.actor_role || "User"}
+                                        </span>
+                                      </div>
                                     </div>
-                                    <span className="font-bold text-xs text-gray-900 dark:text-white max-w-[120px] truncate block" title={a.actor?.full_name || "System"}>
-                                      {a.actor?.full_name || "System"}
+                                  </td>
+                                  <td className="py-3.5 px-4 whitespace-nowrap">
+                                    <span className="inline-flex items-center px-2 py-0.8 rounded-md font-mono text-[11px] font-semibold bg-red-50 text-red-700 dark:bg-red-500/10 dark:text-red-400 border border-red-200/60 dark:border-red-500/20 max-w-[130px] truncate block" title={a.action}>
+                                      <span className="truncate block">{(a.action || "activity").replaceAll("_", " ")}</span>
                                     </span>
-                                  </div>
-                                </td>
-                                <td className="py-3.5 px-4 whitespace-nowrap">
-                                  <span className="inline-flex items-center px-2 py-0.8 rounded-md font-mono text-[11px] font-semibold bg-red-50 text-red-700 dark:bg-red-500/10 dark:text-red-400 border border-red-200/60 dark:border-red-500/20 max-w-[110px] truncate block" title={a.action}>
-                                    <span className="truncate block">{a.action}</span>
-                                  </span>
-                                </td>
-                                <td className="py-3.5 px-4 text-xs text-gray-600 dark:text-slate-300 max-w-[180px] truncate block whitespace-nowrap" title={a.summary}>
-                                  {a.summary}
-                                </td>
-                                <td className="py-3.5 px-4 whitespace-nowrap">
-                                  <span className="font-mono text-[11px] text-gray-400 dark:text-slate-400 flex items-center gap-1">
-                                    <Clock className="w-3 h-3 text-gray-400" />
-                                    {localDate(a.created_at)}
-                                  </span>
-                                </td>
-                                <td className="py-3.5 px-4 text-center whitespace-nowrap">
-                                  <span className="inline-flex items-center gap-1.5 px-2.5 py-0.8 rounded-full text-[10px] font-bold bg-slate-100 text-slate-700 border border-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700 uppercase tracking-wider">
-                                    <span className="w-1.5 h-1.5 rounded-full bg-slate-400 shrink-0" />
-                                    LOGGED
-                                  </span>
-                                </td>
-                                <td className="py-3.5 px-4 text-right font-mono text-xs text-gray-400">Audited</td>
-                              </tr>
-                            ))}
+                                  </td>
+                                  <td className="py-3.5 px-4 text-xs text-gray-700 dark:text-slate-300 max-w-[340px] truncate block whitespace-nowrap" title={a.summary}>
+                                    {a.summary}
+                                  </td>
+                                  <td className="py-3.5 px-4 whitespace-nowrap">
+                                    <span className="font-mono text-[11px] text-gray-400 dark:text-slate-400 flex items-center gap-1">
+                                      <Clock className="w-3 h-3 text-gray-400 shrink-0" />
+                                      {localDate(a.created_at)}
+                                    </span>
+                                  </td>
+                                  <td className="py-3.5 px-4 text-center whitespace-nowrap">
+                                    <span className="inline-flex items-center gap-1.5 px-2.5 py-0.8 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800 uppercase tracking-wider shadow-2xs">
+                                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse shrink-0" />
+                                      RECORDED
+                                    </span>
+                                  </td>
+                                  <td className="py-3.5 px-4 text-right whitespace-nowrap">
+                                    <span className={`inline-flex items-center px-2.5 py-0.8 rounded-md text-[10.5px] font-bold border ${sourceColor}`}>
+                                      {a.source || "System"}
+                                    </span>
+                                  </td>
+                                </tr>
+                              );
+                            })}
                         </tbody>
                       </table>
                     </div>
@@ -7555,7 +9488,7 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
               )}
 
               {/* Section Empty Check */}
-              {activeSection !== "alerts" && activeSection !== "chat" && activeSection !== "settings" && activeSection !== "batch_workspace" && activeSection !== "review_center" && activeSection !== "task_submissions" && activeSection !== "at_risk_watchlist" && (activeSection !== "overview" || isAdminRole) && totalRecords === 0 && (
+              {activeSection !== "alerts" && activeSection !== "chat" && activeSection !== "settings" && activeSection !== "batch_workspace" && activeSection !== "batch_files" && activeSection !== "review_center" && activeSection !== "task_submissions" && activeSection !== "at_risk_watchlist" && (activeSection !== "overview" || isAdminRole) && totalRecords === 0 && (
                 <div className="text-center py-10 text-gray-400 text-xs">No records found in this section.</div>
               )}
             </div>
@@ -8075,6 +10008,122 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
         </ModalWrapper>
       )}
 
+      {/* Resolve Escalation Modal */}
+      {escalationResolutionModal && (
+        <ModalWrapper isDark={isDark} title="Resolve Escalation" subtitle={escalationResolutionModal.issue || "Add resolution note"}>
+          <form
+            onSubmit={(event) => {
+              event.preventDefault();
+              handleUpdateBatchEscalationStatus(escalationResolutionModal, "resolved");
+            }}
+            className="space-y-3 text-xs"
+          >
+            <textarea
+              rows={4}
+              value={escalationResolutionText}
+              onChange={(event) => setEscalationResolutionText(event.target.value)}
+              placeholder="Type what was done to resolve this issue."
+              className="w-full p-2.5 rounded-xl border border-gray-200 dark:border-slate-700 bg-transparent text-xs focus:outline-none focus:border-emerald-600"
+              required
+            />
+            <div className="flex justify-end gap-2 pt-3 border-t">
+              <button
+                type="button"
+                onClick={() => {
+                  setEscalationResolutionModal(null);
+                  setEscalationResolutionText("");
+                }}
+                className="px-3 py-1.5 rounded-lg text-xs font-semibold text-gray-500 cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button type="submit" className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-4 py-1.5 rounded-lg text-xs cursor-pointer">
+                Mark Resolved
+              </button>
+            </div>
+          </form>
+        </ModalWrapper>
+      )}
+
+      {/* Raise Escalation Modal */}
+      {batchEscalationModalOpen && (
+        <ModalWrapper isDark={isDark} title="Raise Escalation" subtitle="Open a batch-wise issue for mentor, HR, or admin review.">
+          <form onSubmit={handleCreateBatchEscalation} className="space-y-3 text-xs">
+            <SelectField
+              label="Batch"
+              value={batchEscalationForm.batch_id}
+              onChange={(v) => setBatchEscalationForm({ ...batchEscalationForm, batch_id: v, assigned_to: "", related_member_id: "", related_task_id: "" })}
+              options={[["", "Select batch"], ...escalationBatchOptions.map((batch) => [batch.id, `${batch.name} - ${domainLabel(batch.domain)}`])]}
+              required
+            />
+            <div className="rounded-xl border border-amber-200 dark:border-amber-900 bg-amber-50/70 dark:bg-amber-950/25 p-3">
+              <div className="text-[10px] font-black uppercase tracking-wider text-amber-700 dark:text-amber-300">Raise To</div>
+              <SelectField
+                label="Escalation Owner"
+                value={batchEscalationForm.assigned_to}
+                onChange={(v) => setBatchEscalationForm({ ...batchEscalationForm, assigned_to: v })}
+                options={[
+                  ["", "Auto route / unassigned"],
+                  ...escalationAssigneeOptions.map((profile) => [profile.id, `${profile.full_name} (${ROLE_LABELS[profile.role] || profile.role})`]),
+                ]}
+              />
+              <div className="text-[11px] text-amber-700 dark:text-amber-300 mt-1">
+                Raised by {ROLE_LABELS[currentRole] || currentRole}. {selectedEscalationAssignee ? `Assigned to ${selectedEscalationAssignee.full_name}.` : "Choose anyone from allowed batch managers/admins, or leave auto."}
+              </div>
+            </div>
+            <InputField
+              label="Issue Title"
+              value={batchEscalationForm.issue}
+              onChange={(v) => setBatchEscalationForm({ ...batchEscalationForm, issue: v })}
+              required
+            />
+            <div className="grid grid-cols-2 gap-2">
+              <SelectField
+                label="Category"
+                value={batchEscalationForm.category}
+                onChange={(v) => setBatchEscalationForm({
+                  ...batchEscalationForm,
+                  category: v,
+                  priority: v === "urgent" && !["high", "urgent"].includes(batchEscalationForm.priority) ? "urgent" : batchEscalationForm.priority,
+                })}
+                options={[["general", "General"], ["task", "Task Blocker"], ["attendance", "Attendance"], ["discipline", "Discipline"], ["access", "Access/Resource"], ["urgent", "Urgent Help"]]}
+              />
+              <SelectField
+                label="Priority"
+                value={batchEscalationForm.priority}
+                onChange={(v) => setBatchEscalationForm({ ...batchEscalationForm, priority: v })}
+                options={[["low", "Low"], ["medium", "Medium"], ["high", "High"], ["urgent", "Urgent"]]}
+              />
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              <SelectField
+                label="Related Member"
+                value={batchEscalationForm.related_member_id}
+                onChange={(v) => setBatchEscalationForm({ ...batchEscalationForm, related_member_id: v })}
+                options={[["", "None"], ...escalationBatchMembers.map((member) => [member.id, `${member.full_name} (${ROLE_LABELS[member.role] || member.role})`])]}
+              />
+              <SelectField
+                label="Related Task"
+                value={batchEscalationForm.related_task_id}
+                onChange={(v) => setBatchEscalationForm({ ...batchEscalationForm, related_task_id: v })}
+                options={[["", "None"], ...tasks.filter((task) => task.batch_id === selectedEscalationBatch?.id).map((task) => [task.id, task.title])]}
+              />
+            </div>
+            <textarea
+              rows={4}
+              value={batchEscalationForm.description}
+              onChange={(event) => setBatchEscalationForm({ ...batchEscalationForm, description: event.target.value })}
+              placeholder="Explain the blocker, who is affected, and what action is needed."
+              className="w-full p-2.5 rounded-xl border border-gray-200 dark:border-slate-700 bg-transparent text-xs focus:outline-none focus:border-red-600"
+            />
+            <div className="flex justify-end gap-2 pt-3 border-t">
+              <button type="button" onClick={() => setBatchEscalationModalOpen(false)} className="px-3 py-1.5 rounded-lg text-xs font-semibold text-gray-500 cursor-pointer">Cancel</button>
+              <button type="submit" className="bg-red-600 hover:bg-red-700 text-white font-bold px-4 py-1.5 rounded-lg text-xs cursor-pointer">Raise Escalation</button>
+            </div>
+          </form>
+        </ModalWrapper>
+      )}
+
       {/* Assign Batch Leads Modal */}
       {assignLeadsModal && (isHrRole || isMentor) && (
         <ModalWrapper isDark={isDark} title={isHrRole ? "Assign Batch Mentor" : "Assign Team Leader"} subtitle={isHrRole ? `Assign Mentor for ${assignLeadsForm.batch_name}.` : `Promote an intern as TL for ${assignLeadsForm.batch_name}.`}>
@@ -8086,10 +10135,16 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
             </div>
             {isHrRole && (
               <SelectField
-                label="Supervisor Mentor"
+                label="Supervisor Mentor (can manage multiple batches)"
                 value={assignLeadsForm.mentor_id}
                 onChange={(v) => setAssignLeadsForm({ ...assignLeadsForm, mentor_id: v })}
-                options={[["", "Unassigned"], ...profiles.filter((p) => p.role === "mentor" && p.batch_id === assignLeadsForm.batch_id).map((p) => [p.id, `${p.full_name} (${p.email})`])]}
+                options={[
+                  ["", "Unassigned"],
+                  ...hrAssignableMentors.map((p) => [
+                    p.id,
+                    `${p.full_name} (${p.email})${p.batch_id === assignLeadsForm.batch_id ? " - current batch" : ""}`,
+                  ]),
+                ]}
               />
             )}
             {isMentor && (
@@ -8163,25 +10218,26 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
       )}
 
       {/* 10. Member Profile Modal */}
-      {selectedMemberModal && (
+      {selectedMemberProfile && (
         <MemberProfileModal
-          member={selectedMemberModal}
+          member={selectedMemberProfile}
           onClose={() => setSelectedMemberModal(null)}
-          batch={batches.find((b) => b.id === selectedMemberModal.batch_id)}
-          responsibilityMap={null}
-          tasks={tasks.filter((t) => t.assigned_to === selectedMemberModal.id || (selectedMemberModal.role === "intern" && t.visible_to_interns && t.batch_id === selectedMemberModal.batch_id))}
-          submissions={submissions.filter((s) => s.user_id === selectedMemberModal.id)}
-          reviews={taskReviews.filter((r) => r.submission?.user_id === selectedMemberModal.id || r.user_id === selectedMemberModal.id)}
-          attendanceRecords={attendance.filter((a) => a.user_id === selectedMemberModal.id)}
+          batch={selectedMemberBatch}
+          assignedBatches={selectedMemberAssignedBatches}
+          responsibilityMap={selectedMemberResponsibilityMap}
+          tasks={selectedMemberTasks}
+          submissions={selectedMemberSubmissions}
+          reviews={selectedMemberReviews}
+          attendanceRecords={selectedMemberAttendance}
           onPromoteToTl={async () => {
-            await handlePromoteInternToTl(selectedMemberModal);
+            await handlePromoteInternToTl(selectedMemberProfile);
             setSelectedMemberModal(null);
           }}
-          canPromoteTl={isMentor && selectedMemberModal.role === "intern" && ownedBatchIds.has(selectedMemberModal.batch_id)}
-          onSendWhatsapp={(phone, name) => {
-            if (!phone) return;
-            const cleanPhone = phone.replace(/[^0-9]/g, "");
-            const text = encodeURIComponent(`Hi ${name}, this is ${userProfile?.full_name || "Team Member"} from TexWeb Solution.`);
+          canPromoteTl={isMentor && selectedMemberProfile.role === "intern" && ownedBatchIds.has(selectedMemberProfile.batch_id)}
+          onSendWhatsapp={(member) => {
+            if (!member?.phone) return;
+            const cleanPhone = member.phone.replace(/[^0-9]/g, "");
+            const text = encodeURIComponent(`Hi ${member.full_name || "there"}, this is ${userProfile?.full_name || "Team Member"} from TexWeb Solution.`);
             window.open(`https://wa.me/${cleanPhone}?text=${text}`, "_blank");
           }}
           isDark={isDark}
@@ -8288,6 +10344,291 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
           domainLabel={domainLabel}
         />
       )}
+
+      {/* 14. Edit Announcement Modal */}
+      {editingAnnouncement && (
+        <ModalWrapper isDark={isDark} title="Edit Announcement" subtitle="Update notice details, message, or change attachments.">
+          <form onSubmit={handleUpdateBatchAnnouncement} className="space-y-3.5 text-xs">
+            <InputField
+              label="Title"
+              value={editingAnnouncement.title}
+              onChange={(v) => setEditingAnnouncement({ ...editingAnnouncement, title: v })}
+              required
+            />
+            <SelectField
+              label="Category"
+              value={editingAnnouncement.category}
+              onChange={(v) => setEditingAnnouncement({ ...editingAnnouncement, category: v })}
+              options={[
+                ["announcement", "Announcement"],
+                ["important_link", "Important Link"],
+                ["rule", "Rule"],
+                ["pinned", "Pinned Information"],
+              ]}
+            />
+            <InputField
+              label="Optional Link"
+              type="url"
+              value={editingAnnouncement.link_url}
+              onChange={(v) => setEditingAnnouncement({ ...editingAnnouncement, link_url: v })}
+              placeholder="https://..."
+            />
+            <div className="space-y-1">
+              <label className="block font-bold text-xs text-gray-700 dark:text-slate-300">Message / Body</label>
+              <textarea
+                rows={4}
+                value={editingAnnouncement.body}
+                onChange={(e) => setEditingAnnouncement({ ...editingAnnouncement, body: e.target.value })}
+                required
+                className="w-full p-2.5 rounded-xl border border-gray-200 dark:border-slate-700 bg-gray-50 dark:bg-slate-900 text-xs focus:bg-white focus:outline-none focus:border-red-600 transition"
+              />
+            </div>
+
+            {/* Attachment preview / change */}
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold text-gray-700 dark:text-slate-300 flex items-center justify-between">
+                <span>Attachment (PDF / Image / Doc)</span>
+                <span className="text-[10px] text-gray-400 font-normal">Optional</span>
+              </label>
+              <div className="relative">
+                <input
+                  type="file"
+                  accept=".pdf,image/*,.doc,.docx,.txt,.xlsx,.zip"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) {
+                      const previewUrl = file.type.startsWith("image/") ? URL.createObjectURL(file) : "";
+                      setEditingAnnouncement((prev) => ({
+                        ...prev,
+                        file,
+                        previewUrl,
+                        attachment_name: file.name,
+                        attachment_type: file.type || file.name.split(".").pop(),
+                      }));
+                    }
+                  }}
+                  className="hidden"
+                  id="edit-announcement-file-input"
+                />
+                {editingAnnouncement.file || editingAnnouncement.attachment_url ? (
+                  <div className="flex items-center justify-between p-2.5 rounded-xl border border-red-200 dark:border-red-900/60 bg-red-50/50 dark:bg-red-950/20 text-xs">
+                    <div className="flex items-center gap-2 min-w-0">
+                      {editingAnnouncement.previewUrl ? (
+                        <img src={editingAnnouncement.previewUrl} alt="Preview" className="w-7 h-7 rounded object-cover border" />
+                      ) : (
+                        <FileText className="w-4 h-4 text-red-600 shrink-0" />
+                      )}
+                      <span className="font-bold text-red-950 dark:text-red-200 truncate">
+                        {editingAnnouncement.attachment_name || "Attached file"}
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setEditingAnnouncement((prev) => ({
+                        ...prev,
+                        file: null,
+                        previewUrl: "",
+                        attachment_url: "",
+                        attachment_name: "",
+                        attachment_type: "",
+                      }))}
+                      className="p-1 hover:text-red-600 text-gray-400"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                ) : (
+                  <label
+                    htmlFor="edit-announcement-file-input"
+                    className="flex items-center justify-center gap-2 p-3 border border-dashed border-gray-300 dark:border-slate-700 rounded-xl hover:border-red-500 hover:bg-gray-50 dark:hover:bg-slate-800/50 cursor-pointer transition text-xs text-gray-500 dark:text-slate-400 font-medium"
+                  >
+                    <Paperclip className="w-4 h-4 text-gray-400" />
+                    <span>Upload new or replacement file</span>
+                  </label>
+                )}
+              </div>
+            </div>
+
+            <label className="flex items-center gap-2 text-xs font-bold text-gray-700 dark:text-slate-300 cursor-pointer pt-1">
+              <input
+                type="checkbox"
+                checked={editingAnnouncement.pinned}
+                onChange={(e) => setEditingAnnouncement({ ...editingAnnouncement, pinned: e.target.checked })}
+              />
+              <span>Pin this notice to top</span>
+            </label>
+
+            <div className="flex justify-end gap-2 pt-3 border-t border-gray-100 dark:border-slate-800">
+              <button
+                type="button"
+                onClick={() => setEditingAnnouncement(null)}
+                className="px-3.5 py-2 rounded-xl text-xs font-bold text-gray-500 hover:bg-gray-100 dark:hover:bg-slate-800 transition cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={editingAnnouncement.uploading}
+                className="px-4 py-2 rounded-xl text-xs font-bold bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 text-white disabled:opacity-50 flex items-center gap-2 shadow-md shadow-red-500/20 cursor-pointer transition"
+              >
+                {editingAnnouncement.uploading ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
+                <span>{editingAnnouncement.uploading ? "Uploading & Saving..." : "Save Changes"}</span>
+              </button>
+            </div>
+          </form>
+        </ModalWrapper>
+      )}
+
+      {/* 15. Edit Batch File / Resource Modal */}
+      {editingResource && (
+        <ModalWrapper isDark={isDark} title="Edit File / Resource" subtitle="Update title, category, link, or replacement file.">
+          <form onSubmit={handleUpdateBatchResource} className="space-y-3.5 text-xs">
+            <InputField
+              label="Title"
+              value={editingResource.title}
+              onChange={(v) => setEditingResource({ ...editingResource, title: v })}
+              required
+            />
+            <SelectField
+              label="Category"
+              value={editingResource.category}
+              onChange={(v) => setEditingResource({ ...editingResource, category: v })}
+              options={[
+                ["technical_guides", "Technical Guides"],
+                ["task_guidelines", "Task Guidelines"],
+                ["git_guidelines", "Git Guidelines"],
+                ["learning_material", "Learning Material"],
+                ["important_documents", "Important Documents"],
+                ["useful_links", "Useful Links"],
+                ["other", "Other"],
+              ]}
+            />
+            <InputField
+              label="External Link URL"
+              type="url"
+              value={editingResource.link_url}
+              onChange={(v) => setEditingResource({ ...editingResource, link_url: v })}
+              placeholder="https://..."
+            />
+            <div className="space-y-1">
+              <label className="block font-bold text-xs text-gray-700 dark:text-slate-300">Description</label>
+              <textarea
+                rows={3}
+                value={editingResource.description}
+                onChange={(e) => setEditingResource({ ...editingResource, description: e.target.value })}
+                placeholder="Short description or instructions..."
+                className="w-full p-2.5 rounded-xl border border-gray-200 dark:border-slate-700 bg-gray-50 dark:bg-slate-900 text-xs focus:bg-white focus:outline-none focus:border-red-600 transition"
+              />
+            </div>
+
+            {/* File Replacement input */}
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold text-gray-700 dark:text-slate-300 flex items-center justify-between">
+                <span>File (PDF / Image / Doc)</span>
+                <span className="text-[10px] text-gray-400 font-normal">Optional</span>
+              </label>
+              <div className="relative">
+                <input
+                  type="file"
+                  accept=".pdf,image/*,.doc,.docx,.txt,.xlsx,.zip"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) {
+                      const previewUrl = file.type.startsWith("image/") ? URL.createObjectURL(file) : "";
+                      setEditingResource((prev) => ({
+                        ...prev,
+                        file,
+                        previewUrl,
+                        file_name: file.name,
+                      }));
+                    }
+                  }}
+                  className="hidden"
+                  id="edit-batch-resource-file-input"
+                />
+                {editingResource.file || editingResource.file_url ? (
+                  <div className="flex items-center justify-between p-2.5 rounded-xl border border-indigo-200 dark:border-indigo-900 bg-indigo-50/50 dark:bg-indigo-950/20 text-xs">
+                    <div className="flex items-center gap-2 min-w-0">
+                      {editingResource.previewUrl ? (
+                        <img src={editingResource.previewUrl} alt="Preview" className="w-7 h-7 rounded object-cover border" />
+                      ) : (
+                        <FileText className="w-4 h-4 text-indigo-600 shrink-0" />
+                      )}
+                      <span className="font-bold text-indigo-950 dark:text-indigo-200 truncate">
+                        {editingResource.file_name || "Current attached file"}
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setEditingResource((prev) => ({
+                        ...prev,
+                        file: null,
+                        previewUrl: "",
+                        file_url: "",
+                        file_name: "",
+                      }))}
+                      className="p-1 hover:text-red-600 text-gray-400"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                ) : (
+                  <label
+                    htmlFor="edit-batch-resource-file-input"
+                    className="flex items-center justify-center gap-2 p-3 border border-dashed border-gray-300 dark:border-slate-700 rounded-xl hover:border-red-500 hover:bg-gray-50 dark:hover:bg-slate-800/50 cursor-pointer transition text-xs text-gray-500 dark:text-slate-400 font-medium"
+                  >
+                    <Upload className="w-4 h-4 text-gray-400" />
+                    <span>Upload new or replacement file</span>
+                  </label>
+                )}
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-2 pt-3 border-t border-gray-100 dark:border-slate-800">
+              <button
+                type="button"
+                onClick={() => setEditingResource(null)}
+                className="px-3.5 py-2 rounded-xl text-xs font-bold text-gray-500 hover:bg-gray-100 dark:hover:bg-slate-800 transition cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={editingResource.uploading}
+                className="px-4 py-2 rounded-xl text-xs font-bold bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 text-white disabled:opacity-50 flex items-center gap-2 shadow-md shadow-red-500/20 cursor-pointer transition"
+              >
+                {editingResource.uploading ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
+                <span>{editingResource.uploading ? "Uploading & Saving..." : "Save Changes"}</span>
+              </button>
+            </div>
+          </form>
+        </ModalWrapper>
+      )}
+
+      {/* Universal In-App Confirmation Modal (Replaces window.confirm) */}
+      <ConfirmModal
+        isOpen={Boolean(confirmModal)}
+        title={confirmModal?.title || "Confirm Action"}
+        itemName={confirmModal?.itemName || ""}
+        message={confirmModal?.message || "Are you sure you want to proceed?"}
+        confirmText={confirmModal?.confirmText || "Confirm"}
+        cancelText={confirmModal?.cancelText || "Cancel"}
+        danger={confirmModal?.danger ?? false}
+        loading={confirmModal?.loading ?? false}
+        onConfirm={confirmModal?.onConfirm}
+        onClose={() => setConfirmModal(null)}
+        isDark={isDark}
+      />
+
+      {/* Universal In-App Share / Verification Link Modal (Replaces window.prompt) */}
+      <ShareLinkModal
+        isOpen={Boolean(shareLinkModal)}
+        title={shareLinkModal?.title || "Share Link"}
+        subtitle={shareLinkModal?.subtitle || "Copy the link below"}
+        link={shareLinkModal?.link || ""}
+        onClose={() => setShareLinkModal(null)}
+        isDark={isDark}
+      />
     </div>
   );
 }
@@ -8296,17 +10637,262 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
    SIMPLE, CLEAN REUSABLE COMPONENTS
    ============================================================================== */
 
-function ModalWrapper({ isDark, title, subtitle, children }) {
+function ModalWrapper({ isDark, title, subtitle, children, onClose, maxWidth = "max-w-lg" }) {
   return (
-    <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+    <div
+      className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-sm flex items-center justify-center p-2.5 sm:p-4 md:p-6 overflow-y-auto"
+      onClick={(e) => {
+        if (e.target === e.currentTarget && onClose) onClose();
+      }}
+    >
       <div
-        className={`border rounded-2xl p-5 sm:p-6 max-w-lg w-full shadow-2xl relative overflow-hidden max-h-[90vh] overflow-y-auto ${isDark ? "bg-[#18150f] border-[#3a3020] text-[#f4ead2]" : "bg-white border-gray-200 text-gray-900"
-          }`}
+        className={`border rounded-2xl sm:rounded-3xl p-4 sm:p-6 ${maxWidth} w-full shadow-2xl relative my-auto max-h-[92dvh] flex flex-col overflow-hidden transition-all ${
+          isDark ? "bg-[#18150f] border-[#3a3020] text-[#f4ead2]" : "bg-white border-gray-200 text-gray-900"
+        }`}
       >
-        <div className="text-xs font-bold text-red-600 uppercase mb-0.5 font-mono">TexWeb Workspace</div>
-        <h3 className="text-lg font-bold tracking-tight">{title}</h3>
-        {subtitle && <p className="text-xs text-gray-400 mb-4">{subtitle}</p>}
-        {children}
+        <div className="shrink-0 flex items-start justify-between gap-3 mb-3">
+          <div className="min-w-0 pr-1">
+            <div className="text-[10.5px] font-bold text-red-600 uppercase tracking-wider font-mono">TexWeb Workspace</div>
+            <h3 className="text-base sm:text-lg font-bold tracking-tight">{title}</h3>
+            {subtitle && <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{subtitle}</p>}
+          </div>
+          {onClose && (
+            <button
+              type="button"
+              onClick={onClose}
+              className="p-1.5 rounded-xl text-gray-400 hover:text-gray-700 dark:hover:text-slate-200 hover:bg-gray-100 dark:hover:bg-white/10 transition shrink-0 cursor-pointer"
+              aria-label="Close modal"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          )}
+        </div>
+        <div className="overflow-y-auto flex-1 pr-0.5">
+          {children}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ConfirmModal({
+  isOpen,
+  title,
+  itemName = "",
+  message,
+  confirmText = "Confirm",
+  cancelText = "Cancel",
+  danger = false,
+  loading = false,
+  onConfirm,
+  onClose,
+  isDark = false,
+}) {
+  if (!isOpen) return null;
+  return (
+    <div
+      className="fixed inset-0 z-[100] bg-slate-950/75 backdrop-blur-md flex items-center justify-center p-3 sm:p-4 overflow-y-auto"
+      onClick={(e) => {
+        if (e.target === e.currentTarget && !loading) onClose();
+      }}
+    >
+      <div
+        className={`relative w-full max-w-md my-auto rounded-3xl border shadow-[0_25px_60px_-15px_rgba(0,0,0,0.3)] p-6 sm:p-7 overflow-hidden transition-all ${
+          isDark
+            ? "bg-[#13151b] border-slate-800 text-slate-100"
+            : "bg-white border-gray-200/90 text-gray-900"
+        }`}
+      >
+        {/* Subtle Ambient Decorative Glow */}
+        <div className="absolute -top-14 -right-14 w-36 h-36 bg-rose-500/10 dark:bg-rose-500/15 rounded-full blur-2xl pointer-events-none" />
+        <div className="absolute -bottom-14 -left-14 w-36 h-36 bg-red-500/10 dark:bg-red-500/15 rounded-full blur-2xl pointer-events-none" />
+
+        {/* Top Header Tag & Close Button */}
+        <div className="relative flex items-center justify-between gap-3 mb-4">
+          <span
+            className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider font-mono ${
+              danger
+                ? "bg-rose-50 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400 border border-rose-200/70 dark:border-rose-900/50"
+                : "bg-amber-50 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400 border border-amber-200/70 dark:border-amber-900/50"
+            }`}
+          >
+            <span className={`w-1.5 h-1.5 rounded-full animate-pulse ${danger ? "bg-rose-500" : "bg-amber-500"}`} />
+            <span>{danger ? "Action Required" : "Confirm"}</span>
+          </span>
+          <button
+            type="button"
+            onClick={onClose}
+            className="w-8 h-8 rounded-full flex items-center justify-center text-gray-400 hover:text-gray-700 dark:hover:text-slate-200 hover:bg-gray-100 dark:hover:bg-slate-800 transition cursor-pointer shrink-0"
+            aria-label="Close"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+
+        {/* Hero Icon & Title */}
+        <div className="relative flex items-start gap-4">
+          <div
+            className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 shadow-sm ${
+              danger
+                ? "bg-gradient-to-br from-rose-500/15 via-red-500/10 to-rose-600/20 text-rose-600 dark:text-rose-400 border border-rose-500/25"
+                : "bg-gradient-to-br from-amber-500/15 via-amber-500/10 to-orange-500/20 text-amber-600 dark:text-amber-400 border border-amber-500/25"
+            }`}
+          >
+            {danger ? <Trash2 className="w-6 h-6" /> : <AlertTriangle className="w-6 h-6" />}
+          </div>
+          <div className="min-w-0 flex-1 pt-0.5">
+            <h3 className="text-lg sm:text-xl font-bold tracking-tight">{title}</h3>
+            <p className="text-xs sm:text-[13px] text-gray-500 dark:text-slate-400 mt-1 leading-relaxed">{message}</p>
+          </div>
+        </div>
+
+        {/* Target Item Name Card */}
+        {itemName && (
+          <div className="relative mt-4 p-3 rounded-2xl bg-gray-50 dark:bg-transparent border border-gray-200/80 dark:border-slate-800/90 flex items-center gap-3">
+            <div className="w-8 h-8 rounded-xl bg-red-100 dark:bg-red-950/60 text-red-600 dark:text-red-400 flex items-center justify-center shrink-0">
+              <Folder className="w-4 h-4" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="text-[10px] font-bold text-gray-400 dark:text-slate-500 uppercase tracking-wider font-mono">Target Item</div>
+              <div className="text-xs sm:text-[13px] font-semibold text-gray-900 dark:text-slate-200 truncate font-mono">{itemName}</div>
+            </div>
+          </div>
+        )}
+
+        {/* Danger Warning Note */}
+        {danger && (
+          <div className="relative mt-3 px-3.5 py-2.5 rounded-xl bg-rose-50/70 dark:bg-rose-950/30 border border-rose-200/60 dark:border-rose-900/40 flex items-center gap-2 text-[11.5px] text-rose-700 dark:text-rose-300">
+            <AlertTriangle className="w-3.5 h-3.5 text-rose-500 shrink-0" />
+            <span>This action cannot be undone and will be logged.</span>
+          </div>
+        )}
+
+        {/* Buttons Footer */}
+        <div className="relative flex items-center justify-end gap-2.5 pt-5 mt-5 border-t border-gray-100 dark:border-slate-800/80 shrink-0">
+          <button
+            type="button"
+            disabled={loading}
+            onClick={onClose}
+            className="px-4 py-2.5 text-xs sm:text-sm font-semibold rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800/90 text-gray-700 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-700/60 transition disabled:opacity-50 cursor-pointer active:scale-98"
+          >
+            {cancelText}
+          </button>
+          <button
+            type="button"
+            disabled={loading}
+            onClick={async () => {
+              if (onConfirm) await onConfirm();
+              onClose();
+            }}
+            className={`px-5 py-2.5 text-xs sm:text-sm font-bold rounded-xl text-white flex items-center gap-2 transition disabled:opacity-50 cursor-pointer active:scale-95 ${
+              danger
+                ? "bg-red-600 hover:bg-red-700"
+                : "bg-amber-600 hover:bg-amber-700"
+            }`}
+          >
+            {loading ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+            <span>{confirmText}</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ShareLinkModal({
+  isOpen,
+  title = "Share Link",
+  subtitle = "Copy the link below to share",
+  link = "",
+  onClose,
+  isDark = false,
+}) {
+  const [copied, setCopied] = useState(false);
+  if (!isOpen) return null;
+
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(link);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      // Fallback
+    }
+  };
+
+  return (
+    <div
+      className="fixed inset-0 z-[100] bg-slate-950/75 backdrop-blur-md flex items-center justify-center p-3 sm:p-4 overflow-y-auto"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+    >
+      <div
+        className={`relative w-full max-w-md my-auto rounded-3xl border shadow-[0_25px_60px_-15px_rgba(0,0,0,0.3)] p-6 sm:p-7 overflow-hidden transition-all ${
+          isDark
+            ? "bg-[#13151b] border-slate-800 text-slate-100"
+            : "bg-white border-gray-200/90 text-gray-900"
+        }`}
+      >
+        <div className="absolute -top-14 -right-14 w-36 h-36 bg-red-500/10 dark:bg-red-500/15 rounded-full blur-2xl pointer-events-none" />
+
+        <div className="relative flex items-start justify-between gap-2 mb-4">
+          <div>
+            <div className="text-[10px] font-bold text-red-600 dark:text-red-400 uppercase tracking-wider font-mono">TexWeb Workspace Link</div>
+            <h3 className="text-lg font-bold tracking-tight mt-0.5">{title}</h3>
+            {subtitle && <p className="text-xs text-gray-500 dark:text-slate-400 mt-0.5">{subtitle}</p>}
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="w-8 h-8 rounded-full flex items-center justify-center text-gray-400 hover:text-gray-700 dark:hover:text-slate-200 hover:bg-gray-100 dark:hover:bg-slate-800 transition cursor-pointer"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+
+        <div className="relative mt-3 space-y-4">
+          <div className="relative">
+            <input
+              type="text"
+              readOnly
+              value={link}
+              className="w-full p-3 pr-28 rounded-2xl border border-gray-200 dark:border-slate-800 bg-gray-50 dark:bg-transparent text-xs font-mono text-gray-800 dark:text-slate-200 focus:outline-none select-all"
+              onFocus={(e) => e.target.select()}
+            />
+            <button
+              type="button"
+              onClick={handleCopy}
+              className={`absolute right-1.5 top-1.5 bottom-1.5 px-3.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer ${
+                copied
+                  ? "bg-emerald-600 text-white"
+                  : "bg-red-600 hover:bg-red-700 text-white"
+              }`}
+            >
+              {copied ? <CheckCircle2 className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+              <span>{copied ? "Copied!" : "Copy"}</span>
+            </button>
+          </div>
+
+          <div className="flex items-center justify-between gap-2 pt-2 border-t border-gray-100 dark:border-slate-800/80">
+            <a
+              href={link}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 text-xs text-red-600 hover:text-red-700 dark:text-red-400 font-semibold transition"
+            >
+              <ExternalLink className="w-3.5 h-3.5" />
+              <span>Open in new tab</span>
+            </a>
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-4 py-2 text-xs font-semibold rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-gray-50 dark:hover:bg-slate-700/60 transition cursor-pointer"
+            >
+              Done
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   );

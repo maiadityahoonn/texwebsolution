@@ -1,5 +1,8 @@
 export function safeExternalUrl(value, fallback = "#") {
   if (!value || typeof value !== "string") return fallback;
+  if (value.startsWith("data:image/") || value.startsWith("data:application/pdf") || value.startsWith("data:application/octet-stream")) {
+    return value;
+  }
   try {
     const url = new URL(value, "https://texwebsolution.in");
     if (url.protocol === "http:" || url.protocol === "https:" || url.protocol === "mailto:" || url.protocol === "tel:") {

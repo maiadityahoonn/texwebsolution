@@ -80,7 +80,7 @@ export default function InternOverview({
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {/* Batch Info Card */}
         <div className={`md:col-span-2 p-5 rounded-2xl border ${
-          isDark ? "bg-slate-900/80 border-slate-800" : "bg-white border-gray-200/80"
+          isDark ? "bg-transparent border-slate-800/80" : "bg-white border-gray-200/80"
         } shadow-sm relative overflow-hidden`}>
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
@@ -163,7 +163,7 @@ export default function InternOverview({
 
         {/* Attendance Summary */}
         <div className={`p-5 rounded-2xl border ${
-          isDark ? "bg-slate-900/80 border-slate-800" : "bg-white border-gray-200/80"
+          isDark ? "bg-transparent border-slate-800/80" : "bg-white border-gray-200/80"
         } shadow-sm flex flex-col justify-between`}>
           <div>
             <div className="flex items-center justify-between">
@@ -242,7 +242,7 @@ export default function InternOverview({
 
       {/* 3. MY TASKS & DEADLINES (PRD Section 39) */}
       <div className={`p-5 rounded-2xl border ${
-        isDark ? "bg-slate-900/80 border-slate-800" : "bg-white border-gray-200/80"
+        isDark ? "bg-transparent border-slate-800/80" : "bg-white border-gray-200/80"
       } shadow-sm`}>
         <div className="flex items-center justify-between mb-4">
           <div>
@@ -322,7 +322,7 @@ export default function InternOverview({
                     )}
 
                     {task.expected_output && (
-                      <div className="mt-2 text-[11px] text-gray-600 dark:text-slate-300 bg-white/70 dark:bg-slate-900/60 p-2 rounded-lg border border-gray-100 dark:border-slate-800">
+                      <div className="mt-2 text-[11px] text-gray-600 dark:text-slate-300 bg-white/70 dark:bg-transparent p-2 rounded-lg border border-gray-100 dark:border-slate-800">
                         <span className="font-bold text-red-600">Expected:</span> {task.expected_output}
                       </div>
                     )}
@@ -358,7 +358,7 @@ export default function InternOverview({
       {/* 4. RECENT FEEDBACK SECTION */}
       {latestReview && (
         <div className={`p-4 rounded-2xl border ${
-          isDark ? "bg-slate-900/80 border-slate-800" : "bg-white border-gray-200/80"
+          isDark ? "bg-transparent border-slate-800/80" : "bg-white border-gray-200/80"
         } shadow-sm`}>
           <div className="flex items-center justify-between mb-2">
             <span className="text-xs font-bold text-gray-500 dark:text-slate-400 uppercase tracking-wider flex items-center gap-1.5">

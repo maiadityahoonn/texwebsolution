@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   X,
   User,
@@ -29,6 +29,7 @@ export default function MemberProfileModal({
   member,
   onClose,
   batch,
+  assignedBatches = [],
   responsibilityMap,
   tasks = [],
   submissions = [],
@@ -43,16 +44,26 @@ export default function MemberProfileModal({
 }) {
   const [activeTab, setActiveTab] = useState("overview");
 
+  useEffect(() => {
+    setActiveTab("overview");
+  }, [member?.id, member?.role]);
+
   if (!member) return null;
 
-  const memberTasks = tasks.filter((t) => t.assigned_to === member.id || t.assigned_to_profile?.id === member.id);
+  const memberTasks = tasks.filter(
+    (t) =>
+      t.assigned_to === member.id ||
+      t.assigned_to_profile?.id === member.id ||
+      (member.role === "intern" && t.visible_to_interns && t.batch_id && t.batch_id === member.batch_id)
+  );
   const completedTasks = memberTasks.filter((t) => ["approved", "completed"].includes(t.status));
   const overdueTasks = memberTasks.filter((t) => t.deadline && !["approved", "completed"].includes(t.status) && new Date(t.deadline).getTime() < Date.now());
-  const memberSubmissions = submissions.filter((s) => s.intern_id === member.id || s.intern?.id === member.id);
+  const memberSubmissions = submissions.filter((s) => s.intern_id === member.id || s.user_id === member.id || s.intern?.id === member.id);
   const memberAttendance = attendanceRecords.filter((a) => a.user_id === member.id);
   const presentAttendance = memberAttendance.filter((a) => a.status === "present" || a.status === "late");
   const attendanceRate = memberAttendance.length ? Math.round((presentAttendance.length / memberAttendance.length) * 100) : 100;
   const completionRate = memberTasks.length ? Math.round((completedTasks.length / memberTasks.length) * 100) : 100;
+  const isHrProfile = member.role === "hr";
 
   let attentionStatus = { label: "On Track", badge: "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800", icon: "🟢" };
   if (overdueTasks.length >= 2 || (memberAttendance.length >= 2 && attendanceRate < 60)) {
@@ -62,8 +73,8 @@ export default function MemberProfileModal({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-xs animate-fadeIn">
-      <div className={`relative w-full max-w-2xl max-h-[90vh] flex flex-col rounded-3xl border shadow-2xl overflow-hidden ${
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-2.5 sm:p-4 md:p-6 bg-black/60 backdrop-blur-xs overflow-y-auto animate-fadeIn">
+      <div className={`relative w-full max-w-2xl my-auto max-h-[92dvh] flex flex-col rounded-2xl sm:rounded-3xl border shadow-2xl overflow-hidden transition-all ${
         isDark ? "bg-slate-900 border-slate-800 text-slate-100" : "bg-white border-gray-200 text-gray-900"
       }`}>
         {/* Modal Header */}
@@ -109,12 +120,15 @@ export default function MemberProfileModal({
 
         {/* Tab Navigation */}
         <div className="flex gap-1 px-4 pt-2 border-b border-gray-100 dark:border-slate-800 overflow-x-auto text-xs font-bold">
-          {[
-            ["overview", "Overview & Team"],
-            ["tasks", `Tasks (${memberTasks.length})`],
-            ["submissions", `Submissions (${memberSubmissions.length})`],
-            ["attendance", `Attendance (${attendanceRate}%)`],
-          ].map(([tabKey, label]) => (
+          {(isHrProfile
+            ? [["overview", "Assigned Batches"]]
+            : [
+                ["overview", "Overview & Team"],
+                ["tasks", `Tasks (${memberTasks.length})`],
+                ["submissions", `Submissions (${memberSubmissions.length})`],
+                ["attendance", `Attendance (${attendanceRate}%)`],
+              ]
+          ).map(([tabKey, label]) => (
             <button
               key={tabKey}
               onClick={() => setActiveTab(tabKey)}
@@ -133,8 +147,70 @@ export default function MemberProfileModal({
         <div className="p-4 sm:p-5 overflow-y-auto space-y-4 text-xs">
           {activeTab === "overview" && (
             <div className="space-y-4">
+              {isHrProfile && (
+                <div className="rounded-2xl border border-purple-200/80 dark:border-purple-900/60 p-4 bg-purple-50/40 dark:bg-purple-950/20">
+                  <div className="flex items-center justify-between gap-3 mb-3">
+                    <div className="text-[11px] font-bold uppercase tracking-wider text-purple-500 dark:text-purple-300">
+                      Assigned Batches
+                    </div>
+                    <span className="px-2.5 py-1 rounded-full text-[10.5px] font-black bg-white dark:bg-slate-900 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800">
+                      {assignedBatches.length} batch{assignedBatches.length === 1 ? "" : "es"}
+                    </span>
+                  </div>
+
+                  {assignedBatches.length === 0 ? (
+                    <div className="rounded-xl border border-dashed border-purple-200 dark:border-purple-900 p-3 text-purple-500 dark:text-purple-300 font-semibold">
+                      No batch is assigned to this HR yet.
+                    </div>
+                  ) : (
+                    <div className="space-y-2.5">
+                      {assignedBatches.map((item) => (
+                        <div key={item.id} className="rounded-xl border border-purple-100 dark:border-purple-900/70 bg-white dark:bg-slate-900 p-3">
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="min-w-0">
+                              <div className="font-black text-gray-900 dark:text-white truncate">{item.name || "Unnamed Batch"}</div>
+                              <div className="text-[10.5px] text-gray-400 mt-0.5">
+                                {domainLabel(item.domain)} {item.batch_type ? `- ${item.batch_type}` : ""}
+                              </div>
+                            </div>
+                            <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold uppercase border shrink-0 ${
+                              item.status === "active"
+                                ? "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800"
+                                : "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800"
+                            }`}>
+                              {item.status || "active"}
+                            </span>
+                          </div>
+
+                          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-3">
+                            <div>
+                              <div className="text-[10px] font-bold uppercase text-gray-400">Mentor</div>
+                              <div className="font-bold text-gray-800 dark:text-slate-100 truncate">{item.assigned_mentor?.full_name || "Unassigned"}</div>
+                            </div>
+                            <div>
+                              <div className="text-[10px] font-bold uppercase text-gray-400">Team Leader</div>
+                              <div className="font-bold text-gray-800 dark:text-slate-100 truncate">{item.assigned_tl?.full_name || "Unassigned"}</div>
+                            </div>
+                            <div>
+                              <div className="text-[10px] font-bold uppercase text-gray-400">Interns</div>
+                              <div className="font-bold text-gray-800 dark:text-slate-100">{item.intern_count || 0}</div>
+                            </div>
+                            <div>
+                              <div className="text-[10px] font-bold uppercase text-gray-400">Timeline</div>
+                              <div className="font-bold text-gray-800 dark:text-slate-100 truncate">
+                                {item.starts_at || "Immediate"} - {item.ends_at || "Open"}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
               {/* Responsibility Map */}
-              <div className="rounded-2xl border border-gray-200/80 dark:border-slate-800/80 p-4 bg-gray-50/50 dark:bg-slate-800/30">
+              {!isHrProfile && <div className="rounded-2xl border border-gray-200/80 dark:border-slate-800/80 p-4 bg-gray-50/50 dark:bg-slate-800/30">
                 <div className="text-[11px] font-bold uppercase tracking-wider text-gray-400 dark:text-slate-500 mb-2.5">
                   Responsibility Map (Batch: {batch?.name || member.batch_name || "Unassigned"})
                 </div>
@@ -161,10 +237,10 @@ export default function MemberProfileModal({
                     <div className="text-[10px] text-gray-400 truncate">{responsibilityMap?.tl?.email || "—"}</div>
                   </div>
                 </div>
-              </div>
+              </div>}
 
               {/* Performance & Health Stats */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+              {!isHrProfile && <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
                 <div className="p-3 rounded-xl border border-gray-200 dark:border-slate-800 text-center">
                   <div className="text-lg font-black text-gray-900 dark:text-white">{memberTasks.length}</div>
                   <div className="text-[10px] font-bold uppercase text-gray-400">Total Tasks</div>
@@ -183,7 +259,7 @@ export default function MemberProfileModal({
                   <div className="text-lg font-black text-blue-600">{attendanceRate}%</div>
                   <div className="text-[10px] font-bold uppercase text-gray-400">Attendance</div>
                 </div>
-              </div>
+              </div>}
 
               {/* Action Buttons */}
               <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-gray-100 dark:border-slate-800">

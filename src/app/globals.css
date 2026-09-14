@@ -160,16 +160,14 @@ label,
 }
 
 /* Custom Hide Scrollbar Utility (Scrolls smoothly without visible scrollbar) */
-.no-scrollbar::-webkit-scrollbar,
-.no-scrollbar *::-webkit-scrollbar {
+.no-scrollbar::-webkit-scrollbar {
   display: none !important;
   width: 0 !important;
   height: 0 !important;
   background: transparent !important;
 }
 
-.no-scrollbar,
-.no-scrollbar * {
+.no-scrollbar {
   -ms-overflow-style: none !important;
   scrollbar-width: none !important;
 }
@@ -367,12 +365,25 @@ html.dark body .table-scroll::-webkit-scrollbar-thumb,
   color: var(--dark-eye-muted);
 }
 
-.dark .admin-sidebar ~ main input,
-.dark .admin-sidebar ~ main select,
-.dark .admin-sidebar ~ main textarea {
+.dark .admin-sidebar ~ main input:not(.chat-composer-input):not([class*="bg-transparent"]),
+.dark .admin-sidebar ~ main select:not(.chat-composer-input):not([class*="bg-transparent"]),
+.dark .admin-sidebar ~ main textarea:not(.chat-composer-input):not([class*="bg-transparent"]) {
   background: #17130d !important;
   border-color: var(--dark-eye-border) !important;
   color: var(--dark-eye-text) !important;
+}
+
+.dark .admin-sidebar ~ main textarea.chat-composer-input,
+.dark .admin-sidebar ~ main input.chat-composer-input,
+.dark textarea.chat-composer-input,
+.dark input.chat-composer-input,
+.dark .chat-composer-input {
+  background: transparent !important;
+  background-color: transparent !important;
+  border: none !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+  outline: none !important;
 }
 
 .dark .admin-sidebar ~ main input::placeholder,
@@ -380,9 +391,9 @@ html.dark body .table-scroll::-webkit-scrollbar-thumb,
   color: var(--dark-eye-dim) !important;
 }
 
-.dark .admin-sidebar ~ main input:focus,
-.dark .admin-sidebar ~ main select:focus,
-.dark .admin-sidebar ~ main textarea:focus {
+.dark .admin-sidebar ~ main input:not(.chat-composer-input):not([class*="bg-transparent"]):focus,
+.dark .admin-sidebar ~ main select:not(.chat-composer-input):not([class*="bg-transparent"]):focus,
+.dark .admin-sidebar ~ main textarea:not(.chat-composer-input):not([class*="bg-transparent"]):focus {
   border-color: var(--dark-eye-accent) !important;
   box-shadow: 0 0 0 3px rgba(249, 115, 22, 0.12) !important;
 }
@@ -424,6 +435,11 @@ html.dark body .table-scroll::-webkit-scrollbar-thumb,
 .dark .dark\:border-slate-800\/90,
 .dark .dark\:border-slate-700,
 .dark .dark\:border-slate-700\/60,
+.dark .border-slate-800,
+.dark .border-slate-800\/80,
+.dark .border-slate-800\/90,
+.dark .border-slate-700,
+.dark .border-slate-700\/60,
 .dark .dark\:border-dashed {
   border-color: var(--dark-eye-border) !important;
 }
@@ -687,10 +703,122 @@ html.dark body .table-scroll::-webkit-scrollbar-thumb,
   }
 }
 
-.whatsapp-message-scroll {
-  flex: 1 1 auto;
-  min-height: 0;
-  overflow-y: auto;
-  overscroll-behavior: contain;
-  scrollbar-gutter: stable;
+/* Highly visible, clean WhatsApp-style TexApp chat message scrollbar (transparent track) */
+html body .texapp-message-scroll,
+html body div.texapp-message-scroll,
+.texapp-message-scroll {
+  flex: 1 1 0% !important;
+  min-height: 0 !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  overscroll-behavior-y: contain !important;
+  touch-action: pan-y !important;
+  -webkit-overflow-scrolling: touch !important;
+  scrollbar-width: thin !important;
+  scrollbar-color: rgba(148, 163, 184, 0.55) transparent !important;
+  -ms-overflow-style: auto !important;
+}
+
+html body .texapp-message-scroll::-webkit-scrollbar,
+html body div.texapp-message-scroll::-webkit-scrollbar,
+.texapp-message-scroll::-webkit-scrollbar {
+  display: block !important;
+  width: 4px !important;
+  background: transparent !important;
+}
+
+html body .texapp-message-scroll::-webkit-scrollbar-track,
+html body div.texapp-message-scroll::-webkit-scrollbar-track,
+.texapp-message-scroll::-webkit-scrollbar-track {
+  display: block !important;
+  background: transparent !important;
+  border-radius: 9999px !important;
+  margin-top: 12px !important;
+  margin-bottom: 12px !important;
+}
+
+html body .texapp-message-scroll::-webkit-scrollbar-thumb,
+html body div.texapp-message-scroll::-webkit-scrollbar-thumb,
+.texapp-message-scroll::-webkit-scrollbar-thumb {
+  display: block !important;
+  background: rgba(148, 163, 184, 0.6) !important;
+  border-radius: 9999px !important;
+  border-top: 8px solid transparent !important;
+  border-bottom: 8px solid transparent !important;
+  background-clip: padding-box !important;
+}
+
+html body .texapp-message-scroll::-webkit-scrollbar-thumb:hover,
+html body div.texapp-message-scroll::-webkit-scrollbar-thumb:hover,
+.texapp-message-scroll::-webkit-scrollbar-thumb:hover {
+  background: rgba(100, 116, 139, 0.9) !important;
+  background-clip: padding-box !important;
+}
+
+html body .texapp-message-scroll::-webkit-scrollbar-button,
+html body div.texapp-message-scroll::-webkit-scrollbar-button,
+.texapp-message-scroll::-webkit-scrollbar-button {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+}
+
+html body .texapp-message-scroll::-webkit-scrollbar-corner,
+html body div.texapp-message-scroll::-webkit-scrollbar-corner,
+.texapp-message-scroll::-webkit-scrollbar-corner {
+  display: none !important;
+  background: transparent !important;
+}
+
+.dark html body .texapp-message-scroll,
+.dark html body div.texapp-message-scroll,
+.dark .texapp-message-scroll {
+  scrollbar-color: rgba(255, 255, 255, 0.35) transparent !important;
+}
+
+.dark html body .texapp-message-scroll::-webkit-scrollbar-track,
+.dark html body div.texapp-message-scroll::-webkit-scrollbar-track,
+.dark .texapp-message-scroll::-webkit-scrollbar-track {
+  background: transparent !important;
+}
+
+.dark html body .texapp-message-scroll::-webkit-scrollbar-thumb,
+.dark html body div.texapp-message-scroll::-webkit-scrollbar-thumb,
+.dark .texapp-message-scroll::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.4) !important;
+  border-radius: 9999px !important;
+  border-top: 8px solid transparent !important;
+  border-bottom: 8px solid transparent !important;
+  background-clip: padding-box !important;
+}
+
+.dark html body .texapp-message-scroll::-webkit-scrollbar-thumb:hover,
+.dark html body div.texapp-message-scroll::-webkit-scrollbar-thumb:hover,
+.dark .texapp-message-scroll::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.7) !important;
+  background-clip: padding-box !important;
+}
+
+/* TexApp Apple Emoji Support */
+.apple-emoji-inline {
+  display: inline-block !important;
+  vertical-align: -0.22em !important;
+  aspect-ratio: 1 / 1 !important;
+  object-fit: contain !important;
+  flex-shrink: 0 !important;
+  image-rendering: -webkit-optimize-contrast;
+  user-select: none;
+  pointer-events: none;
+}
+
+
+[contenteditable][data-placeholder]:empty:before {
+  content: attr(data-placeholder);
+  color: #9ca3af;
+  pointer-events: none;
+  display: block;
+}
+
+.dark [contenteditable][data-placeholder]:empty:before {
+  color: #94a3b8;
 }

@@ -447,6 +447,96 @@ export async function getSubmissionFileUrl(filePath) {
   }
 }
 
+export async function uploadBatchFile(file, batchId = 'general') {
+  try {
+    if (!file) return null;
+
+    // 1. Primary: Server-side upload via admin service-role (bypasses RLS issues)
+    try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData?.session?.access_token;
+      if (token) {
+        const formData = new FormData();
+        formData.append("file", file);
+        formData.append("batch_id", batchId);
+
+        const res = await fetch("/api/batch-workspace/upload", {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+          body: formData,
+        });
+
+        if (res.ok) {
+          const result = await res.json();
+          if (result?.file_url) {
+            return {
+              file_url: result.file_url,
+              file_name: result.file_name || file.name,
+              file_type: result.file_type || file.type,
+              file_size: result.file_size || file.size,
+            };
+          }
+        }
+      }
+    } catch (apiErr) {
+      console.warn("Server upload API failed, falling back to client upload:", apiErr?.message);
+    }
+
+    // 2. Secondary: Client storage attempt
+    const ext = file.name?.split('.').pop()?.toLowerCase() || 'file';
+    const safeName = `${Date.now()}-${(file.name || `file.${ext}`).replace(/[^a-zA-Z0-9._-]/g, '-')}`;
+    const filePath = `batch-${batchId}/${safeName}`;
+
+    const { data, error } = await supabase.storage
+      .from('task-submissions')
+      .upload(filePath, file, {
+        upsert: true,
+        contentType: file.type || 'application/octet-stream',
+      });
+
+    if (!error && data?.path) {
+      const { data: publicUrlData } = supabase.storage
+        .from('task-submissions')
+        .getPublicUrl(data.path);
+
+      if (publicUrlData?.publicUrl) {
+        return {
+          file_url: publicUrlData.publicUrl,
+          file_name: file.name,
+          file_type: file.type || ext,
+          file_size: file.size || 0,
+        };
+      }
+    }
+
+    // 3. Last-resort fallback: Base64 Data URL for small files
+    if (file instanceof Blob && file.size <= 4 * 1024 * 1024) {
+      const dataUrl = await new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = () => resolve(null);
+        reader.readAsDataURL(file);
+      });
+
+      if (dataUrl) {
+        return {
+          file_url: dataUrl,
+          file_name: file.name,
+          file_type: file.type || ext,
+          file_size: file.size || 0,
+        };
+      }
+    }
+
+    return null;
+  } catch (err) {
+    console.error('Error uploading batch file:', err?.message);
+    return null;
+  }
+}
+
 export async function uploadAvatarImage(file, userId) {
   try {
     if (!file || !userId) return null;
@@ -861,6 +951,43 @@ export async function getMessages(userId, otherUserId) {
   }
 }
 
+export async function getDirectMessageSummary(userId) {
+  try {
+    if (!userId) return [];
+    const { data, error } = await supabase
+      .from('messages')
+      .select('id, sender_id, receiver_id, message, attachment_name, attachment_type, is_read, is_deleted, created_at')
+      .or(`sender_id.eq.${userId},receiver_id.eq.${userId}`)
+      .order('created_at', { ascending: false })
+      .limit(500);
+
+    if (error) throw error;
+    return data || [];
+  } catch (err) {
+    console.warn('Error fetching direct message summary:', err.message);
+    return [];
+  }
+}
+
+export async function getBatchMessageSummary(batchIds = []) {
+  try {
+    const ids = (batchIds || []).filter(Boolean);
+    if (!ids.length) return [];
+    const { data, error } = await supabase
+      .from('batch_messages')
+      .select('id, batch_id, sender_id, message, attachment_name, attachment_type, is_deleted, created_at')
+      .in('batch_id', ids)
+      .order('created_at', { ascending: false })
+      .limit(Math.min(Math.max(ids.length * 40, 100), 1000));
+
+    if (error) throw error;
+    return data || [];
+  } catch (err) {
+    console.warn('Error fetching batch message summary:', err.message);
+    return [];
+  }
+}
+
 export async function sendRealtimeMessage(messageData) {
   try {
     const { data, error } = await supabase
@@ -873,6 +1000,57 @@ export async function sendRealtimeMessage(messageData) {
   } catch (err) {
     console.error('Error sending message:', err.message);
     return null;
+  }
+}
+
+export async function updateRealtimeMessage(messageId, updates = {}) {
+  try {
+    const token = await getAuthToken();
+    if (!token) return null;
+    const response = await fetch("/api/messages", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        type: "update_message",
+        message_id: messageId,
+        updates,
+      }),
+    });
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(result.error || "Message update failed");
+    return result.message || null;
+  } catch (err) {
+    console.error('Error updating message:', err.message);
+    return null;
+  }
+}
+
+export async function markDirectMessagesRead(senderId, receiverId) {
+  try {
+    if (!senderId || !receiverId) return false;
+    const token = await getAuthToken();
+    if (!token) return false;
+    const response = await fetch("/api/messages", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        type: "read_messages",
+        sender_id: senderId,
+        receiver_id: receiverId,
+      }),
+    });
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(result.error || "Read receipt update failed");
+    return true;
+  } catch (err) {
+    console.warn('Error marking direct messages read:', err.message);
+    return false;
   }
 }
 
@@ -903,6 +1081,22 @@ export async function getBatchWorkspace(batchId) {
   } catch (err) {
     console.warn("Error loading batch workspace:", err.message);
     return { messages: [], announcements: [], resources: [], escalations: [], history: [] };
+  }
+}
+
+export async function getVisibleBatchEscalations() {
+  try {
+    const token = await getAuthToken();
+    if (!token) return [];
+    const response = await fetch("/api/batch-workspace?scope=escalations", {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(result.error || "Escalations load failed");
+    return result.escalations || [];
+  } catch (err) {
+    console.warn("Error loading visible escalations:", err.message);
+    return [];
   }
 }
 
@@ -1166,7 +1360,7 @@ export async function getAuditLogs() {
       .from('audit_logs')
       .select('*, actor:profiles!audit_logs_actor_id_fkey(*)')
       .order('created_at', { ascending: false })
-      .limit(100);
+      .limit(1000);
 
     if (error) throw error;
     return data || [];

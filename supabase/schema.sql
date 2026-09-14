@@ -251,6 +251,9 @@ CREATE TABLE IF NOT EXISTS public.batch_announcements (
   category TEXT NOT NULL DEFAULT 'announcement' CHECK (category IN ('announcement', 'important_link', 'rule', 'resource', 'pinned')),
   link_url TEXT,
   pinned BOOLEAN DEFAULT FALSE,
+  attachment_url TEXT,
+  attachment_name TEXT,
+  attachment_type TEXT,
   created_by UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
@@ -293,18 +296,20 @@ CREATE TABLE IF NOT EXISTS public.notifications (
   user_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE NOT NULL,
   title TEXT NOT NULL,
   message TEXT NOT NULL,
-  type TEXT NOT NULL DEFAULT 'general' CHECK (type IN ('task', 'meeting', 'message', 'certificate', 'lead', 'general')),
+  type TEXT NOT NULL DEFAULT 'general' CHECK (type IN ('task', 'meeting', 'message', 'certificate', 'lead', 'general', 'announcement', 'file')),
   link_url TEXT,
   is_read BOOLEAN DEFAULT FALSE,
   created_by UUID REFERENCES public.profiles(id) ON DELETE SET NULL DEFAULT auth.uid(),
   delivery_channels JSONB DEFAULT '["in_app"]'::jsonb,
   delivery_status JSONB DEFAULT '{}'::jsonb,
+  metadata JSONB DEFAULT '{}'::jsonb,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
 ALTER TABLE public.notifications ADD COLUMN IF NOT EXISTS created_by UUID REFERENCES public.profiles(id) ON DELETE SET NULL DEFAULT auth.uid();
 ALTER TABLE public.notifications ADD COLUMN IF NOT EXISTS delivery_channels JSONB DEFAULT '["in_app"]'::jsonb;
 ALTER TABLE public.notifications ADD COLUMN IF NOT EXISTS delivery_status JSONB DEFAULT '{}'::jsonb;
+ALTER TABLE public.notifications ADD COLUMN IF NOT EXISTS metadata JSONB DEFAULT '{}'::jsonb;
 
 CREATE TABLE IF NOT EXISTS public.notification_queue (
   id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,

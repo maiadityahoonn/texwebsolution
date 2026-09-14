@@ -121,7 +121,7 @@ export default function MentorOverview({
   return (
     <div className="space-y-6">
       {/* 0. BRANDED HERO WELCOME CARD - MENTOR SUPERVISION MODE */}
-      <div className="relative overflow-hidden rounded-2xl border border-gray-200/90 dark:border-slate-800 bg-gradient-to-r from-red-50/70 via-rose-50/40 to-amber-50/30 dark:from-red-950/25 dark:via-slate-900 dark:to-slate-900/90 p-4 sm:p-5 backdrop-blur-xs transition-all shadow-2xs">
+      <div className="relative overflow-hidden rounded-2xl border border-gray-200/90 dark:border-slate-800 bg-gradient-to-r from-red-50/70 via-rose-50/40 to-amber-50/30 dark:from-red-950/25 dark:via-transparent dark:to-transparent p-4 sm:p-5 backdrop-blur-xs transition-all shadow-2xs">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div className="flex items-center gap-3.5 min-w-0">
             <div className="min-w-0">
@@ -151,7 +151,7 @@ export default function MentorOverview({
           </div>
 
           <div className="flex items-center gap-2 shrink-0 self-end sm:self-center flex-wrap">
-            <div className="px-3 py-1.5 rounded-xl bg-white/90 dark:bg-slate-900/90 border border-gray-200/80 dark:border-slate-800 flex items-center gap-2 text-xs text-gray-600 dark:text-slate-300 shadow-2xs">
+            <div className="px-3 py-1.5 rounded-xl bg-white/90 dark:bg-transparent border border-gray-200/80 dark:border-slate-800 flex items-center gap-2 text-xs text-gray-600 dark:text-slate-300 shadow-2xs">
               <Clock className="w-3.5 h-3.5 text-red-600" />
               <span className="font-semibold text-[11px]">
                 {new Date().toLocaleDateString("en-IN", { weekday: "short", day: "numeric", month: "short", year: "numeric" })}
@@ -193,7 +193,7 @@ export default function MentorOverview({
       {/* 1. TOP METRICS & QUICK ACTIONS */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3.5">
         <div className={`p-4 rounded-2xl border ${
-          isDark ? "bg-slate-900/80 border-slate-800" : "bg-white border-gray-200/80"
+          isDark ? "bg-transparent border-slate-800/80" : "bg-white border-gray-200/80"
         } shadow-sm`}>
           <div className="flex items-center justify-between text-xs text-gray-500 font-bold uppercase tracking-wider">
             <span>My Batches</span>
@@ -206,7 +206,7 @@ export default function MentorOverview({
         </div>
 
         <div className={`p-4 rounded-2xl border ${
-          isDark ? "bg-slate-900/80 border-slate-800" : "bg-white border-gray-200/80"
+          isDark ? "bg-transparent border-slate-800/80" : "bg-white border-gray-200/80"
         } shadow-sm`}>
           <div className="flex items-center justify-between text-xs text-gray-500 font-bold uppercase tracking-wider">
             <span>Interns Supervised</span>
@@ -223,7 +223,7 @@ export default function MentorOverview({
           className={`p-4 rounded-2xl border transition ${
             onNavigateSection ? "cursor-pointer hover:border-indigo-400 hover:shadow-md group" : ""
           } ${
-            isDark ? "bg-slate-900/80 border-slate-800" : "bg-white border-gray-200/80"
+            isDark ? "bg-transparent border-slate-800/80" : "bg-white border-gray-200/80"
           } shadow-sm relative overflow-hidden`}
         >
           <div className="flex items-center justify-between text-xs text-indigo-600 font-bold uppercase tracking-wider">
@@ -248,7 +248,7 @@ export default function MentorOverview({
           className={`p-4 rounded-2xl border transition ${
             onNavigateSection ? "cursor-pointer hover:border-amber-400 hover:shadow-md group" : ""
           } ${
-            isDark ? "bg-slate-900/80 border-slate-800" : "bg-white border-gray-200/80"
+            isDark ? "bg-transparent border-slate-800/80" : "bg-white border-gray-200/80"
           } shadow-sm relative overflow-hidden`}
         >
           <div className="flex items-center justify-between text-xs text-amber-600 font-bold uppercase tracking-wider">
@@ -273,7 +273,7 @@ export default function MentorOverview({
           className={`p-4 rounded-2xl border transition ${
             onNavigateSection ? "cursor-pointer hover:border-rose-400 hover:shadow-md group" : ""
           } ${
-            isDark ? "bg-slate-900/80 border-slate-800" : "bg-white border-gray-200/80"
+            isDark ? "bg-transparent border-slate-800/80" : "bg-white border-gray-200/80"
           } shadow-sm`}
         >
           <div className="flex items-center justify-between text-xs text-rose-600 font-bold uppercase tracking-wider">
@@ -297,7 +297,7 @@ export default function MentorOverview({
       {/* 3. AT-RISK MEMBERS ("NEEDS ATTENTION") */}
       {atRiskMembers.length > 0 && (
         <div className={`p-5 rounded-2xl border ${
-          isDark ? "bg-slate-900/80 border-slate-800" : "bg-white border-gray-200/80"
+          isDark ? "bg-transparent border-slate-800/80" : "bg-white border-gray-200/80"
         } shadow-sm`}>
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
             <div>
@@ -371,7 +371,7 @@ export default function MentorOverview({
 
       {/* 4. MY SUPERVISED BATCHES */}
       <div className={`p-5 rounded-2xl border ${
-        isDark ? "bg-slate-900/80 border-slate-800" : "bg-white border-gray-200/80"
+        isDark ? "bg-transparent border-slate-800/80" : "bg-white border-gray-200/80"
       } shadow-sm`}>
         <div className="flex items-center justify-between mb-4">
           <div>

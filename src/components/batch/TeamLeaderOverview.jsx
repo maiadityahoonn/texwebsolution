@@ -82,7 +82,7 @@ export default function TeamLeaderOverview({
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {/* Batch Info Card */}
         <div className={`md:col-span-2 p-5 rounded-2xl border ${
-          isDark ? "bg-slate-900/80 border-slate-800" : "bg-white border-gray-200/80"
+          isDark ? "bg-transparent border-slate-800/80" : "bg-white border-gray-200/80"
         } shadow-sm relative overflow-hidden flex flex-col justify-between`}>
           <div>
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -151,7 +151,7 @@ export default function TeamLeaderOverview({
 
         {/* Daily Report Status Banner */}
         <div className={`p-5 rounded-2xl border ${
-          isDark ? "bg-slate-900/80 border-slate-800" : "bg-white border-gray-200/80"
+          isDark ? "bg-transparent border-slate-800/80" : "bg-white border-gray-200/80"
         } shadow-sm flex flex-col justify-between`}>
           <div>
             <div className="flex items-center justify-between">
@@ -239,7 +239,7 @@ export default function TeamLeaderOverview({
 
       {/* 3. MY TEAM TABLE (PRD Section 40) */}
       <div className={`p-5 rounded-2xl border ${
-        isDark ? "bg-slate-900/80 border-slate-800" : "bg-white border-gray-200/80"
+        isDark ? "bg-transparent border-slate-800/80" : "bg-white border-gray-200/80"
       } shadow-sm`}>
         <div className="flex items-center justify-between mb-4">
           <div>
@@ -357,7 +357,7 @@ export default function TeamLeaderOverview({
       {/* 4. RECENT DAILY REPORTS SECTION */}
       {dailyUpdates.length > 0 && (
         <div className={`p-5 rounded-2xl border ${
-          isDark ? "bg-slate-900/80 border-slate-800" : "bg-white border-gray-200/80"
+          isDark ? "bg-transparent border-slate-800/80" : "bg-white border-gray-200/80"
         } shadow-sm`}>
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-base font-bold text-gray-900 dark:text-white flex items-center gap-2">
