@@ -40,6 +40,7 @@ import {
   Menu,
   MessageSquare,
   Moon,
+  MoreHorizontal,
   PanelLeftClose,
   PanelLeftOpen,
   Plus,
@@ -315,6 +316,7 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
   const [searchQuery, setSearchQuery] = useState("");
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [settingsMenuOpen, setSettingsMenuOpen] = useState(false);
+  const [mobileMoreOpen, setMobileMoreOpen] = useState(false);
   const [openMenus, setOpenMenus] = useState({
     hr: true,
     ops: true,
@@ -334,6 +336,7 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
   }
 
   function selectSection(sec) {
+    setMobileMoreOpen(false);
     setActiveSection(sec);
     if (typeof window !== "undefined") {
       const isUnderAdmin = pathname?.startsWith("/admin") || window.location.pathname.startsWith("/admin") || userProfile?.role === "super_admin";
@@ -361,6 +364,7 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
     }
     setChatChannelTab("direct");
     setSelectedContactId(userId);
+    setChatMobilePane("chat");
     selectSection("chat");
   }
 
@@ -463,11 +467,13 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
 
   const [selectedContactId, setSelectedContactId] = useState("");
   const [chatChannelTab, setChatChannelTab] = useState("batches");
+  const [chatMobilePane, setChatMobilePane] = useState("channels");
   const [chatSearchQuery, setChatSearchQuery] = useState("");
   const [chatText, setChatText] = useState("");
   const [batchChatMeta, setBatchChatMeta] = useState({});
   const [directChatMeta, setDirectChatMeta] = useState({});
   const [onlineUserIds, setOnlineUserIds] = useState([]);
+  const [workspaceOnlineUserIds, setWorkspaceOnlineUserIds] = useState([]);
   const [typingUsers, setTypingUsers] = useState([]);
   const typingChannelRef = useRef(null);
   const typingStopTimerRef = useRef(null);
@@ -1029,10 +1035,60 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
 
   const chatContacts = useMemo(() => {
     if (!sessionUser?.id || !userProfile || !canAccessDirectChat) return [];
-    return profiles
-      .filter((p) => p?.id && p.id !== sessionUser.id)
-      .filter((p, index, list) => list.findIndex((item) => item.id === p.id) === index);
-  }, [sessionUser?.id, userProfile, canAccessDirectChat, profiles]);
+    const contactList = profiles.filter((p) => p?.id);
+    if (!contactList.some((p) => p.id === userProfile.id)) {
+      contactList.unshift(userProfile);
+    }
+    return contactList.filter((p, index, list) => list.findIndex((item) => item.id === p.id) === index);
+  }, [sessionUser?.id, sessionUser?.email, userProfile, canAccessDirectChat, profiles]);
+
+  const workspaceOnlineSet = useMemo(() => new Set(workspaceOnlineUserIds), [workspaceOnlineUserIds]);
+
+  const getBatchAvatarUrl = (batch) => {
+    if (typeof batch?.avatar_url === "string" && batch.avatar_url.trim()) return batch.avatar_url.trim();
+    return "";
+  };
+
+  const getProfileAvatarUrl = (profile) => {
+    const liveProfile = profiles.find((item) => item.id === profile?.id);
+    const avatarUrl = liveProfile?.avatar_url || profile?.avatar_url || "";
+    return typeof avatarUrl === "string" && avatarUrl.trim() ? avatarUrl.trim() : "";
+  };
+
+  const getChannelProfile = (profile) => profiles.find((item) => item.id === profile?.id) || profile || {};
+
+  const channelRoleLabel = (role) => {
+    if (role === "intern") return "Member";
+    return ROLE_LABELS[role] || role || "Member";
+  };
+
+  const channelRolePillClass = (role) => {
+    if (role === "hr") return "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/30 dark:text-amber-300 dark:border-amber-800";
+    return "bg-red-50 text-red-600 border-red-200 dark:bg-red-950/30 dark:text-red-300 dark:border-red-800";
+  };
+
+  const getBatchOnlineSummary = (batch) => {
+    const memberIds = [
+      batch?.hr_id,
+      batch?.mentor_id,
+      batch?.tl_id,
+      ...(batch?.members || []).map((member) => member.id),
+    ].filter(Boolean);
+    const uniqueIds = Array.from(new Set(memberIds));
+    const onlineCount = uniqueIds.filter((id) => workspaceOnlineSet.has(id)).length;
+    return {
+      onlineCount,
+      totalCount: uniqueIds.length,
+      isOnline: onlineCount > 0,
+    };
+  };
+
+  const contactSubtitle = (contact) => {
+    const profile = getChannelProfile(contact);
+    const roleLabel = channelRoleLabel(profile?.role);
+    const batchName = batches.find((batch) => batch.id === profile?.batch_id)?.name || profile?.batch_name || "";
+    return [roleLabel, batchName].filter(Boolean).join(" - ");
+  };
 
   const availableChatBatches = useMemo(() => {
     return batches.filter(
@@ -1095,12 +1151,16 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
   // Sort contacts dynamically: Most recent message appears on top (WhatsApp style)
   const sortedChatContacts = useMemo(() => {
     return [...chatContacts].sort((a, b) => {
+      const aIsSelf = a.id === sessionUser?.id || a.id === userProfile?.id || (a.email && a.email === userProfile?.email);
+      const bIsSelf = b.id === sessionUser?.id || b.id === userProfile?.id || (b.email && b.email === userProfile?.email);
+      if (aIsSelf) return -1;
+      if (bIsSelf) return 1;
       const timeA = chatTimestamp(directChatMeta[a.id]?.lastMessageTime);
       const timeB = chatTimestamp(directChatMeta[b.id]?.lastMessageTime);
       if (timeA !== timeB) return timeB - timeA;
       return (a.full_name || "").localeCompare(b.full_name || "");
     });
-  }, [chatContacts, directChatMeta]);
+  }, [chatContacts, directChatMeta, sessionUser?.id, userProfile?.id, userProfile?.email]);
 
   const filteredChatContacts = useMemo(() => {
     if (!chatSearchQuery.trim()) return sortedChatContacts;
@@ -1236,6 +1296,7 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
       selectedBatch.members?.some((member) => member.id === profile.id) ||
       selectedBatch.hr_id === profile.id ||
       selectedBatch.mentor_id === profile.id ||
+      selectedBatch.tl_id === profile.id ||
       selectedBatch.team_leader_id === profile.id ||
       selectedBatch.trainer_id === profile.id
     );
@@ -2192,6 +2253,79 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
 
   const metrics = dashboardMetrics;
 
+  const mobileNavItems = useMemo(() => {
+    const items = [
+      { key: "overview", label: "Dashboard", icon: Home, section: "overview", show: true },
+      { key: "crm", label: "Leads", icon: Target, href: "/crm", show: canUseCrm, badge: leads.length },
+      { key: "members", label: isAdminRole ? "HR" : "Team", icon: Users, section: "members", show: canViewAllTeam, badge: combinedMembers.length },
+      { key: "batches", label: "Batches", icon: Folder, section: "batches", show: canViewBatches, badge: batches.length },
+      { key: "tasks", label: "Tasks", icon: CheckSquare, section: "tasks", show: canSeeOperations && !isHrRole, badge: tasks.length },
+      { key: "chat", label: "Chat", icon: MessageSquare, section: "chat", show: canUseMessages },
+      { key: "classes", label: "Classes", icon: Calendar, section: "classes", show: canSeeOperations, badge: meetings.length },
+      { key: "attendance", label: "Attendance", icon: Clock, section: "attendance", show: canSeeOperations },
+      { key: "batch_workspace", label: "Workspace", icon: LayoutDashboard, section: "batch_workspace", show: true },
+      { key: "batch_files", label: "Files", icon: Folder, section: "batch_files", show: true },
+      { key: "daily_updates", label: "Updates", icon: Activity, section: "daily_updates", show: isMentor || isTeamLeader, badge: dailyUpdates.length },
+      { key: "task_submissions", label: "Submissions", icon: Send, section: "task_submissions", show: isMentor || isTeamLeader, badge: pendingSubmissionsCount },
+      { key: "review_center", label: "Reviews", icon: AlertCircle, section: "review_center", show: isMentor || isHrRole || isAdminRole, badge: mentorReviewCenterData.total },
+      { key: "at_risk_watchlist", label: "At Risk", icon: AlertTriangle, section: "at_risk_watchlist", show: isMentor || isHrRole || isAdminRole, badge: mentorAtRiskMembers.length },
+      { key: "certificates", label: "Certificates", icon: Award, section: "certificates", show: canIssueCertificates, badge: certificates.length },
+      { key: "hr_mentors", label: "Mentors", icon: UserCheck, section: "hr_mentors", show: isHrRole, badge: combinedMembers.filter((member) => member.role === "mentor").length },
+      { key: "hr_interns", label: "Interns", icon: Users, section: "hr_interns", show: isHrRole, badge: combinedMembers.filter((member) => member.role === "intern").length },
+      { key: "alerts", label: "Alerts", icon: Bell, section: "alerts", show: canUseAlerts, badge: unreadCount },
+      { key: "audit", label: "Audit", icon: ShieldCheck, section: "audit", show: isAdminRole },
+      { key: "cms", label: "CMS", icon: FileText, section: "cms", show: canUseCms },
+      { key: "settings", label: "Settings", icon: Settings, section: "settings", show: true },
+      { key: "website", label: "Website", icon: ExternalLink, href: "/", show: !isMentor },
+    ];
+    return items.filter((item) => item.show);
+  }, [
+    batches.length,
+    canIssueCertificates,
+    canSeeOperations,
+    canUseAlerts,
+    canUseCms,
+    canUseCrm,
+    canUseMessages,
+    canViewAllTeam,
+    canViewBatches,
+    certificates.length,
+    combinedMembers,
+    dailyUpdates.length,
+    isAdminRole,
+    isHrRole,
+    isMentor,
+    isTeamLeader,
+    leads.length,
+    meetings.length,
+    mentorAtRiskMembers.length,
+    mentorReviewCenterData.total,
+    pendingSubmissionsCount,
+    tasks.length,
+    unreadCount,
+  ]);
+
+  const mobilePrimaryNavItems = mobileNavItems.slice(0, 4);
+  const mobileMoreNavItems = mobileNavItems.slice(4);
+
+  function handleMobileNavItem(item) {
+    setMobileMoreOpen(false);
+    if (item.key === "chat") {
+      setChatMobilePane("channels");
+    }
+    if (item.section) {
+      selectSection(item.section);
+      return;
+    }
+    if (item.href && typeof window !== "undefined") {
+      if (item.href === "/") {
+        window.open(item.href, "_blank", "noopener,noreferrer");
+      } else {
+        window.location.href = item.href;
+      }
+    }
+  }
+
   const dashboardAnalytics = useMemo(() => {
     const attendanceTotal = attendance.length || 0;
     const presentCount = attendance.filter((item) => item.status === "present" || item.status === "late").length;
@@ -2493,6 +2627,40 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
       supabase.removeChannel(batchChannel);
     };
   }, [sessionUser, selectedBatch?.id]);
+
+  useEffect(() => {
+    if (!sessionUser?.id) return undefined;
+    const channel = supabase.channel("workspace-online-presence", {
+      config: { presence: { key: sessionUser.id } },
+    });
+
+    const syncPresence = () => {
+      const state = channel.presenceState();
+      const ids = Object.values(state)
+        .flat()
+        .map((entry) => entry.user_id)
+        .filter(Boolean);
+      setWorkspaceOnlineUserIds(Array.from(new Set(ids)));
+    };
+
+    channel
+      .on("presence", { event: "sync" }, syncPresence)
+      .subscribe((status) => {
+        if (status === "SUBSCRIBED") {
+          channel.track({
+            user_id: sessionUser.id,
+            name: userProfile?.full_name || "Member",
+            role: userProfile?.role || "member",
+            online_at: new Date().toISOString(),
+          });
+        }
+      });
+
+    return () => {
+      setWorkspaceOnlineUserIds([]);
+      supabase.removeChannel(channel);
+    };
+  }, [sessionUser?.id, userProfile?.full_name, userProfile?.role]);
 
   useEffect(() => {
     if (!sessionUser?.id || (!selectedBatch?.id && !selectedContactId)) {
@@ -4213,9 +4381,230 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
 
       {sessionUser ? (
         <div className="min-h-screen relative flex flex-col">
+          <div className={`fixed top-0 left-0 right-0 z-40 md:hidden h-16 px-3.5 flex items-center justify-between border-b transition-colors duration-200 ${
+            isDark
+              ? "bg-[#0b0b0c]/95 backdrop-blur-md border-neutral-800 text-neutral-100 shadow-none"
+              : "bg-white/95 backdrop-blur-md border-gray-200/90 text-gray-900 shadow-xs"
+          }`}>
+            <div className="flex items-center gap-2 min-w-0">
+              <Link href="/" className="admin-sidebar-logo flex items-center group min-w-0">
+                <Image
+                  width={140}
+                  height={38}
+                  alt="TexWeb Solution Logo"
+                  src="/texweb-full-logo-original.png"
+                  className="h-8 w-auto max-w-[140px] sm:max-w-[155px] object-contain shrink-0 group-hover:scale-105 transition-transform"
+                  style={{ width: "auto" }}
+                  priority
+                />
+              </Link>
+              <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border truncate ${
+                isDark
+                  ? "bg-red-500/15 text-red-400 border-red-500/30"
+                  : "bg-red-50 text-red-600 border-red-200/80"
+              }`}>
+                {ROLE_LABELS[currentRole] || "Workspace"}
+              </span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <button
+                type="button"
+                onClick={toggleTheme}
+                aria-label={`Switch to ${isDark ? "Light" : "Dark"} Mode`}
+                title={`Switch to ${isDark ? "Light" : "Dark"} Mode`}
+                className={`w-9 h-9 rounded-full flex items-center justify-center transition cursor-pointer ${
+                  isDark
+                    ? "text-amber-400 hover:bg-white/10"
+                    : "text-gray-600 hover:text-gray-900 hover:bg-gray-100"
+                }`}
+              >
+                {isDark ? <Sun className="w-4.5 h-4.5" /> : <Moon className="w-4.5 h-4.5" />}
+              </button>
+              {canUseAlerts && (
+                <button
+                  type="button"
+                  onClick={() => selectSection("alerts")}
+                  className={`relative w-9 h-9 rounded-full flex items-center justify-center transition cursor-pointer ${
+                    isDark
+                      ? "text-neutral-300 hover:text-white hover:bg-white/10"
+                      : "text-gray-600 hover:text-gray-900 hover:bg-gray-100"
+                  }`}
+                  aria-label="Notifications"
+                  title="Notifications"
+                >
+                  <Bell className="w-4.5 h-4.5 stroke-[1.8]" />
+                  {unreadCount > 0 && (
+                    <span className={`absolute top-1 right-1 min-w-4 h-4 px-1 rounded-full bg-red-600 text-white text-[9px] font-black flex items-center justify-center ring-2 ${
+                      isDark ? "ring-[#0b0b0c]" : "ring-white"
+                    }`}>
+                      {unreadCount > 9 ? "9+" : unreadCount}
+                    </span>
+                  )}
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={() => selectSection("settings")}
+                className={`w-9 h-9 rounded-full font-black text-xs flex items-center justify-center overflow-hidden cursor-pointer ring-2 ring-red-500/25 hover:ring-red-500 transition ${
+                  isDark ? "bg-neutral-800 text-white" : "bg-gray-100 text-gray-800"
+                }`}
+                aria-label="Profile"
+                title={userProfile?.full_name || "Profile"}
+              >
+                {userProfile?.avatar_url ? (
+                  <img src={userProfile.avatar_url} alt={userProfile.full_name || "Profile"} className="w-full h-full object-cover" />
+                ) : (
+                  (userProfile?.full_name || sessionUser?.email || "T")[0]?.toUpperCase()
+                )}
+              </button>
+            </div>
+          </div>
+
+          {mobileMoreOpen && (
+            <div className="fixed inset-0 z-50 md:hidden">
+              <button
+                type="button"
+                className="absolute inset-0 bg-black/40 backdrop-blur-[2px] cursor-pointer"
+                onClick={() => setMobileMoreOpen(false)}
+                aria-label="Close more menu"
+              />
+              <div className={`absolute left-3 right-3 bottom-20 rounded-3xl border shadow-2xl overflow-hidden ${
+                isDark
+                  ? "bg-[#0f0e0c] border-neutral-800 text-neutral-100"
+                  : "bg-white border-gray-200/90 text-gray-900 shadow-black/15"
+              }`}>
+                <div className="px-4 py-3 border-b border-gray-100 dark:border-neutral-800 flex items-center justify-between">
+                  <div>
+                    <div className="text-sm font-black">More Workspace Tools</div>
+                    <div className="text-[11px] text-gray-500 dark:text-neutral-400">All features & modules</div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setMobileMoreOpen(false)}
+                    className="w-8 h-8 rounded-full flex items-center justify-center hover:bg-gray-100 dark:hover:bg-neutral-800 transition cursor-pointer text-gray-500 dark:text-neutral-400"
+                    aria-label="Close"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+                <div className="max-h-[55dvh] overflow-y-auto p-2.5 grid grid-cols-2 gap-2">
+                  {mobileMoreNavItems.map((item) => {
+                    const Icon = item.icon;
+                    const isActive = item.section && activeSection === item.section;
+                    return (
+                      <button
+                        key={item.key}
+                        type="button"
+                        onClick={() => handleMobileNavItem(item)}
+                        className={`min-h-[58px] rounded-2xl px-3 py-2 flex items-center gap-2.5 text-left transition cursor-pointer border ${
+                          isActive
+                            ? "bg-red-50 border-red-200 text-red-600 dark:bg-red-500/15 dark:border-red-500/30 dark:text-red-300 font-bold"
+                            : "bg-gray-50/80 border-gray-100 text-gray-700 hover:bg-gray-100 dark:bg-neutral-900/80 dark:border-neutral-800 dark:text-neutral-300 dark:hover:bg-neutral-800"
+                        }`}
+                      >
+                        <Icon className="w-5 h-5 shrink-0 stroke-[1.8]" />
+                        <span className="min-w-0 flex-1">
+                          <span className="block text-xs font-bold truncate">{item.label}</span>
+                          {item.badge > 0 && (
+                            <span className="mt-1 inline-flex min-w-5 h-5 px-1.5 rounded-full bg-red-600 text-white text-[10px] font-black items-center justify-center">
+                              {item.badge > 99 ? "99+" : item.badge}
+                            </span>
+                          )}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          )}
+
+          <nav className={`fixed left-0 right-0 bottom-0 z-40 md:hidden border-t px-1.5 pt-1.5 pb-[calc(env(safe-area-inset-bottom)+0.4rem)] transition-colors duration-200 ${
+            isDark
+              ? "bg-[#0b0b0c]/95 backdrop-blur-md border-neutral-800 text-neutral-400"
+              : "bg-white/95 backdrop-blur-md border-gray-200/90 text-gray-600 shadow-lg shadow-black/5"
+          }`}>
+            <div className="grid grid-cols-5 items-center">
+              {mobilePrimaryNavItems.map((item) => {
+                const Icon = item.icon;
+                const isActive = item.section && activeSection === item.section;
+                return (
+                  <button
+                    key={item.key}
+                    type="button"
+                    onClick={() => handleMobileNavItem(item)}
+                    className="relative min-w-0 h-13 flex flex-col items-center justify-center gap-0.5 transition cursor-pointer group"
+                    aria-label={item.label}
+                    title={item.label}
+                  >
+                    <div className={`relative px-3 py-1 rounded-full transition-all duration-200 flex items-center justify-center ${
+                      isActive
+                        ? isDark
+                          ? "bg-red-500/15 text-red-400 scale-105"
+                          : "bg-red-50 text-red-600 scale-105 shadow-2xs"
+                        : isDark
+                          ? "text-neutral-400 group-hover:text-white"
+                          : "text-gray-500 group-hover:text-gray-900"
+                    }`}>
+                      <Icon className={`w-5 h-5 transition-transform ${isActive ? "stroke-[2.2]" : "stroke-[1.75]"}`} />
+                      {item.badge > 0 && (
+                        <span className={`absolute -top-1 -right-1 min-w-4 h-4 px-1 rounded-full bg-red-600 text-white text-[9px] font-black flex items-center justify-center ring-2 ${
+                          isDark ? "ring-[#0b0b0c]" : "ring-white"
+                        }`}>
+                          {item.badge > 9 ? "9+" : item.badge}
+                        </span>
+                      )}
+                    </div>
+                    <span className={`w-full px-0.5 text-[10px] truncate text-center transition-colors ${
+                      isActive
+                        ? isDark
+                          ? "font-extrabold text-red-400"
+                          : "font-extrabold text-red-600"
+                        : isDark
+                          ? "font-medium text-neutral-400 group-hover:text-white"
+                          : "font-medium text-gray-500 group-hover:text-gray-900"
+                    }`}>
+                      {item.label}
+                    </span>
+                  </button>
+                );
+              })}
+              <button
+                type="button"
+                onClick={() => setMobileMoreOpen((open) => !open)}
+                className="relative min-w-0 h-13 flex flex-col items-center justify-center gap-0.5 transition cursor-pointer group"
+                aria-label="More"
+                title="More"
+              >
+                <div className={`relative px-3 py-1 rounded-full transition-all duration-200 flex items-center justify-center ${
+                  mobileMoreOpen || mobileMoreNavItems.some((item) => item.section && item.section === activeSection)
+                    ? isDark
+                      ? "bg-red-500/15 text-red-400 scale-105"
+                      : "bg-red-50 text-red-600 scale-105 shadow-2xs"
+                    : isDark
+                      ? "text-neutral-400 group-hover:text-white"
+                      : "text-gray-500 group-hover:text-gray-900"
+                }`}>
+                  <MoreHorizontal className="w-5 h-5 stroke-[2]" />
+                </div>
+                <span className={`w-full px-0.5 text-[10px] truncate text-center transition-colors ${
+                  mobileMoreOpen || mobileMoreNavItems.some((item) => item.section && item.section === activeSection)
+                    ? isDark
+                      ? "font-extrabold text-red-400"
+                      : "font-extrabold text-red-600"
+                    : isDark
+                      ? "font-medium text-neutral-400 group-hover:text-white"
+                      : "font-medium text-gray-500 group-hover:text-gray-900"
+                }`}>
+                  More
+                </span>
+              </button>
+            </div>
+          </nav>
+
           {/* Floating Menu Toggle button when sidebar is closed (works on all devices) */}
           {!sidebarOpen && (
-            <div className="fixed top-3.5 left-3.5 z-40 animate-fadeIn md:hidden">
+            <div className="hidden fixed top-3.5 left-3.5 z-40 animate-fadeIn md:hidden">
               <button
                 onClick={() => setSidebarOpen(true)}
                 className="px-3 py-2 rounded-xl bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 shadow-lg text-gray-700 dark:text-slate-200 hover:bg-gray-50 dark:hover:bg-slate-800 transition cursor-pointer flex items-center gap-2 group"
@@ -4238,7 +4627,7 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
           {sidebarOpen && (
             <div
               onClick={() => setSidebarOpen(false)}
-              className="fixed inset-0 bg-black/50 backdrop-blur-xs z-30 md:hidden"
+              className="hidden fixed inset-0 bg-black/50 backdrop-blur-xs z-30 md:hidden"
             />
           )}
 
@@ -4246,7 +4635,7 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
               CLEAN MODERN SIDEBAR (Real Database Items Only - Simple English)
               ========================================================================= */}
           <aside
-            className={`admin-sidebar fixed top-0 bottom-0 left-0 h-screen max-h-screen border-r z-40 transition-all duration-300 flex flex-col justify-between overflow-hidden select-none ${sidebarOpen ? "w-64 sm:w-68 translate-x-0" : "w-64 -translate-x-full md:w-[72px] md:translate-x-0 admin-sidebar-collapsed"
+            className={`admin-sidebar fixed top-0 bottom-0 left-0 h-screen max-h-screen border-r z-40 transition-all duration-300 hidden md:flex flex-col justify-between overflow-hidden select-none ${sidebarOpen ? "w-64 sm:w-68 translate-x-0" : "w-64 -translate-x-full md:w-[72px] md:translate-x-0 admin-sidebar-collapsed"
               } ${isDark ? "bg-[#0b0b0c] border-neutral-800 text-neutral-200" : "bg-white border-gray-200 text-gray-800"
               }`}
           >
@@ -4666,7 +5055,10 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
 
                   {canUseMessages && (
                     <button
-                      onClick={() => selectSection("chat")}
+                      onClick={() => {
+                        setChatMobilePane("channels");
+                        selectSection("chat");
+                      }}
                       aria-label="Chat"
                       title="Chat"
                       className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl transition cursor-pointer ${activeSection === "chat"
@@ -4918,9 +5310,9 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
 
           {/* Main Content Area: Transitions cleanly when sidebar collapses/expands */}
           <main className={`flex-1 min-w-0 max-w-full transition-all duration-300 ${sidebarOpen ? "md:ml-64 sm:md:ml-68" : "ml-0 md:ml-[72px]"
-            } ${activeSection === "chat" ? "h-screen max-h-screen overflow-hidden pt-2 sm:pt-3 px-2 sm:px-3 lg:px-4 pb-2 flex flex-col" : "min-h-screen pt-3 sm:pt-4 px-2 sm:px-3 lg:px-4 pb-12"}`}>
+            } ${activeSection === "chat" ? "h-[100dvh] max-h-[100dvh] overflow-hidden pt-16 md:pt-3 px-0 sm:px-3 lg:px-4 pb-[82px] md:pb-2 flex flex-col" : "min-h-screen pt-[4.5rem] md:pt-3 sm:pt-[4.5rem] px-2 sm:px-3 lg:px-4 pb-28 md:pb-12"}`}>
             <div
-              className={`transition-colors min-w-0 max-w-full ${activeSection === "chat" ? "flex-1 min-h-0 flex flex-col space-y-2 p-1 sm:p-2" : "p-2 sm:p-3 lg:p-4 space-y-4"} ${isDark ? "bg-transparent text-slate-100" : "bg-transparent text-gray-900"}`}
+              className={`transition-colors min-w-0 max-w-full ${activeSection === "chat" ? "flex-1 min-h-0 flex flex-col space-y-0 sm:space-y-2 p-0 sm:p-2" : "p-2 sm:p-3 lg:p-4 space-y-4"} ${isDark ? "bg-transparent text-slate-100" : "bg-transparent text-gray-900"}`}
             >
               {/* 1. Header Banner of the Card with Title + Contextual Actions (Hidden in Chat) */}
               {activeSection !== "chat" && (
@@ -5766,9 +6158,9 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
 
               {/* DEDICATED WHATSAPP WEB MESSAGING SECTION - Matching Batch Overview Chat Tab 1:1 */}
               {activeSection === "chat" && (
-                <div className="flex-1 min-h-0 grid grid-cols-1 xl:grid-cols-[1fr_320px] gap-3 animate-fadeIn">
+                <div className="flex-1 min-h-0 h-full grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_minmax(300px,340px)] gap-0 xl:gap-3 animate-fadeIn">
                   {/* Left Column: Active WhatsApp Chat Area */}
-                  <div className="h-full min-h-0 rounded-3xl overflow-hidden border border-gray-200/80 dark:border-slate-800/80 flex flex-col relative shadow-none">
+                  <div className={`${chatMobilePane === "chat" ? "flex" : "hidden"} xl:flex h-full min-h-0 rounded-none sm:rounded-2xl xl:rounded-3xl overflow-hidden border-0 sm:border border-gray-200/80 dark:border-slate-800/80 flex-col relative shadow-none`}>
                     {selectedContactId && canAccessDirectChat ? (
                       (() => {
                         const activeContact = profiles.find((p) => p.id === selectedContactId) || chatContacts.find((c) => c.id === selectedContactId);
@@ -5788,7 +6180,10 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
                             batchTasks={tasks.filter((t) => t.assigned_to === activeContact.id || t.assigned_by === activeContact.id)}
                             batchMeetings={meetings}
                             messages={messages}
-                            onBack={() => setSelectedContactId("")}
+                            onBack={() => {
+                              setSelectedContactId("");
+                              setChatMobilePane("channels");
+                            }}
                             onRefresh={() => loadMessages(activeContact.id)}
                             onlineUserIds={onlineUserIds}
                             typingUsers={typingUsers}
@@ -5916,12 +6311,16 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
                         onOpenDirectChat={canAccessDirectChat ? (member) => {
                           setActiveSection("chat");
                           setSelectedContactId(member.id);
+                          setChatMobilePane("chat");
                           setSelectedBatchId("");
                         } : null}
                         onUpdateBatchInfo={(updatedBatch) => {
                           setBatches((prev) => (prev || []).map((b) => (b.id === updatedBatch.id ? { ...b, ...updatedBatch } : b)));
                         }}
-                        onBack={() => setSelectedBatchId("")}
+                        onBack={() => {
+                          setSelectedBatchId("");
+                          setChatMobilePane("channels");
+                        }}
                         onRefresh={() => loadBatchWorkspaceData(selectedBatch.id)}
                         onlineUserIds={onlineUserIds}
                         typingUsers={typingUsers}
@@ -6065,41 +6464,55 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
                   </div>
 
                   {/* Right Column: Channels & Contacts List matching Batch Overview Chat Tab */}
-                  <div className="rounded-3xl border border-gray-200/80 dark:border-slate-800/80 p-4 space-y-3 bg-white/50 dark:bg-transparent backdrop-blur-xs flex flex-col h-full min-h-0">
-                    <div className="flex items-center justify-between gap-2 pb-1 border-b border-gray-100 dark:border-slate-800/80">
-                      <div>
-                        <h3 className="text-sm font-black text-gray-900 dark:text-white mb-0.5">Chat Channels</h3>
-                        <p className="text-[11px] text-gray-500 dark:text-slate-400">PRD §24, §25: Group & 1-on-1 Messages</p>
+                  <div className={`${chatMobilePane === "chat" ? "hidden" : "flex"} xl:flex rounded-none sm:rounded-2xl xl:rounded-3xl border-0 sm:border border-gray-200/80 dark:border-slate-800/80 p-3 sm:p-4 space-y-3 bg-white/60 dark:bg-slate-900/30 backdrop-blur-xs flex-col h-full min-h-0`}>
+                    <div className="pb-3 border-b border-gray-100 dark:border-slate-800/80 shrink-0">
+                      <div className="flex items-center justify-between gap-2 mb-1.5">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-red-50 text-red-600 dark:bg-red-500/10 dark:text-red-400 border border-red-200/80 dark:border-red-500/20 inline-flex items-center gap-1">
+                            <MessageSquare className="w-3 h-3" />
+                            Chat Workspace
+                          </span>
+                          <span className="px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-gray-100 text-gray-700 dark:bg-slate-800 dark:text-slate-300 border border-gray-200 dark:border-slate-700">
+                            {chatChannelTab === "batches" ? `${availableChatBatches.length} Batches` : `${chatContacts.length} Direct`}
+                          </span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (selectedContactId) loadMessages(selectedContactId);
+                            if (selectedBatch?.id) loadBatchWorkspaceData(selectedBatch.id);
+                            setToast("Messages refreshed.");
+                          }}
+                          className="p-1.5 rounded-xl text-gray-500 hover:text-gray-900 dark:text-slate-400 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-slate-800 transition cursor-pointer"
+                          title="Refresh"
+                        >
+                          <RefreshCw className="w-3.5 h-3.5" />
+                        </button>
                       </div>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          if (selectedContactId) loadMessages(selectedContactId);
-                          if (selectedBatch?.id) loadBatchWorkspaceData(selectedBatch.id);
-                          setToast("Messages refreshed.");
-                        }}
-                        className="p-1.5 rounded-xl text-gray-500 hover:text-gray-900 dark:text-slate-400 dark:hover:text-white transition cursor-pointer"
-                        title="Refresh"
-                      >
-                        <RefreshCw className="w-3.5 h-3.5" />
-                      </button>
+                      <h1 className="text-xl sm:text-2xl font-extrabold text-gray-900 dark:text-white tracking-tight font-[Matter]">
+                        Chat Channels
+                      </h1>
+                      <p className="text-xs text-gray-500 dark:text-slate-400 mt-0.5">
+                        Live batch groups and direct workspace chats
+                      </p>
                     </div>
 
                     {/* Mode Toggle: Batches vs Direct */}
-                    <div className={`${canAccessDirectChat ? "grid-cols-2" : "grid-cols-1"} grid gap-1.5 p-1 rounded-2xl bg-gray-100/80 dark:bg-slate-800/60 text-xs font-bold shrink-0`}>
+                    <div className={`${canAccessDirectChat ? "grid-cols-2" : "grid-cols-1"} grid gap-1.5 p-1 rounded-2xl bg-gray-100/90 dark:bg-slate-800/60 text-xs font-bold shrink-0`}>
                       <button
                         type="button"
                         onClick={() => {
                           setChatChannelTab("batches");
                           setSelectedContactId("");
+                          setChatMobilePane("channels");
                         }}
-                        className={`py-1.5 px-2 rounded-xl transition flex items-center justify-center gap-1.5 cursor-pointer ${
+                        className={`py-2 px-3 rounded-xl transition flex items-center justify-center gap-1.5 cursor-pointer ${
                           !selectedContactId && chatChannelTab === "batches"
-                            ? "bg-white dark:bg-slate-700 text-red-600 dark:text-red-400 shadow-2xs"
+                            ? "bg-white dark:bg-slate-700 text-red-600 dark:text-red-400 shadow-2xs font-extrabold"
                             : "text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white"
                         }`}
                       >
-                        <Folder className="w-3.5 h-3.5" />
+                        <Folder className="w-4 h-4" />
                         <span>Batches</span>
                         {availableChatBatches.length > 0 && (
                           <span className="text-[10px] px-1.5 py-0.2 rounded-full font-mono bg-black/5 dark:bg-white/10">
@@ -6110,14 +6523,17 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
                       {canAccessDirectChat && (
                         <button
                           type="button"
-                          onClick={() => setChatChannelTab("direct")}
-                          className={`py-1.5 px-2 rounded-xl transition flex items-center justify-center gap-1.5 cursor-pointer ${
+                          onClick={() => {
+                            setChatChannelTab("direct");
+                            setChatMobilePane("channels");
+                          }}
+                          className={`py-2 px-3 rounded-xl transition flex items-center justify-center gap-1.5 cursor-pointer ${
                             selectedContactId || chatChannelTab === "direct"
-                              ? "bg-white dark:bg-slate-700 text-red-600 dark:text-red-400 shadow-2xs"
+                              ? "bg-white dark:bg-slate-700 text-red-600 dark:text-red-400 shadow-2xs font-extrabold"
                               : "text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white"
                           }`}
                         >
-                          <Users className="w-3.5 h-3.5" />
+                          <Users className="w-4 h-4" />
                           <span>Direct</span>
                           {chatContacts.length > 0 && (
                             <span className="text-[10px] px-1.5 py-0.2 rounded-full font-mono bg-black/5 dark:bg-white/10">
@@ -6136,7 +6552,7 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
                         placeholder="Search channels or contacts..."
                         value={chatSearchQuery}
                         onChange={(e) => setChatSearchQuery(e.target.value)}
-                        className="w-full pl-8 pr-3 py-1.5 rounded-xl border border-gray-200/80 dark:border-slate-800 bg-transparent text-xs placeholder-gray-400 dark:placeholder-slate-500 focus:outline-none focus:border-red-500"
+                        className="w-full pl-8 pr-3 py-2 rounded-xl border border-gray-200/80 dark:border-slate-800 bg-white/70 dark:bg-slate-900/40 text-xs placeholder-gray-400 dark:placeholder-slate-500 focus:outline-none focus:border-red-500 transition"
                       />
                     </div>
 
@@ -6144,7 +6560,7 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
                     <div className="space-y-2 text-xs overflow-y-auto pr-1 flex-1">
                       {chatChannelTab === "batches" ? (
                         filteredChatBatches.length === 0 ? (
-                          <div className="text-center py-6 text-xs text-gray-400">No matching batches found.</div>
+                          <div className="text-center py-8 text-xs text-gray-400">No matching batches found.</div>
                         ) : (
                           filteredChatBatches.map((b) => {
                             const isSelected = !selectedContactId && selectedBatch?.id === b.id;
@@ -6153,6 +6569,8 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
                             const useNotificationPreview = chatTimestamp(notificationMeta.lastMessageTime) > chatTimestamp(messageMeta.lastMessageTime);
                             const latestPreview = useNotificationPreview ? notificationMeta.lastMessagePreview : messageMeta.lastMessagePreview;
                             const unreadBadge = notificationMeta.unreadCount || 0;
+                            const avatarUrl = getBatchAvatarUrl(b);
+                            const onlineSummary = getBatchOnlineSummary(b);
                             return (
                               <button
                                 key={b.id}
@@ -6160,36 +6578,53 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
                                 onClick={() => {
                                   setSelectedBatchId(b.id);
                                   setSelectedContactId("");
+                                  setChatMobilePane("chat");
                                 }}
-                                className={`w-full flex items-center justify-between gap-2 p-2.5 rounded-2xl border transition cursor-pointer text-left ${
+                                className={`w-full flex items-center justify-between gap-3 p-3 rounded-2xl border transition-all cursor-pointer text-left ${
                                   isSelected
-                                    ? "bg-red-50 text-red-950 dark:bg-red-500/10 dark:text-red-100 border-red-300 dark:border-red-500/30 font-bold"
-                                    : "border-gray-200/80 dark:border-slate-800 hover:border-red-400 dark:hover:border-slate-700"
+                                    ? "bg-red-50/80 text-red-950 dark:bg-red-500/10 dark:text-red-100 border-red-300 dark:border-red-500/30 font-bold shadow-xs"
+                                    : "bg-white/60 dark:bg-slate-900/30 border-gray-200/80 dark:border-slate-800 hover:border-red-300 dark:hover:border-slate-700"
                                 }`}
                               >
-                                <div className="flex items-center gap-2.5 min-w-0">
-                                  <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-red-600 to-rose-600 text-white font-black text-xs flex items-center justify-center shrink-0">
-                                    <Folder className="w-4 h-4" />
+                                <div className="flex items-center gap-3 min-w-0 flex-1">
+                                  <div className="relative shrink-0">
+                                    <div className="w-11 h-11 rounded-2xl bg-gradient-to-tr from-red-600 to-rose-600 text-white font-black text-xs flex items-center justify-center overflow-hidden shadow-xs">
+                                      {avatarUrl ? (
+                                        <img src={avatarUrl} alt={b.name || "Batch"} className="w-full h-full object-cover" />
+                                      ) : (
+                                        <Folder className="w-5 h-5" />
+                                      )}
+                                    </div>
+                                    <span className={`absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full ring-2 ring-white dark:ring-slate-900 ${onlineSummary.isOnline ? "bg-emerald-500" : "bg-gray-300 dark:bg-slate-600"}`} />
                                   </div>
-                                  <div className="min-w-0">
-                                    <div className="font-bold text-xs truncate">{b.name}</div>
-                                    <div className="text-[10px] text-gray-400 truncate">{latestPreview || domainLabel(b.domain)}</div>
-                                    {latestPreview && (
-                                      <div className="text-[9.5px] text-gray-400 truncate">{domainLabel(b.domain)}</div>
-                                    )}
+                                  <div className="min-w-0 flex-1">
+                                    <div className="font-bold text-xs sm:text-sm truncate text-gray-900 dark:text-white mb-0.5">{b.name}</div>
+                                    <div className="text-[11px] text-gray-500 dark:text-slate-400 truncate mb-1">
+                                      {latestPreview || domainLabel(b.domain)}
+                                    </div>
+                                    <div className="flex items-center gap-1.5 flex-wrap">
+                                      <span className="px-2 py-0.5 rounded-md text-[9.5px] font-semibold bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-slate-400 border border-gray-200 dark:border-slate-700 truncate max-w-[150px]">
+                                        {domainLabel(b.domain)}
+                                      </span>
+                                      {onlineSummary.isOnline && (
+                                        <span className="text-[9.5px] font-bold text-emerald-600 dark:text-emerald-400">
+                                          {onlineSummary.onlineCount} online
+                                        </span>
+                                      )}
+                                    </div>
                                   </div>
                                 </div>
-                                <div className="flex flex-col items-end gap-1 shrink-0">
-                                  {unreadBadge > 0 && (
-                                    <span className="min-w-5 h-5 px-1.5 rounded-full bg-red-600 text-white text-[10px] font-black flex items-center justify-center">
-                                      {unreadBadge > 99 ? "99+" : unreadBadge}
-                                    </span>
-                                  )}
+                                <div className="flex flex-col items-end gap-1.5 shrink-0 pl-1">
                                   <span className={`text-[10px] px-2 py-0.5 rounded-full border font-semibold ${
                                     isSelected ? "bg-red-600 text-white border-red-600" : "bg-gray-100 dark:bg-slate-800 border-gray-200 dark:border-slate-700 text-gray-600 dark:text-slate-400"
                                   }`}>
                                     {b.status || "active"}
                                   </span>
+                                  {unreadBadge > 0 && (
+                                    <span className="min-w-5 h-5 px-1.5 rounded-full bg-red-600 text-white text-[10px] font-black flex items-center justify-center shadow-xs">
+                                      {unreadBadge > 99 ? "99+" : unreadBadge}
+                                    </span>
+                                  )}
                                 </div>
                               </button>
                             );
@@ -6197,47 +6632,78 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
                         )
                       ) : (
                         filteredChatContacts.length === 0 ? (
-                          <div className="text-center py-6 text-xs text-gray-400">No matching contacts.</div>
+                          <div className="text-center py-8 text-xs text-gray-400">No matching contacts.</div>
                         ) : (
                           filteredChatContacts.map((contact) => {
+                            const profile = getChannelProfile(contact);
+                            const isSelf = profile.id === sessionUser?.id || profile.id === userProfile?.id || (profile.email && profile.email === userProfile?.email);
                             const isSelected = selectedContactId === contact.id;
                             const meta = directChatMeta[contact.id] || {};
                             const unreadBadge = meta.unreadCount || 0;
+                            const isOnline = workspaceOnlineSet.has(contact.id);
+                            const avatarUrl = getProfileAvatarUrl(profile);
+                            const subtitle = contactSubtitle(profile);
+                            const roleLabel = channelRoleLabel(profile.role);
                             return (
                               <button
                                 key={contact.id}
                                 type="button"
                                 onClick={() => {
+                                  if (isSelf) {
+                                    setToast("This is your workspace profile.");
+                                    return;
+                                  }
                                   setSelectedContactId(contact.id);
+                                  setChatMobilePane("chat");
                                   loadMessages(contact.id);
                                 }}
-                                className={`w-full flex items-center justify-between gap-2 p-2.5 rounded-2xl border transition cursor-pointer text-left ${
+                                className={`w-full flex items-center justify-between gap-3 p-3 rounded-2xl border transition-all cursor-pointer text-left ${
                                   isSelected
-                                    ? "bg-red-50 text-red-950 dark:bg-red-500/10 dark:text-red-100 border-red-300 dark:border-red-500/30 font-bold"
-                                    : "border-gray-200/80 dark:border-slate-800 hover:border-emerald-500"
+                                    ? "bg-red-50/80 text-red-950 dark:bg-red-500/10 dark:text-red-100 border-red-300 dark:border-red-500/30 font-bold shadow-xs"
+                                    : "bg-white/60 dark:bg-slate-900/30 border-gray-200/80 dark:border-slate-800 hover:border-emerald-500"
                                 }`}
                               >
-                                <div className="flex items-center gap-2.5 min-w-0">
-                                  <div className="w-8 h-8 rounded-full bg-emerald-600 text-white font-black text-xs flex items-center justify-center shrink-0">
-                                    {contact.full_name?.charAt(0) || "U"}
+                                <div className="flex items-center gap-3 min-w-0 flex-1">
+                                  <div className="relative shrink-0">
+                                    <div className="w-11 h-11 rounded-full bg-gradient-to-tr from-red-600 to-rose-600 text-white font-bold text-sm flex items-center justify-center overflow-hidden shadow-xs ring-1 ring-gray-200 dark:ring-slate-700">
+                                      {avatarUrl ? (
+                                        <img src={avatarUrl} alt={profile.full_name || "Contact"} className="w-full h-full object-cover" />
+                                      ) : (
+                                        profile.full_name?.charAt(0)?.toUpperCase() || "U"
+                                      )}
+                                    </div>
+                                    <span className={`absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full ring-2 ring-white dark:ring-slate-900 ${isOnline ? "bg-emerald-500" : "bg-gray-300 dark:bg-slate-600"}`} />
                                   </div>
-                                  <div className="min-w-0">
-                                    <div className={`font-bold text-xs truncate ${isSelected ? "text-red-700 dark:text-red-300" : "text-gray-900 dark:text-white"}`}>{contact.full_name}</div>
-                                    <div className="text-[10px] text-gray-400 truncate">{meta.lastMessagePreview || contact.email}</div>
-                                    {meta.lastMessagePreview && (
-                                      <div className="text-[9.5px] text-gray-400 truncate">{contact.email}</div>
-                                    )}
+                                  <div className="min-w-0 flex-1">
+                                    <div className={`font-bold text-xs sm:text-sm truncate flex items-center gap-1.5 mb-0.5 ${isSelected ? "text-red-700 dark:text-red-300" : "text-gray-900 dark:text-white"}`}>
+                                      {isSelf ? (
+                                        <>
+                                          <span className="text-red-600 dark:text-red-400 font-black">You</span>
+                                          <span className="text-[11px] text-gray-500 dark:text-gray-400 font-normal truncate">({profile.full_name || "Myself"})</span>
+                                        </>
+                                      ) : (
+                                        <span>{profile.full_name}</span>
+                                      )}
+                                    </div>
+                                    <div className="text-[11px] text-gray-500 dark:text-slate-400 truncate mb-1">
+                                      {meta.lastMessagePreview || subtitle || profile.email}
+                                    </div>
+                                    <div className="flex items-center gap-1.5 flex-wrap">
+                                      <span className="px-2 py-0.5 rounded-md text-[9.5px] font-semibold bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-slate-400 border border-gray-200 dark:border-slate-700 truncate max-w-[150px]">
+                                        {subtitle || profile.email}
+                                      </span>
+                                    </div>
                                   </div>
                                 </div>
-                                <div className="flex flex-col items-end gap-1 shrink-0">
+                                <div className="flex flex-col items-end gap-1.5 shrink-0 pl-1">
+                                  <span className={`text-[10px] px-2 py-0.5 rounded-full border font-semibold ${channelRolePillClass(profile.role)}`}>
+                                    {roleLabel}
+                                  </span>
                                   {unreadBadge > 0 && (
-                                    <span className="min-w-5 h-5 px-1.5 rounded-full bg-emerald-600 text-white text-[10px] font-black flex items-center justify-center">
+                                    <span className="min-w-5 h-5 px-1.5 rounded-full bg-emerald-600 text-white text-[10px] font-black flex items-center justify-center shadow-xs">
                                       {unreadBadge > 99 ? "99+" : unreadBadge}
                                     </span>
                                   )}
-                                  <span className="text-[10px] px-2 py-0.5 rounded-full border font-semibold text-gray-500 dark:text-slate-400">
-                                    {ROLE_LABELS[contact.role] || contact.role}
-                                  </span>
                                 </div>
                               </button>
                             );
@@ -6513,6 +6979,7 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
                             onOpenDirectChat={canAccessDirectChat ? (member) => {
                               setActiveSection("chat");
                               setSelectedContactId(member.id);
+                              setChatMobilePane("chat");
                               setSelectedBatchId("");
                             } : null}
                             onUpdateBatchInfo={(updatedBatch) => {
@@ -6649,7 +7116,7 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
                           <div className="rounded-3xl border border-gray-200/80 dark:border-slate-800/80 p-4 space-y-3 bg-white/50 dark:bg-transparent backdrop-blur-xs flex flex-col h-full min-h-0">
                             <div>
                               <h3 className="text-sm font-black text-gray-900 dark:text-white mb-0.5">Personal Chat Channels</h3>
-                              <p className="text-[11px] text-gray-500 dark:text-slate-400">PRD §25: Permitted 1-on-1 private messaging.</p>
+                              <p className="text-[11px] text-gray-500 dark:text-slate-400">Live direct contacts with real profile status.</p>
                             </div>
                             <div className="space-y-2 text-xs overflow-y-auto pr-1 flex-1">
                               {sortedChatContacts.length === 0 ? (
@@ -6660,6 +7127,7 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
                                     key={contact.id}
                                     onClick={() => {
                                       setSelectedContactId(contact.id);
+                                      setChatMobilePane("chat");
                                       selectSection("chat");
                                     }}
                                     className="w-full flex items-center justify-between gap-2 p-2.5 rounded-2xl border border-gray-200/80 dark:border-slate-800 hover:border-emerald-500 hover:bg-emerald-50/20 dark:hover:bg-slate-800/60 text-left transition cursor-pointer group"

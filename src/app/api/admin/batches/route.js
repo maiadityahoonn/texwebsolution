@@ -24,6 +24,7 @@ function publicProfile(profile) {
     role: profile.role,
     domain: profile.domain,
     batch_id: profile.batch_id,
+    avatar_url: profile.avatar_url || "",
   };
 }
 
@@ -102,7 +103,7 @@ export async function GET(request) {
   if (profileFilters.length) {
     const { data: profileData, error: profileError } = await admin
       .from("profiles")
-      .select("id, full_name, email, role, domain, batch_id")
+      .select("id, full_name, email, role, domain, batch_id, avatar_url")
       .or(profileFilters.join(","));
     if (profileError) {
       return NextResponse.json({ error: "Unable to load batch owners." }, { status: 400 });
@@ -185,7 +186,7 @@ export async function PATCH(request) {
     if (mentorId) {
       const { data: mentorProfile, error: mentorError } = await admin
         .from("profiles")
-        .select("id, full_name, email, role, domain, batch_id")
+        .select("id, full_name, email, role, domain, batch_id, avatar_url")
         .eq("id", mentorId)
         .single();
       if (mentorError || mentorProfile?.role !== "mentor") {
