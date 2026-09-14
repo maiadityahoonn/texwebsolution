@@ -4381,7 +4381,7 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
 
       {sessionUser ? (
         <div className="min-h-screen relative flex flex-col">
-          <div className={`fixed top-0 left-0 right-0 z-40 md:hidden h-16 px-3.5 flex items-center justify-between border-b transition-colors duration-200 ${
+          <div className={`${(activeSection === "chat" && chatMobilePane === "chat") ? "!hidden" : "flex"} fixed top-0 left-0 right-0 z-40 md:hidden h-16 px-3.5 items-center justify-between border-b transition-colors duration-200 ${
             isDark
               ? "bg-[#0b0b0c]/95 backdrop-blur-md border-neutral-800 text-neutral-100 shadow-none"
               : "bg-white/95 backdrop-blur-md border-gray-200/90 text-gray-900 shadow-xs"
@@ -4398,13 +4398,6 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
                   priority
                 />
               </Link>
-              <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border truncate ${
-                isDark
-                  ? "bg-red-500/15 text-red-400 border-red-500/30"
-                  : "bg-red-50 text-red-600 border-red-200/80"
-              }`}>
-                {ROLE_LABELS[currentRole] || "Workspace"}
-              </span>
             </div>
             <div className="flex items-center gap-1.5">
               <button
@@ -4461,33 +4454,52 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
           </div>
 
           {mobileMoreOpen && (
-            <div className="fixed inset-0 z-50 md:hidden">
+            <div className="fixed inset-0 z-50 md:hidden flex flex-col justify-end">
+              {/* Backdrop */}
               <button
                 type="button"
-                className="absolute inset-0 bg-black/40 backdrop-blur-[2px] cursor-pointer"
+                className="fixed inset-0 bg-black/60 backdrop-blur-xs transition-opacity cursor-pointer animate-fadeIn"
                 onClick={() => setMobileMoreOpen(false)}
                 aria-label="Close more menu"
               />
-              <div className={`absolute left-3 right-3 bottom-20 rounded-3xl border shadow-2xl overflow-hidden ${
-                isDark
-                  ? "bg-[#0f0e0c] border-neutral-800 text-neutral-100"
-                  : "bg-white border-gray-200/90 text-gray-900 shadow-black/15"
-              }`}>
-                <div className="px-4 py-3 border-b border-gray-100 dark:border-neutral-800 flex items-center justify-between">
-                  <div>
-                    <div className="text-sm font-black">More Workspace Tools</div>
-                    <div className="text-[11px] text-gray-500 dark:text-neutral-400">All features & modules</div>
-                  </div>
+
+              {/* Bottom Sheet Slider */}
+              <div
+                className={`relative w-full max-h-[82dvh] rounded-t-[28px] border-t shadow-2xl flex flex-col z-10 overflow-hidden ${
+                  isDark
+                    ? "bg-[#111113] border-neutral-800 text-neutral-100"
+                    : "bg-white border-gray-200 text-gray-900 shadow-black/20"
+                }`}
+                style={{
+                  animation: "slideUpSheet 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards",
+                  paddingBottom: "calc(env(safe-area-inset-bottom) + 0.75rem)",
+                }}
+              >
+                {/* Drag / Pull handle bar */}
+                <div
+                  className="pt-3 pb-1.5 flex justify-center shrink-0 cursor-pointer"
+                  onClick={() => setMobileMoreOpen(false)}
+                >
+                  <div className="w-11 h-1.5 rounded-full bg-gray-300 dark:bg-neutral-700" />
+                </div>
+
+                {/* Section Header */}
+                <div className="px-5 pt-1 pb-3 flex items-center justify-between border-b border-gray-100 dark:border-neutral-800/80 shrink-0">
+                  <span className="text-[11px] font-extrabold tracking-widest uppercase text-gray-400 dark:text-neutral-500 font-sans">
+                    MORE
+                  </span>
                   <button
                     type="button"
                     onClick={() => setMobileMoreOpen(false)}
-                    className="w-8 h-8 rounded-full flex items-center justify-center hover:bg-gray-100 dark:hover:bg-neutral-800 transition cursor-pointer text-gray-500 dark:text-neutral-400"
+                    className="w-7 h-7 rounded-full flex items-center justify-center text-gray-400 hover:text-gray-700 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-neutral-800 transition cursor-pointer"
                     aria-label="Close"
                   >
                     <X className="w-4 h-4" />
                   </button>
                 </div>
-                <div className="max-h-[55dvh] overflow-y-auto p-2.5 grid grid-cols-2 gap-2">
+
+                {/* Single-column vertical list with Icon, Label, Badge and Chevron */}
+                <div className="overflow-y-auto flex-1 overscroll-contain py-1 divide-y divide-gray-100/60 dark:divide-neutral-800/40">
                   {mobileMoreNavItems.map((item) => {
                     const Icon = item.icon;
                     const isActive = item.section && activeSection === item.section;
@@ -4496,21 +4508,38 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
                         key={item.key}
                         type="button"
                         onClick={() => handleMobileNavItem(item)}
-                        className={`min-h-[58px] rounded-2xl px-3 py-2 flex items-center gap-2.5 text-left transition cursor-pointer border ${
+                        className={`w-full flex items-center justify-between px-5 py-3.5 transition-colors cursor-pointer text-left ${
                           isActive
-                            ? "bg-red-50 border-red-200 text-red-600 dark:bg-red-500/15 dark:border-red-500/30 dark:text-red-300 font-bold"
-                            : "bg-gray-50/80 border-gray-100 text-gray-700 hover:bg-gray-100 dark:bg-neutral-900/80 dark:border-neutral-800 dark:text-neutral-300 dark:hover:bg-neutral-800"
+                            ? "bg-red-50/70 text-red-600 dark:bg-red-500/10 dark:text-red-400 font-bold"
+                            : "text-gray-800 dark:text-neutral-200 hover:bg-gray-50 dark:hover:bg-neutral-900/60 active:bg-gray-100 dark:active:bg-neutral-800"
                         }`}
                       >
-                        <Icon className="w-5 h-5 shrink-0 stroke-[1.8]" />
-                        <span className="min-w-0 flex-1">
-                          <span className="block text-xs font-bold truncate">{item.label}</span>
+                        <div className="flex items-center gap-3.5 min-w-0">
+                          <Icon
+                            className={`w-5 h-5 shrink-0 stroke-[1.8] ${
+                              isActive
+                                ? "text-red-600 dark:text-red-400"
+                                : "text-gray-500 dark:text-neutral-400"
+                            }`}
+                          />
+                          <span className="text-sm font-semibold truncate">
+                            {item.label}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2 shrink-0">
                           {item.badge > 0 && (
-                            <span className="mt-1 inline-flex min-w-5 h-5 px-1.5 rounded-full bg-red-600 text-white text-[10px] font-black items-center justify-center">
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-red-600 text-white shadow-xs">
                               {item.badge > 99 ? "99+" : item.badge}
                             </span>
                           )}
-                        </span>
+                          <ChevronRight
+                            className={`w-4 h-4 transition-transform ${
+                              isActive
+                                ? "text-red-500 dark:text-red-400"
+                                : "text-gray-400 dark:text-neutral-500"
+                            }`}
+                          />
+                        </div>
                       </button>
                     );
                   })}
@@ -4519,7 +4548,7 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
             </div>
           )}
 
-          <nav className={`fixed left-0 right-0 bottom-0 z-40 md:hidden border-t px-1.5 pt-1.5 pb-[calc(env(safe-area-inset-bottom)+0.4rem)] transition-colors duration-200 ${
+          <nav className={`${(activeSection === "chat" && chatMobilePane === "chat") ? "!hidden" : "block"} fixed left-0 right-0 bottom-0 z-40 md:hidden border-t px-1.5 pt-1.5 pb-[calc(env(safe-area-inset-bottom)+0.4rem)] transition-colors duration-200 ${
             isDark
               ? "bg-[#0b0b0c]/95 backdrop-blur-md border-neutral-800 text-neutral-400"
               : "bg-white/95 backdrop-blur-md border-gray-200/90 text-gray-600 shadow-lg shadow-black/5"
@@ -4722,19 +4751,6 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
                       Supervision
                     </span>
                   </div>
-
-                  <button
-                    onClick={() => openRaiseEscalationModal()}
-                    aria-label="Raise Escalation"
-                    title="Raise Escalation"
-                    className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl transition cursor-pointer text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-50 dark:hover:bg-slate-800/60"
-                  >
-                    <div className="flex items-center gap-3.5">
-                      <AlertCircle className="w-5 h-5 shrink-0 stroke-[1.75] text-red-500" />
-                      <span className="admin-sidebar-item-label">Raise Escalation</span>
-                    </div>
-                    <Plus className="w-3.5 h-3.5 text-gray-400" />
-                  </button>
 
                   {/* Task Submissions */}
                   {(isMentor || isTeamLeader) && (
@@ -5310,13 +5326,21 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
 
           {/* Main Content Area: Transitions cleanly when sidebar collapses/expands */}
           <main className={`flex-1 min-w-0 max-w-full transition-all duration-300 ${sidebarOpen ? "md:ml-64 sm:md:ml-68" : "ml-0 md:ml-[72px]"
-            } ${activeSection === "chat" ? "h-[100dvh] max-h-[100dvh] overflow-hidden pt-16 md:pt-3 px-0 sm:px-3 lg:px-4 pb-[82px] md:pb-2 flex flex-col" : "min-h-screen pt-[4.5rem] md:pt-3 sm:pt-[4.5rem] px-2 sm:px-3 lg:px-4 pb-28 md:pb-12"}`}>
+            } ${activeSection === "chat"
+              ? (chatMobilePane === "chat"
+                ? "h-[100dvh] max-h-[100dvh] overflow-hidden pt-0 md:pt-3 px-0 sm:px-3 lg:px-4 pb-0 md:pb-2 flex flex-col"
+                : "min-h-screen xl:min-h-0 xl:h-[100dvh] xl:max-h-[100dvh] xl:overflow-hidden pt-[4.5rem] md:pt-3 sm:pt-[4.5rem] px-2 sm:px-3 lg:px-4 pb-28 md:pb-4 flex flex-col")
+              : "min-h-screen pt-[4.5rem] md:pt-3 sm:pt-[4.5rem] px-2 sm:px-3 lg:px-4 pb-28 md:pb-12"}`}>
             <div
-              className={`transition-colors min-w-0 max-w-full ${activeSection === "chat" ? "flex-1 min-h-0 flex flex-col space-y-0 sm:space-y-2 p-0 sm:p-2" : "p-2 sm:p-3 lg:p-4 space-y-4"} ${isDark ? "bg-transparent text-slate-100" : "bg-transparent text-gray-900"}`}
+              className={`transition-colors min-w-0 max-w-full ${activeSection === "chat"
+                ? (chatMobilePane === "chat"
+                  ? "flex-1 min-h-0 flex flex-col space-y-0 sm:space-y-2 p-0 sm:p-2"
+                  : "flex-1 min-h-0 flex flex-col p-2 sm:p-3 lg:p-4 space-y-4")
+                : "p-2 sm:p-3 lg:p-4 space-y-2 md:space-y-4"} ${isDark ? "bg-transparent text-slate-100" : "bg-transparent text-gray-900"}`}
             >
-              {/* 1. Header Banner of the Card with Title + Contextual Actions (Hidden in Chat) */}
-              {activeSection !== "chat" && (
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-gray-100 dark:border-slate-800 shrink-0">
+              {/* 1. Header Banner of the Card with Title + Contextual Actions (Shown for Chat channels view and all standard sections) */}
+              {!(activeSection === "chat" && chatMobilePane === "chat") && (
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-3 pb-1 md:pb-3 md:border-b md:border-gray-100 md:dark:border-slate-800 shrink-0">
                   <div>
                     {/* Role & Department Badges */}
                     <div className="flex items-center gap-2 mb-2">
@@ -5344,7 +5368,7 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
                       {activeSection === "batch_files" && "Batch Files & Knowledge Base"}
                       {activeSection === "batch_workspace" && (selectedBatch?.name || "Batch Workspace")}
                       {activeSection === "attendance" && "Attendance"}
-                      {activeSection === "chat" && "Chat & Messages"}
+                      {activeSection === "chat" && "Chat"}
                       {activeSection === "alerts" && "Notifications"}
                       {activeSection === "cms" && "Website Content"}
                       {activeSection === "certificates" && "Certificates"}
@@ -5381,7 +5405,7 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
                   <div className="flex items-center gap-2 shrink-0">
                     <button
                       onClick={() => setGlobalSearchOpen(true)}
-                      className="inline-flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold bg-gray-100/80 hover:bg-gray-200/80 dark:bg-slate-800 dark:hover:bg-slate-700 text-gray-500 dark:text-slate-400 border border-gray-200 dark:border-slate-700 shadow-2xs transition cursor-pointer"
+                      className="hidden md:inline-flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold bg-gray-100/80 hover:bg-gray-200/80 dark:bg-slate-800 dark:hover:bg-slate-700 text-gray-500 dark:text-slate-400 border border-gray-200 dark:border-slate-700 shadow-2xs transition cursor-pointer"
                       title="Global Search (Ctrl + K)"
                     >
                       <Search className="w-3.5 h-3.5 text-gray-400" />
@@ -5534,6 +5558,20 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
                       >
                         <Plus className="w-4 h-4" />
                         <span>Issue Certificate</span>
+                      </button>
+                    )}
+                    {activeSection === "chat" && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (selectedContactId) loadMessages(selectedContactId);
+                          if (selectedBatch?.id) loadBatchWorkspaceData(selectedBatch.id);
+                          setToast("Messages refreshed.");
+                        }}
+                        className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-red-600 via-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 text-white font-bold text-xs transition-all shadow-md shadow-red-500/20 hover:shadow-lg hover:shadow-red-500/30 active:scale-95 cursor-pointer flex items-center gap-2 tracking-wide"
+                      >
+                        <RefreshCw className="w-4 h-4" />
+                        <span>Refresh Chat</span>
                       </button>
                     )}
                   </div>
@@ -6464,37 +6502,14 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
                   </div>
 
                   {/* Right Column: Channels & Contacts List matching Batch Overview Chat Tab */}
-                  <div className={`${chatMobilePane === "chat" ? "hidden" : "flex"} xl:flex rounded-none sm:rounded-2xl xl:rounded-3xl border-0 sm:border border-gray-200/80 dark:border-slate-800/80 p-3 sm:p-4 space-y-3 bg-white/60 dark:bg-slate-900/30 backdrop-blur-xs flex-col h-full min-h-0`}>
-                    <div className="pb-3 border-b border-gray-100 dark:border-slate-800/80 shrink-0">
-                      <div className="flex items-center justify-between gap-2 mb-1.5">
-                        <div className="flex items-center gap-1.5 flex-wrap">
-                          <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-red-50 text-red-600 dark:bg-red-500/10 dark:text-red-400 border border-red-200/80 dark:border-red-500/20 inline-flex items-center gap-1">
-                            <MessageSquare className="w-3 h-3" />
-                            Chat Workspace
-                          </span>
-                          <span className="px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-gray-100 text-gray-700 dark:bg-slate-800 dark:text-slate-300 border border-gray-200 dark:border-slate-700">
-                            {chatChannelTab === "batches" ? `${availableChatBatches.length} Batches` : `${chatContacts.length} Direct`}
-                          </span>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            if (selectedContactId) loadMessages(selectedContactId);
-                            if (selectedBatch?.id) loadBatchWorkspaceData(selectedBatch.id);
-                            setToast("Messages refreshed.");
-                          }}
-                          className="p-1.5 rounded-xl text-gray-500 hover:text-gray-900 dark:text-slate-400 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-slate-800 transition cursor-pointer"
-                          title="Refresh"
-                        >
-                          <RefreshCw className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-                      <h1 className="text-xl sm:text-2xl font-extrabold text-gray-900 dark:text-white tracking-tight font-[Matter]">
-                        Chat Channels
-                      </h1>
-                      <p className="text-xs text-gray-500 dark:text-slate-400 mt-0.5">
-                        Live batch groups and direct workspace chats
-                      </p>
+                  <div className={`${chatMobilePane === "chat" ? "hidden" : "flex"} xl:flex rounded-2xl xl:rounded-3xl border border-gray-200/80 dark:border-slate-800/80 p-3 sm:p-4 space-y-3 bg-white/60 dark:bg-slate-900/30 shadow-2xs backdrop-blur-xs flex-col h-full min-h-0`}>
+                    <div className="hidden xl:flex items-center justify-between pb-2 border-b border-gray-100 dark:border-slate-800/80 shrink-0">
+                      <span className="text-xs font-bold text-gray-900 dark:text-white">
+                        Channels & Contacts
+                      </span>
+                      <span className="text-[11px] font-medium text-gray-500 dark:text-slate-400">
+                        {chatChannelTab === "batches" ? `${availableChatBatches.length} Batches` : `${chatContacts.length} Direct`}
+                      </span>
                     </div>
 
                     {/* Mode Toggle: Batches vs Direct */}
@@ -6595,7 +6610,6 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
                                         <Folder className="w-5 h-5" />
                                       )}
                                     </div>
-                                    <span className={`absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full ring-2 ring-white dark:ring-slate-900 ${onlineSummary.isOnline ? "bg-emerald-500" : "bg-gray-300 dark:bg-slate-600"}`} />
                                   </div>
                                   <div className="min-w-0 flex-1">
                                     <div className="font-bold text-xs sm:text-sm truncate text-gray-900 dark:text-white mb-0.5">{b.name}</div>

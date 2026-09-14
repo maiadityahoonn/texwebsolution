@@ -93,6 +93,16 @@
       transform: translateY(0);
     }
   }
+
+  @keyframes slideUpSheet {
+    from {
+      transform: translateY(100%);
+    }
+
+    to {
+      transform: translateY(0);
+    }
+  }
 }
 
 body {

@@ -2896,12 +2896,14 @@ export default function TexAppBatchChat({
                 </div>
               );
             })()}
-            <span
-              className={`absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full ring-2 ring-white dark:ring-[#18150f] ${
-                headerDetails.isOnline ? "bg-emerald-500" : "bg-gray-400"
-              }`}
-              title={headerDetails.isGroup ? `${onlineMembersCount} online` : (headerDetails.isOnline ? "Online" : "Offline")}
-            />
+            {!headerDetails.isGroup && (
+              <span
+                className={`absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full ring-2 ring-white dark:ring-[#18150f] ${
+                  headerDetails.isOnline ? "bg-emerald-500" : "bg-gray-400"
+                }`}
+                title={headerDetails.isOnline ? "Online" : "Offline"}
+              />
+            )}
           </div>
 
           {/* Group / Contact Meta */}
