@@ -3074,15 +3074,6 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedContactId]);
 
-  useEffect(() => {
-    if (activeSection !== "chat" || !selectedContactId || !sessionUser?.id) return undefined;
-    const interval = setInterval(() => {
-      loadMessages(selectedContactId);
-    }, 1500);
-    return () => clearInterval(interval);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeSection, selectedContactId, sessionUser?.id]);
-
   const chatAutoOpenKey = useMemo(() => {
     const topBatch = sortedChatBatches[0] || null;
     const topContact = sortedChatContacts[0] || null;
