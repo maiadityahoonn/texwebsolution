@@ -486,6 +486,7 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
   const directReadReceiptPendingRef = useRef(null);
   const directDeliveryReceiptPendingRef = useRef(null);
   const chatMobileHistoryGuardRef = useRef(false);
+  const chatBackSuppressAutoOpenRef = useRef(false);
   const typingStopTimerRef = useRef(null);
 
   // Resizable WhatsApp Chat Sidebar (Left Panel)
@@ -3216,6 +3217,7 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
     const handlePopState = () => {
       if (chatMobileHistoryGuardRef.current) {
         chatMobileHistoryGuardRef.current = false;
+        chatBackSuppressAutoOpenRef.current = true;
         setSelectedContactId("");
         setSelectedBatchId("");
         setChatMobilePane("channels");
@@ -3272,7 +3274,14 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
   }, [sortedChatBatches, sortedChatContacts, batchChatMeta, batchNotificationMeta, directChatMeta]);
 
   useEffect(() => {
+    if (activeSection !== "chat") {
+      chatBackSuppressAutoOpenRef.current = false;
+    }
+  }, [activeSection]);
+
+  useEffect(() => {
     if (activeSection !== "chat" || selectedBatchId || selectedContactId) return;
+    if (chatBackSuppressAutoOpenRef.current) return;
 
     const topBatch = sortedChatBatches[0] || null;
     const topContact = sortedChatContacts[0] || null;
@@ -6634,6 +6643,7 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
                             batchMeetings={meetings}
                             messages={messages}
                             onBack={() => {
+                              chatBackSuppressAutoOpenRef.current = true;
                               if (typeof window !== "undefined" && chatMobileHistoryGuardRef.current) {
                                 window.history.back();
                                 return;
@@ -6793,6 +6803,7 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
                             setToast("Direct chat is limited to HR, Mentor, and Admin for this role.");
                             return;
                           }
+                          chatBackSuppressAutoOpenRef.current = false;
                           setActiveSection("chat");
                           setSelectedContactId(member.id);
                           setChatMobilePane("chat");
@@ -6804,6 +6815,7 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
                           setBatches((prev) => (prev || []).map((b) => (b.id === updatedBatch.id ? { ...b, ...updatedBatch } : b)));
                         }}
                         onBack={() => {
+                          chatBackSuppressAutoOpenRef.current = true;
                           if (typeof window !== "undefined" && chatMobileHistoryGuardRef.current) {
                             window.history.back();
                             return;
@@ -6970,6 +6982,7 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
                         type="button"
                         onClick={() => {
                           const nextBatch = sortedChatBatches[0] || null;
+                          chatBackSuppressAutoOpenRef.current = false;
                           setChatChannelTab("batches");
                           setSelectedContactId("");
                           if (nextBatch?.id) {
@@ -7007,6 +7020,7 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
                           type="button"
                           onClick={() => {
                             const nextContact = sortedChatContacts[0] || null;
+                            chatBackSuppressAutoOpenRef.current = false;
                             setChatChannelTab("direct");
                             setSelectedBatchId("");
                             if (nextContact?.id) {
@@ -7085,6 +7099,7 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
                                 key={b.id}
                                 type="button"
                                 onClick={() => {
+                                  chatBackSuppressAutoOpenRef.current = false;
                                   setChatChannelTab("batches");
                                   setSelectedContactId("");
                                   setSelectedBatchId(b.id);
@@ -7166,6 +7181,7 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
                                 key={contact.id}
                                 type="button"
                                 onClick={() => {
+                                  chatBackSuppressAutoOpenRef.current = false;
                                   setSelectedContactId(contact.id);
                                   setChatMobilePane("chat");
                                   loadMessages(contact.id);
@@ -7495,6 +7511,7 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
                                 setToast("Direct chat is limited to HR, Mentor, and Admin for this role.");
                                 return;
                               }
+                              chatBackSuppressAutoOpenRef.current = false;
                               setActiveSection("chat");
                               setSelectedContactId(member.id);
                               setChatMobilePane("chat");
@@ -7662,6 +7679,7 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
                                     <button
                                       key={contact.id}
                                       onClick={() => {
+                                        chatBackSuppressAutoOpenRef.current = false;
                                         setSelectedContactId(contact.id);
                                         setChatMobilePane("chat");
                                         selectSection("chat");
