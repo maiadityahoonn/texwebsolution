@@ -19,7 +19,7 @@ export default function GetInTouchSection() {
         </p>
         <div className="flex flex-col sm:flex-row justify-center items-center gap-4">
           <a
-            href="mailto:info@texwebsolution.in"
+            href="mailto:aditya963141@gmail.com"
             className="w-full sm:w-auto px-7 py-3 bg-red-600 text-white font-semibold rounded-full hover:bg-red-700 transition-colors shadow-md shadow-red-600/15 text-center flex items-center justify-center gap-2"
           >
             <Mail className="w-4 h-4" />

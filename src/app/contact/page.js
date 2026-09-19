@@ -67,7 +67,7 @@ export default function ContactPage() {
   const [submitStatus, setSubmitStatus] = useState(null);
 
   const handleCopyEmail = () => {
-    navigator.clipboard.writeText("info@texwebsolution.in");
+    navigator.clipboard.writeText("aditya963141@gmail.com");
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
@@ -203,7 +203,7 @@ export default function ContactPage() {
                     </div>
                     <div className="min-w-0">
                       <h4 className="font-semibold text-gray-800 text-sm sm:text-base font-[Matter]">Email Us</h4>
-                      <p className="text-xs sm:text-sm text-gray-500 font-medium break-all">info@texwebsolution.in</p>
+                      <p className="text-xs sm:text-sm text-gray-500 font-medium break-all">aditya963141@gmail.com</p>
                     </div>
                   </div>
                   <button 

@@ -128,7 +128,7 @@ export default function PrivacyPage() {
           <section>
             <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-4 font-[Matter]">7. Your Data Rights</h2>
             <p className="mb-4">
-              You have the right to request access to the personal data we hold about you, request corrections, opt-out of newsletter communications, or request the deletion of your contact records by emailing <a href="mailto:info@texwebsolution.in" className="text-red-600 font-medium hover:underline">info@texwebsolution.in</a>.
+              You have the right to request access to the personal data we hold about you, request corrections, opt-out of newsletter communications, or request the deletion of your contact records by emailing <a href="mailto:aditya963141@gmail.com" className="text-red-600 font-medium hover:underline">aditya963141@gmail.com</a>.
             </p>
           </section>
 
@@ -144,8 +144,8 @@ export default function PrivacyPage() {
                 <Mail className="w-4 h-4 text-red-600 shrink-0" />
                 <span>
                   <strong>Email:</strong>{" "}
-                  <a href="mailto:info@texwebsolution.in" className="text-red-600 hover:underline">
-                    info@texwebsolution.in
+                  <a href="mailto:aditya963141@gmail.com" className="text-red-600 hover:underline">
+                    aditya963141@gmail.com
                   </a>
                 </span>
               </p>

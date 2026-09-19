@@ -51,9 +51,9 @@ export default function Footer() {
               <h3 className="text-gray-400 text-sm font-medium mb-3">Contact us at</h3>
               <div className="space-y-2.5 text-sm sm:text-base font-semibold text-gray-800">
                 <p>
-                  <a href="mailto:info@texwebsolution.in" className="inline-flex items-center gap-2 hover:text-red-600 transition-colors">
+                  <a href="mailto:aditya963141@gmail.com" className="inline-flex items-center gap-2 hover:text-red-600 transition-colors">
                     <Mail className="w-4 h-4 text-red-600 shrink-0" />
-                    <span>info@texwebsolution.in</span>
+                    <span>aditya963141@gmail.com</span>
                   </a>
                 </p>
                 <p>

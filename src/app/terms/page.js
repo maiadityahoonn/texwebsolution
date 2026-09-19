@@ -151,8 +151,8 @@ export default function TermsPage() {
                 <Mail className="w-4 h-4 text-red-600 shrink-0" />
                 <span>
                   <strong>Email:</strong>{" "}
-                  <a href="mailto:info@texwebsolution.in" className="text-red-600 hover:underline">
-                    info@texwebsolution.in
+                  <a href="mailto:aditya963141@gmail.com" className="text-red-600 hover:underline">
+                    aditya963141@gmail.com
                   </a>
                 </span>
               </p>

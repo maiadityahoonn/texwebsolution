@@ -295,7 +295,7 @@ export default function DownloadPage() {
             </div>
             <div>
               <dt className="font-bold text-gray-900">Need support?</dt>
-              <dd className="mt-1 leading-relaxed text-gray-600">Contact our support desk at <a href="mailto:info@texwebsolution.in" className="text-red-600 font-semibold underline">info@texwebsolution.in</a> or WhatsApp at <a href="https://wa.me/+917462827259" className="text-red-600 font-semibold underline">+91 7462827259</a>.</dd>
+              <dd className="mt-1 leading-relaxed text-gray-600">Contact our support desk at <a href="mailto:aditya963141@gmail.com" className="text-red-600 font-semibold underline">aditya963141@gmail.com</a> or WhatsApp at <a href="https://wa.me/+917462827259" className="text-red-600 font-semibold underline">+91 7462827259</a>.</dd>
             </div>
           </dl>
         </div>
