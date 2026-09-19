@@ -127,6 +127,7 @@ import {
   retryNotificationQueueItem,
   sendRealtimeMessage,
   updateRealtimeMessage,
+  markDirectMessagesDelivered,
   markDirectMessagesRead,
   submitTaskWork,
   createCloudTask,
@@ -481,6 +482,9 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
   const [typingUsers, setTypingUsers] = useState([]);
   const typingChannelRef = useRef(null);
   const directChatChannelRef = useRef(null);
+  const directChatChannelRoomRef = useRef("");
+  const directReadReceiptPendingRef = useRef(null);
+  const directDeliveryReceiptPendingRef = useRef(null);
   const typingStopTimerRef = useRef(null);
 
   // Resizable WhatsApp Chat Sidebar (Left Panel)
@@ -2917,9 +2921,102 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
     });
   }
 
+  function applyDirectReadReceipt({ senderId, readerId, readAt }) {
+    if (!senderId || !readerId) return;
+    const timestamp = readAt || new Date().toISOString();
+    setMessages((prev) =>
+      (prev || []).map((message) =>
+        message.sender_id === senderId && message.receiver_id === readerId
+          ? {
+            ...message,
+            is_read: true,
+            read_at: message.read_at || timestamp,
+            delivered_at: message.delivered_at || timestamp,
+          }
+          : message
+      )
+    );
+  }
+
+  function applyDirectDeliveryReceipt({ senderId, receiverId, deliveredAt }) {
+    if (!senderId || !receiverId) return;
+    const timestamp = deliveredAt || new Date().toISOString();
+    setMessages((prev) =>
+      (prev || []).map((message) =>
+        message.sender_id === senderId && message.receiver_id === receiverId
+          ? {
+            ...message,
+            delivered_at: message.delivered_at || timestamp,
+          }
+          : message
+      )
+    );
+  }
+
+  function sendDirectDeliveryReceiptBroadcast(contactId, deliveredAt) {
+    if (!sessionUser?.id || !contactId) return;
+    const roomId = directChatRoomId(sessionUser.id, contactId);
+    if (directChatChannelRoomRef.current !== roomId) {
+      directDeliveryReceiptPendingRef.current = { roomId, contactId, deliveredAt };
+      return;
+    }
+    directChatChannelRef.current?.send({
+      type: "broadcast",
+      event: "delivery_receipt",
+      payload: {
+        sender_id: contactId,
+        receiver_id: sessionUser.id,
+        delivered_at: deliveredAt || new Date().toISOString(),
+      },
+    });
+    directDeliveryReceiptPendingRef.current = null;
+  }
+
+  async function markDirectChatDelivered(contactId) {
+    if (!contactId || !sessionUser?.id) return false;
+    const result = await markDirectMessagesDelivered(contactId);
+    if (!result) return false;
+    const deliveredAt = result?.delivered_at || new Date().toISOString();
+    applyDirectDeliveryReceipt({ senderId: contactId, receiverId: sessionUser.id, deliveredAt });
+    sendDirectDeliveryReceiptBroadcast(contactId, deliveredAt);
+    setTimeout(() => sendDirectDeliveryReceiptBroadcast(contactId, deliveredAt), 250);
+    return true;
+  }
+
+  function sendDirectReadReceiptBroadcast(contactId, readAt) {
+    if (!sessionUser?.id || !contactId) return;
+    const roomId = directChatRoomId(sessionUser.id, contactId);
+    if (directChatChannelRoomRef.current !== roomId) {
+      directReadReceiptPendingRef.current = { roomId, contactId, readAt };
+      return;
+    }
+    directChatChannelRef.current?.send({
+      type: "broadcast",
+      event: "read_receipt",
+      payload: {
+        sender_id: contactId,
+        reader_id: sessionUser.id,
+        read_at: readAt || new Date().toISOString(),
+      },
+    });
+    directReadReceiptPendingRef.current = null;
+  }
+
+  async function markDirectChatRead(contactId) {
+    if (!contactId || !sessionUser?.id) return false;
+    const result = await markDirectMessagesRead(contactId, sessionUser.id);
+    if (!result) return false;
+    const readAt = result?.read_at || new Date().toISOString();
+    applyDirectReadReceipt({ senderId: contactId, readerId: sessionUser.id, readAt });
+    sendDirectReadReceiptBroadcast(contactId, readAt);
+    setTimeout(() => sendDirectReadReceiptBroadcast(contactId, readAt), 250);
+    return true;
+  }
+
   useEffect(() => {
     if (!sessionUser?.id || !selectedContactId) {
       directChatChannelRef.current = null;
+      directChatChannelRoomRef.current = "";
       return undefined;
     }
 
@@ -2932,12 +3029,42 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
         rememberDirectChatActivity(item);
         upsertOpenDirectMessage(item);
       })
-      .subscribe();
+      .on("broadcast", { event: "read_receipt" }, ({ payload }) => {
+        if (!payload?.sender_id || !payload?.reader_id || payload.reader_id === sessionUser.id) return;
+        applyDirectReadReceipt({
+          senderId: payload.sender_id,
+          readerId: payload.reader_id,
+          readAt: payload.read_at,
+        });
+      })
+      .on("broadcast", { event: "delivery_receipt" }, ({ payload }) => {
+        if (!payload?.sender_id || !payload?.receiver_id || payload.receiver_id === sessionUser.id) return;
+        applyDirectDeliveryReceipt({
+          senderId: payload.sender_id,
+          receiverId: payload.receiver_id,
+          deliveredAt: payload.delivered_at,
+        });
+      })
+      .subscribe((status) => {
+        if (status !== "SUBSCRIBED") return;
+        const pendingRead = directReadReceiptPendingRef.current;
+        if (pendingRead?.roomId === roomId) {
+          sendDirectReadReceiptBroadcast(pendingRead.contactId, pendingRead.readAt);
+        }
+        const pendingDelivery = directDeliveryReceiptPendingRef.current;
+        if (pendingDelivery?.roomId === roomId) {
+          sendDirectDeliveryReceiptBroadcast(pendingDelivery.contactId, pendingDelivery.deliveredAt);
+        }
+      });
 
     directChatChannelRef.current = channel;
+    directChatChannelRoomRef.current = roomId;
 
     return () => {
-      if (directChatChannelRef.current === channel) directChatChannelRef.current = null;
+      if (directChatChannelRef.current === channel) {
+        directChatChannelRef.current = null;
+        directChatChannelRoomRef.current = "";
+      }
       supabase.removeChannel(channel);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -3045,7 +3172,7 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
     }
   }, [userProfile]);
 
-  async function loadMessages(contactId) {
+  async function loadMessages(contactId, options = {}) {
     if (!sessionUser || !contactId) {
       setMessages([]);
       return;
@@ -3058,7 +3185,7 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
         ...prev,
         [contactId]: {
           ...(prev[contactId] || {}),
-          unreadCount: 0,
+          unreadCount: options.preserveUnread ? (prev[contactId]?.unreadCount || 0) : 0,
           lastMessageTime: latest?.created_at || prev[contactId]?.lastMessageTime || 0,
           lastMessagePreview: latest ? chatPreview(latest) : prev[contactId]?.lastMessagePreview || "",
           lastMessageSenderId: latest?.sender_id || prev[contactId]?.lastMessageSenderId || "",
@@ -3073,6 +3200,37 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
     loadMessages(selectedContactId);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedContactId]);
+
+  useEffect(() => {
+    if (activeSection !== "chat" || !selectedContactId || !sessionUser?.id || !canAccessDirectChat) return undefined;
+    let cancelled = false;
+    let inFlight = false;
+    let timer = null;
+
+    const scheduleSync = () => {
+      timer = setTimeout(async () => {
+        if (cancelled) return;
+        const hidden = typeof document !== "undefined" && document.hidden;
+        const offline = typeof navigator !== "undefined" && navigator.onLine === false;
+        if (!hidden && !offline && !inFlight) {
+          inFlight = true;
+          try {
+            await loadMessages(selectedContactId, { preserveUnread: true });
+          } finally {
+            inFlight = false;
+          }
+        }
+        if (!cancelled) scheduleSync();
+      }, 60_000);
+    };
+
+    scheduleSync();
+    return () => {
+      cancelled = true;
+      if (timer) clearTimeout(timer);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeSection, selectedContactId, sessionUser?.id, canAccessDirectChat]);
 
   const chatAutoOpenKey = useMemo(() => {
     const topBatch = sortedChatBatches[0] || null;
@@ -6503,7 +6661,8 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
                               return true;
                             }}
                             availableChats={{ contacts: canAccessDirectChat ? chatContacts : [], batches: batches }}
-                            onMarkRead={() => markDirectMessagesRead(activeContact.id, sessionUser.id)}
+                            onMarkDelivered={() => markDirectChatDelivered(activeContact.id)}
+                            onMarkRead={() => markDirectChatRead(activeContact.id)}
                             onEditMessage={async (messageId, text) => {
                               const target = messages.find((m) => m.id === messageId);
                               if (!target) return false;
@@ -6611,7 +6770,7 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
                           setChatMobilePane("chat");
                           setSelectedBatchId("");
                           loadMessages(member.id);
-                          markDirectMessagesRead(member.id, sessionUser.id);
+                          markDirectChatRead(member.id);
                         } : null}
                         onUpdateBatchInfo={(updatedBatch) => {
                           setBatches((prev) => (prev || []).map((b) => (b.id === updatedBatch.id ? { ...b, ...updatedBatch } : b)));
@@ -6822,7 +6981,7 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
                               setSelectedContactId(nextContact.id);
                               setChatMobilePane("chat");
                               loadMessages(nextContact.id);
-                              markDirectMessagesRead(nextContact.id, sessionUser.id);
+                              markDirectChatRead(nextContact.id);
                             } else {
                               setSelectedContactId("");
                               setChatMobilePane("channels");
@@ -6978,7 +7137,7 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
                                   setSelectedContactId(contact.id);
                                   setChatMobilePane("chat");
                                   loadMessages(contact.id);
-                                  markDirectMessagesRead(contact.id, sessionUser.id);
+                                  markDirectChatRead(contact.id);
                                 }}
                                 className={`w-full flex items-center justify-between gap-3 p-3 rounded-2xl border transition-all cursor-pointer text-left ${
                                   isSelected
@@ -7309,7 +7468,7 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
                               setChatMobilePane("chat");
                               setSelectedBatchId("");
                               loadMessages(member.id);
-                              markDirectMessagesRead(member.id, sessionUser.id);
+                              markDirectChatRead(member.id);
                             } : null}
                             onUpdateBatchInfo={(updatedBatch) => {
                               setBatches((prev) => (prev || []).map((b) => (b.id === updatedBatch.id ? { ...b, ...updatedBatch } : b)));
@@ -7475,7 +7634,7 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
                                         setChatMobilePane("chat");
                                         selectSection("chat");
                                         loadMessages(contact.id);
-                                        markDirectMessagesRead(contact.id, sessionUser.id);
+                                        markDirectChatRead(contact.id);
                                       }}
                                       className="w-full flex items-center justify-between gap-2 p-2.5 rounded-2xl border border-gray-200/80 dark:border-slate-800 hover:border-emerald-500 hover:bg-emerald-50/20 dark:hover:bg-slate-800/60 text-left transition cursor-pointer group"
                                     >

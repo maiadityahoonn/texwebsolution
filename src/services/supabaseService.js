@@ -1069,9 +1069,34 @@ export async function markDirectMessagesRead(senderId, receiverId) {
     });
     const result = await response.json().catch(() => ({}));
     if (!response.ok) throw new Error(result.error || "Read receipt update failed");
-    return true;
+    return result || true;
   } catch (err) {
     console.warn('Error marking direct messages read:', err.message);
+    return false;
+  }
+}
+
+export async function markDirectMessagesDelivered(senderId) {
+  try {
+    if (!senderId) return false;
+    const token = await getAuthToken();
+    if (!token) return false;
+    const response = await fetch("/api/messages", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        type: "mark_delivered",
+        sender_id: senderId,
+      }),
+    });
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(result.error || "Delivery receipt update failed");
+    return result || true;
+  } catch (err) {
+    console.warn('Error marking direct messages delivered:', err.message);
     return false;
   }
 }

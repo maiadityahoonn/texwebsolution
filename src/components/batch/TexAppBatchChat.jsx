@@ -551,6 +551,7 @@ export default function TexAppBatchChat({
   onDeleteMessage = null,
   onForwardMessage = null,
   onEditMessage = null,
+  onMarkDelivered = null,
   onMarkRead = null,
   onTyping = null,
   typingUsers = [],
@@ -1458,6 +1459,8 @@ export default function TexAppBatchChat({
           message_ids: unDeliveredIds,
         }),
       })).catch(() => {});
+    } else if (contact?.id && onMarkDelivered) {
+      onMarkDelivered(contact.id);
     } else if (contact?.id) {
       getChatAuthHeaders().then((authHeaders) => fetch("/api/messages", {
         method: "POST",
@@ -1468,7 +1471,7 @@ export default function TexAppBatchChat({
         }),
       })).catch(() => {});
     }
-  }, [messages, currentUser?.id, mode, batch?.id, contact?.id, getChatAuthHeaders]);
+  }, [messages, currentUser?.id, mode, batch?.id, contact?.id, getChatAuthHeaders, onMarkDelivered]);
 
   const messageInfoId = messageInfoModal?.id;
 
