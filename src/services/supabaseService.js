@@ -937,6 +937,19 @@ export async function issueCertificate(certData) {
 // ==========================================
 export async function getMessages(userId, otherUserId) {
   try {
+    if (!userId || !otherUserId) return [];
+    const token = await getAuthToken();
+    if (token && typeof fetch === "function") {
+      const response = await fetch(`/api/messages?contact_id=${encodeURIComponent(otherUserId)}`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      const result = await response.json().catch(() => ({}));
+      if (response.ok) return result.messages || [];
+      console.warn('Messages API failed, trying direct fetch:', result.error || response.status);
+    }
+
     const { data, error } = await supabase
       .from('messages')
       .select('*')
@@ -990,13 +1003,22 @@ export async function getBatchMessageSummary(batchIds = []) {
 
 export async function sendRealtimeMessage(messageData) {
   try {
-    const { data, error } = await supabase
-      .from('messages')
-      .insert([messageData])
-      .select();
-
-    if (error) throw error;
-    return data?.[0] || null;
+    const token = await getAuthToken();
+    if (!token) return null;
+    const response = await fetch("/api/messages", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        type: "send_message",
+        ...messageData,
+      }),
+    });
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(result.error || "Message send failed");
+    return result.message || null;
   } catch (err) {
     console.error('Error sending message:', err.message);
     return null;

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect, useMemo, Fragment } from "react";
+import { useState, useRef, useEffect, useMemo, useCallback, Fragment } from "react";
 import {
   Send,
   Paperclip,
@@ -615,6 +615,12 @@ export default function TexAppBatchChat({
   const mediaRecorderRef = useRef(null);
   const mediaChunksRef = useRef([]);
   const previousMessageCountRef = useRef(messages?.length || 0);
+
+  const getChatAuthHeaders = useCallback(async () => {
+    const { data } = await supabase.auth.getSession();
+    const token = data?.session?.access_token;
+    return token ? { Authorization: `Bearer ${token}` } : {};
+  }, []);
 
   const showToast = (msg) => {
     setChatToast(msg);
@@ -1432,12 +1438,6 @@ export default function TexAppBatchChat({
     previousMessageCountRef.current = messages.length;
   }, [messages, currentUser?.id]);
 
-  useEffect(() => {
-    if (!onMarkRead || !messages?.length) return;
-    onMarkRead();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [messages.length, mode, contact?.id, batch?.id]);
-
   // Automatically acknowledge delivery for unread incoming messages
   useEffect(() => {
     if (!messages?.length || !currentUser?.id) return;
@@ -1449,46 +1449,50 @@ export default function TexAppBatchChat({
     const unDeliveredIds = undelivered.map((m) => m.id);
 
     if (mode === "batch" && batch?.id) {
-      fetch("/api/batch-workspace", {
+      getChatAuthHeaders().then((authHeaders) => fetch("/api/batch-workspace", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...authHeaders },
         body: JSON.stringify({
           type: "mark_delivered",
           batch_id: batch.id,
           message_ids: unDeliveredIds,
         }),
-      }).catch(() => {});
+      })).catch(() => {});
     } else if (contact?.id) {
-      fetch("/api/messages", {
+      getChatAuthHeaders().then((authHeaders) => fetch("/api/messages", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...authHeaders },
         body: JSON.stringify({
           type: "mark_delivered",
           sender_id: contact.id,
         }),
-      }).catch(() => {});
+      })).catch(() => {});
     }
-  }, [messages, currentUser?.id, mode, batch?.id, contact?.id]);
+  }, [messages, currentUser?.id, mode, batch?.id, contact?.id, getChatAuthHeaders]);
+
+  const messageInfoId = messageInfoModal?.id;
 
   // Live polling for Message Info receipts when modal is open
   useEffect(() => {
-    if (!messageInfoModal) return;
+    if (!messageInfoId) return;
     const interval = setInterval(async () => {
       try {
         if (mode === "batch" && batch?.id) {
-          const res = await fetch(`/api/batch-workspace?batch_id=${batch.id}`);
+          const authHeaders = await getChatAuthHeaders();
+          const res = await fetch(`/api/batch-workspace?batch_id=${batch.id}`, { headers: authHeaders });
           if (res.ok) {
             const data = await res.json();
-            const updatedMsg = (data.messages || []).find((m) => m.id === messageInfoModal.id);
+            const updatedMsg = (data.messages || []).find((m) => m.id === messageInfoId);
             if (updatedMsg) {
               setMessageInfoModal((prev) => (prev?.id === updatedMsg.id ? updatedMsg : prev));
             }
           }
         } else if (contact?.id) {
-          const res = await fetch(`/api/messages?contact_id=${contact.id}`);
+          const authHeaders = await getChatAuthHeaders();
+          const res = await fetch(`/api/messages?contact_id=${contact.id}`, { headers: authHeaders });
           if (res.ok) {
             const data = await res.json();
-            const updatedMsg = (data.messages || []).find((m) => m.id === messageInfoModal.id);
+            const updatedMsg = (data.messages || []).find((m) => m.id === messageInfoId);
             if (updatedMsg) {
               setMessageInfoModal((prev) => (prev?.id === updatedMsg.id ? updatedMsg : prev));
             }
@@ -1500,7 +1504,7 @@ export default function TexAppBatchChat({
     }, 2500);
 
     return () => clearInterval(interval);
-  }, [messageInfoModal?.id, mode, batch?.id, contact?.id]);
+  }, [messageInfoId, mode, batch?.id, contact?.id, getChatAuthHeaders]);
 
   // Group emoji reactions by parent message ID and separate from regular chat stream
   // Enforces 1 reaction per user per message (new reaction replaces old reaction)
@@ -1721,7 +1725,8 @@ export default function TexAppBatchChat({
     setShowAttachmentTray(false);
 
     if (onSendMessage) {
-      await onSendMessage(payload);
+      const sent = await onSendMessage(payload);
+      if (sent !== false && onTyping) onTyping(false);
     }
   };
 
@@ -1732,11 +1737,12 @@ export default function TexAppBatchChat({
     setReplyingTo(null);
 
     if (onSendMessage) {
-      await onSendMessage({
+      const sent = await onSendMessage({
         message: attachmentPayload.message || "",
         reply_to_id: replyingTo?.id || null,
         ...attachmentPayload,
       });
+      if (sent !== false && onTyping) onTyping(false);
     }
   };
 
@@ -5935,6 +5941,12 @@ export default function TexAppBatchChat({
       {messageInfoModal && (() => {
         const isGroup = mode === "batch" || Boolean(batch?.id);
         const receipts = messageInfoModal.receipts || {};
+        const infoSender =
+          messageInfoModal.sender ||
+          effectiveBatchMembers.find((m) => m.id === messageInfoModal.sender_id) ||
+          (messageInfoModal.sender_id === currentUser?.id ? currentProfile : null) ||
+          (messageInfoModal.sender_id === contact?.id ? contact : null) ||
+          {};
 
         const sentTime = formatFullDateTime(messageInfoModal.created_at);
         const defaultDeliveredTime = messageInfoModal.delivered_at ? formatFullDateTime(messageInfoModal.delivered_at) : null;
@@ -6002,9 +6014,9 @@ export default function TexAppBatchChat({
                   <div className="flex items-center justify-between gap-2 py-0.5 border-b border-gray-200/60 dark:border-slate-700/50 pb-2">
                     <span className="text-gray-500 dark:text-gray-400 font-medium">Sent by</span>
                     <span className="font-bold text-gray-900 dark:text-white truncate text-right">
-                      {messageInfoModal.sender?.full_name || "Member"}{" "}
+                      {infoSender.full_name || infoSender.email || "Member"}{" "}
                       <span className="text-[11px] font-semibold text-red-600 dark:text-red-400">
-                        ({ROLE_DISPLAY_NAMES[messageInfoModal.sender?.role] || messageInfoModal.sender?.role || "Member"})
+                        ({ROLE_DISPLAY_NAMES[infoSender.role] || infoSender.role || "Member"})
                       </span>
                     </span>
                   </div>

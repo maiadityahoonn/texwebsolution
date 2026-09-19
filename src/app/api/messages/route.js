@@ -17,7 +17,89 @@ async function getRequester(admin, request) {
   if (!token) return { error: NextResponse.json({ error: "Missing authorization token." }, { status: 401 }) };
   const { data: { user }, error } = await admin.auth.getUser(token);
   if (error || !user) return { error: NextResponse.json({ error: "Invalid authorization token." }, { status: 401 }) };
-  return { user };
+  const { data: profile } = await admin
+    .from("profiles")
+    .select("id, full_name, role, domain, batch_id, assigned_mentor_id, assigned_tl_id")
+    .eq("id", user.id)
+    .maybeSingle();
+  return { user, profile };
+}
+
+async function canDirectMessage(admin, senderProfile, receiverProfile) {
+  if (!senderProfile || !receiverProfile) return false;
+  if (senderProfile.id === receiverProfile.id) return true;
+  const senderRole = senderProfile.role || "";
+  const receiverRole = receiverProfile.role || "";
+  const elevatedRoles = new Set(["super_admin", "admin", "hr"]);
+
+  if (elevatedRoles.has(senderRole)) return true;
+  if (senderRole === "mentor") {
+    if (elevatedRoles.has(receiverRole)) return true;
+    if (!["team_leader", "intern"].includes(receiverRole)) return false;
+    const { data: batches } = await admin
+      .from("batches")
+      .select("id")
+      .eq("mentor_id", senderProfile.id);
+    const batchIds = new Set((batches || []).map((batch) => batch.id));
+    return Boolean(receiverProfile.batch_id && batchIds.has(receiverProfile.batch_id));
+  }
+  if (senderRole === "team_leader" || senderRole === "intern") {
+    if (elevatedRoles.has(receiverRole)) return true;
+    if (receiverRole !== "mentor") return false;
+    if (senderProfile.assigned_mentor_id && senderProfile.assigned_mentor_id === receiverProfile.id) return true;
+    if (!senderProfile.batch_id) return false;
+    const { data: batch } = await admin
+      .from("batches")
+      .select("mentor_id")
+      .eq("id", senderProfile.batch_id)
+      .maybeSingle();
+    return batch?.mentor_id === receiverProfile.id;
+  }
+  return false;
+}
+
+export async function GET(request) {
+  const limited = await checkApiRateLimit(`messages-get:${getClientIp(request)}`, { limit: 120, windowMs: 60_000 });
+  if (!limited.allowed) return NextResponse.json(rateLimitResponse(limited), { status: 429 });
+
+  const admin = getAdminClient();
+  if (!admin) return NextResponse.json({ error: "Server admin key is not configured." }, { status: 500 });
+  const requester = await getRequester(admin, request);
+  if (requester.error) return requester.error;
+
+  const searchParams = new URL(request.url).searchParams;
+  const contactId = cleanText(searchParams.get("contact_id"), 80);
+  if (!contactId) return NextResponse.json({ error: "Contact id is required." }, { status: 400 });
+  const { data: contactProfile } = await admin
+    .from("profiles")
+    .select("id, full_name, role, domain, batch_id, assigned_mentor_id, assigned_tl_id")
+    .eq("id", contactId)
+    .maybeSingle();
+  if (!contactProfile) return NextResponse.json({ error: "Contact profile not found." }, { status: 404 });
+  const allowed = await canDirectMessage(admin, requester.profile, contactProfile);
+  if (!allowed) {
+    return NextResponse.json({ error: "You cannot access this direct conversation." }, { status: 403 });
+  }
+
+  const conversationFilter = `and(sender_id.eq.${requester.user.id},receiver_id.eq.${contactId}),and(sender_id.eq.${contactId},receiver_id.eq.${requester.user.id})`;
+  let result = await admin
+    .from("messages")
+    .select("*, sender:profiles!messages_sender_id_fkey(id, full_name, role, email, avatar_url)")
+    .or(conversationFilter)
+    .order("created_at", { ascending: true })
+    .limit(300);
+
+  if (result.error) {
+    result = await admin
+      .from("messages")
+      .select("*")
+      .or(conversationFilter)
+      .order("created_at", { ascending: true })
+      .limit(300);
+  }
+
+  if (result.error) return NextResponse.json({ error: result.error.message || "Failed to load messages." }, { status: 400 });
+  return NextResponse.json({ messages: result.data || [] });
 }
 
 export async function POST(request) {
@@ -33,6 +115,41 @@ export async function POST(request) {
 
   const body = await request.json().catch(() => ({}));
   const type = cleanText(body.type, 40);
+
+  if (type === "send_message") {
+    const receiverId = cleanText(body.receiver_id, 80);
+    if (!receiverId) return NextResponse.json({ error: "Receiver id is required." }, { status: 400 });
+    const { data: receiverProfile } = await admin
+      .from("profiles")
+      .select("id, full_name, role, domain, batch_id, assigned_mentor_id, assigned_tl_id")
+      .eq("id", receiverId)
+      .maybeSingle();
+    if (!receiverProfile) return NextResponse.json({ error: "Receiver profile not found." }, { status: 404 });
+    const allowed = await canDirectMessage(admin, requester.profile, receiverProfile);
+    if (!allowed) {
+      return NextResponse.json({ error: "Direct chat is limited to permitted HR, Mentor, and Admin contacts for this role." }, { status: 403 });
+    }
+
+    const message = cleanText(body.message, 4000);
+    const hasAttachment = Boolean(body.attachment_url || body.attachment_name || body.attachment_type);
+    if (!message && !hasAttachment) return NextResponse.json({ error: "Message is required." }, { status: 400 });
+
+    const { data, error } = await admin
+      .from("messages")
+      .insert([{
+        sender_id: requester.user.id,
+        receiver_id: receiverId,
+        message,
+        attachment_url: body.attachment_url || null,
+        attachment_name: cleanText(body.attachment_name, 200) || null,
+        attachment_type: cleanText(body.attachment_type, 80) || null,
+        reply_to_id: body.reply_to_id || null,
+      }])
+      .select("*")
+      .single();
+    if (error) return NextResponse.json({ error: error.message || "Unable to send message." }, { status: 400 });
+    return NextResponse.json({ message: data });
+  }
 
   if (type === "mark_delivered") {
     const senderId = cleanText(body.sender_id, 80);

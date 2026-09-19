@@ -182,6 +182,10 @@ function chatPreview(item, fallback = "No messages yet") {
   return fallback;
 }
 
+function directChatRoomId(userId, contactId) {
+  return [userId, contactId].filter(Boolean).sort().join("--");
+}
+
 const DOMAIN_OPTIONS = [
   { value: "frontend_dev", label: "Frontend Development" },
   { value: "backend_dev", label: "Backend Development" },
@@ -476,6 +480,7 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
   const [workspaceOnlineUserIds, setWorkspaceOnlineUserIds] = useState([]);
   const [typingUsers, setTypingUsers] = useState([]);
   const typingChannelRef = useRef(null);
+  const directChatChannelRef = useRef(null);
   const typingStopTimerRef = useRef(null);
 
   // Resizable WhatsApp Chat Sidebar (Left Panel)
@@ -699,7 +704,7 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
   const canSeeOperations = isHrRole || isMentor || isTeamLeader || currentRole === "intern";
   const canUseMessages = true;
   const canUseAlerts = true;
-  const canAccessDirectChat = Boolean(isAdminRole || isHrRole || isMentor);
+  const canAccessDirectChat = Boolean(isAdminRole || isHrRole || isMentor || isTeamLeader || currentRole === "intern");
 
   useEffect(() => {
     if (batchWorkspaceTab === "activity" && !isAdminRole && !isHrRole) {
@@ -1011,10 +1016,44 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
 
   const memberDirectory = useMemo(() => {
     if (isAdminRole || isHrRole) return visibleProfiles;
-    if (isMentor) return visibleProfiles.filter((profile) => ["intern", "team_leader"].includes(profile.role) && ownedBatchIds.has(profile.batch_id));
+    if (isMentor) {
+      const roster = [];
+      const addProfile = (profile, batch = null, fallbackRole = "") => {
+        if (!profile?.id) return;
+        roster.push({
+          ...profile,
+          role: profile.role || fallbackRole || "member",
+          batch_id: profile.batch_id || batch?.id || "",
+          batch_name: batch?.name || profile.batch_name || "",
+          domain: batch?.domain || profile.domain || "",
+        });
+      };
+
+      ownedBatches.forEach((batch) => {
+        (batch.admins || []).forEach((adminProfile) => addProfile(adminProfile, batch, adminProfile.role || "admin"));
+        addProfile(batch.hr || profiles.find((profile) => profile.id === batch.hr_id), batch, "hr");
+        addProfile(batch.mentor || profiles.find((profile) => profile.id === batch.mentor_id), batch, "mentor");
+        addProfile(batch.tl || profiles.find((profile) => profile.id === batch.tl_id || profile.id === batch.team_leader_id), batch, "team_leader");
+        (batch.members || []).forEach((member) => addProfile(member, batch));
+        profiles
+          .filter(
+            (profile) =>
+              profile.batch_id === batch.id ||
+              profile.id === batch.hr_id ||
+              profile.id === batch.mentor_id ||
+              profile.id === batch.tl_id ||
+              profile.id === batch.team_leader_id ||
+              profile.id === batch.trainer_id
+          )
+          .forEach((profile) => addProfile(profile, batch));
+      });
+
+      if (userProfile?.id) addProfile(userProfile, ownedBatches.find((batch) => batch.id === userProfile.batch_id), "mentor");
+      return roster.filter((profile, index, list) => profile?.id && list.findIndex((item) => item.id === profile.id) === index);
+    }
     if (isTeamLeader) return [];
     return visibleProfiles;
-  }, [isAdminRole, isHrRole, isMentor, isTeamLeader, ownedBatchIds, visibleProfiles]);
+  }, [isAdminRole, isHrRole, isMentor, isTeamLeader, ownedBatches, profiles, userProfile, visibleProfiles]);
 
   const hrAssignableMentors = useMemo(() => {
     if (!isHrRole) return [];
@@ -1033,16 +1072,60 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
       .filter((profile, index, list) => profile?.id && list.findIndex((item) => item.id === profile.id) === index);
   }, [batches, isHrRole, ownedBatchIds, profiles]);
 
+  const directContactSource = useMemo(() => {
+    const candidates = [...(profiles || [])];
+    const pushProfile = (profile) => {
+      if (profile?.id) candidates.push(profile);
+    };
+
+    (batches || []).forEach((batch) => {
+      (batch.admins || []).forEach(pushProfile);
+      pushProfile(batch.hr);
+      pushProfile(batch.mentor);
+      pushProfile(batch.tl);
+      pushProfile(batch.team_leader);
+      pushProfile(batch.trainer);
+      (batch.members || []).forEach(pushProfile);
+    });
+
+    if (userProfile?.id) pushProfile(userProfile);
+
+    return candidates.filter((profile, index, list) => profile?.id && list.findIndex((item) => item.id === profile.id) === index);
+  }, [batches, profiles, userProfile]);
+
   const chatContacts = useMemo(() => {
     if (!sessionUser?.id || !userProfile || !canAccessDirectChat) return [];
-    const contactList = profiles.filter((p) => p?.id);
+    const contactList = directContactSource.filter((p) => {
+      if (!p?.id) return false;
+      if (isAdminRole || isHrRole) return true;
+      if (isMentor) {
+        if (p.id === sessionUser.id || p.id === userProfile.id) return true;
+        if (["super_admin", "admin", "hr"].includes(p.role)) return true;
+        return ["team_leader", "intern"].includes(p.role) && ownedBatchIds.has(p.batch_id);
+      }
+      if (isTeamLeader || currentRole === "intern") {
+        if (p.id === sessionUser.id || p.id === userProfile.id) return true;
+        if (["super_admin", "admin", "hr"].includes(p.role)) return true;
+        if (p.role === "mentor") {
+          return p.id === userProfile.assigned_mentor_id || ownedBatches.some((batch) => p.id === batch.mentor_id || p.id === batch.mentor?.id);
+        }
+        return false;
+      }
+      return p.id === sessionUser.id || p.id === userProfile.id;
+    });
     if (!contactList.some((p) => p.id === userProfile.id)) {
       contactList.unshift(userProfile);
     }
     return contactList.filter((p, index, list) => list.findIndex((item) => item.id === p.id) === index);
-  }, [sessionUser?.id, sessionUser?.email, userProfile, canAccessDirectChat, profiles]);
+  }, [sessionUser?.id, userProfile, canAccessDirectChat, directContactSource, isAdminRole, isHrRole, isMentor, isTeamLeader, currentRole, ownedBatchIds, ownedBatches]);
 
   const workspaceOnlineSet = useMemo(() => new Set(workspaceOnlineUserIds), [workspaceOnlineUserIds]);
+
+  const directChatStats = useMemo(() => {
+    const total = chatContacts.length;
+    const online = chatContacts.filter((contact) => workspaceOnlineSet.has(contact.id)).length;
+    return { total, online, offline: Math.max(0, total - online) };
+  }, [chatContacts, workspaceOnlineSet]);
 
   const getBatchAvatarUrl = (batch) => {
     if (typeof batch?.avatar_url === "string" && batch.avatar_url.trim()) return batch.avatar_url.trim();
@@ -1151,13 +1234,16 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
   // Sort contacts dynamically: Most recent message appears on top (WhatsApp style)
   const sortedChatContacts = useMemo(() => {
     return [...chatContacts].sort((a, b) => {
+      const timeA = chatTimestamp(directChatMeta[a.id]?.lastMessageTime);
+      const timeB = chatTimestamp(directChatMeta[b.id]?.lastMessageTime);
+      if (timeA !== timeB) return timeB - timeA;
+      const unreadA = directChatMeta[a.id]?.unreadCount || 0;
+      const unreadB = directChatMeta[b.id]?.unreadCount || 0;
+      if (unreadA !== unreadB) return unreadB - unreadA;
       const aIsSelf = a.id === sessionUser?.id || a.id === userProfile?.id || (a.email && a.email === userProfile?.email);
       const bIsSelf = b.id === sessionUser?.id || b.id === userProfile?.id || (b.email && b.email === userProfile?.email);
       if (aIsSelf) return -1;
       if (bIsSelf) return 1;
-      const timeA = chatTimestamp(directChatMeta[a.id]?.lastMessageTime);
-      const timeB = chatTimestamp(directChatMeta[b.id]?.lastMessageTime);
-      if (timeA !== timeB) return timeB - timeA;
       return (a.full_name || "").localeCompare(b.full_name || "");
     });
   }, [chatContacts, directChatMeta, sessionUser?.id, userProfile?.id, userProfile?.email]);
@@ -1175,6 +1261,13 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
   }, [sortedChatContacts, chatSearchQuery]);
 
   useEffect(() => {
+    if (!selectedContactId) return;
+    if (chatContacts.some((contact) => contact.id === selectedContactId)) return;
+    setSelectedContactId("");
+    setChatMobilePane("channels");
+  }, [chatContacts, selectedContactId]);
+
+  useEffect(() => {
     if (!sessionUser?.id || availableChatBatchIds.length === 0) {
       setBatchChatMeta({});
       return undefined;
@@ -1189,12 +1282,20 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
         const existing = nextMeta[item.batch_id];
         if (existing && chatTimestamp(existing.lastMessageTime) >= chatTimestamp(item.created_at)) return;
         nextMeta[item.batch_id] = {
+          ...(nextMeta[item.batch_id] || {}),
           lastMessageTime: item.created_at,
           lastMessagePreview: chatPreview(item),
           lastMessageSenderId: item.sender_id || "",
         };
       });
-      setBatchChatMeta(nextMeta);
+      setBatchChatMeta((prev) => {
+        const merged = { ...nextMeta };
+        Object.keys(prev || {}).forEach((batchId) => {
+          if (!merged[batchId]) merged[batchId] = prev[batchId];
+          else merged[batchId] = { ...merged[batchId], unreadCount: prev[batchId]?.unreadCount || 0 };
+        });
+        return merged;
+      });
     }
     loadBatchChatSummary();
     return () => {
@@ -1243,7 +1344,7 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
         email: profile.email,
         phone: profile.phone || "",
         role: profile.role,
-        domain: profile.domain,
+        domain: batch?.domain || profile.domain,
         status: profile.status || "active",
         batch_id: profile.batch_id || "",
         batch_name: batch?.name || profile.batch_name || "",
@@ -1291,19 +1392,39 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
 
   const selectedBatchMembers = useMemo(() => {
     if (!selectedBatch?.id) return [];
-    const members = profiles.filter((profile) =>
-      profile.batch_id === selectedBatch.id ||
-      selectedBatch.members?.some((member) => member.id === profile.id) ||
-      selectedBatch.hr_id === profile.id ||
-      selectedBatch.mentor_id === profile.id ||
-      selectedBatch.tl_id === profile.id ||
-      selectedBatch.team_leader_id === profile.id ||
-      selectedBatch.trainer_id === profile.id
-    );
+    const members = [];
+    const addProfile = (profile, fallbackRole = "") => {
+      if (!profile?.id) return;
+      members.push({
+        ...profile,
+        role: profile.role || fallbackRole || "member",
+        batch_id: profile.batch_id || selectedBatch.id,
+        batch_name: selectedBatch.name || profile.batch_name || "",
+        domain: selectedBatch.domain || profile.domain || "",
+      });
+    };
+
+    addProfile(selectedBatch.hr || profiles.find((profile) => profile.id === selectedBatch.hr_id), "hr");
+    (selectedBatch.admins || []).forEach((adminProfile) => addProfile(adminProfile, adminProfile.role || "admin"));
+    addProfile(selectedBatch.mentor || profiles.find((profile) => profile.id === selectedBatch.mentor_id), "mentor");
+    addProfile(selectedBatch.tl || profiles.find((profile) => profile.id === selectedBatch.tl_id || profile.id === selectedBatch.team_leader_id), "team_leader");
+    addProfile(selectedBatch.trainer || profiles.find((profile) => profile.id === selectedBatch.trainer_id), "trainer");
+    (selectedBatch.members || []).forEach((member) => addProfile(member));
+    profiles
+      .filter((profile) =>
+        profile.batch_id === selectedBatch.id ||
+        selectedBatch.members?.some((member) => member.id === profile.id) ||
+        selectedBatch.hr_id === profile.id ||
+        selectedBatch.mentor_id === profile.id ||
+        selectedBatch.tl_id === profile.id ||
+        selectedBatch.team_leader_id === profile.id ||
+        selectedBatch.trainer_id === profile.id
+      )
+      .forEach((profile) => addProfile(profile));
 
     // If current logged-in user is part of the batch workspace or is viewing this batch chat (Admin, HR, Mentor, TL, intern)
     if (userProfile?.id && !members.some((m) => m.id === userProfile.id)) {
-      members.push(userProfile);
+      addProfile(userProfile, userProfile.role);
     }
 
     return members
@@ -1777,6 +1898,13 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
     if (batchWorkspaceRequestRef.current === requestId || selectedBatch?.id === batchId) {
       setBatchWorkspaceData(data);
       setBatchWorkspaceBatchId(batchId);
+      setBatchChatMeta((prev) => ({
+        ...prev,
+        [batchId]: {
+          ...(prev[batchId] || {}),
+          unreadCount: 0,
+        },
+      }));
       setLoadingBatchWorkspaceId((current) => (current === batchId ? "" : current));
     }
     return data;
@@ -2542,7 +2670,7 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
           const item = payload.new || payload.old;
           if (item?.sender_id === sessionUser.id || item?.receiver_id === sessionUser.id) {
             rememberDirectChatActivity(item);
-            if (selectedContactId) loadMessages(selectedContactId);
+            if (payload.new) upsertOpenDirectMessage(payload.new);
             if (item?.receiver_id === sessionUser.id) setToast("New message received");
           }
         })
@@ -2584,7 +2712,7 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
         const item = payload.new || payload.old;
         if (item?.sender_id === sessionUser.id || item?.receiver_id === sessionUser.id) {
           rememberDirectChatActivity(item);
-          loadMessages(selectedContactId);
+          if (payload.new) upsertOpenDirectMessage(payload.new);
           if (item?.receiver_id === sessionUser.id) setToast("New message received");
         }
       })
@@ -2684,7 +2812,11 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
       setOnlineUserIds(entries.map((entry) => entry.user_id).filter(Boolean));
       setTypingUsers(
         entries
-          .filter((entry) => entry.typing && entry.user_id !== sessionUser.id)
+          .filter((entry) => {
+            if (!entry.typing || entry.user_id === sessionUser.id) return false;
+            const typingAt = new Date(entry.typing_at || entry.online_at || 0).getTime();
+            return typingAt && Date.now() - typingAt < 3000;
+          })
           .map((entry) => ({ id: entry.user_id, name: entry.name }))
       );
     };
@@ -2722,6 +2854,7 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
       user_id: sessionUser.id,
       name: userProfile?.full_name || "Member",
       typing: isTyping,
+      typing_at: isTyping ? new Date().toISOString() : null,
       online_at: new Date().toISOString(),
     });
     if (typingStopTimerRef.current) clearTimeout(typingStopTimerRef.current);
@@ -2732,15 +2865,21 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
 
   function rememberBatchChatActivity(item) {
     if (!item?.batch_id) return;
-    setBatchChatMeta((prev) => ({
-      ...prev,
-      [item.batch_id]: {
-        ...(prev[item.batch_id] || {}),
-        lastMessageTime: item.created_at || new Date().toISOString(),
-        lastMessagePreview: chatPreview(item),
-        lastMessageSenderId: item.sender_id || prev[item.batch_id]?.lastMessageSenderId || "",
-      },
-    }));
+    setBatchChatMeta((prev) => {
+      const existing = prev[item.batch_id] || {};
+      const isOpenBatch = activeSection === "chat" && selectedBatchId === item.batch_id;
+      const incomingUnread = item.sender_id !== sessionUser?.id && !isOpenBatch ? 1 : 0;
+      return {
+        ...prev,
+        [item.batch_id]: {
+          ...existing,
+          unreadCount: isOpenBatch ? 0 : (existing.unreadCount || 0) + incomingUnread,
+          lastMessageTime: item.created_at || new Date().toISOString(),
+          lastMessagePreview: chatPreview(item),
+          lastMessageSenderId: item.sender_id || existing.lastMessageSenderId || "",
+        },
+      };
+    });
   }
 
   function rememberDirectChatActivity(item) {
@@ -2749,12 +2888,13 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
     if (!otherId) return;
     setDirectChatMeta((prev) => {
       const existing = prev[otherId] || {};
-      const incomingUnread = item.receiver_id === sessionUser.id && selectedContactId !== otherId && !item.is_read ? 1 : 0;
+      const isOpenDirectChat = activeSection === "chat" && selectedContactId === otherId;
+      const incomingUnread = item.receiver_id === sessionUser.id && !isOpenDirectChat && !item.is_read ? 1 : 0;
       return {
         ...prev,
         [otherId]: {
           ...existing,
-          unreadCount: (existing.unreadCount || 0) + incomingUnread,
+          unreadCount: isOpenDirectChat ? 0 : (existing.unreadCount || 0) + incomingUnread,
           lastMessageTime: item.created_at || new Date().toISOString(),
           lastMessagePreview: chatPreview(item),
           lastMessageSenderId: item.sender_id,
@@ -2762,6 +2902,46 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
       };
     });
   }
+
+  function upsertOpenDirectMessage(item) {
+    if (!item?.id || !item?.sender_id || !item?.receiver_id || !sessionUser?.id || !selectedContactId) return;
+    const otherId = item.sender_id === sessionUser.id ? item.receiver_id : item.sender_id;
+    if (otherId !== selectedContactId) return;
+    setMessages((prev) => {
+      const list = prev || [];
+      const existingIndex = list.findIndex((message) => message.id === item.id);
+      const next = existingIndex >= 0
+        ? list.map((message) => (message.id === item.id ? { ...message, ...item } : message))
+        : [...list, item];
+      return next.sort((a, b) => new Date(a.created_at || 0).getTime() - new Date(b.created_at || 0).getTime());
+    });
+  }
+
+  useEffect(() => {
+    if (!sessionUser?.id || !selectedContactId) {
+      directChatChannelRef.current = null;
+      return undefined;
+    }
+
+    const roomId = directChatRoomId(sessionUser.id, selectedContactId);
+    const channel = supabase
+      .channel(`direct-chat-${roomId}`)
+      .on("broadcast", { event: "message" }, ({ payload }) => {
+        const item = payload?.message;
+        if (!item?.id || item.sender_id === sessionUser.id) return;
+        rememberDirectChatActivity(item);
+        upsertOpenDirectMessage(item);
+      })
+      .subscribe();
+
+    directChatChannelRef.current = channel;
+
+    return () => {
+      if (directChatChannelRef.current === channel) directChatChannelRef.current = null;
+      supabase.removeChannel(channel);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sessionUser?.id, selectedContactId]);
 
   useEffect(() => {
     if (!sessionUser) return undefined;
@@ -2895,11 +3075,73 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
   }, [selectedContactId]);
 
   useEffect(() => {
-    if (activeSection === "chat" && !selectedBatchId && !selectedContactId && availableChatBatches.length > 0) {
-      setSelectedBatchId(availableChatBatches[0].id);
+    if (activeSection !== "chat" || !selectedContactId || !sessionUser?.id) return undefined;
+    const interval = setInterval(() => {
+      loadMessages(selectedContactId);
+    }, 1500);
+    return () => clearInterval(interval);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeSection, selectedContactId, sessionUser?.id]);
+
+  const chatAutoOpenKey = useMemo(() => {
+    const topBatch = sortedChatBatches[0] || null;
+    const topContact = sortedChatContacts[0] || null;
+    return JSON.stringify({
+      batchId: topBatch?.id || "",
+      batchMessageTime: topBatch ? batchChatMeta[topBatch.id]?.lastMessageTime || "" : "",
+      batchNotificationTime: topBatch ? batchNotificationMeta[topBatch.id]?.lastMessageTime || "" : "",
+      batchUpdatedAt: topBatch?.updated_at || topBatch?.created_at || "",
+      batchUnread: topBatch ? batchChatMeta[topBatch.id]?.unreadCount || 0 : 0,
+      contactId: topContact?.id || "",
+      contactMessageTime: topContact ? directChatMeta[topContact.id]?.lastMessageTime || "" : "",
+      contactUnread: topContact ? directChatMeta[topContact.id]?.unreadCount || 0 : 0,
+    });
+  }, [sortedChatBatches, sortedChatContacts, batchChatMeta, batchNotificationMeta, directChatMeta]);
+
+  useEffect(() => {
+    if (activeSection !== "chat" || selectedBatchId || selectedContactId) return;
+
+    const topBatch = sortedChatBatches[0] || null;
+    const topContact = sortedChatContacts[0] || null;
+    const batchTime = topBatch
+      ? Math.max(
+        chatTimestamp(batchChatMeta[topBatch.id]?.lastMessageTime),
+        chatTimestamp(batchNotificationMeta[topBatch.id]?.lastMessageTime),
+        chatTimestamp(topBatch.updated_at || topBatch.created_at)
+      )
+      : 0;
+    const contactTime = topContact ? chatTimestamp(directChatMeta[topContact.id]?.lastMessageTime) : 0;
+    const batchUnread = topBatch ? (batchChatMeta[topBatch.id]?.unreadCount || 0) : 0;
+    const contactUnread = topContact ? (directChatMeta[topContact.id]?.unreadCount || 0) : 0;
+
+    if (topContact && (contactUnread > 0 || (!topBatch && contactTime) || (contactTime > batchTime && batchUnread === 0))) {
+      setChatChannelTab("direct");
+      setSelectedContactId(topContact.id);
+      setChatMobilePane("chat");
+      return;
+    }
+
+    if (topBatch) {
+      setChatChannelTab("batches");
+      setSelectedBatchId(topBatch.id);
+      setBatchChatMeta((prev) => ({
+        ...prev,
+        [topBatch.id]: {
+          ...(prev[topBatch.id] || {}),
+          unreadCount: 0,
+        },
+      }));
+      setChatMobilePane("chat");
+      return;
+    }
+
+    if (topContact) {
+      setChatChannelTab("direct");
+      setSelectedContactId(topContact.id);
+      setChatMobilePane("chat");
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeSection, selectedBatchId, selectedContactId, availableChatBatches]);
+  }, [activeSection, selectedBatchId, selectedContactId, chatAutoOpenKey]);
 
   async function handleSignIn(e) {
     e.preventDefault();
@@ -5340,7 +5582,7 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
             >
               {/* 1. Header Banner of the Card with Title + Contextual Actions (Shown for Chat channels view and all standard sections) */}
               {!(activeSection === "chat" && chatMobilePane === "chat") && (
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-3 pb-1 md:pb-3 md:border-b md:border-gray-100 md:dark:border-slate-800 shrink-0">
+                <div className={`flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-3 pb-1 md:pb-3 md:border-b md:border-gray-100 md:dark:border-slate-800 shrink-0 ${activeSection === "chat" ? "md:hidden" : ""}`}>
                   <div>
                     {/* Role & Department Badges */}
                     <div className="flex items-center gap-2 mb-2">
@@ -6201,7 +6443,7 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
                   <div className={`${chatMobilePane === "chat" ? "flex" : "hidden"} xl:flex h-full min-h-0 rounded-none sm:rounded-2xl xl:rounded-3xl overflow-hidden border-0 sm:border border-gray-200/80 dark:border-slate-800/80 flex-col relative shadow-none`}>
                     {selectedContactId && canAccessDirectChat ? (
                       (() => {
-                        const activeContact = profiles.find((p) => p.id === selectedContactId) || chatContacts.find((c) => c.id === selectedContactId);
+                        const activeContact = chatContacts.find((c) => c.id === selectedContactId);
                         if (!activeContact) {
                           return (
                             <div className="h-full flex items-center justify-center p-6 text-center text-gray-400 text-xs">
@@ -6223,7 +6465,7 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
                               setChatMobilePane("channels");
                             }}
                             onRefresh={() => loadMessages(activeContact.id)}
-                            onlineUserIds={onlineUserIds}
+                            onlineUserIds={workspaceOnlineUserIds}
                             typingUsers={typingUsers}
                             onTyping={publishTyping}
                             onSendMessage={async (payload) => {
@@ -6236,15 +6478,37 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
                                 attachment_type: payload.attachment_type || null,
                                 reply_to_id: payload.reply_to_id || null,
                               };
-                              const saved = await sendRealtimeMessage(msg);
-                              const newMsg = saved || {
+                              const tempId = `local-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+                              const tempMsg = {
                                 ...msg,
-                                id: `local-${Date.now()}`,
+                                id: tempId,
                                 created_at: new Date().toISOString(),
                                 sender: userProfile,
                               };
-                              setMessages((prev) => [...(prev || []), newMsg]);
+                              setMessages((prev) => [...(prev || []), tempMsg]);
+                              rememberDirectChatActivity(tempMsg);
+
+                              const saved = await sendRealtimeMessage(msg);
+                              if (!saved) {
+                                setToast("Message saved after refresh. Reopen chat if it does not appear.");
+                                return true;
+                              }
+
+                              const newMsg = { ...tempMsg, ...saved, sender: saved.sender || userProfile };
+                              setMessages((prev) => {
+                                const list = prev || [];
+                                const replaced = list.some((item) => item.id === tempId);
+                                const next = replaced
+                                  ? list.map((item) => (item.id === tempId ? newMsg : item))
+                                  : [...list.filter((item) => item.id !== newMsg.id), newMsg];
+                                return next.sort((a, b) => new Date(a.created_at || 0).getTime() - new Date(b.created_at || 0).getTime());
+                              });
                               rememberDirectChatActivity(newMsg);
+                              directChatChannelRef.current?.send({
+                                type: "broadcast",
+                                event: "message",
+                                payload: { message: newMsg },
+                              });
                               return true;
                             }}
                             availableChats={{ contacts: canAccessDirectChat ? chatContacts : [], batches: batches }}
@@ -6347,10 +6611,16 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
                         messages={activeBatchWorkspaceData.messages || []}
                         availableChats={{ contacts: canAccessDirectChat ? chatContacts : [], batches: batches }}
                         onOpenDirectChat={canAccessDirectChat ? (member) => {
+                          if (!chatContacts.some((contact) => contact.id === member?.id)) {
+                            setToast("Direct chat is limited to HR, Mentor, and Admin for this role.");
+                            return;
+                          }
                           setActiveSection("chat");
                           setSelectedContactId(member.id);
                           setChatMobilePane("chat");
                           setSelectedBatchId("");
+                          loadMessages(member.id);
+                          markDirectMessagesRead(member.id, sessionUser.id);
                         } : null}
                         onUpdateBatchInfo={(updatedBatch) => {
                           setBatches((prev) => (prev || []).map((b) => (b.id === updatedBatch.id ? { ...b, ...updatedBatch } : b)));
@@ -6360,7 +6630,7 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
                           setChatMobilePane("channels");
                         }}
                         onRefresh={() => loadBatchWorkspaceData(selectedBatch.id)}
-                        onlineUserIds={onlineUserIds}
+                        onlineUserIds={workspaceOnlineUserIds}
                         typingUsers={typingUsers}
                         onTyping={publishTyping}
                         onSendMessage={async (payload) => {
@@ -6508,7 +6778,7 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
                         Channels & Contacts
                       </span>
                       <span className="text-[11px] font-medium text-gray-500 dark:text-slate-400">
-                        {chatChannelTab === "batches" ? `${availableChatBatches.length} Batches` : `${chatContacts.length} Direct`}
+                        {chatChannelTab === "batches" ? `${availableChatBatches.length} Batches` : `${directChatStats.total} Direct`}
                       </span>
                     </div>
 
@@ -6517,12 +6787,27 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
                       <button
                         type="button"
                         onClick={() => {
+                          const nextBatch = sortedChatBatches[0] || null;
                           setChatChannelTab("batches");
                           setSelectedContactId("");
-                          setChatMobilePane("channels");
+                          if (nextBatch?.id) {
+                            setSelectedBatchId(nextBatch.id);
+                            setBatchChatMeta((prev) => ({
+                              ...prev,
+                              [nextBatch.id]: {
+                                ...(prev[nextBatch.id] || {}),
+                                unreadCount: 0,
+                              },
+                            }));
+                            setChatMobilePane("chat");
+                            loadBatchWorkspaceData(nextBatch.id);
+                          } else {
+                            setSelectedBatchId("");
+                            setChatMobilePane("channels");
+                          }
                         }}
                         className={`py-2 px-3 rounded-xl transition flex items-center justify-center gap-1.5 cursor-pointer ${
-                          !selectedContactId && chatChannelTab === "batches"
+                          chatChannelTab === "batches"
                             ? "bg-white dark:bg-slate-700 text-red-600 dark:text-red-400 shadow-2xs font-extrabold"
                             : "text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white"
                         }`}
@@ -6539,20 +6824,30 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
                         <button
                           type="button"
                           onClick={() => {
+                            const nextContact = sortedChatContacts[0] || null;
                             setChatChannelTab("direct");
-                            setChatMobilePane("channels");
+                            setSelectedBatchId("");
+                            if (nextContact?.id) {
+                              setSelectedContactId(nextContact.id);
+                              setChatMobilePane("chat");
+                              loadMessages(nextContact.id);
+                              markDirectMessagesRead(nextContact.id, sessionUser.id);
+                            } else {
+                              setSelectedContactId("");
+                              setChatMobilePane("channels");
+                            }
                           }}
                           className={`py-2 px-3 rounded-xl transition flex items-center justify-center gap-1.5 cursor-pointer ${
-                            selectedContactId || chatChannelTab === "direct"
+                            chatChannelTab === "direct"
                               ? "bg-white dark:bg-slate-700 text-red-600 dark:text-red-400 shadow-2xs font-extrabold"
                               : "text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white"
                           }`}
                         >
                           <Users className="w-4 h-4" />
                           <span>Direct</span>
-                          {chatContacts.length > 0 && (
+                          {directChatStats.total > 0 && (
                             <span className="text-[10px] px-1.5 py-0.2 rounded-full font-mono bg-black/5 dark:bg-white/10">
-                              {chatContacts.length}
+                              {directChatStats.total}
                             </span>
                           )}
                         </button>
@@ -6571,6 +6866,23 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
                       />
                     </div>
 
+                    {chatChannelTab === "direct" && canAccessDirectChat && (
+                      <div className="grid grid-cols-3 gap-1.5 text-[10px] font-bold shrink-0">
+                        <div className="rounded-xl border border-gray-200/80 dark:border-slate-800 bg-white/60 dark:bg-slate-900/30 px-2 py-1.5 text-center">
+                          <div className="text-gray-400">Total</div>
+                          <div className="text-gray-900 dark:text-white">{directChatStats.total}</div>
+                        </div>
+                        <div className="rounded-xl border border-emerald-200/80 dark:border-emerald-900/50 bg-emerald-50/60 dark:bg-emerald-950/20 px-2 py-1.5 text-center">
+                          <div className="text-emerald-600 dark:text-emerald-400">Online</div>
+                          <div className="text-emerald-700 dark:text-emerald-300">{directChatStats.online}</div>
+                        </div>
+                        <div className="rounded-xl border border-gray-200/80 dark:border-slate-800 bg-white/60 dark:bg-slate-900/30 px-2 py-1.5 text-center">
+                          <div className="text-gray-400">Offline</div>
+                          <div className="text-gray-700 dark:text-slate-300">{directChatStats.offline}</div>
+                        </div>
+                      </div>
+                    )}
+
                     {/* Channel List */}
                     <div className="space-y-2 text-xs overflow-y-auto pr-1 flex-1">
                       {chatChannelTab === "batches" ? (
@@ -6583,7 +6895,7 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
                             const notificationMeta = batchNotificationMeta[b.id] || {};
                             const useNotificationPreview = chatTimestamp(notificationMeta.lastMessageTime) > chatTimestamp(messageMeta.lastMessageTime);
                             const latestPreview = useNotificationPreview ? notificationMeta.lastMessagePreview : messageMeta.lastMessagePreview;
-                            const unreadBadge = notificationMeta.unreadCount || 0;
+                            const unreadBadge = messageMeta.unreadCount || 0;
                             const avatarUrl = getBatchAvatarUrl(b);
                             const onlineSummary = getBatchOnlineSummary(b);
                             return (
@@ -6591,9 +6903,18 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
                                 key={b.id}
                                 type="button"
                                 onClick={() => {
-                                  setSelectedBatchId(b.id);
+                                  setChatChannelTab("batches");
                                   setSelectedContactId("");
+                                  setSelectedBatchId(b.id);
+                                  setBatchChatMeta((prev) => ({
+                                    ...prev,
+                                    [b.id]: {
+                                      ...(prev[b.id] || {}),
+                                      unreadCount: 0,
+                                    },
+                                  }));
                                   setChatMobilePane("chat");
+                                  loadBatchWorkspaceData(b.id);
                                 }}
                                 className={`w-full flex items-center justify-between gap-3 p-3 rounded-2xl border transition-all cursor-pointer text-left ${
                                   isSelected
@@ -6663,13 +6984,10 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
                                 key={contact.id}
                                 type="button"
                                 onClick={() => {
-                                  if (isSelf) {
-                                    setToast("This is your workspace profile.");
-                                    return;
-                                  }
                                   setSelectedContactId(contact.id);
                                   setChatMobilePane("chat");
                                   loadMessages(contact.id);
+                                  markDirectMessagesRead(contact.id, sessionUser.id);
                                 }}
                                 className={`w-full flex items-center justify-between gap-3 p-3 rounded-2xl border transition-all cursor-pointer text-left ${
                                   isSelected
@@ -6991,16 +7309,22 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
                         messages={activeBatchWorkspaceData.messages || []}
                             availableChats={{ contacts: canAccessDirectChat ? chatContacts : [], batches: batches }}
                             onOpenDirectChat={canAccessDirectChat ? (member) => {
+                              if (!chatContacts.some((contact) => contact.id === member?.id)) {
+                                setToast("Direct chat is limited to HR, Mentor, and Admin for this role.");
+                                return;
+                              }
                               setActiveSection("chat");
                               setSelectedContactId(member.id);
                               setChatMobilePane("chat");
                               setSelectedBatchId("");
+                              loadMessages(member.id);
+                              markDirectMessagesRead(member.id, sessionUser.id);
                             } : null}
                             onUpdateBatchInfo={(updatedBatch) => {
                               setBatches((prev) => (prev || []).map((b) => (b.id === updatedBatch.id ? { ...b, ...updatedBatch } : b)));
                             }}
                             onRefresh={() => loadBatchWorkspaceData(selectedBatch.id)}
-                            onlineUserIds={onlineUserIds}
+                            onlineUserIds={workspaceOnlineUserIds}
                             typingUsers={typingUsers}
                             onTyping={publishTyping}
                             onSendMessage={async (payload) => {
@@ -7132,34 +7456,61 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
                               <h3 className="text-sm font-black text-gray-900 dark:text-white mb-0.5">Personal Chat Channels</h3>
                               <p className="text-[11px] text-gray-500 dark:text-slate-400">Live direct contacts with real profile status.</p>
                             </div>
+                            <div className="grid grid-cols-3 gap-1.5 text-[10px] font-bold">
+                              <div className="rounded-xl border border-gray-200/80 dark:border-slate-800 bg-white/60 dark:bg-slate-900/30 px-2 py-1.5 text-center">
+                                <div className="text-gray-400">Total</div>
+                                <div className="text-gray-900 dark:text-white">{directChatStats.total}</div>
+                              </div>
+                              <div className="rounded-xl border border-emerald-200/80 dark:border-emerald-900/50 bg-emerald-50/60 dark:bg-emerald-950/20 px-2 py-1.5 text-center">
+                                <div className="text-emerald-600 dark:text-emerald-400">Online</div>
+                                <div className="text-emerald-700 dark:text-emerald-300">{directChatStats.online}</div>
+                              </div>
+                              <div className="rounded-xl border border-gray-200/80 dark:border-slate-800 bg-white/60 dark:bg-slate-900/30 px-2 py-1.5 text-center">
+                                <div className="text-gray-400">Offline</div>
+                                <div className="text-gray-700 dark:text-slate-300">{directChatStats.offline}</div>
+                              </div>
+                            </div>
                             <div className="space-y-2 text-xs overflow-y-auto pr-1 flex-1">
                               {sortedChatContacts.length === 0 ? (
                                 <div className="text-center py-6 text-xs text-gray-400">No permitted direct contacts.</div>
                               ) : (
-                                sortedChatContacts.map((contact) => (
-                                  <button
-                                    key={contact.id}
-                                    onClick={() => {
-                                      setSelectedContactId(contact.id);
-                                      setChatMobilePane("chat");
-                                      selectSection("chat");
-                                    }}
-                                    className="w-full flex items-center justify-between gap-2 p-2.5 rounded-2xl border border-gray-200/80 dark:border-slate-800 hover:border-emerald-500 hover:bg-emerald-50/20 dark:hover:bg-slate-800/60 text-left transition cursor-pointer group"
-                                  >
-                                    <div className="flex items-center gap-2.5 min-w-0">
-                                      <div className="w-8 h-8 rounded-full bg-emerald-600 text-white font-black text-xs flex items-center justify-center shrink-0">
-                                        {contact.full_name?.charAt(0) || "U"}
+                                sortedChatContacts.map((contact) => {
+                                  const isOnline = workspaceOnlineSet.has(contact.id);
+                                  return (
+                                    <button
+                                      key={contact.id}
+                                      onClick={() => {
+                                        setSelectedContactId(contact.id);
+                                        setChatMobilePane("chat");
+                                        selectSection("chat");
+                                        loadMessages(contact.id);
+                                        markDirectMessagesRead(contact.id, sessionUser.id);
+                                      }}
+                                      className="w-full flex items-center justify-between gap-2 p-2.5 rounded-2xl border border-gray-200/80 dark:border-slate-800 hover:border-emerald-500 hover:bg-emerald-50/20 dark:hover:bg-slate-800/60 text-left transition cursor-pointer group"
+                                    >
+                                      <div className="flex items-center gap-2.5 min-w-0">
+                                        <div className="relative shrink-0">
+                                          <div className="w-8 h-8 rounded-full bg-emerald-600 text-white font-black text-xs flex items-center justify-center">
+                                            {contact.full_name?.charAt(0) || "U"}
+                                          </div>
+                                          <span className={`absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full ring-2 ring-white dark:ring-slate-900 ${isOnline ? "bg-emerald-500" : "bg-gray-300 dark:bg-slate-600"}`} />
+                                        </div>
+                                        <div className="min-w-0">
+                                          <div className="font-bold text-xs truncate group-hover:text-emerald-600 transition-colors">{contact.full_name}</div>
+                                          <div className="text-[10px] text-gray-400 truncate">{contact.email}</div>
+                                        </div>
                                       </div>
-                                      <div className="min-w-0">
-                                        <div className="font-bold text-xs truncate group-hover:text-emerald-600 transition-colors">{contact.full_name}</div>
-                                        <div className="text-[10px] text-gray-400 truncate">{contact.email}</div>
+                                      <div className="flex flex-col items-end gap-1 shrink-0">
+                                        <span className="text-[10px] px-2 py-0.5 rounded-full border font-semibold text-gray-500 dark:text-slate-400">
+                                          {ROLE_LABELS[contact.role] || contact.role}
+                                        </span>
+                                        <span className={`text-[9px] font-bold ${isOnline ? "text-emerald-600 dark:text-emerald-400" : "text-gray-400"}`}>
+                                          {isOnline ? "Online" : "Offline"}
+                                        </span>
                                       </div>
-                                    </div>
-                                    <span className="text-[10px] px-2 py-0.5 rounded-full border font-semibold text-gray-500 dark:text-slate-400 shrink-0">
-                                      {ROLE_LABELS[contact.role] || contact.role}
-                                    </span>
-                                  </button>
-                                ))
+                                    </button>
+                                  );
+                                })
                               )}
                             </div>
                           </div>

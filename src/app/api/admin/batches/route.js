@@ -98,6 +98,7 @@ export async function GET(request) {
   const profileFilters = [];
   if (linkedProfileIds.length) profileFilters.push(`id.in.(${linkedProfileIds.join(",")})`);
   if (batchIds.length) profileFilters.push(`batch_id.in.(${batchIds.join(",")})`);
+  profileFilters.push("role.in.(super_admin,admin)");
 
   let profiles = [];
   if (profileFilters.length) {
@@ -112,6 +113,7 @@ export async function GET(request) {
   }
 
   const byId = new Map(profiles.map((profile) => [profile.id, profile]));
+  const adminProfiles = profiles.filter((profile) => ["super_admin", "admin"].includes(profile.role));
   const enriched = (batches || []).map((batch) => {
     const batchProfiles = profiles.filter((profile) => profile.batch_id === batch.id);
     const mentor = byId.get(batch.mentor_id) || batchProfiles.find((profile) => profile.role === "mentor") || null;
@@ -121,6 +123,7 @@ export async function GET(request) {
       hr: publicProfile(byId.get(batch.hr_id)),
       mentor: publicProfile(mentor),
       tl: publicProfile(tl),
+      admins: adminProfiles.map(publicProfile),
       members: batchProfiles.map(publicProfile),
     };
   });
