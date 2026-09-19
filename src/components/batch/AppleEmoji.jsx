@@ -50,6 +50,7 @@ export function getAppleEmojiImgHtml(emoji, size = 20) {
 
 export function getPlainTextFromEditor(el) {
   if (!el) return "";
+  if (typeof el.value === "string") return el.value;
   let text = "";
   for (const node of el.childNodes) {
     if (node.nodeType === Node.TEXT_NODE) {

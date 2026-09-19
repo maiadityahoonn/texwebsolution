@@ -485,6 +485,7 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
   const directChatChannelRoomRef = useRef("");
   const directReadReceiptPendingRef = useRef(null);
   const directDeliveryReceiptPendingRef = useRef(null);
+  const chatMobileHistoryGuardRef = useRef(false);
   const typingStopTimerRef = useRef(null);
 
   // Resizable WhatsApp Chat Sidebar (Left Panel)
@@ -3200,6 +3201,29 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
     loadMessages(selectedContactId);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedContactId]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return undefined;
+    const isMobileChatPane = activeSection === "chat" && chatMobilePane === "chat";
+    if (!isMobileChatPane) {
+      chatMobileHistoryGuardRef.current = false;
+      return undefined;
+    }
+    if (!chatMobileHistoryGuardRef.current) {
+      window.history.pushState({ texwebChatPane: true }, "", window.location.href);
+      chatMobileHistoryGuardRef.current = true;
+    }
+    const handlePopState = () => {
+      if (chatMobileHistoryGuardRef.current) {
+        chatMobileHistoryGuardRef.current = false;
+        setSelectedContactId("");
+        setSelectedBatchId("");
+        setChatMobilePane("channels");
+      }
+    };
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, [activeSection, chatMobilePane]);
 
   useEffect(() => {
     if (activeSection !== "chat" || !selectedContactId || !sessionUser?.id || !canAccessDirectChat) return undefined;
@@ -6610,6 +6634,10 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
                             batchMeetings={meetings}
                             messages={messages}
                             onBack={() => {
+                              if (typeof window !== "undefined" && chatMobileHistoryGuardRef.current) {
+                                window.history.back();
+                                return;
+                              }
                               setSelectedContactId("");
                               setChatMobilePane("channels");
                             }}
@@ -6776,6 +6804,10 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
                           setBatches((prev) => (prev || []).map((b) => (b.id === updatedBatch.id ? { ...b, ...updatedBatch } : b)));
                         }}
                         onBack={() => {
+                          if (typeof window !== "undefined" && chatMobileHistoryGuardRef.current) {
+                            window.history.back();
+                            return;
+                          }
                           setSelectedBatchId("");
                           setChatMobilePane("channels");
                         }}

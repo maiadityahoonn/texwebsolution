@@ -1162,10 +1162,25 @@ export default function TexAppBatchChat({
 
   const setComposerText = (text) => {
     setInputText(text || "");
-    if (textareaRef.current) {
-      textareaRef.current.innerText = text || "";
-      textareaRef.current.focus();
+    [textareaRef.current, mobileTextareaRef.current].forEach((el) => {
+      if (!el) return;
+      if (typeof el.value === "string") {
+        el.value = text || "";
+      } else {
+        el.innerText = text || "";
+      }
+    });
+    const activeEl = getActiveComposerElement();
+    if (activeEl) {
+      activeEl.focus();
     }
+  };
+
+  const getActiveComposerElement = () => {
+    if (typeof window !== "undefined" && window.matchMedia("(max-width: 639px)").matches) {
+      return mobileTextareaRef.current || textareaRef.current;
+    }
+    return textareaRef.current || mobileTextareaRef.current;
   };
 
   // Smart floating dropdown position: anchored cleanly without being clipped or covered by header
@@ -1362,6 +1377,7 @@ export default function TexAppBatchChat({
   // References
   const messagesEndRef = useRef(null);
   const textareaRef = useRef(null);
+  const mobileTextareaRef = useRef(null);
   const fileInputRef = useRef(null);
   const cameraInputRef = useRef(null);
   const docInputRef = useRef(null);
@@ -1608,12 +1624,16 @@ export default function TexAppBatchChat({
   // Insert mention into input
   const handleSelectMention = (member) => {
     if (mentionIndex === -1) return;
-    const el = textareaRef.current;
+    const el = getActiveComposerElement();
     if (el) {
       const currentText = getPlainTextFromEditor(el);
       const before = currentText.slice(0, mentionIndex);
       const updated = `${before}@${member.full_name} `;
-      el.innerText = updated;
+      if (typeof el.value === "string") {
+        el.value = updated;
+      } else {
+        el.innerText = updated;
+      }
       setInputText(updated);
       el.focus();
     } else {
@@ -1626,7 +1646,7 @@ export default function TexAppBatchChat({
 
   // ContentEditable Input Handler
   const handleContentEditableInput = () => {
-    const el = textareaRef.current;
+    const el = getActiveComposerElement();
     if (!el) return;
     const text = getPlainTextFromEditor(el);
     setInputText(text);
@@ -1656,7 +1676,7 @@ export default function TexAppBatchChat({
     const text = e.clipboardData?.getData("text/plain") || "";
     if (!text) return;
 
-    const el = textareaRef.current;
+    const el = getActiveComposerElement();
     if (!el) return;
 
     const sel = window.getSelection();
@@ -1697,7 +1717,8 @@ export default function TexAppBatchChat({
   // Send text message
   const handleSend = async (e) => {
     e?.preventDefault();
-    const text = (textareaRef.current ? getPlainTextFromEditor(textareaRef.current) : inputText).trim();
+    const composerEl = getActiveComposerElement();
+    const text = (composerEl ? getPlainTextFromEditor(composerEl) : inputText).trim();
     if (!text && !uploadingFile) return;
 
     if (editingMessage) {
@@ -1718,9 +1739,14 @@ export default function TexAppBatchChat({
       reference_id: null,
     };
 
-    if (textareaRef.current) {
-      textareaRef.current.innerHTML = "";
-    }
+    [textareaRef.current, mobileTextareaRef.current].forEach((el) => {
+      if (!el) return;
+      if (typeof el.value === "string") {
+        el.value = "";
+      } else {
+        el.innerHTML = "";
+      }
+    });
     setInputText("");
     if (onTyping) onTyping(false);
     setReplyingTo(null);
@@ -2172,13 +2198,27 @@ export default function TexAppBatchChat({
 
   // Quick Emoji Click from picker (inserts Apple Emoji image into editor)
   const handleInsertEmoji = (emoji) => {
-    const el = textareaRef.current;
+    const el = getActiveComposerElement();
     if (!el) {
       setInputText((prev) => prev + emoji);
       return;
     }
 
     el.focus();
+    if (typeof el.value === "string") {
+      const start = el.selectionStart ?? el.value.length;
+      const end = el.selectionEnd ?? start;
+      const next = `${el.value.slice(0, start)}${emoji}${el.value.slice(end)}`;
+      el.value = next;
+      setInputText(next);
+      requestAnimationFrame(() => {
+        el.focus();
+        const pos = start + emoji.length;
+        el.setSelectionRange(pos, pos);
+      });
+      return;
+    }
+
     const url = getAppleEmojiUrl(emoji);
     const sel = window.getSelection();
     let range = null;
@@ -2688,7 +2728,7 @@ export default function TexAppBatchChat({
                 onClick={() => {
                   setReplyingTo(msg);
                   closeDropdown();
-                  textareaRef.current?.focus();
+                  getActiveComposerElement()?.focus();
                 }}
                 className="w-full flex items-center gap-3 px-3 py-2 rounded-xl hover:text-red-600 dark:hover:text-red-400 transition text-left cursor-pointer text-xs sm:text-sm font-semibold text-gray-800 dark:text-gray-100"
               >
@@ -4431,6 +4471,23 @@ export default function TexAppBatchChat({
                 </button>
 
                 {/* Message Text Input (WhatsApp Style ContentEditable with Apple Emojis) */}
+                <textarea
+                  ref={mobileTextareaRef}
+                  value={inputText}
+                  rows={1}
+                  placeholder="Type a message"
+                  onChange={handleTextChange}
+                  onInput={(e) => {
+                    if (onTyping) onTyping(Boolean(e.currentTarget.value.trim()));
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && !e.shiftKey) {
+                      e.preventDefault();
+                      handleSend();
+                    }
+                  }}
+                  className="chat-composer-input sm:hidden flex-1 resize-none !bg-transparent !border-none outline-none focus:outline-none focus:ring-0 !shadow-none text-sm text-gray-900 dark:text-[#f4ead2] px-2 py-1.5 max-h-28 min-h-[28px] overflow-y-auto leading-relaxed placeholder:text-gray-400 dark:placeholder:text-slate-500"
+                />
                 <div
                   ref={textareaRef}
                   contentEditable
@@ -4445,7 +4502,7 @@ export default function TexAppBatchChat({
                     }
                   }}
                   style={{ background: "transparent", backgroundColor: "transparent" }}
-                  className="chat-composer-input flex-1 !bg-transparent !border-none outline-none focus:outline-none focus:ring-0 !shadow-none text-xs sm:text-sm text-gray-900 dark:text-[#f4ead2] px-2 py-1.5 max-h-32 min-h-[24px] overflow-y-auto leading-relaxed whitespace-pre-wrap break-words cursor-text"
+                  className="chat-composer-input hidden sm:block flex-1 !bg-transparent !border-none outline-none focus:outline-none focus:ring-0 !shadow-none text-xs sm:text-sm text-gray-900 dark:text-[#f4ead2] px-2 py-1.5 max-h-32 min-h-[24px] overflow-y-auto leading-relaxed whitespace-pre-wrap break-words cursor-text"
                 />
 
                 {/* Circular send / mic action button */}
