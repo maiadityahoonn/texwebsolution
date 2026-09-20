@@ -484,6 +484,7 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
   const [batchEscalationModalOpen, setBatchEscalationModalOpen] = useState(false);
   const [batchEscalationForm, setBatchEscalationForm] = useState({ batch_id: "", assigned_to: "", issue: "", category: "general", priority: "medium", description: "", related_member_id: "", related_task_id: "" });
   const [escalationResolutionModal, setEscalationResolutionModal] = useState(null);
+  const [escalationResolutionText, setEscalationResolutionText] = useState("");
   const [batchTransferForm, setBatchTransferForm] = useState({ member_id: "", to_batch_id: "", note: "" });
 
   // Batch Announcement Attachments & Pagination
@@ -4941,6 +4942,7 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
     });
     setAssignLeadsModal(batch);
   }
+  const openAssignLeadsModal = openAssignLeads;
 
   async function handleAssignBatchLeads(e) {
     e.preventDefault();

@@ -810,7 +810,7 @@ export default function TexAppBatchChat({
         localStorage.setItem("texweb_archived_chats", JSON.stringify(next));
         setIsChatArchived(!isChatArchived);
         window.dispatchEvent(new Event("texweb_draft_updated"));
-        setToast(isChatArchived ? "Chat unarchived" : "Chat archived");
+        showToast(isChatArchived ? "Chat unarchived" : "Chat archived");
       }
     } catch {}
   };
@@ -841,7 +841,7 @@ export default function TexAppBatchChat({
         setActiveChatLabel(labelId || null);
         window.dispatchEvent(new Event("texweb_draft_updated"));
         setShowLabelPickerModal(false);
-        setToast(labelId ? `Chat labeled as ${labelId}` : "Chat label removed");
+        showToast(labelId ? `Chat labeled as ${labelId}` : "Chat label removed");
         if (openedFromChatOptions) {
           setOpenedFromChatOptions(false);
           setShowChatOptionsDropdown(true);
@@ -871,7 +871,7 @@ export default function TexAppBatchChat({
         localStorage.setItem("texweb_blocked_contacts", JSON.stringify(next));
         setIsContactBlocked(!isContactBlocked);
         window.dispatchEvent(new Event("texweb_draft_updated"));
-        setToast(isContactBlocked ? `Unblocked ${contact.full_name || "contact"}` : `Blocked ${contact.full_name || "contact"}`);
+        showToast(isContactBlocked ? `Unblocked ${contact.full_name || "contact"}` : `Blocked ${contact.full_name || "contact"}`);
       }
     } catch {}
   };
@@ -902,7 +902,7 @@ export default function TexAppBatchChat({
         setDisappearingTimer(timer);
         window.dispatchEvent(new Event("texweb_draft_updated"));
         setShowDisappearingModal(false);
-        setToast(timer === "off" ? "Disappearing messages turned off" : `Messages will disappear after ${timer === "24h" ? "24 hours" : timer === "7d" ? "7 days" : "90 days"}`);
+        showToast(timer === "off" ? "Disappearing messages turned off" : `Messages will disappear after ${timer === "24h" ? "24 hours" : timer === "7d" ? "7 days" : "90 days"}`);
         if (openedFromChatOptions) {
           setOpenedFromChatOptions(false);
           setShowChatOptionsDropdown(true);
@@ -1725,6 +1725,7 @@ export default function TexAppBatchChat({
   const [selectedForwardTargets, setSelectedForwardTargets] = useState(new Set());
   const [isForwarding, setIsForwarding] = useState(false);
   const [selectionMenuOpen, setSelectionMenuOpen] = useState(false);
+  const [doubleTapHeartMsgId, setDoubleTapHeartMsgId] = useState(null);
 
   const handleEnterSelectionMode = useCallback((msg) => {
     try {
@@ -2266,6 +2267,17 @@ export default function TexAppBatchChat({
       Boolean(msg.is_deleted)
     );
   }, [deletedForMeIds, deletedForAllIds]);
+
+  const handleForwardMessage = useCallback((targetMsg) => {
+    if (!targetMsg || targetMsg.send_failed || isMessageHiddenFromSharedTabs(targetMsg)) {
+      showToast("This message cannot be forwarded.");
+      return;
+    }
+    setForwardTargetMessages([targetMsg]);
+    setSelectedForwardTargets(new Set());
+    setForwardModalOpen(true);
+    closeDropdown();
+  }, [isMessageHiddenFromSharedTabs]);
 
   // Media, Docs, and Links lists for current chat (excluding deleted messages)
   const chatMediaList = useMemo(() => {
@@ -3384,6 +3396,7 @@ export default function TexAppBatchChat({
     });
     setTaskModalOpen(false);
   };
+  const handleSelectTask = handleShareTask;
 
   // Submit Meeting Reference
   const handleShareMeeting = async (meeting) => {
