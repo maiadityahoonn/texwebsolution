@@ -1744,10 +1744,29 @@ export default function TexAppBatchChat({
     lastSelectionToggleRef.current = { msgId: msg.id, time: Date.now() };
   }, []);
 
+  const [reactionStripPlacement, setReactionStripPlacement] = useState("top");
+
   const handleTriggerEmojiStrip = useCallback((msg) => {
     if (isSelectionMode) return;
-    ignoreBackdropClickUntilRef.current = Date.now() + 450;
-    setActiveReactionMsgId((prev) => (prev === msg.id ? null : msg.id));
+    ignoreBackdropClickUntilRef.current = Date.now() + 650;
+    try {
+      const msgElem = document.getElementById(`msg-${msg.id}`);
+      const scrollElem = chatScrollRef.current;
+      if (msgElem && scrollElem) {
+        const msgRect = msgElem.getBoundingClientRect();
+        const scrollRect = scrollElem.getBoundingClientRect();
+        if (msgRect.top - scrollRect.top < 65) {
+          setReactionStripPlacement("bottom");
+        } else {
+          setReactionStripPlacement("top");
+        }
+      } else {
+        setReactionStripPlacement("top");
+      }
+    } catch {
+      setReactionStripPlacement("top");
+    }
+    setActiveReactionMsgId(msg.id);
     setActiveDropdownMsgId(null);
   }, [isSelectionMode]);
 
@@ -2144,16 +2163,12 @@ export default function TexAppBatchChat({
     const now = Date.now();
     const prevTap = lastTapRef.current;
     const isSameMsg = prevTap.msgId === msg.id;
-    const isWithinTime = now - prevTap.time > 40 && now - prevTap.time < 450;
-    let isWithinPos = true;
-    if (touchCoord && prevTap.x && prevTap.y) {
-      const dist = Math.hypot(touchCoord.x - prevTap.x, touchCoord.y - prevTap.y);
-      if (dist > 45) isWithinPos = false;
-    }
+    const timeDiff = now - prevTap.time;
+    const isWithinTime = timeDiff > 30 && timeDiff < 600;
 
-    if (isSameMsg && isWithinTime && isWithinPos) {
+    if (isSameMsg && isWithinTime) {
       lastTapRef.current = { time: 0, msgId: null, x: 0, y: 0 };
-      ignoreBackdropClickUntilRef.current = Date.now() + 450;
+      ignoreBackdropClickUntilRef.current = Date.now() + 650;
       try {
         if (typeof window !== "undefined" && navigator.vibrate) {
           navigator.vibrate(35);
@@ -2495,6 +2510,9 @@ export default function TexAppBatchChat({
   // Dismiss dropdowns & reaction popups on document click outside, contextmenu outside, or scroll
   useEffect(() => {
     const handleDocClick = (e) => {
+      if (Date.now() < ignoreBackdropClickUntilRef.current) {
+        return;
+      }
       const path = typeof e.composedPath === "function" ? e.composedPath() : [];
       const isInsidePopover = path.some(
         (el) => el && el.getAttribute && (el.getAttribute("data-emoji-mart-popover") || el.getAttribute("data-emoji-trigger"))
@@ -2519,6 +2537,9 @@ export default function TexAppBatchChat({
     };
 
     const handleDocContextMenu = (e) => {
+      if (Date.now() < ignoreBackdropClickUntilRef.current) {
+        return;
+      }
       if (!e.target.closest?.('[data-message-bubble="true"]') && !e.target.closest?.('[data-dropdown-menu]')) {
         closeDropdown();
         setActiveReactionMsgId(null);
@@ -2526,6 +2547,9 @@ export default function TexAppBatchChat({
     };
 
     const handleScroll = () => {
+      if (Date.now() < ignoreBackdropClickUntilRef.current) {
+        return;
+      }
       closeDropdown();
       setActiveReactionMsgId(null);
     };
@@ -5678,7 +5702,6 @@ export default function TexAppBatchChat({
                   onDoubleClick={(e) => {
                     e.stopPropagation();
                     if (!isSelectionMode) {
-                      ignoreBackdropClickUntilRef.current = Date.now() + 450;
                       handleTriggerEmojiStrip(msg);
                     }
                   }}
@@ -5702,6 +5725,8 @@ export default function TexAppBatchChat({
                       : ""
                   } ${
                     isSelectionMode ? "cursor-pointer select-none" : ""
+                  } ${
+                    activeReactionMsgId === msg.id ? "z-50" : "z-1"
                   } ${
                     msgReactions.length > 0
                       ? "mb-3.5 sm:mb-4"
@@ -5774,7 +5799,9 @@ export default function TexAppBatchChat({
                             onClick={(e) => e.stopPropagation()}
                             onTouchStart={(e) => e.stopPropagation()}
                             style={{ zIndex: 60 }}
-                            className={`absolute bottom-full mb-2.5 flex items-center gap-1 bg-white dark:bg-[#1f1b16] border border-gray-200/90 dark:border-[#3a3020] rounded-full px-2.5 py-1 shadow-2xl animate-scaleUp select-none whitespace-nowrap shrink-0 ${
+                            className={`absolute ${
+                              reactionStripPlacement === "bottom" ? "top-full mt-2.5" : "bottom-full mb-2.5"
+                            } flex items-center gap-1 bg-white dark:bg-[#1f1b16] border border-gray-200/90 dark:border-[#3a3020] rounded-full px-2.5 py-1 shadow-2xl animate-scaleUp select-none whitespace-nowrap shrink-0 ${
                               isMine ? "right-0" : "left-0"
                             }`}
                           >
@@ -5840,7 +5867,7 @@ export default function TexAppBatchChat({
                             swipeState.msgId === msg.id && isDraggingSwipeRef.current
                               ? "none"
                               : "transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275)",
-                          touchAction: "pan-y",
+                          touchAction: "manipulation",
                         }}
                         onClick={(e) => {
                           if (isSelectionMode) {
@@ -5863,7 +5890,6 @@ export default function TexAppBatchChat({
                         onDoubleClick={(e) => {
                           e.stopPropagation();
                           if (!isSelectionMode) {
-                            ignoreBackdropClickUntilRef.current = Date.now() + 450;
                             handleTriggerEmojiStrip(msg);
                           }
                         }}
@@ -5880,7 +5906,7 @@ export default function TexAppBatchChat({
                           ? (showSenderHeader ? "p-1" : "p-0.5")
                           : (showSenderHeader ? "pt-0.5 px-2 pb-1 sm:px-2.5 sm:pb-1" : "px-2 py-1 sm:px-2.5 sm:py-1")
                       } shadow-2xs relative transition-all duration-200 border ${
-                        isSelectionMode ? "cursor-pointer" : "cursor-default select-text"
+                        isSelectionMode ? "cursor-pointer select-none" : "cursor-default select-none sm:select-text"
                       } ${
                         activeDropdownMsgId === msg.id ? "z-40" : ""
                       } ${
