@@ -30,6 +30,7 @@ import {
   RefreshCw,
   Plus,
   Forward,
+  Share2,
   Trash2,
   Ban,
   Star,
@@ -1723,6 +1724,148 @@ export default function TexAppBatchChat({
   const [forwardSearch, setForwardSearch] = useState("");
   const [selectedForwardTargets, setSelectedForwardTargets] = useState(new Set());
   const [isForwarding, setIsForwarding] = useState(false);
+  const [selectionMenuOpen, setSelectionMenuOpen] = useState(false);
+
+  const handleEnterSelectionMode = useCallback((msg) => {
+    try {
+      if (typeof window !== "undefined" && navigator.vibrate) {
+        navigator.vibrate(30);
+      }
+    } catch {}
+    setIsSelectionMode(true);
+    setSelectedMsgIds(new Set([msg.id]));
+    setActiveDropdownMsgId(null);
+    setActiveReactionMsgId(null);
+    setSelectionMenuOpen(false);
+  }, []);
+
+  const handleTriggerEmojiStrip = useCallback((msg) => {
+    if (isSelectionMode) return;
+    setActiveReactionMsgId((prev) => (prev === msg.id ? null : msg.id));
+    setActiveDropdownMsgId(null);
+  }, [isSelectionMode]);
+
+  const toggleSelectMessage = useCallback((msgId) => {
+    setSelectedMsgIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(msgId)) {
+        next.delete(msgId);
+      } else {
+        next.add(msgId);
+      }
+      if (next.size === 0) {
+        setIsSelectionMode(false);
+        setSelectionMenuOpen(false);
+      }
+      return next;
+    });
+  }, []);
+
+  const handleSelectAllMessages = useCallback(() => {
+    const allIds = new Set(
+      (displayMessages || [])
+        .filter((m) => !m.is_deleted && m.message !== "This message was deleted")
+        .map((m) => m.id)
+    );
+    setSelectedMsgIds(allIds);
+    setSelectionMenuOpen(false);
+  }, [displayMessages]);
+
+  const handleToggleStarSelected = useCallback(() => {
+    if (selectedMsgIds.size === 0) return;
+    const allStarred = Array.from(selectedMsgIds).every((id) => starredMsgIds.has(id));
+    setStarredMsgIds((prev) => {
+      const next = new Set(prev);
+      selectedMsgIds.forEach((id) => {
+        if (allStarred) {
+          next.delete(id);
+        } else {
+          next.add(id);
+        }
+      });
+      try {
+        localStorage.setItem(
+          `texweb_starred_msgs_${currentUser?.id || "anon"}`,
+          JSON.stringify(Array.from(next))
+        );
+      } catch (e) {
+        console.warn("Storage save error:", e);
+      }
+      return next;
+    });
+    showToast(allStarred ? "Messages unstarred" : "Messages starred");
+    setIsSelectionMode(false);
+    setSelectedMsgIds(new Set());
+    setSelectionMenuOpen(false);
+  }, [selectedMsgIds, starredMsgIds, currentUser?.id]);
+
+  const handleShareSelected = useCallback(async () => {
+    if (selectedMsgIds.size === 0) return;
+    const selectedMsgs = (displayMessages || []).filter((m) => selectedMsgIds.has(m.id));
+    const shareText = selectedMsgs
+      .map((m) => {
+        const sender = m.sender_id === currentUser?.id ? "You" : (m.sender?.full_name || "User");
+        return `[${sender}]: ${m.message || m.attachment_name || "Media"}`;
+      })
+      .join("\n\n");
+
+    if (typeof navigator !== "undefined" && navigator.share) {
+      try {
+        await navigator.share({
+          title: "TexWeb Chat Message",
+          text: shareText,
+        });
+        setIsSelectionMode(false);
+        setSelectedMsgIds(new Set());
+        setSelectionMenuOpen(false);
+        return;
+      } catch (err) {
+        if (err.name !== "AbortError") {
+          console.warn("Share failed:", err);
+        }
+      }
+    }
+    try {
+      await navigator.clipboard.writeText(shareText);
+      showToast("Message text copied to clipboard for sharing");
+    } catch {
+      showToast("Unable to copy to clipboard");
+    }
+    setIsSelectionMode(false);
+    setSelectedMsgIds(new Set());
+    setSelectionMenuOpen(false);
+  }, [selectedMsgIds, displayMessages, currentUser?.id]);
+
+  const handlePinSelected = useCallback(() => {
+    if (selectedMsgIds.size !== 1) return;
+    const targetId = Array.from(selectedMsgIds)[0];
+    const targetMsg = (displayMessages || []).find((m) => m.id === targetId);
+    if (!targetMsg || !canPinMessage(targetMsg)) {
+      showToast("You cannot pin this message");
+      return;
+    }
+    if (onPinMessage) {
+      onPinMessage(targetMsg.id, !targetMsg.is_pinned);
+      showToast(targetMsg.is_pinned ? "Message unpinned" : "Message pinned");
+    }
+    setIsSelectionMode(false);
+    setSelectedMsgIds(new Set());
+    setSelectionMenuOpen(false);
+  }, [selectedMsgIds, displayMessages, onPinMessage]);
+
+  const handleReplySelected = useCallback(() => {
+    if (selectedMsgIds.size !== 1) return;
+    const targetId = Array.from(selectedMsgIds)[0];
+    const targetMsg = (displayMessages || []).find((m) => m.id === targetId);
+    if (targetMsg) {
+      setReplyingTo(targetMsg);
+      const el = getActiveComposerElement();
+      if (el) el.focus();
+    }
+    setIsSelectionMode(false);
+    setSelectedMsgIds(new Set());
+    setSelectionMenuOpen(false);
+  }, [selectedMsgIds, displayMessages]);
 
   // Starred messages (persisted in localStorage)
   const [starredMsgIds, setStarredMsgIds] = useState(() => {
@@ -1905,10 +2048,8 @@ export default function TexAppBatchChat({
     mousePressTimerRef.current = setTimeout(() => {
       const selection = window.getSelection();
       if (selection && selection.toString().trim().length > 0) return;
-      if (bubbleElem) {
-        handleOpenDropdown(msg, bubbleElem);
-      }
-    }, 420);
+      handleEnterSelectionMode(msg);
+    }, 400);
   };
 
   const handleMessageMouseMove = (e) => {
@@ -1936,7 +2077,7 @@ export default function TexAppBatchChat({
     isDraggingSwipeRef.current = false;
     didLongPressRef.current = false;
 
-    // 420ms long-press hold for WhatsApp quick reactions & context menu
+    // 400ms long-press hold enters selection mode (WhatsApp style)
     if (longPressTimerRef.current) clearTimeout(longPressTimerRef.current);
     longPressTimerRef.current = setTimeout(() => {
       didLongPressRef.current = true;
@@ -1945,10 +2086,8 @@ export default function TexAppBatchChat({
           navigator.vibrate(30);
         }
       } catch {}
-      if (bubbleElem) {
-        handleOpenDropdown(msg, bubbleElem);
-      }
-    }, 420);
+      handleEnterSelectionMode(msg);
+    }, 400);
   };
 
   const handleMessageTouchMove = (e, msg) => {
@@ -2011,22 +2150,66 @@ export default function TexAppBatchChat({
     isDraggingSwipeRef.current = false;
   };
 
-  // WhatsApp Double-Tap Quick React with ❤️
+  const handleRowTouchStart = (e, msg) => {
+    if (isSelectionMode) return;
+    if (e.touches.length !== 1) return;
+    const touch = e.touches[0];
+    touchCoordsRef.current = { x: touch.clientX, y: touch.clientY, time: Date.now() };
+    didLongPressRef.current = false;
+    if (longPressTimerRef.current) clearTimeout(longPressTimerRef.current);
+    longPressTimerRef.current = setTimeout(() => {
+      didLongPressRef.current = true;
+      try {
+        if (typeof window !== "undefined" && navigator.vibrate) {
+          navigator.vibrate(30);
+        }
+      } catch {}
+      handleEnterSelectionMode(msg);
+    }, 400);
+  };
+
+  const handleRowTouchMove = (e) => {
+    if (e.touches.length !== 1) return;
+    const touch = e.touches[0];
+    const diffX = touch.clientX - touchCoordsRef.current.x;
+    const diffY = touch.clientY - touchCoordsRef.current.y;
+    if (Math.abs(diffX) > 10 || Math.abs(diffY) > 10) {
+      if (longPressTimerRef.current) {
+        clearTimeout(longPressTimerRef.current);
+        longPressTimerRef.current = null;
+      }
+    }
+  };
+
+  const handleRowTouchEnd = (e, msg) => {
+    if (longPressTimerRef.current) {
+      clearTimeout(longPressTimerRef.current);
+      longPressTimerRef.current = null;
+    }
+    if (didLongPressRef.current) {
+      didLongPressRef.current = false;
+      return;
+    }
+    handleMessageTap(msg);
+  };
+
+  // WhatsApp Double-Tap Quick React Strip & Selection Tap
   const lastTapRef = useRef({ time: 0, msgId: null });
-  const [doubleTapHeartMsgId, setDoubleTapHeartMsgId] = useState(null);
 
   const handleMessageTap = (msg) => {
+    if (isSelectionMode) {
+      toggleSelectMessage(msg.id);
+      return true;
+    }
     const now = Date.now();
     if (lastTapRef.current.msgId === msg.id && now - lastTapRef.current.time < 350) {
       lastTapRef.current = { time: 0, msgId: null };
       try {
         if (typeof window !== "undefined" && navigator.vibrate) {
-          navigator.vibrate(35);
+          navigator.vibrate(30);
         }
       } catch {}
-      handleSendReaction(msg, "❤️");
-      setDoubleTapHeartMsgId(msg.id);
-      setTimeout(() => setDoubleTapHeartMsgId(null), 850);
+      handleTriggerEmojiStrip(msg);
       return true;
     }
     lastTapRef.current = { time: now, msgId: msg.id };
@@ -2355,6 +2538,7 @@ export default function TexAppBatchChat({
         e.target.closest?.("[data-reaction-trigger]") ||
         e.target.closest?.("[data-dropdown-trigger]") ||
         e.target.closest?.("[data-reaction-strip]") ||
+        e.target.closest?.("[data-selection-menu]") ||
         e.target.closest?.("[data-dropdown-menu]") ||
         e.target.closest?.("[data-emoji-mart-popover]") ||
         e.target.closest?.("[data-emoji-trigger]")
@@ -2363,6 +2547,7 @@ export default function TexAppBatchChat({
       }
       setActiveReactionMsgId(null);
       closeDropdown();
+      setSelectionMenuOpen(false);
       setShowEmojiPicker(false);
       setReactionTargetMessage(null);
     };
@@ -3624,16 +3809,6 @@ export default function TexAppBatchChat({
     });
   };
 
-  // Toggle selection for a message
-  const toggleSelectMessage = (id) => {
-    setSelectedMsgIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      if (next.size === 0) setIsSelectionMode(false);
-      return next;
-    });
-  };
 
   // Copy selected messages (Safe with fallback and error handling)
   const handleCopySelected = async () => {
@@ -4335,18 +4510,184 @@ export default function TexAppBatchChat({
           ========================================================================= */}
       <div className={`sticky top-0 px-3 sm:px-4 pt-[max(env(safe-area-inset-top),0.625rem)] pb-2.5 sm:pb-3 border-0 border-transparent flex items-center justify-between gap-2.5 z-30 shrink-0 backdrop-blur-md shadow-none ${isDark ? "bg-[#18150f]/95 text-[#f4ead2]" : "bg-white/95 text-gray-900"
         }`}>
-        <div className="flex items-center gap-2 sm:gap-3 min-w-0">
-          {/* Mobile / Desktop Back Button */}
-          {onBack && (
-            <button
-              type="button"
-              onClick={onBack}
-              className="p-1.5 -ml-1 rounded-xl text-gray-600 hover:text-gray-900 dark:text-slate-300 dark:hover:text-white transition cursor-pointer shrink-0"
-              aria-label="Back to conversations"
-            >
-              <ArrowLeft className="w-5 h-5 stroke-[2]" />
-            </button>
-          )}
+        {isSelectionMode ? (
+          <>
+            {/* Left: Close/Back button & Selection count */}
+            <div className="flex items-center gap-3 min-w-0">
+              <button
+                type="button"
+                onClick={() => {
+                  setIsSelectionMode(false);
+                  setSelectedMsgIds(new Set());
+                  setSelectionMenuOpen(false);
+                }}
+                className="p-1.5 -ml-1 rounded-full text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/10 transition cursor-pointer shrink-0"
+                aria-label="Close selection"
+              >
+                <ArrowLeft className="w-5 h-5 stroke-[2.2]" />
+              </button>
+              <span className="text-base sm:text-lg font-bold tracking-tight select-none">
+                {selectedMsgIds.size}
+              </span>
+            </div>
+
+            {/* Right: WhatsApp-style action icons matching sample */}
+            <div className="flex items-center gap-0.5 sm:gap-1.5">
+              {/* Reply (Only when 1 message is selected) */}
+              {selectedMsgIds.size === 1 && (
+                <button
+                  type="button"
+                  onClick={handleReplySelected}
+                  className="p-2 rounded-full hover:bg-black/5 dark:hover:bg-white/10 text-gray-700 dark:text-gray-200 hover:text-red-600 dark:hover:text-red-400 transition cursor-pointer shrink-0"
+                  title="Reply"
+                  aria-label="Reply to message"
+                >
+                  <Reply className="w-5 h-5 stroke-[2]" />
+                </button>
+              )}
+
+              {/* Star / Unstar */}
+              {(() => {
+                const allStarred = selectedMsgIds.size > 0 && Array.from(selectedMsgIds).every((id) => starredMsgIds.has(id));
+                return (
+                  <button
+                    type="button"
+                    onClick={handleToggleStarSelected}
+                    className="p-2 rounded-full hover:bg-black/5 dark:hover:bg-white/10 text-gray-700 dark:text-gray-200 hover:text-amber-500 dark:hover:text-amber-400 transition cursor-pointer shrink-0"
+                    title={allStarred ? "Unstar" : "Star"}
+                    aria-label="Star selected"
+                  >
+                    <Star className={`w-5 h-5 stroke-[2] ${allStarred ? "fill-amber-400 text-amber-400" : ""}`} />
+                  </button>
+                );
+              })()}
+
+              {/* Delete */}
+              <button
+                type="button"
+                onClick={handleOpenDeleteSelected}
+                className="p-2 rounded-full hover:bg-black/5 dark:hover:bg-white/10 text-gray-700 dark:text-gray-200 hover:text-red-600 dark:hover:text-red-400 transition cursor-pointer shrink-0"
+                title="Delete"
+                aria-label="Delete selected"
+              >
+                <Trash2 className="w-5 h-5 stroke-[2]" />
+              </button>
+
+              {/* Forward */}
+              <button
+                type="button"
+                onClick={handleOpenForwardSelected}
+                className="p-2 rounded-full hover:bg-black/5 dark:hover:bg-white/10 text-gray-700 dark:text-gray-200 hover:text-red-600 dark:hover:text-red-400 transition cursor-pointer shrink-0"
+                title="Forward"
+                aria-label="Forward selected"
+              >
+                <Forward className="w-5 h-5 stroke-[2]" />
+              </button>
+
+              {/* Pin (Only when 1 message is selected) */}
+              {selectedMsgIds.size === 1 && (() => {
+                const singleMsg = (displayMessages || []).find((m) => m.id === Array.from(selectedMsgIds)[0]);
+                const isPinned = singleMsg?.is_pinned;
+                return (
+                  <button
+                    type="button"
+                    onClick={handlePinSelected}
+                    className="p-2 rounded-full hover:bg-black/5 dark:hover:bg-white/10 text-gray-700 dark:text-gray-200 hover:text-red-600 dark:hover:text-red-400 transition cursor-pointer shrink-0"
+                    title={isPinned ? "Unpin message" : "Pin message"}
+                    aria-label="Pin selected"
+                  >
+                    <Pin className={`w-5 h-5 stroke-[2] ${isPinned ? "fill-red-600 text-red-600 rotate-45" : ""}`} />
+                  </button>
+                );
+              })()}
+
+              {/* Three dots menu */}
+              <div className="relative shrink-0" data-selection-menu="true">
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setSelectionMenuOpen((prev) => !prev);
+                  }}
+                  className="p-2 rounded-full hover:bg-black/5 dark:hover:bg-white/10 text-gray-700 dark:text-gray-200 hover:text-gray-900 dark:hover:text-white transition cursor-pointer shrink-0"
+                  title="More options"
+                  aria-label="More options"
+                >
+                  <MoreVertical className="w-5 h-5 stroke-[2]" />
+                </button>
+
+                {selectionMenuOpen && (
+                  <div
+                    onClick={(e) => e.stopPropagation()}
+                    className="absolute right-0 top-full mt-1.5 w-44 rounded-2xl bg-white dark:bg-[#201c16] border border-gray-200 dark:border-[#3a3020] shadow-xl py-1.5 z-50 text-xs font-semibold text-gray-700 dark:text-gray-200 animate-in fade-in zoom-in-95 duration-100"
+                  >
+                    <button
+                      type="button"
+                      onClick={() => {
+                        handleCopySelected();
+                        setSelectionMenuOpen(false);
+                      }}
+                      className="w-full px-3.5 py-2 flex items-center gap-2.5 hover:bg-black/5 dark:hover:bg-white/10 transition text-left cursor-pointer"
+                    >
+                      <Copy className="w-4 h-4 text-gray-500" />
+                      <span>Copy</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={handleShareSelected}
+                      className="w-full px-3.5 py-2 flex items-center gap-2.5 hover:bg-black/5 dark:hover:bg-white/10 transition text-left cursor-pointer"
+                    >
+                      <Share2 className="w-4 h-4 text-gray-500" />
+                      <span>Share</span>
+                    </button>
+
+                    {selectedMsgIds.size === 1 && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const targetMsg = (displayMessages || []).find((m) => m.id === Array.from(selectedMsgIds)[0]);
+                          if (targetMsg) {
+                            setMessageInfoModal(targetMsg);
+                            setIsSelectionMode(false);
+                            setSelectedMsgIds(new Set());
+                          }
+                          setSelectionMenuOpen(false);
+                        }}
+                        className="w-full px-3.5 py-2 flex items-center gap-2.5 hover:bg-black/5 dark:hover:bg-white/10 transition text-left cursor-pointer"
+                      >
+                        <Info className="w-4 h-4 text-gray-500" />
+                        <span>Message info</span>
+                      </button>
+                    )}
+
+                    <button
+                      type="button"
+                      onClick={handleSelectAllMessages}
+                      className="w-full px-3.5 py-2 flex items-center gap-2.5 hover:bg-black/5 dark:hover:bg-white/10 transition text-left cursor-pointer border-t border-gray-100 dark:border-white/10 mt-1 pt-1.5"
+                    >
+                      <CheckSquare className="w-4 h-4 text-gray-500" />
+                      <span>Select all</span>
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+          </>
+        ) : (
+          <>
+            <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+              {/* Mobile / Desktop Back Button */}
+              {onBack && (
+                <button
+                  type="button"
+                  onClick={onBack}
+                  className="p-1.5 -ml-1 rounded-xl text-gray-600 hover:text-gray-900 dark:text-slate-300 dark:hover:text-white transition cursor-pointer shrink-0"
+                  aria-label="Back to conversations"
+                >
+                  <ArrowLeft className="w-5 h-5 stroke-[2]" />
+                </button>
+              )}
 
           {/* Avatar */}
           <div className="relative shrink-0 cursor-pointer" onClick={() => setShowMembersDrawer(true)}>
@@ -4508,6 +4849,8 @@ export default function TexAppBatchChat({
             <MoreVertical className="w-4 h-4 sm:w-4.5 sm:h-4.5" />
           </button>
         </div>
+        </>
+      )}
       </div>
 
       {/* =========================================================================
@@ -5101,65 +5444,7 @@ export default function TexAppBatchChat({
         </div>
       )}
 
-      {/* =========================================================================
-          2B. WHATSAPP SELECTION ACTION BAR (When selection mode is active)
-          ========================================================================= */}
-      {isSelectionMode && (
-        <div className={`px-4 py-2.5 border-0 border-transparent flex items-center justify-between gap-2 z-20 animate-fadeIn ${isDark ? "bg-[#18150f] text-[#f4ead2]" : "bg-white text-gray-900 shadow-sm"
-          }`}>
-          <div className="flex items-center gap-3">
-            <button
-              type="button"
-              onClick={() => {
-                setIsSelectionMode(false);
-                setSelectedMsgIds(new Set());
-              }}
-              className="p-1.5 rounded-full text-gray-500 hover:text-gray-800 dark:text-gray-400 dark:hover:text-white transition cursor-pointer"
-              aria-label="Close selection"
-            >
-              <X className="w-5 h-5" />
-            </button>
-            <span className="text-xs sm:text-sm font-bold">
-              {selectedMsgIds.size} selected
-            </span>
-          </div>
 
-            <div className="flex items-center gap-1.5 sm:gap-2">
-              <button
-                type="button"
-                disabled={selectedMsgIds.size === 0}
-                onClick={handleCopySelected}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-gray-100 dark:bg-slate-700 text-gray-700 dark:text-gray-200 transition disabled:opacity-40 cursor-pointer"
-                aria-label="Copy selected text"
-              >
-                <Copy className="w-3.5 h-3.5" />
-                <span className="hidden sm:inline">Copy</span>
-              </button>
-
-              <button
-                type="button"
-                disabled={selectedMsgIds.size === 0}
-                onClick={handleOpenForwardSelected}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-gray-100 dark:bg-slate-700 text-gray-700 dark:text-gray-200 transition disabled:opacity-40 cursor-pointer"
-                aria-label="Forward selected messages"
-              >
-                <Forward className="w-3.5 h-3.5" />
-                <span className="hidden sm:inline">Forward</span>
-              </button>
-
-              <button
-                type="button"
-                disabled={selectedMsgIds.size === 0}
-                onClick={handleOpenDeleteSelected}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-red-50 dark:bg-red-950/50 hover:bg-red-100 dark:hover:bg-red-900/60 text-red-600 dark:text-red-400 transition disabled:opacity-40 cursor-pointer"
-                aria-label="Delete selected messages"
-              >
-                <Trash2 className="w-3.5 h-3.5" />
-                <span className="hidden sm:inline">Delete</span>
-              </button>
-            </div>
-        </div>
-      )}
 
       {/* =========================================================================
           3. PINNED MESSAGES BANNER (Sticky Top)
@@ -5336,35 +5621,44 @@ export default function TexAppBatchChat({
 
                 <div
                   id={`msg-${msg.id}`}
-                  className={`w-full flex items-start gap-1.5 sm:gap-2 transition-all duration-200 ease-out ${
+                  onClick={(e) => {
+                    if (isSelectionMode) {
+                      e.stopPropagation();
+                      toggleSelectMessage(msg.id);
+                    }
+                  }}
+                  onDoubleClick={(e) => {
+                    e.stopPropagation();
+                    if (!isSelectionMode) {
+                      handleTriggerEmojiStrip(msg);
+                    }
+                  }}
+                  onTouchStart={(e) => {
+                    if (e.target.closest?.('[data-message-bubble="true"]')) return;
+                    handleRowTouchStart(e, msg);
+                  }}
+                  onTouchMove={(e) => {
+                    if (e.target.closest?.('[data-message-bubble="true"]')) return;
+                    handleRowTouchMove(e);
+                  }}
+                  onTouchEnd={(e) => {
+                    if (e.target.closest?.('[data-message-bubble="true"]')) return;
+                    handleRowTouchEnd(e, msg);
+                  }}
+                  className={`w-full flex items-start gap-1.5 sm:gap-2 transition-all duration-150 ease-out relative px-2.5 sm:px-4 py-1 sm:py-1.5 ${
                     isMine ? "justify-end" : "justify-start"
                   } ${
-                    isSelectionMode
-                      ? "my-2.5 sm:my-3.5"
-                      : msgReactions.length > 0
-                      ? "mb-4 sm:mb-4.5"
-                      : "mb-2 sm:mb-2.5"
+                    isMsgSelected
+                      ? "bg-red-500/15 dark:bg-red-500/25"
+                      : ""
+                  } ${
+                    isSelectionMode ? "cursor-pointer select-none" : ""
+                  } ${
+                    msgReactions.length > 0
+                      ? "mb-3.5 sm:mb-4"
+                      : "mb-1.5 sm:mb-2"
                   }`}
                 >
-                  {/* WhatsApp Selection Checkbox (Shows when in selection mode) */}
-                  {isSelectionMode && (
-                    <div
-                      className={`shrink-0 cursor-pointer p-1 select-none transition-all ${isMine ? "order-last ml-1" : "order-first mr-1"}`}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        toggleSelectMessage(msg.id);
-                      }}
-                    >
-                      {isMsgSelected ? (
-                        <div className="w-5 h-5 rounded-lg bg-red-600 text-white flex items-center justify-center shadow-xs">
-                          <Check className="w-3.5 h-3.5 stroke-[3]" />
-                        </div>
-                      ) : (
-                        <div className="w-5 h-5 rounded-lg border-2 border-gray-400 dark:border-[#5a4a32] bg-white/80 dark:bg-[#18150f] hover:border-red-500 transition" />
-                      )}
-                    </div>
-                  )}
-
                   {/* WhatsApp Group Sender Avatar (Left of incoming group message bubble) */}
                   {showSenderHeader && (
                     <div className="shrink-0 self-start mt-0.5 select-none">
@@ -5410,6 +5704,52 @@ export default function TexAppBatchChat({
                   >
                     {/* 1. WhatsApp Compact Bubble Container with Swipe to Reply & Long Press */}
                     <div className="relative inline-block">
+                      {/* Floating WhatsApp Emoji Reaction Strip (Anchored directly to bubble for 100% visibility) */}
+                      {activeReactionMsgId === msg.id && (
+                        <div
+                          data-reaction-strip="true"
+                          onClick={(e) => e.stopPropagation()}
+                          className={`absolute bottom-full mb-1.5 z-50 flex items-center gap-1 bg-white dark:bg-[#18150f] border border-gray-200/90 dark:border-[#3a3020] rounded-full px-2 py-1 shadow-2xl animate-scaleUp select-none whitespace-nowrap shrink-0 ${
+                            isMine ? "right-0" : "left-0"
+                          }`}
+                        >
+                          {["👍", "❤️", "😂", "😮", "😢", "🙏"].map((emoji) => {
+                            const isSelected = myReaction?.emoji === emoji;
+                            return (
+                              <button
+                                key={emoji}
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleSendReaction(msg, emoji);
+                                  setActiveReactionMsgId(null);
+                                }}
+                                className={`w-8 h-8 rounded-full flex items-center justify-center hover:scale-125 transition-transform cursor-pointer shrink-0 ${
+                                  isSelected ? "bg-red-50 dark:bg-white/20 scale-110 ring-1 ring-red-500" : ""
+                                }`}
+                                aria-label={isSelected ? `Remove ${emoji}` : `React ${emoji}`}
+                              >
+                                <AppleEmoji emoji={emoji} size={24} />
+                              </button>
+                            );
+                          })}
+
+                          {/* Plus (+) Button to open full WhatsApp reaction picker */}
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleOpenReactionInChatboxPicker(msg);
+                              setActiveReactionMsgId(null);
+                            }}
+                            className="w-7 h-7 rounded-full flex items-center justify-center hover:scale-110 text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white cursor-pointer transition shrink-0 ml-0.5"
+                            aria-label="More reactions"
+                          >
+                            <Plus className="w-4 h-4 stroke-[2.5]" />
+                          </button>
+                        </div>
+                      )}
+
                       {/* WhatsApp Swipe to Reply Indicator */}
                       {swipeState.msgId === msg.id && swipeState.offset > 5 && (
                         <div
@@ -5443,17 +5783,16 @@ export default function TexAppBatchChat({
                         onContextMenu={(e) => {
                           e.preventDefault();
                           e.stopPropagation();
-                          const chevronBtn = e.currentTarget.querySelector('[data-dropdown-trigger="true"]') || e.currentTarget;
-                          handleOpenDropdown(msg, chevronBtn);
+                          handleEnterSelectionMode(msg);
                         }}
                         onMouseDown={(e) => handleMessageMouseDown(e, msg, e.currentTarget)}
                         onMouseMove={handleMessageMouseMove}
                         onMouseUp={handleMessageMouseUp}
                         onDoubleClick={(e) => {
                           e.stopPropagation();
-                          handleSendReaction(msg, "❤️");
-                          setDoubleTapHeartMsgId(msg.id);
-                          setTimeout(() => setDoubleTapHeartMsgId(null), 850);
+                          if (!isSelectionMode) {
+                            handleTriggerEmojiStrip(msg);
+                          }
                         }}
                       className={`rounded-2xl ${
                         isDocAttachment && !msg.message && !replyMsg && !msg.is_pinned
@@ -5471,8 +5810,6 @@ export default function TexAppBatchChat({
                         isSelectionMode ? "cursor-pointer" : "cursor-default select-text"
                       } ${
                         activeDropdownMsgId === msg.id ? "z-40" : ""
-                      } ${
-                        isMsgSelected ? "ring-2 ring-red-500 ring-offset-2 dark:ring-offset-[#100f0b]" : ""
                       } ${
                         reactionTargetMessage?.id === msg.id ? "ring-2 ring-red-500 ring-offset-2 dark:ring-offset-[#100f0b] shadow-xl scale-[1.01] z-30" : ""
                       } ${
@@ -5574,7 +5911,20 @@ export default function TexAppBatchChat({
                               className={`relative overflow-hidden cursor-pointer group/img select-none min-w-[150px] max-w-[250px] sm:max-w-[280px] ${
                                 msg.message ? "rounded-t-[13px] rounded-b-[4px]" : "rounded-[13px]"
                               }`}
-                              onClick={() => handleOpenMediaGallery(msg.attachment_url)}
+                              onClick={(e) => {
+                                if (isSelectionMode) {
+                                  e.stopPropagation();
+                                  toggleSelectMessage(msg.id);
+                                  return;
+                                }
+                                handleOpenMediaGallery(msg.attachment_url);
+                              }}
+                              onDoubleClick={(e) => {
+                                e.stopPropagation();
+                                if (!isSelectionMode) {
+                                  handleTriggerEmojiStrip(msg);
+                                }
+                              }}
                             >
                               {/* eslint-disable-next-line @next/next/no-img-element */}
                               <img
@@ -6125,47 +6475,6 @@ export default function TexAppBatchChat({
                           <Smile className="w-3.5 h-3.5 stroke-[1.9]" />
                         </button>
 
-                        {/* Floating WhatsApp Reaction Strip (Image 2 Style: Opens on click of Smiley Button) */}
-                        {activeReactionMsgId === msg.id && (
-                          <div
-                            data-reaction-strip="true"
-                            onClick={(e) => e.stopPropagation()}
-                            className="absolute bottom-full mb-1 left-1/2 -translate-x-1/2 z-50 flex items-center gap-1 bg-white dark:bg-[#18150f] border border-gray-200/90 dark:border-[#3a3020] rounded-full px-2 py-1 shadow-2xl animate-scaleUp select-none whitespace-nowrap shrink-0"
-                          >
-                            {["👍", "❤️", "😂", "😮", "😢", "🙏"].map((emoji) => {
-                              const isSelected = myReaction?.emoji === emoji;
-                              return (
-                                <button
-                                  key={emoji}
-                                  type="button"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleSendReaction(msg, emoji);
-                                    setActiveReactionMsgId(null);
-                                  }}
-                                  className={`w-8 h-8 rounded-full flex items-center justify-center hover:scale-125 transition-transform cursor-pointer shrink-0 ${isSelected ? "bg-black/10 dark:bg-white/20 scale-110 ring-1 ring-red-500" : ""
-                                    }`}
-                                  aria-label={isSelected ? `Remove ${emoji}` : `React ${emoji}`}
-                                >
-                                  <AppleEmoji emoji={emoji} size={24} />
-                                </button>
-                              );
-                            })}
-
-                            {/* Plus (+) Button to open full WhatsApp reaction picker */}
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleOpenReactionInChatboxPicker(msg);
-                              }}
-                              className="w-7 h-7 rounded-full flex items-center justify-center hover:scale-110 text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white cursor-pointer transition shrink-0 ml-0.5"
-                              aria-label="More reactions"
-                            >
-                              <Plus className="w-4 h-4 stroke-[2.5]" />
-                            </button>
-                          </div>
-                        )}
                       </div>
 
                       {/* Reply Button (WhatsApp Style: Shows on hover) */}
