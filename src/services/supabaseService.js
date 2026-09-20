@@ -935,20 +935,68 @@ export async function issueCertificate(certData) {
 // ==========================================
 // 6. REALTIME CHAT MESSAGES
 // ==========================================
+let cachedAuthToken = { token: "", timestamp: 0 };
+
+export function clearAuthTokenCache() {
+  cachedAuthToken = { token: "", timestamp: 0 };
+}
+
+export async function getAuthToken(forceRefresh = false) {
+  const now = Date.now();
+  if (!forceRefresh && cachedAuthToken.token && now - cachedAuthToken.timestamp < 120000) {
+    return cachedAuthToken.token;
+  }
+  let token = "";
+  try {
+    const { data: sessionData } = await supabase.auth.getSession();
+    let session = sessionData?.session;
+    const isExpiring = session?.expires_at && (session.expires_at * 1000 - now < 60000);
+    if (forceRefresh || isExpiring) {
+      const { data: refreshed } = await supabase.auth.refreshSession().catch(() => ({ data: null }));
+      if (refreshed?.session) {
+        session = refreshed.session;
+      }
+    }
+    token = session?.access_token || "";
+  } catch {}
+
+  if (token) {
+    cachedAuthToken = { token, timestamp: now };
+  } else {
+    cachedAuthToken = { token: "", timestamp: 0 };
+  }
+  return token;
+}
+
 export async function getMessages(userId, otherUserId) {
   try {
     if (!userId || !otherUserId) return [];
-    const token = await getAuthToken();
+    let token = await getAuthToken();
     if (token && typeof fetch === "function") {
-      const response = await fetch(`/api/messages?contact_id=${encodeURIComponent(otherUserId)}`, {
+      let response = await fetch(`/api/messages?contact_id=${encodeURIComponent(otherUserId)}`, {
         cache: "no-store",
         headers: {
           Authorization: `Bearer ${token}`,
         },
       });
-      const result = await response.json().catch(() => ({}));
+      let result = await response.json().catch(() => ({}));
+
+      // If token expired or invalid (401), force refresh token and retry once
+      if (response.status === 401) {
+        clearAuthTokenCache();
+        token = await getAuthToken(true);
+        if (token) {
+          response = await fetch(`/api/messages?contact_id=${encodeURIComponent(otherUserId)}`, {
+            cache: "no-store",
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          });
+          result = await response.json().catch(() => ({}));
+        }
+      }
+
       if (response.ok) return result.messages || [];
-      console.warn('Messages API failed, trying direct fetch:', result.error || response.status);
     }
 
     const { data, error } = await supabase
@@ -1212,21 +1260,6 @@ export async function markDirectMessagesDelivered(senderId) {
 // ==========================================
 // 6B. BATCH OPERATING WORKSPACE
 // ==========================================
-let cachedAuthToken = { token: "", timestamp: 0 };
-
-async function getAuthToken() {
-  const now = Date.now();
-  if (cachedAuthToken.token && now - cachedAuthToken.timestamp < 300000) {
-    return cachedAuthToken.token;
-  }
-  const { data: sessionData } = await supabase.auth.getSession();
-  const token = sessionData?.session?.access_token || "";
-  if (token) {
-    cachedAuthToken = { token, timestamp: now };
-  }
-  return token;
-}
-
 function emptyBatchWorkspaceData(extra = {}) {
   return { messages: [], announcements: [], resources: [], escalations: [], history: [], ...extra };
 }
