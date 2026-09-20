@@ -6950,36 +6950,6 @@ export default function TexAppBatchChat({
             </button>
           </div>
 
-          {/* Frequently used emojis / reactions row */}
-          {mediaPickerTab === "emoji" && (
-            <div className="px-3 py-1.5 border-b border-gray-100 dark:border-[#3a3020]/40 bg-gray-50/70 dark:bg-[#14120e] shrink-0">
-              <div className="text-[11px] font-bold text-gray-500 dark:text-stone-400 mb-1 px-1">Frequently used</div>
-              <div className="flex items-center justify-between gap-1 overflow-x-auto no-scrollbar py-0.5">
-                {["👍", "😃", "❤️", "😂", "🙏", "🔥", "😇", "😢", "😘", "👏"].map((emoji) => (
-                  <button
-                    key={emoji}
-                    type="button"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      if (reactionTargetMessage) {
-                        handleSendReaction(reactionTargetMessage, emoji);
-                        setReactionTargetMessage(null);
-                        setShowEmojiPicker(false);
-                      } else {
-                        handleInsertEmoji(emoji);
-                      }
-                    }}
-                    className="w-8.5 h-8.5 rounded-full flex items-center justify-center hover:scale-125 active:scale-95 transition-transform cursor-pointer shrink-0"
-                    aria-label={`Emoji ${emoji}`}
-                  >
-                    <AppleEmoji emoji={emoji} size={24} />
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-
           {/* Picker Body */}
           <div className="flex-1 w-full h-full overflow-hidden flex flex-col">
             {mediaPickerTab === "emoji" ? (
@@ -6994,7 +6964,6 @@ export default function TexAppBatchChat({
                     handleInsertEmoji(emoji);
                   }
                 }}
-                perLine={9}
                 navPosition="bottom"
                 searchPosition={showPickerSearch ? "top" : "none"}
                 previewPosition="none"

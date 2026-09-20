@@ -73,6 +73,14 @@ export default function EmojiMartPicker({
     }
 
     try {
+      // Calculate responsive perLine upfront based on container width so initial layout is instant and seamless
+      let optimalPerLine = perLine;
+      if (typeof window !== "undefined") {
+        const containerWidth = containerRef.current?.getBoundingClientRect?.().width || window.innerWidth;
+        const availableWidth = Math.max(260, containerWidth - 20);
+        optimalPerLine = Math.max(8, Math.floor(availableWidth / 36));
+      }
+
       const picker = new Picker({
         data: appleData,
         set: "apple",
@@ -87,12 +95,12 @@ export default function EmojiMartPicker({
         previewPosition,
         searchPosition,
         navPosition,
-        perLine,
+        perLine: optimalPerLine,
         maxFrequentRows,
         autoFocus: false,
-        dynamicWidth: false,
-        emojiSize: 24,
-        emojiButtonSize: 34,
+        dynamicWidth: true,
+        emojiSize: 26,
+        emojiButtonSize: 36,
         i18n: {
           search: "Search emoji",
           search_no_results_1: "Oh no!",
@@ -138,16 +146,24 @@ export default function EmojiMartPicker({
             --em-rgb-accent: 220, 38, 38 !important;
             --em-rgb-background: ${isDark ? "24, 21, 15" : "255, 255, 255"} !important;
             --em-color-border: ${isDark ? "rgba(255, 255, 255, 0.08)" : "rgba(0, 0, 0, 0.06)"} !important;
+            --padding: 6px !important;
+            --category-icon-size: 20px !important;
             width: 100% !important;
+            max-width: 100% !important;
             height: 100% !important;
             border-radius: 0 !important;
             box-shadow: none !important;
+            display: flex !important;
+            flex-direction: column !important;
+            box-sizing: border-box !important;
           }
           #root {
             width: 100% !important;
+            max-width: 100% !important;
             height: 100% !important;
             background-color: ${isDark ? "#18150f" : "#ffffff"} !important;
             border: none !important;
+            box-sizing: border-box !important;
           }
           #nav {
             width: 100% !important;
@@ -248,16 +264,32 @@ export default function EmojiMartPicker({
           }
           .category > div.sticky, .category h2, .category-title {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif !important;
-            font-size: 14px !important;
+            font-size: 13.5px !important;
             font-weight: 500 !important;
             color: ${isDark ? "#9d9178" : "#6b7280"} !important;
             background-color: ${isDark ? "#18150f" : "#ffffff"} !important;
-            padding: 8px 0 4px 0 !important;
+            padding: 8px 4px 4px 4px !important;
             letter-spacing: -0.01em !important;
             text-transform: none !important;
           }
           .category {
-            padding: 0 14px !important;
+            padding: 0 4px !important;
+            width: 100% !important;
+            max-width: 100% !important;
+            box-sizing: border-box !important;
+          }
+          .category > div.relative {
+            width: 100% !important;
+            max-width: 100% !important;
+            box-sizing: border-box !important;
+          }
+          .row, [data-index] {
+            width: 100% !important;
+            max-width: 100% !important;
+            box-sizing: border-box !important;
+            display: flex !important;
+            justify-content: space-between !important;
+            align-items: center !important;
           }
           .category button .background,
           .category button:hover .background,
@@ -277,12 +309,23 @@ export default function EmojiMartPicker({
             background-color: transparent !important;
             outline: none !important;
             box-shadow: none !important;
+            flex-shrink: 0 !important;
           }
           .scroll {
+            width: 100% !important;
+            max-width: 100% !important;
+            box-sizing: border-box !important;
+            padding-left: 8px !important;
+            padding-right: 8px !important;
             padding-bottom: 30px !important;
             overflow-x: hidden !important;
             scrollbar-width: thin !important;
             scrollbar-color: ${isDark ? "rgba(255, 255, 255, 0.16) transparent" : "rgba(0, 0, 0, 0.16) transparent"} !important;
+          }
+          .scroll > div {
+            width: 100% !important;
+            max-width: 100% !important;
+            box-sizing: border-box !important;
           }
           .scroll::-webkit-scrollbar {
             width: 5px !important;
