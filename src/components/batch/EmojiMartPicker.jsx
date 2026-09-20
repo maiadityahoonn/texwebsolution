@@ -151,8 +151,9 @@ export default function EmojiMartPicker({
           }
           #nav {
             width: 100% !important;
-            padding: 8px 14px 0 !important;
-            border-bottom: 1px solid ${isDark ? "rgba(255, 255, 255, 0.08)" : "rgba(0, 0, 0, 0.06)"} !important;
+            padding: ${navPosition === "bottom" ? "4px 8px 6px" : "8px 14px 0"} !important;
+            border-top: ${navPosition === "bottom" ? (isDark ? "1px solid rgba(255, 255, 255, 0.08)" : "1px solid rgba(0, 0, 0, 0.06)") : "none"} !important;
+            border-bottom: ${navPosition === "bottom" ? "none" : (isDark ? "1px solid rgba(255, 255, 255, 0.08)" : "1px solid rgba(0, 0, 0, 0.06)")} !important;
             box-sizing: border-box !important;
           }
           #nav > div {

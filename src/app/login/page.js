@@ -65,6 +65,7 @@ import {
   Upload,
   Edit3,
   Pencil,
+  Pin,
   Save,
   Play,
   Pause,
@@ -72,6 +73,13 @@ import {
   Download,
   File,
   Image as ImageIcon,
+  VolumeX,
+  MessageSquareDot,
+  Archive,
+  Tag,
+  Ban,
+  Key,
+  ShieldAlert,
 } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import Pagination from "@/components/Pagination";
@@ -488,6 +496,229 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
   const chatMobileHistoryGuardRef = useRef(false);
   const chatBackSuppressAutoOpenRef = useRef(false);
   const typingStopTimerRef = useRef(null);
+  const [chatDraftRevision, setChatDraftRevision] = useState(0);
+
+  useEffect(() => {
+    const handleDraftUpdate = () => setChatDraftRevision((v) => v + 1);
+    window.addEventListener("texweb_draft_updated", handleDraftUpdate);
+    window.addEventListener("storage", handleDraftUpdate);
+    return () => {
+      window.removeEventListener("texweb_draft_updated", handleDraftUpdate);
+      window.removeEventListener("storage", handleDraftUpdate);
+    };
+  }, []);
+
+  const [chatFilterChip, setChatFilterChip] = useState("all"); // "all" | "unread" | "groups" | "direct"
+  const [pinnedChatIds, setPinnedChatIds] = useState(() => {
+    try {
+      if (typeof window !== "undefined") {
+        const stored = localStorage.getItem("texweb_pinned_chats");
+        return stored ? JSON.parse(stored) : [];
+      }
+    } catch {}
+    return [];
+  });
+
+  const togglePinChat = (chatId, e) => {
+    if (e) e.stopPropagation();
+    setPinnedChatIds((prev) => {
+      let next;
+      if (prev.includes(chatId)) {
+        next = prev.filter((id) => id !== chatId);
+      } else {
+        next = [chatId, ...prev];
+      }
+      try {
+        if (typeof window !== "undefined") {
+          localStorage.setItem("texweb_pinned_chats", JSON.stringify(next));
+          window.dispatchEvent(new Event("texweb_draft_updated"));
+        }
+      } catch {}
+      return next;
+    });
+  };
+
+  const [manualUnreadChatIds, setManualUnreadChatIds] = useState(() => {
+    try {
+      if (typeof window !== "undefined") {
+        const stored = localStorage.getItem("texweb_manual_unreads");
+        return stored ? JSON.parse(stored) : [];
+      }
+    } catch {}
+    return [];
+  });
+
+  const toggleManualUnread = (chatId, e) => {
+    if (e) e.stopPropagation();
+    setManualUnreadChatIds((prev) => {
+      let next;
+      if (prev.includes(chatId)) {
+        next = prev.filter((id) => id !== chatId);
+      } else {
+        next = [chatId, ...prev];
+      }
+      try {
+        if (typeof window !== "undefined") {
+          localStorage.setItem("texweb_manual_unreads", JSON.stringify(next));
+          window.dispatchEvent(new Event("texweb_draft_updated"));
+        }
+      } catch {}
+      return next;
+    });
+  };
+
+  const markChatAsReadLocally = (chatId) => {
+    setManualUnreadChatIds((prev) => {
+      if (!prev.includes(chatId)) return prev;
+      const next = prev.filter((id) => id !== chatId);
+      try {
+        if (typeof window !== "undefined") {
+          localStorage.setItem("texweb_manual_unreads", JSON.stringify(next));
+          window.dispatchEvent(new Event("texweb_draft_updated"));
+        }
+      } catch {}
+      return next;
+    });
+  };
+
+  // WhatsApp Chat Label Presets (Website Brand Curated Palette)
+  const CHAT_LABEL_PRESETS = [
+    { id: "important", name: "Important", color: "bg-red-500/15 text-red-600 dark:text-red-400 border-red-500/30" },
+    { id: "work", name: "Work", color: "bg-blue-500/15 text-blue-600 dark:text-blue-400 border-blue-500/30" },
+    { id: "lead", name: "Lead / Client", color: "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30" },
+    { id: "pending", name: "Pending", color: "bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30" },
+    { id: "personal", name: "Personal", color: "bg-purple-500/15 text-purple-600 dark:text-purple-400 border-purple-500/30" },
+  ];
+
+  // 1. WhatsApp Archive Chats
+  const [archivedChatIds, setArchivedChatIds] = useState(() => {
+    try {
+      if (typeof window !== "undefined") {
+        const stored = localStorage.getItem("texweb_archived_chats");
+        return stored ? JSON.parse(stored) : [];
+      }
+    } catch {}
+    return [];
+  });
+
+  const toggleArchiveChat = (chatId, e) => {
+    if (e) e.stopPropagation();
+    setArchivedChatIds((prev) => {
+      const next = prev.includes(chatId) ? prev.filter((id) => id !== chatId) : [chatId, ...prev];
+      try {
+        if (typeof window !== "undefined") {
+          localStorage.setItem("texweb_archived_chats", JSON.stringify(next));
+          window.dispatchEvent(new Event("texweb_draft_updated"));
+        }
+      } catch {}
+      return next;
+    });
+  };
+
+  // 2. WhatsApp Custom Chat Labels
+  const [chatLabels, setChatLabels] = useState(() => {
+    try {
+      if (typeof window !== "undefined") {
+        const stored = localStorage.getItem("texweb_chat_labels");
+        return stored ? JSON.parse(stored) : {};
+      }
+    } catch {}
+    return {};
+  });
+
+  const setChatLabelForChat = (chatId, labelId) => {
+    setChatLabels((prev) => {
+      const next = { ...prev };
+      if (!labelId) {
+        delete next[chatId];
+      } else {
+        next[chatId] = labelId;
+      }
+      try {
+        if (typeof window !== "undefined") {
+          localStorage.setItem("texweb_chat_labels", JSON.stringify(next));
+          window.dispatchEvent(new Event("texweb_draft_updated"));
+        }
+      } catch {}
+      return next;
+    });
+  };
+
+  // 3. WhatsApp Block / Unblock Contact
+  const [blockedContactIds, setBlockedContactIds] = useState(() => {
+    try {
+      if (typeof window !== "undefined") {
+        const stored = localStorage.getItem("texweb_blocked_contacts");
+        return stored ? JSON.parse(stored) : [];
+      }
+    } catch {}
+    return [];
+  });
+
+  const toggleBlockContact = (contactId, e) => {
+    if (e) e.stopPropagation();
+    setBlockedContactIds((prev) => {
+      const next = prev.includes(contactId) ? prev.filter((id) => id !== contactId) : [...prev, contactId];
+      try {
+        if (typeof window !== "undefined") {
+          localStorage.setItem("texweb_blocked_contacts", JSON.stringify(next));
+          window.dispatchEvent(new Event("texweb_draft_updated"));
+        }
+      } catch {}
+      return next;
+    });
+  };
+
+  // 4. WhatsApp Disappearing Messages Timers
+  const [disappearingTimers, setDisappearingTimers] = useState(() => {
+    try {
+      if (typeof window !== "undefined") {
+        const stored = localStorage.getItem("texweb_disappearing_timers");
+        return stored ? JSON.parse(stored) : {};
+      }
+    } catch {}
+    return {};
+  });
+
+  // 5. WhatsApp Screen Lock with PIN
+  const [screenLockPin, setScreenLockPin] = useState(() => {
+    try {
+      if (typeof window !== "undefined") {
+        return localStorage.getItem("texweb_app_lock_pin") || "";
+      }
+    } catch {}
+    return "";
+  });
+  const [isScreenLocked, setIsScreenLocked] = useState(false);
+  const [showSetPinModal, setShowSetPinModal] = useState(false);
+  const [screenLockInput, setScreenLockInput] = useState("");
+  const [screenLockError, setScreenLockError] = useState("");
+
+  // Sync state on texweb_draft_updated
+  useEffect(() => {
+    const handlePrivacySync = () => {
+      try {
+        if (typeof window !== "undefined") {
+          const arch = localStorage.getItem("texweb_archived_chats");
+          if (arch) setArchivedChatIds(JSON.parse(arch));
+          const lbls = localStorage.getItem("texweb_chat_labels");
+          if (lbls) setChatLabels(JSON.parse(lbls));
+          const blk = localStorage.getItem("texweb_blocked_contacts");
+          if (blk) setBlockedContactIds(JSON.parse(blk));
+          const dTimers = localStorage.getItem("texweb_disappearing_timers");
+          if (dTimers) setDisappearingTimers(JSON.parse(dTimers));
+          const pin = localStorage.getItem("texweb_app_lock_pin");
+          setScreenLockPin(pin || "");
+        }
+      } catch {}
+    };
+    window.addEventListener("texweb_draft_updated", handlePrivacySync);
+    window.addEventListener("storage", handlePrivacySync);
+    return () => {
+      window.removeEventListener("texweb_draft_updated", handlePrivacySync);
+      window.removeEventListener("storage", handlePrivacySync);
+    };
+  }, []);
 
   // Resizable WhatsApp Chat Sidebar (Left Panel)
   const [chatSidebarWidth, setChatSidebarWidth] = useState(() => {
@@ -1229,13 +1460,42 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
     });
   }, [availableChatBatches, batchChatMeta, batchNotificationMeta]);
 
+  const totalUnreadSum = useMemo(() => {
+    let count = 0;
+    Object.values(batchChatMeta || {}).forEach((m) => { count += (m?.unreadCount || 0); });
+    Object.values(directChatMeta || {}).forEach((m) => { count += (m?.unreadCount || 0); });
+    (manualUnreadChatIds || []).forEach((id) => {
+      const bUnread = batchChatMeta[id]?.unreadCount || 0;
+      const dUnread = directChatMeta[id]?.unreadCount || 0;
+      if (bUnread === 0 && dUnread === 0) {
+        count += 1;
+      }
+    });
+    return count;
+  }, [batchChatMeta, directChatMeta, manualUnreadChatIds]);
+
   const filteredChatBatches = useMemo(() => {
-    if (!chatSearchQuery.trim()) return sortedChatBatches;
-    const q = chatSearchQuery.toLowerCase();
-    return sortedChatBatches.filter(
-      (b) => b.name?.toLowerCase().includes(q) || b.domain?.toLowerCase().includes(q)
-    );
-  }, [sortedChatBatches, chatSearchQuery]);
+    let list = sortedChatBatches;
+    if (chatSearchQuery.trim()) {
+      const q = chatSearchQuery.toLowerCase();
+      list = list.filter(
+        (b) => b.name?.toLowerCase().includes(q) || b.domain?.toLowerCase().includes(q)
+      );
+    }
+    if (chatFilterChip === "unread") {
+      list = list.filter((b) => (batchChatMeta[b.id]?.unreadCount || 0) > 0 || manualUnreadChatIds.includes(b.id));
+    }
+    if (chatFilterChip === "archived") {
+      list = list.filter((b) => archivedChatIds.includes(b.id));
+    } else {
+      list = list.filter((b) => !archivedChatIds.includes(b.id));
+    }
+    return [...list].sort((a, b) => {
+      const aPinned = pinnedChatIds.includes(a.id) ? 1 : 0;
+      const bPinned = pinnedChatIds.includes(b.id) ? 1 : 0;
+      return bPinned - aPinned;
+    });
+  }, [sortedChatBatches, chatSearchQuery, chatFilterChip, batchChatMeta, pinnedChatIds, manualUnreadChatIds, archivedChatIds]);
 
   // Sort contacts dynamically: Most recent message appears on top (WhatsApp style)
   const sortedChatContacts = useMemo(() => {
@@ -1255,16 +1515,31 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
   }, [chatContacts, directChatMeta, sessionUser?.id, userProfile?.id, userProfile?.email]);
 
   const filteredChatContacts = useMemo(() => {
-    if (!chatSearchQuery.trim()) return sortedChatContacts;
-    const q = chatSearchQuery.toLowerCase();
-    return sortedChatContacts.filter(
-      (c) =>
-        c.full_name?.toLowerCase().includes(q) ||
-        c.email?.toLowerCase().includes(q) ||
-        c.role?.toLowerCase().includes(q) ||
-        c.domain?.toLowerCase().includes(q)
-    );
-  }, [sortedChatContacts, chatSearchQuery]);
+    let list = sortedChatContacts;
+    if (chatSearchQuery.trim()) {
+      const q = chatSearchQuery.toLowerCase();
+      list = list.filter(
+        (c) =>
+          c.full_name?.toLowerCase().includes(q) ||
+          c.email?.toLowerCase().includes(q) ||
+          c.role?.toLowerCase().includes(q) ||
+          c.domain?.toLowerCase().includes(q)
+      );
+    }
+    if (chatFilterChip === "unread") {
+      list = list.filter((c) => (directChatMeta[c.id]?.unreadCount || 0) > 0 || manualUnreadChatIds.includes(c.id));
+    }
+    if (chatFilterChip === "archived") {
+      list = list.filter((c) => archivedChatIds.includes(c.id));
+    } else {
+      list = list.filter((c) => !archivedChatIds.includes(c.id));
+    }
+    return [...list].sort((a, b) => {
+      const aPinned = pinnedChatIds.includes(a.id) ? 1 : 0;
+      const bPinned = pinnedChatIds.includes(b.id) ? 1 : 0;
+      return bPinned - aPinned;
+    });
+  }, [sortedChatContacts, chatSearchQuery, chatFilterChip, directChatMeta, pinnedChatIds, manualUnreadChatIds, archivedChatIds]);
 
   useEffect(() => {
     if (!selectedContactId) return;
@@ -3208,8 +3483,10 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
     const isMobileChatPane = activeSection === "chat" && chatMobilePane === "chat";
     if (!isMobileChatPane) {
       chatMobileHistoryGuardRef.current = false;
+      document.body.classList.remove("mobile-chat-active");
       return undefined;
     }
+    document.body.classList.add("mobile-chat-active");
     if (!chatMobileHistoryGuardRef.current) {
       window.history.pushState({ texwebChatPane: true }, "", window.location.href);
       chatMobileHistoryGuardRef.current = true;
@@ -3224,7 +3501,10 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
       }
     };
     window.addEventListener("popstate", handlePopState);
-    return () => window.removeEventListener("popstate", handlePopState);
+    return () => {
+      document.body.classList.remove("mobile-chat-active");
+      window.removeEventListener("popstate", handlePopState);
+    };
   }, [activeSection, chatMobilePane]);
 
   useEffect(() => {
@@ -3280,48 +3560,9 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
   }, [activeSection]);
 
   useEffect(() => {
-    if (activeSection !== "chat" || selectedBatchId || selectedContactId) return;
-    if (chatBackSuppressAutoOpenRef.current) return;
-
-    const topBatch = sortedChatBatches[0] || null;
-    const topContact = sortedChatContacts[0] || null;
-    const batchTime = topBatch
-      ? Math.max(
-        chatTimestamp(batchChatMeta[topBatch.id]?.lastMessageTime),
-        chatTimestamp(batchNotificationMeta[topBatch.id]?.lastMessageTime),
-        chatTimestamp(topBatch.updated_at || topBatch.created_at)
-      )
-      : 0;
-    const contactTime = topContact ? chatTimestamp(directChatMeta[topContact.id]?.lastMessageTime) : 0;
-    const batchUnread = topBatch ? (batchChatMeta[topBatch.id]?.unreadCount || 0) : 0;
-    const contactUnread = topContact ? (directChatMeta[topContact.id]?.unreadCount || 0) : 0;
-
-    if (topContact && (contactUnread > 0 || (!topBatch && contactTime) || (contactTime > batchTime && batchUnread === 0))) {
-      setChatChannelTab("direct");
-      setSelectedContactId(topContact.id);
-      setChatMobilePane("chat");
-      return;
-    }
-
-    if (topBatch) {
-      setChatChannelTab("batches");
-      setSelectedBatchId(topBatch.id);
-      setBatchChatMeta((prev) => ({
-        ...prev,
-        [topBatch.id]: {
-          ...(prev[topBatch.id] || {}),
-          unreadCount: 0,
-        },
-      }));
-      setChatMobilePane("chat");
-      return;
-    }
-
-    if (topContact) {
-      setChatChannelTab("direct");
-      setSelectedContactId(topContact.id);
-      setChatMobilePane("chat");
-    }
+    if (activeSection !== "chat") return;
+    if (selectedBatchId || selectedContactId) return;
+    setChatMobilePane("channels");
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeSection, selectedBatchId, selectedContactId, chatAutoOpenKey]);
 
@@ -4805,10 +5046,10 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
 
       {sessionUser ? (
         <div className="min-h-screen relative flex flex-col">
-          <div className={`${(activeSection === "chat" && chatMobilePane === "chat") ? "!hidden" : "flex"} fixed top-0 left-0 right-0 z-40 md:hidden h-16 px-3.5 items-center justify-between border-b transition-colors duration-200 ${
+          <div className={`${(activeSection === "chat" && chatMobilePane === "chat") ? "!hidden" : "flex"} fixed top-0 left-0 right-0 z-40 md:hidden h-16 px-3.5 items-center justify-between border-b-0 border-t-0 border-transparent transition-colors duration-200 pt-[env(safe-area-inset-top,0px)] ${
             isDark
-              ? "bg-[#0b0b0c]/95 backdrop-blur-md border-neutral-800 text-neutral-100 shadow-none"
-              : "bg-white/95 backdrop-blur-md border-gray-200/90 text-gray-900 shadow-xs"
+              ? "bg-[#0b0b0c]/95 backdrop-blur-md text-neutral-100 shadow-none"
+              : "bg-white/95 backdrop-blur-md text-gray-900 shadow-none"
           }`}>
             <div className="flex items-center gap-2 min-w-0">
               <Link href="/" className="admin-sidebar-logo flex items-center group min-w-0">
@@ -5764,7 +6005,7 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
             >
               {/* 1. Header Banner of the Card with Title + Contextual Actions (Shown for Chat channels view and all standard sections) */}
               {!(activeSection === "chat" && chatMobilePane === "chat") && (
-                <div className={`flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-3 pb-1 md:pb-3 md:border-b md:border-gray-100 md:dark:border-slate-800 shrink-0 ${activeSection === "chat" ? "md:hidden" : ""}`}>
+                <div className={`flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-3 pb-1 md:pb-3 border-b-0 border-transparent shrink-0 ${activeSection === "chat" ? "md:hidden" : ""}`}>
                   <div>
                     {/* Role & Department Badges */}
                     <div className="flex items-center gap-2 mb-2">
@@ -6622,7 +6863,7 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
               {activeSection === "chat" && (
                 <div className="flex-1 min-h-0 h-full grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_minmax(300px,340px)] gap-0 xl:gap-3 animate-fadeIn">
                   {/* Left Column: Active WhatsApp Chat Area */}
-                  <div className={`${chatMobilePane === "chat" ? "flex" : "hidden"} xl:flex h-full min-h-0 rounded-none sm:rounded-2xl xl:rounded-3xl overflow-hidden border-0 sm:border border-gray-200/80 dark:border-slate-800/80 flex-col relative shadow-none`}>
+                  <div className={`${chatMobilePane === "chat" ? "fixed inset-0 z-50 xl:relative xl:inset-auto xl:z-auto flex" : "hidden"} xl:flex h-full min-h-0 rounded-none sm:rounded-2xl xl:rounded-3xl overflow-hidden border-0 sm:border border-gray-200/80 dark:border-slate-800/80 flex-col relative shadow-none`}>
                     {selectedContactId && canAccessDirectChat ? (
                       (() => {
                         const activeContact = chatContacts.find((c) => c.id === selectedContactId);
@@ -6966,14 +7207,35 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
                   </div>
 
                   {/* Right Column: Channels & Contacts List matching Batch Overview Chat Tab */}
-                  <div className={`${chatMobilePane === "chat" ? "hidden" : "flex"} xl:flex rounded-2xl xl:rounded-3xl border border-gray-200/80 dark:border-slate-800/80 p-3 sm:p-4 space-y-3 bg-white/60 dark:bg-slate-900/30 shadow-2xs backdrop-blur-xs flex-col h-full min-h-0`}>
+                  <div className={`${chatMobilePane === "chat" ? "hidden" : "flex"} xl:flex rounded-2xl xl:rounded-3xl border border-gray-200/80 dark:border-slate-800/80 p-3 sm:p-4 space-y-3 bg-white/60 dark:bg-slate-900/30 shadow-2xs flex-col xl:h-full xl:min-h-0`}>
                     <div className="hidden xl:flex items-center justify-between pb-2 border-b border-gray-100 dark:border-slate-800/80 shrink-0">
                       <span className="text-xs font-bold text-gray-900 dark:text-white">
                         Channels & Contacts
                       </span>
-                      <span className="text-[11px] font-medium text-gray-500 dark:text-slate-400">
-                        {chatChannelTab === "batches" ? `${availableChatBatches.length} Batches` : `${directChatStats.total} Direct`}
-                      </span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-[11px] font-medium text-gray-500 dark:text-slate-400">
+                          {chatChannelTab === "batches" ? `${availableChatBatches.length} Batches` : `${directChatStats.total} Direct`}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (!screenLockPin) {
+                              setShowSetPinModal(true);
+                            } else {
+                              setIsScreenLocked(true);
+                            }
+                          }}
+                          className={`p-1 rounded-lg border transition cursor-pointer ${
+                            screenLockPin
+                              ? "border-red-200 dark:border-red-900/50 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30"
+                              : "border-gray-200 dark:border-slate-800 text-gray-400 hover:text-red-600"
+                          }`}
+                          title={screenLockPin ? "Lock Screen (PIN active)" : "Set Screen Lock PIN"}
+                          aria-label="Screen Lock"
+                        >
+                          <Lock className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
                     </div>
 
                     {/* Mode Toggle: Batches vs Direct */}
@@ -6981,25 +7243,11 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
                       <button
                         type="button"
                         onClick={() => {
-                          const nextBatch = sortedChatBatches[0] || null;
                           chatBackSuppressAutoOpenRef.current = false;
                           setChatChannelTab("batches");
                           setSelectedContactId("");
-                          if (nextBatch?.id) {
-                            setSelectedBatchId(nextBatch.id);
-                            setBatchChatMeta((prev) => ({
-                              ...prev,
-                              [nextBatch.id]: {
-                                ...(prev[nextBatch.id] || {}),
-                                unreadCount: 0,
-                              },
-                            }));
-                            setChatMobilePane("chat");
-                            loadBatchWorkspaceData(nextBatch.id);
-                          } else {
-                            setSelectedBatchId("");
-                            setChatMobilePane("channels");
-                          }
+                          setSelectedBatchId("");
+                          setChatMobilePane("channels");
                         }}
                         className={`py-2 px-3 rounded-xl transition flex items-center justify-center gap-1.5 cursor-pointer ${
                           chatChannelTab === "batches"
@@ -7019,68 +7267,177 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
                         <button
                           type="button"
                           onClick={() => {
-                            const nextContact = sortedChatContacts[0] || null;
                             chatBackSuppressAutoOpenRef.current = false;
                             setChatChannelTab("direct");
                             setSelectedBatchId("");
-                            if (nextContact?.id) {
-                              setSelectedContactId(nextContact.id);
-                              setChatMobilePane("chat");
-                              loadMessages(nextContact.id);
-                              markDirectChatRead(nextContact.id);
-                            } else {
-                              setSelectedContactId("");
-                              setChatMobilePane("channels");
-                            }
+                            setSelectedContactId("");
+                            setChatMobilePane("channels");
                           }}
                           className={`py-2 px-3 rounded-xl transition flex items-center justify-center gap-1.5 cursor-pointer ${
                             chatChannelTab === "direct"
                               ? "bg-white dark:bg-slate-700 text-red-600 dark:text-red-400 shadow-2xs font-extrabold"
-                              : "text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white"
-                          }`}
+                            : "text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white"
+                        }`}
+                      >
+                        <User className="w-4 h-4" />
+                        <span>Direct</span>
+                        {directChatStats.total > 0 && (
+                          <span className="text-[10px] px-1.5 py-0.2 rounded-full font-mono bg-black/5 dark:bg-white/10">
+                            {directChatStats.total}
+                          </span>
+                        )}
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Search filter for channels */}
+                  <div className="relative shrink-0">
+                    <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                    <input
+                      type="text"
+                      placeholder="Search channels or contacts..."
+                      value={chatSearchQuery}
+                      onChange={(e) => setChatSearchQuery(e.target.value)}
+                      className="w-full pl-8 pr-3 py-2 rounded-xl border border-gray-200/80 dark:border-slate-800 bg-white/70 dark:bg-slate-900/40 text-xs placeholder-gray-400 dark:placeholder-slate-500 focus:outline-none focus:border-red-500 transition"
+                    />
+                  </div>
+
+                  {/* WhatsApp Filter Chips: All | Unread | Groups | Direct | Archived */}
+                  <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5 shrink-0 text-[11px] select-none">
+                    <button
+                      type="button"
+                      onClick={() => setChatFilterChip("all")}
+                      className={`px-3 py-1 rounded-full font-bold transition cursor-pointer shrink-0 ${
+                        chatFilterChip === "all"
+                          ? "bg-red-600 text-white shadow-xs"
+                          : "bg-gray-100 dark:bg-slate-800/80 text-gray-600 dark:text-slate-300 hover:bg-red-50 dark:hover:bg-red-950/30 hover:text-red-600"
+                      }`}
+                    >
+                      All
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setChatFilterChip("unread")}
+                      className={`px-3 py-1 rounded-full font-bold transition cursor-pointer shrink-0 flex items-center gap-1 ${
+                        chatFilterChip === "unread"
+                          ? "bg-red-600 text-white shadow-xs"
+                          : "bg-gray-100 dark:bg-slate-800/80 text-gray-600 dark:text-slate-300 hover:bg-red-50 dark:hover:bg-red-950/30 hover:text-red-600"
+                      }`}
+                    >
+                      <span>Unread</span>
+                      {totalUnreadSum > 0 && (
+                        <span className={`text-[9px] px-1.5 py-0.2 rounded-full font-black ${
+                          chatFilterChip === "unread" ? "bg-white text-red-600" : "bg-red-600 text-white"
+                        }`}>
+                          {totalUnreadSum}
+                        </span>
+                      )}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setChatFilterChip("groups");
+                        setChatChannelTab("batches");
+                      }}
+                      className={`px-3 py-1 rounded-full font-bold transition cursor-pointer shrink-0 ${
+                        chatFilterChip === "groups" || (chatFilterChip === "all" && chatChannelTab === "batches")
+                          ? "border border-red-500/40 text-red-600 dark:text-red-400 bg-red-50/50 dark:bg-red-950/20"
+                          : "bg-gray-100 dark:bg-slate-800/80 text-gray-600 dark:text-slate-300 hover:bg-red-50 dark:hover:bg-red-950/30 hover:text-red-600"
+                      }`}
+                    >
+                      Groups
+                    </button>
+                    {canAccessDirectChat && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setChatFilterChip("direct");
+                          setChatChannelTab("direct");
+                        }}
+                        className={`px-3 py-1 rounded-full font-bold transition cursor-pointer shrink-0 ${
+                          chatFilterChip === "direct" || (chatFilterChip === "all" && chatChannelTab === "direct")
+                            ? "border border-red-500/40 text-red-600 dark:text-red-400 bg-red-50/50 dark:bg-red-950/20"
+                            : "bg-gray-100 dark:bg-slate-800/80 text-gray-600 dark:text-slate-300 hover:bg-red-50 dark:hover:bg-red-950/30 hover:text-red-600"
+                        }`}
+                      >
+                        Direct
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => setChatFilterChip("archived")}
+                      className={`px-3 py-1 rounded-full font-bold transition cursor-pointer shrink-0 flex items-center gap-1 ${
+                        chatFilterChip === "archived"
+                          ? "bg-red-600 text-white shadow-xs"
+                          : "bg-gray-100 dark:bg-slate-800/80 text-gray-600 dark:text-slate-300 hover:bg-red-50 dark:hover:bg-red-950/30 hover:text-red-600"
+                      }`}
+                    >
+                      <Archive className="w-3.5 h-3.5" />
+                      <span>Archived</span>
+                      {archivedChatIds.length > 0 && (
+                        <span className={`text-[9px] px-1.5 py-0.2 rounded-full font-black ${
+                          chatFilterChip === "archived" ? "bg-white text-red-600" : "bg-red-600 text-white"
+                        }`}>
+                          {archivedChatIds.length}
+                        </span>
+                      )}
+                    </button>
+                  </div>
+
+                  {chatChannelTab === "direct" && canAccessDirectChat && (
+                    <div className="grid grid-cols-3 gap-1.5 text-[10px] font-bold shrink-0">
+                      <div className="rounded-xl border border-gray-200/80 dark:border-slate-800 bg-white/60 dark:bg-slate-900/30 px-2 py-1.5 text-center">
+                        <div className="text-gray-400">Total</div>
+                        <div className="text-gray-900 dark:text-white">{directChatStats.total}</div>
+                      </div>
+                      <div className="rounded-xl border border-emerald-200/80 dark:border-emerald-900/50 bg-emerald-50/60 dark:bg-emerald-950/20 px-2 py-1.5 text-center">
+                        <div className="text-emerald-600 dark:text-emerald-400">Online</div>
+                        <div className="text-emerald-700 dark:text-emerald-300">{directChatStats.online}</div>
+                      </div>
+                      <div className="rounded-xl border border-gray-200/80 dark:border-slate-800 bg-white/60 dark:bg-slate-900/30 px-2 py-1.5 text-center">
+                        <div className="text-gray-400">Offline</div>
+                        <div className="text-gray-700 dark:text-slate-300">{directChatStats.offline}</div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Channel List - Fluid Natural Scrolling on Mobile, Internal Panel Scrolling on Desktop */}
+                  <div className="space-y-2 text-xs overflow-y-visible xl:overflow-y-auto pr-0 xl:pr-1 flex-initial xl:flex-1">
+                      {/* WhatsApp Top Archived Row (When not on archived filter) */}
+                      {chatFilterChip !== "archived" && archivedChatIds.length > 0 && (
+                        <button
+                          type="button"
+                          onClick={() => setChatFilterChip("archived")}
+                          className="w-full flex items-center justify-between px-3.5 py-2.5 rounded-2xl border border-gray-200/80 dark:border-slate-800 bg-white/60 dark:bg-slate-900/40 hover:bg-red-50/60 dark:hover:bg-red-950/30 text-xs font-semibold text-gray-700 dark:text-slate-300 transition cursor-pointer group shadow-2xs"
                         >
-                          <Users className="w-4 h-4" />
-                          <span>Direct</span>
-                          {directChatStats.total > 0 && (
-                            <span className="text-[10px] px-1.5 py-0.2 rounded-full font-mono bg-black/5 dark:bg-white/10">
-                              {directChatStats.total}
-                            </span>
-                          )}
+                          <div className="flex items-center gap-2.5">
+                            <div className="p-1.5 rounded-lg bg-red-100 dark:bg-red-950/50 text-red-600 dark:text-red-400 group-hover:scale-110 transition">
+                              <Archive className="w-3.5 h-3.5" />
+                            </div>
+                            <span className="font-bold text-gray-900 dark:text-white">Archived</span>
+                          </div>
+                          <span className="text-[11px] font-black px-2 py-0.5 rounded-full bg-red-600 text-white shadow-2xs">
+                            {archivedChatIds.length}
+                          </span>
                         </button>
                       )}
-                    </div>
 
-                    {/* Search filter for channels */}
-                    <div className="relative shrink-0">
-                      <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                      <input
-                        type="text"
-                        placeholder="Search channels or contacts..."
-                        value={chatSearchQuery}
-                        onChange={(e) => setChatSearchQuery(e.target.value)}
-                        className="w-full pl-8 pr-3 py-2 rounded-xl border border-gray-200/80 dark:border-slate-800 bg-white/70 dark:bg-slate-900/40 text-xs placeholder-gray-400 dark:placeholder-slate-500 focus:outline-none focus:border-red-500 transition"
-                      />
-                    </div>
-
-                    {chatChannelTab === "direct" && canAccessDirectChat && (
-                      <div className="grid grid-cols-3 gap-1.5 text-[10px] font-bold shrink-0">
-                        <div className="rounded-xl border border-gray-200/80 dark:border-slate-800 bg-white/60 dark:bg-slate-900/30 px-2 py-1.5 text-center">
-                          <div className="text-gray-400">Total</div>
-                          <div className="text-gray-900 dark:text-white">{directChatStats.total}</div>
+                      {/* Archived Banner when on archived filter */}
+                      {chatFilterChip === "archived" && (
+                        <div className="flex items-center justify-between px-3 py-2 rounded-2xl bg-red-500/10 border border-red-500/20 text-red-600 dark:text-red-400 text-xs font-bold mb-1">
+                          <div className="flex items-center gap-2">
+                            <Archive className="w-4 h-4 shrink-0" />
+                            <span>Archived Chats ({archivedChatIds.length})</span>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => setChatFilterChip("all")}
+                            className="px-2 py-0.5 rounded-lg bg-red-600 text-white font-bold text-[10px] hover:bg-red-700 transition cursor-pointer"
+                          >
+                            Show All
+                          </button>
                         </div>
-                        <div className="rounded-xl border border-emerald-200/80 dark:border-emerald-900/50 bg-emerald-50/60 dark:bg-emerald-950/20 px-2 py-1.5 text-center">
-                          <div className="text-emerald-600 dark:text-emerald-400">Online</div>
-                          <div className="text-emerald-700 dark:text-emerald-300">{directChatStats.online}</div>
-                        </div>
-                        <div className="rounded-xl border border-gray-200/80 dark:border-slate-800 bg-white/60 dark:bg-slate-900/30 px-2 py-1.5 text-center">
-                          <div className="text-gray-400">Offline</div>
-                          <div className="text-gray-700 dark:text-slate-300">{directChatStats.offline}</div>
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Channel List */}
-                    <div className="space-y-2 text-xs overflow-y-auto pr-1 flex-1">
+                      )}
                       {chatChannelTab === "batches" ? (
                         filteredChatBatches.length === 0 ? (
                           <div className="text-center py-8 text-xs text-gray-400">No matching batches found.</div>
@@ -7095,14 +7452,37 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
                             const avatarUrl = getBatchAvatarUrl(b);
                             const onlineSummary = getBatchOnlineSummary(b);
                             return (
-                              <button
+                              <div
                                 key={b.id}
-                                type="button"
+                                role="button"
+                                tabIndex={0}
+                                onKeyDown={(e) => {
+                                  if (e.key === "Enter" || e.key === " ") {
+                                    if (e.target === e.currentTarget) {
+                                      e.preventDefault();
+                                      chatBackSuppressAutoOpenRef.current = false;
+                                      setChatChannelTab("batches");
+                                      setSelectedContactId("");
+                                      setSelectedBatchId(b.id);
+                                      markChatAsReadLocally(b.id);
+                                      setBatchChatMeta((prev) => ({
+                                        ...prev,
+                                        [b.id]: {
+                                          ...(prev[b.id] || {}),
+                                          unreadCount: 0,
+                                        },
+                                      }));
+                                      setChatMobilePane("chat");
+                                      loadBatchWorkspaceData(b.id);
+                                    }
+                                  }
+                                }}
                                 onClick={() => {
                                   chatBackSuppressAutoOpenRef.current = false;
                                   setChatChannelTab("batches");
                                   setSelectedContactId("");
                                   setSelectedBatchId(b.id);
+                                  markChatAsReadLocally(b.id);
                                   setBatchChatMeta((prev) => ({
                                     ...prev,
                                     [b.id]: {
@@ -7113,7 +7493,7 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
                                   setChatMobilePane("chat");
                                   loadBatchWorkspaceData(b.id);
                                 }}
-                                className={`w-full flex items-center justify-between gap-3 p-3 rounded-2xl border transition-all cursor-pointer text-left ${
+                                className={`w-full flex items-center justify-between gap-3 p-3 rounded-2xl border transition-all cursor-pointer text-left group select-none ${
                                   isSelected
                                     ? "bg-red-50/80 text-red-950 dark:bg-red-500/10 dark:text-red-100 border-red-300 dark:border-red-500/30 font-bold shadow-xs"
                                     : "bg-white/60 dark:bg-slate-900/30 border-gray-200/80 dark:border-slate-800 hover:border-red-300 dark:hover:border-slate-700"
@@ -7130,10 +7510,44 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
                                     </div>
                                   </div>
                                   <div className="min-w-0 flex-1">
-                                    <div className="font-bold text-xs sm:text-sm truncate text-gray-900 dark:text-white mb-0.5">{b.name}</div>
-                                    <div className="text-[11px] text-gray-500 dark:text-slate-400 truncate mb-1">
-                                      {latestPreview || domainLabel(b.domain)}
-                                    </div>
+                                    {(() => {
+                                      const isPinned = pinnedChatIds.includes(b.id);
+                                      const batchDraft = typeof window !== "undefined" ? localStorage.getItem(`texweb_draft_${b.id}`) : null;
+                                      const isBatchMuted = typeof window !== "undefined" ? (() => {
+                                        try {
+                                          const map = JSON.parse(localStorage.getItem("texweb_muted_chats") || "{}");
+                                          return Boolean(map[b.id]);
+                                        } catch { return false; }
+                                      })() : false;
+
+                                      const isBatchTyping = selectedBatchId === b.id && typingUsers.length > 0;
+
+                                      return (
+                                        <>
+                                          <div className="font-bold text-xs sm:text-sm text-gray-900 dark:text-white mb-0.5 flex items-center gap-1.5 flex-wrap leading-tight">
+                                            <span className="font-bold break-words">{b.name}</span>
+                                            {isPinned && (
+                                              <Pin className="w-3 h-3 fill-red-600 text-red-600 dark:text-red-400 rotate-45 shrink-0" title="Pinned chat" />
+                                            )}
+                                            {isBatchMuted && <VolumeX className="w-3.5 h-3.5 text-gray-400 dark:text-gray-500 shrink-0" title="Muted" />}
+                                          </div>
+                                          <div className="text-[11px] text-gray-500 dark:text-slate-400 truncate mb-1">
+                                            {isBatchTyping ? (
+                                              <span className="text-red-600 dark:text-red-400 font-bold flex items-center gap-1.5">
+                                                <span className="inline-block w-1.5 h-1.5 rounded-full bg-red-600 animate-ping" />
+                                                <span>{typingUsers.map((u) => u.name?.split(" ")[0] || "Someone").join(", ")} typing...</span>
+                                              </span>
+                                            ) : batchDraft ? (
+                                              <span className="text-red-600 dark:text-red-400 font-semibold truncate inline-block max-w-full">
+                                                <span className="font-bold">Draft:</span> {batchDraft}
+                                              </span>
+                                            ) : (
+                                              latestPreview || domainLabel(b.domain)
+                                            )}
+                                          </div>
+                                        </>
+                                      );
+                                    })()}
                                     <div className="flex items-center gap-1.5 flex-wrap">
                                       <span className="px-2 py-0.5 rounded-md text-[9.5px] font-semibold bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-slate-400 border border-gray-200 dark:border-slate-700 truncate max-w-[150px]">
                                         {domainLabel(b.domain)}
@@ -7143,22 +7557,63 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
                                           {onlineSummary.onlineCount} online
                                         </span>
                                       )}
+                                      {chatLabels[b.id] && (() => {
+                                        const lbl = CHAT_LABEL_PRESETS.find((p) => p.id === chatLabels[b.id]);
+                                        return lbl ? (
+                                          <span className={`text-[9px] px-1.5 py-0.2 rounded-md font-black border ${lbl.color}`}>
+                                            {lbl.name}
+                                          </span>
+                                        ) : null;
+                                      })()}
                                     </div>
                                   </div>
                                 </div>
                                 <div className="flex flex-col items-end gap-1.5 shrink-0 pl-1">
-                                  <span className={`text-[10px] px-2 py-0.5 rounded-full border font-semibold ${
-                                    isSelected ? "bg-red-600 text-white border-red-600" : "bg-gray-100 dark:bg-slate-800 border-gray-200 dark:border-slate-700 text-gray-600 dark:text-slate-400"
-                                  }`}>
-                                    {b.status || "active"}
-                                  </span>
-                                  {unreadBadge > 0 && (
+                                  <div className="flex items-center gap-1">
+                                    <div className="hidden group-hover:flex items-center gap-0.5">
+                                      <button
+                                        type="button"
+                                        onClick={(e) => toggleArchiveChat(b.id, e)}
+                                        className="p-1 rounded-md text-gray-400 hover:text-red-600 transition cursor-pointer hover:bg-black/5 dark:hover:bg-white/5"
+                                        title={archivedChatIds.includes(b.id) ? "Unarchive batch" : "Archive batch"}
+                                        aria-label="Toggle archive"
+                                      >
+                                        <Archive className={`w-3.5 h-3.5 ${archivedChatIds.includes(b.id) ? "text-red-600" : ""}`} />
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={(e) => toggleManualUnread(b.id, e)}
+                                        className="p-1 rounded-md text-gray-400 hover:text-red-600 transition cursor-pointer hover:bg-black/5 dark:hover:bg-white/5"
+                                        title={manualUnreadChatIds.includes(b.id) ? "Mark as read" : "Mark as unread"}
+                                        aria-label="Toggle unread"
+                                      >
+                                        <MessageSquareDot className={`w-3.5 h-3.5 ${manualUnreadChatIds.includes(b.id) ? "fill-red-600 text-red-600" : ""}`} />
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={(e) => togglePinChat(b.id, e)}
+                                        className="p-1 rounded-md text-gray-400 hover:text-red-600 transition cursor-pointer hover:bg-black/5 dark:hover:bg-white/5"
+                                        title={pinnedChatIds.includes(b.id) ? "Unpin batch" : "Pin batch to top"}
+                                        aria-label="Pin batch"
+                                      >
+                                        <Pin className={`w-3.5 h-3.5 ${pinnedChatIds.includes(b.id) ? "fill-red-600 text-red-600 rotate-45" : ""}`} />
+                                      </button>
+                                    </div>
+                                    <span className={`text-[10px] px-2 py-0.5 rounded-full border font-semibold ${
+                                      isSelected ? "bg-red-600 text-white border-red-600" : "bg-gray-100 dark:bg-slate-800 border-gray-200 dark:border-slate-700 text-gray-600 dark:text-slate-400"
+                                    }`}>
+                                      {b.status || "active"}
+                                    </span>
+                                  </div>
+                                  {unreadBadge > 0 ? (
                                     <span className="min-w-5 h-5 px-1.5 rounded-full bg-red-600 text-white text-[10px] font-black flex items-center justify-center shadow-xs">
                                       {unreadBadge > 99 ? "99+" : unreadBadge}
                                     </span>
-                                  )}
+                                  ) : manualUnreadChatIds.includes(b.id) ? (
+                                    <span className="w-2.5 h-2.5 rounded-full bg-red-600 shrink-0 shadow-xs" title="Marked as unread" />
+                                  ) : null}
                                 </div>
-                              </button>
+                              </div>
                             );
                           })
                         )
@@ -7176,21 +7631,44 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
                             const avatarUrl = getProfileAvatarUrl(profile);
                             const subtitle = contactSubtitle(profile);
                             const roleLabel = channelRoleLabel(profile.role);
+                            const contactDraft = typeof window !== "undefined" ? localStorage.getItem(`texweb_draft_${contact.id}`) : null;
+                            const isContactMuted = typeof window !== "undefined" ? (() => {
+                              try {
+                                const map = JSON.parse(localStorage.getItem("texweb_muted_chats") || "{}");
+                                return Boolean(map[contact.id]);
+                              } catch { return false; }
+                            })() : false;
+
                             return (
-                              <button
+                              <div
                                 key={contact.id}
-                                type="button"
+                                role="button"
+                                tabIndex={0}
+                                onKeyDown={(e) => {
+                                  if (e.key === "Enter" || e.key === " ") {
+                                    if (e.target === e.currentTarget) {
+                                      e.preventDefault();
+                                      chatBackSuppressAutoOpenRef.current = false;
+                                      setSelectedContactId(contact.id);
+                                      setChatMobilePane("chat");
+                                      loadMessages(contact.id);
+                                      markDirectChatRead(contact.id);
+                                      markChatAsReadLocally(contact.id);
+                                    }
+                                  }
+                                }}
                                 onClick={() => {
                                   chatBackSuppressAutoOpenRef.current = false;
                                   setSelectedContactId(contact.id);
                                   setChatMobilePane("chat");
                                   loadMessages(contact.id);
                                   markDirectChatRead(contact.id);
+                                  markChatAsReadLocally(contact.id);
                                 }}
-                                className={`w-full flex items-center justify-between gap-3 p-3 rounded-2xl border transition-all cursor-pointer text-left ${
+                                className={`w-full flex items-center justify-between gap-3 p-3 rounded-2xl border transition-all cursor-pointer text-left group select-none ${
                                   isSelected
                                     ? "bg-red-50/80 text-red-950 dark:bg-red-500/10 dark:text-red-100 border-red-300 dark:border-red-500/30 font-bold shadow-xs"
-                                    : "bg-white/60 dark:bg-slate-900/30 border-gray-200/80 dark:border-slate-800 hover:border-emerald-500"
+                                    : "bg-white/60 dark:bg-slate-900/30 border-gray-200/80 dark:border-slate-800 hover:border-red-500"
                                 }`}
                               >
                                 <div className="flex items-center gap-3 min-w-0 flex-1">
@@ -7205,37 +7683,111 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
                                     <span className={`absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full ring-2 ring-white dark:ring-slate-900 ${isOnline ? "bg-emerald-500" : "bg-gray-300 dark:bg-slate-600"}`} />
                                   </div>
                                   <div className="min-w-0 flex-1">
-                                    <div className={`font-bold text-xs sm:text-sm truncate flex items-center gap-1.5 mb-0.5 ${isSelected ? "text-red-700 dark:text-red-300" : "text-gray-900 dark:text-white"}`}>
-                                      {isSelf ? (
-                                        <>
-                                          <span className="text-red-600 dark:text-red-400 font-black">You</span>
-                                          <span className="text-[11px] text-gray-500 dark:text-gray-400 font-normal truncate">({profile.full_name || "Myself"})</span>
-                                        </>
-                                      ) : (
-                                        <span>{profile.full_name}</span>
-                                      )}
-                                    </div>
-                                    <div className="text-[11px] text-gray-500 dark:text-slate-400 truncate mb-1">
-                                      {meta.lastMessagePreview || subtitle || profile.email}
-                                    </div>
+                                    {(() => {
+                                      const isPinned = pinnedChatIds.includes(contact.id);
+                                      return (
+                                        <div className={`font-bold text-xs sm:text-sm flex items-center gap-1.5 flex-wrap leading-tight mb-0.5 ${isSelected ? "text-red-700 dark:text-red-300" : "text-gray-900 dark:text-white"}`}>
+                                          {isSelf ? (
+                                            <>
+                                              <span className="text-red-600 dark:text-red-400 font-black">You</span>
+                                              <span className="text-[11px] text-gray-500 dark:text-gray-400 font-normal">({profile.full_name || "Myself"})</span>
+                                              {isPinned && <Pin className="w-3 h-3 fill-red-600 text-red-600 dark:text-red-400 rotate-45 shrink-0" title="Pinned contact" />}
+                                              {isContactMuted && <VolumeX className="w-3.5 h-3.5 text-gray-400 dark:text-gray-500 shrink-0" title="Muted" />}
+                                            </>
+                                          ) : (
+                                            <>
+                                              <span className="font-bold break-words">{profile.full_name}</span>
+                                              {isPinned && <Pin className="w-3 h-3 fill-red-600 text-red-600 dark:text-red-400 rotate-45 shrink-0" title="Pinned contact" />}
+                                              {isContactMuted && <VolumeX className="w-3.5 h-3.5 text-gray-400 dark:text-gray-500 shrink-0" title="Muted" />}
+                                            </>
+                                          )}
+                                        </div>
+                                      );
+                                    })()}
+                                    {(() => {
+                                      const isContactTyping = typingUsers.some((u) => u.id === contact.id);
+                                      return (
+                                        <div className="text-[11px] text-gray-500 dark:text-slate-400 truncate mb-1">
+                                          {isContactTyping ? (
+                                            <span className="text-red-600 dark:text-red-400 font-bold flex items-center gap-1.5">
+                                              <span className="inline-block w-1.5 h-1.5 rounded-full bg-red-600 animate-ping" />
+                                              <span>typing...</span>
+                                            </span>
+                                          ) : contactDraft ? (
+                                            <span className="text-red-600 dark:text-red-400 font-semibold truncate inline-block max-w-full">
+                                              <span className="font-bold">Draft:</span> {contactDraft}
+                                            </span>
+                                          ) : (
+                                            meta.lastMessagePreview || subtitle || profile.email
+                                          )}
+                                        </div>
+                                      );
+                                    })()}
                                     <div className="flex items-center gap-1.5 flex-wrap">
                                       <span className="px-2 py-0.5 rounded-md text-[9.5px] font-semibold bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-slate-400 border border-gray-200 dark:border-slate-700 truncate max-w-[150px]">
                                         {subtitle || profile.email}
                                       </span>
+                                      {blockedContactIds.includes(contact.id) && (
+                                        <span className="text-[9px] px-1.5 py-0.2 rounded-md font-black bg-red-500/15 text-red-600 dark:text-red-400 border border-red-500/30 flex items-center gap-1">
+                                          <Ban className="w-2.5 h-2.5" />
+                                          <span>Blocked</span>
+                                        </span>
+                                      )}
+                                      {chatLabels[contact.id] && (() => {
+                                        const lbl = CHAT_LABEL_PRESETS.find((p) => p.id === chatLabels[contact.id]);
+                                        return lbl ? (
+                                          <span className={`text-[9px] px-1.5 py-0.2 rounded-md font-black border ${lbl.color}`}>
+                                            {lbl.name}
+                                          </span>
+                                        ) : null;
+                                      })()}
                                     </div>
                                   </div>
                                 </div>
                                 <div className="flex flex-col items-end gap-1.5 shrink-0 pl-1">
-                                  <span className={`text-[10px] px-2 py-0.5 rounded-full border font-semibold ${channelRolePillClass(profile.role)}`}>
-                                    {roleLabel}
-                                  </span>
-                                  {unreadBadge > 0 && (
-                                    <span className="min-w-5 h-5 px-1.5 rounded-full bg-emerald-600 text-white text-[10px] font-black flex items-center justify-center shadow-xs">
+                                  <div className="flex items-center gap-1">
+                                    <div className="hidden group-hover:flex items-center gap-0.5">
+                                      <button
+                                        type="button"
+                                        onClick={(e) => toggleArchiveChat(contact.id, e)}
+                                        className="p-1 rounded-md text-gray-400 hover:text-red-600 transition cursor-pointer hover:bg-black/5 dark:hover:bg-white/5"
+                                        title={archivedChatIds.includes(contact.id) ? "Unarchive contact" : "Archive contact"}
+                                        aria-label="Toggle archive"
+                                      >
+                                        <Archive className={`w-3.5 h-3.5 ${archivedChatIds.includes(contact.id) ? "text-red-600" : ""}`} />
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={(e) => toggleManualUnread(contact.id, e)}
+                                        className="p-1 rounded-md text-gray-400 hover:text-red-600 transition cursor-pointer hover:bg-black/5 dark:hover:bg-white/5"
+                                        title={manualUnreadChatIds.includes(contact.id) ? "Mark as read" : "Mark as unread"}
+                                        aria-label="Toggle unread"
+                                      >
+                                        <MessageSquareDot className={`w-3.5 h-3.5 ${manualUnreadChatIds.includes(contact.id) ? "fill-red-600 text-red-600" : ""}`} />
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={(e) => togglePinChat(contact.id, e)}
+                                        className="p-1 rounded-md text-gray-400 hover:text-red-600 transition cursor-pointer hover:bg-black/5 dark:hover:bg-white/5"
+                                        title={pinnedChatIds.includes(contact.id) ? "Unpin contact" : "Pin contact to top"}
+                                        aria-label="Pin contact"
+                                      >
+                                        <Pin className={`w-3.5 h-3.5 ${pinnedChatIds.includes(contact.id) ? "fill-red-600 text-red-600 rotate-45" : ""}`} />
+                                      </button>
+                                    </div>
+                                    <span className={`text-[10px] px-2 py-0.5 rounded-full border font-semibold ${channelRolePillClass(profile.role)}`}>
+                                      {roleLabel}
+                                    </span>
+                                  </div>
+                                  {unreadBadge > 0 ? (
+                                    <span className="min-w-5 h-5 px-1.5 rounded-full bg-red-600 text-white text-[10px] font-black flex items-center justify-center shadow-xs">
                                       {unreadBadge > 99 ? "99+" : unreadBadge}
                                     </span>
-                                  )}
+                                  ) : manualUnreadChatIds.includes(contact.id) ? (
+                                    <span className="w-2.5 h-2.5 rounded-full bg-red-600 shrink-0 shadow-xs" title="Marked as unread" />
+                                  ) : null}
                                 </div>
-                              </button>
+                              </div>
                             );
                           })
                         )
@@ -7495,7 +8047,7 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
 
                       {batchWorkspaceTab === "chat" && (
                         <div className={`grid grid-cols-1 ${canAccessDirectChat ? "xl:grid-cols-[1fr_320px]" : ""} gap-4 animate-fadeIn h-[calc(100dvh-13.5rem)] min-h-[450px]`}>
-                          <div className="h-full min-h-0 rounded-3xl overflow-hidden border border-gray-200/80 dark:border-slate-800/80 flex flex-col relative shadow-none">
+                          <div className="h-full min-h-0 rounded-none sm:rounded-3xl overflow-hidden border-0 sm:border border-gray-200/80 dark:border-slate-800/80 flex flex-col relative shadow-none">
                             <TexAppBatchChat
                             mode="batch"
                             batch={selectedBatch}
@@ -11662,6 +12214,253 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
         onClose={() => setShareLinkModal(null)}
         isDark={isDark}
       />
+
+      {/* =========================================================================
+          WHATSAPP PRIVACY SCREEN LOCK FULLSCREEN OVERLAY
+          ========================================================================= */}
+      {isScreenLocked && (
+        <div className="fixed inset-0 z-[9999] bg-[#100f0b] text-white flex flex-col items-center justify-center p-4 select-none animate-fadeIn">
+          {/* Ambient Red Glow */}
+          <div className="absolute w-96 h-96 rounded-full bg-red-600/10 blur-3xl pointer-events-none" />
+
+          <div className="relative w-full max-w-sm p-6 sm:p-8 rounded-3xl bg-[#18150f] border border-red-500/20 shadow-2xl flex flex-col items-center text-center">
+            {/* Lock Icon */}
+            <div className="w-16 h-16 rounded-3xl bg-gradient-to-tr from-red-600 to-rose-600 flex items-center justify-center text-white shadow-lg shadow-red-600/30 mb-4">
+              <Lock className="w-8 h-8 stroke-[2.2]" />
+            </div>
+
+            <h2 className="text-xl font-black text-white tracking-tight">TexWeb Locked</h2>
+            <p className="text-xs text-gray-400 mt-1.5 mb-6">
+              Enter your 4-digit PIN to access your conversations.
+            </p>
+
+            {/* PIN Input & Dots */}
+            <div className="w-full flex flex-col items-center gap-3">
+              <div className="flex items-center gap-3 justify-center mb-2">
+                {[0, 1, 2, 3].map((idx) => {
+                  const filled = screenLockInput.length > idx;
+                  return (
+                    <div
+                      key={idx}
+                      className={`w-4 h-4 rounded-full border-2 transition-all duration-200 ${
+                        filled
+                          ? "bg-red-500 border-red-500 scale-110 shadow-sm shadow-red-500/50"
+                          : "border-gray-600 bg-transparent"
+                      }`}
+                    />
+                  );
+                })}
+              </div>
+
+              {screenLockError && (
+                <div className="text-xs font-bold text-red-500 flex items-center gap-1.5">
+                  <ShieldAlert className="w-3.5 h-3.5 shrink-0" />
+                  <span>{screenLockError}</span>
+                </div>
+              )}
+
+              {/* Number Keypad */}
+              <div className="grid grid-cols-3 gap-2.5 w-full max-w-[240px] my-3">
+                {["1", "2", "3", "4", "5", "6", "7", "8", "9", "C", "0", "←"].map((key) => (
+                  <button
+                    key={key}
+                    type="button"
+                    onClick={() => {
+                      setScreenLockError("");
+                      if (key === "C") {
+                        setScreenLockInput("");
+                      } else if (key === "←") {
+                        setScreenLockInput((p) => p.slice(0, -1));
+                      } else {
+                        if (screenLockInput.length < 4) {
+                          const next = screenLockInput + key;
+                          setScreenLockInput(next);
+                          if (next.length === 4) {
+                            if (next === screenLockPin) {
+                              setIsScreenLocked(false);
+                              setScreenLockInput("");
+                              setScreenLockError("");
+                            } else {
+                              setTimeout(() => {
+                                setScreenLockError("Incorrect PIN. Try again.");
+                                setScreenLockInput("");
+                              }, 150);
+                            }
+                          }
+                        }
+                      }
+                    }}
+                    className={`h-12 rounded-2xl font-black text-sm flex items-center justify-center transition cursor-pointer active:scale-95 ${
+                      key === "C" || key === "←"
+                        ? "bg-stone-800/80 text-gray-400 hover:text-white hover:bg-stone-800"
+                        : "bg-stone-900 border border-stone-800/80 text-white hover:border-red-500/40 hover:bg-stone-800 shadow-xs"
+                    }`}
+                  >
+                    {key}
+                  </button>
+                ))}
+              </div>
+
+              <div className="flex items-center justify-between w-full pt-4 border-t border-stone-800 text-xs">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setConfirmModal({
+                      title: "Reset Screen Lock PIN",
+                      message: "Are you sure you want to remove the PIN lock? You will be able to access your chats immediately.",
+                      confirmText: "Reset PIN",
+                      danger: true,
+                      onConfirm: () => {
+                        try {
+                          localStorage.removeItem("texweb_app_lock_pin");
+                        } catch {}
+                        setScreenLockPin("");
+                        setIsScreenLocked(false);
+                        setScreenLockInput("");
+                        setScreenLockError("");
+                        setConfirmModal(null);
+                        setToast("Screen Lock PIN has been reset.");
+                      },
+                    });
+                  }}
+                  className="text-gray-500 hover:text-red-400 transition cursor-pointer"
+                >
+                  Forgot PIN?
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (screenLockInput === screenLockPin) {
+                      setIsScreenLocked(false);
+                      setScreenLockInput("");
+                      setScreenLockError("");
+                    } else {
+                      setScreenLockError("Incorrect PIN. Try again.");
+                      setScreenLockInput("");
+                    }
+                  }}
+                  className="px-4 py-1.5 rounded-xl bg-red-600 hover:bg-red-700 text-white font-bold transition cursor-pointer shadow-xs"
+                >
+                  Unlock
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* =========================================================================
+          SET / CHANGE SCREEN LOCK PIN MODAL
+          ========================================================================= */}
+      {showSetPinModal && (
+        <ModalWrapper
+          isDark={isDark}
+          title={screenLockPin ? "Manage Screen Lock PIN" : "Setup Screen Lock PIN"}
+          subtitle="Protect your WhatsApp conversations with a 4-digit security PIN."
+          onClose={() => setShowSetPinModal(false)}
+        >
+          <div className="space-y-4 text-xs">
+            <div className="p-3 rounded-2xl bg-red-500/10 border border-red-500/20 text-red-600 dark:text-red-400 flex items-start gap-2.5">
+              <ShieldAlert className="w-4 h-4 shrink-0 mt-0.5" />
+              <p>
+                When Screen Lock is enabled, you can lock TexWeb anytime using the lock icon in the sidebar or chat header.
+              </p>
+            </div>
+
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                const formData = new FormData(e.target);
+                const pin1 = formData.get("pin1");
+                const pin2 = formData.get("pin2");
+                if (!/^\d{4}$/.test(pin1)) {
+                  setToast("PIN must be exactly 4 digits.");
+                  return;
+                }
+                if (pin1 !== pin2) {
+                  setToast("PINs do not match. Please re-enter.");
+                  return;
+                }
+                try {
+                  localStorage.setItem("texweb_app_lock_pin", pin1);
+                  window.dispatchEvent(new Event("texweb_draft_updated"));
+                } catch {}
+                setScreenLockPin(pin1);
+                setShowSetPinModal(false);
+                setToast("Screen Lock PIN configured successfully!");
+              }}
+              className="space-y-3"
+            >
+              <div>
+                <label className="block font-bold text-xs mb-1 text-gray-700 dark:text-slate-300">
+                  Enter 4-digit PIN
+                </label>
+                <input
+                  type="password"
+                  name="pin1"
+                  maxLength={4}
+                  pattern="\d{4}"
+                  placeholder="e.g. 1234"
+                  required
+                  autoFocus
+                  className="w-full p-2.5 rounded-xl border border-gray-200 dark:border-slate-700 bg-gray-50 dark:bg-slate-900 text-xs font-mono tracking-widest text-center focus:bg-white focus:outline-none focus:border-red-600"
+                />
+              </div>
+
+              <div>
+                <label className="block font-bold text-xs mb-1 text-gray-700 dark:text-slate-300">
+                  Confirm 4-digit PIN
+                </label>
+                <input
+                  type="password"
+                  name="pin2"
+                  maxLength={4}
+                  pattern="\d{4}"
+                  placeholder="Re-enter PIN"
+                  required
+                  className="w-full p-2.5 rounded-xl border border-gray-200 dark:border-slate-700 bg-gray-50 dark:bg-slate-900 text-xs font-mono tracking-widest text-center focus:bg-white focus:outline-none focus:border-red-600"
+                />
+              </div>
+
+              <div className="flex items-center justify-between gap-2 pt-3 border-t border-gray-100 dark:border-slate-800">
+                {screenLockPin ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      try {
+                        localStorage.removeItem("texweb_app_lock_pin");
+                        window.dispatchEvent(new Event("texweb_draft_updated"));
+                      } catch {}
+                      setScreenLockPin("");
+                      setShowSetPinModal(false);
+                      setToast("Screen Lock disabled.");
+                    }}
+                    className="px-3 py-2 text-xs font-bold text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-xl transition cursor-pointer"
+                  >
+                    Remove PIN
+                  </button>
+                ) : <div />}
+
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowSetPinModal(false)}
+                    className="px-3.5 py-2 text-xs font-bold text-gray-500 hover:bg-gray-100 dark:hover:bg-slate-800 rounded-xl transition cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-4 py-2 text-xs font-bold bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 text-white rounded-xl shadow-md shadow-red-500/20 transition cursor-pointer"
+                  >
+                    Save PIN
+                  </button>
+                </div>
+              </div>
+            </form>
+          </div>
+        </ModalWrapper>
+      )}
     </div>
   );
 }

@@ -105,14 +105,8 @@ export const AppleEmoji = memo(function AppleEmoji({
   );
 });
 
-export const RenderWithAppleEmojis = memo(function RenderWithAppleEmojis({
-  text,
-  emojiSize = 18,
-  className = "",
-}) {
-  if (!text) return null;
-  if (typeof text !== "string") return text;
-
+function renderTextWithEmojis(rawText, emojiSize) {
+  if (!rawText) return null;
   const regex = getEmojiRegex();
   regex.lastIndex = 0;
 
@@ -120,9 +114,9 @@ export const RenderWithAppleEmojis = memo(function RenderWithAppleEmojis({
   let lastIdx = 0;
   let match;
 
-  while ((match = regex.exec(text)) !== null) {
+  while ((match = regex.exec(rawText)) !== null) {
     if (match.index > lastIdx) {
-      parts.push(text.slice(lastIdx, match.index));
+      parts.push(rawText.slice(lastIdx, match.index));
     }
     const emojiStr = match[0];
     parts.push(
@@ -135,11 +129,121 @@ export const RenderWithAppleEmojis = memo(function RenderWithAppleEmojis({
     lastIdx = match.index + emojiStr.length;
   }
 
-  if (lastIdx < text.length) {
-    parts.push(text.slice(lastIdx));
+  if (lastIdx < rawText.length) {
+    parts.push(rawText.slice(lastIdx));
+  }
+  return parts;
+}
+
+// WhatsApp Markdown (*bold*, _italic_, ~strike~, `code`, URLs) + Apple Emojis
+function parseWhatsAppFormatting(text, emojiSize) {
+  if (!text || typeof text !== "string") return text;
+
+  // Match: `code`, *bold*, _italic_, ~strike~, http(s) URLs
+  const formatRegex = /(`[^`\n]+`|\*(?:[^*\n]+)\*|_(?:[^_\n]+)_|~(?:[^~\n]+)~|https?:\/\/[^\s<]+)/g;
+
+  const segments = [];
+  let lastIndex = 0;
+  let match;
+
+  while ((match = formatRegex.exec(text)) !== null) {
+    if (match.index > lastIndex) {
+      segments.push({
+        type: "text",
+        content: text.slice(lastIndex, match.index),
+      });
+    }
+
+    const token = match[0];
+    if (token.startsWith("`") && token.endsWith("`") && token.length > 2) {
+      segments.push({ type: "code", content: token.slice(1, -1) });
+    } else if (token.startsWith("*") && token.endsWith("*") && token.length > 2) {
+      segments.push({ type: "bold", content: token.slice(1, -1) });
+    } else if (token.startsWith("_") && token.endsWith("_") && token.length > 2) {
+      segments.push({ type: "italic", content: token.slice(1, -1) });
+    } else if (token.startsWith("~") && token.endsWith("~") && token.length > 2) {
+      segments.push({ type: "strike", content: token.slice(1, -1) });
+    } else if (token.startsWith("http://") || token.startsWith("https://")) {
+      segments.push({ type: "link", content: token });
+    } else {
+      segments.push({ type: "text", content: token });
+    }
+
+    lastIndex = match.index + token.length;
   }
 
-  return <span className={className}>{parts}</span>;
+  if (lastIndex < text.length) {
+    segments.push({ type: "text", content: text.slice(lastIndex) });
+  }
+
+  return segments.map((seg, idx) => {
+    if (seg.type === "code") {
+      return (
+        <code
+          key={idx}
+          className="px-1.5 py-0.5 mx-0.5 rounded font-mono text-[0.88em] bg-black/10 dark:bg-white/15 text-red-700 dark:text-red-300 select-all"
+        >
+          {renderTextWithEmojis(seg.content, emojiSize)}
+        </code>
+      );
+    }
+    if (seg.type === "bold") {
+      return (
+        <strong key={idx} className="font-bold">
+          {renderTextWithEmojis(seg.content, emojiSize)}
+        </strong>
+      );
+    }
+    if (seg.type === "italic") {
+      return (
+        <em key={idx} className="italic">
+          {renderTextWithEmojis(seg.content, emojiSize)}
+        </em>
+      );
+    }
+    if (seg.type === "strike") {
+      return (
+        <del key={idx} className="line-through opacity-75">
+          {renderTextWithEmojis(seg.content, emojiSize)}
+        </del>
+      );
+    }
+    if (seg.type === "link") {
+      return (
+        <a
+          key={idx}
+          href={seg.content}
+          target="_blank"
+          rel="noopener noreferrer"
+          onClick={(e) => e.stopPropagation()}
+          className="text-blue-600 dark:text-blue-400 hover:underline inline underline-offset-2 break-all"
+        >
+          {seg.content}
+        </a>
+      );
+    }
+    return (
+      <React.Fragment key={idx}>
+        {renderTextWithEmojis(seg.content, emojiSize)}
+      </React.Fragment>
+    );
+  });
+}
+
+export const RenderWithAppleEmojis = memo(function RenderWithAppleEmojis({
+  text,
+  emojiSize = 18,
+  className = "",
+}) {
+  if (!text) return null;
+  if (typeof text !== "string") return text;
+
+  return (
+    <span className={className}>
+      {parseWhatsAppFormatting(text, emojiSize)}
+    </span>
+  );
 });
 
 export default AppleEmoji;
+

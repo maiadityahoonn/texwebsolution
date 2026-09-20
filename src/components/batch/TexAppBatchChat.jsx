@@ -14,6 +14,7 @@ import {
   Search,
   Users,
   ChevronDown,
+  ChevronUp,
   Calendar,
   CheckSquare,
   ExternalLink,
@@ -45,6 +46,27 @@ import {
   AlertCircle,
   Clock,
   MessageSquare,
+  Lock,
+  Palette,
+  MoreVertical,
+  ChevronLeft,
+  ChevronRight,
+  VolumeX,
+  Volume2,
+  Mail,
+  ZoomIn,
+  ZoomOut,
+  Keyboard,
+  Bell,
+  MapPin,
+  Bold,
+  Italic,
+  Strikethrough,
+  Code,
+  Archive,
+  Tag,
+  Timer,
+  ShieldAlert,
 } from "lucide-react";
 import { safeExternalUrl } from "@/lib/safeUrl";
 import dynamic from "next/dynamic";
@@ -70,6 +92,28 @@ function formatSecs(sec) {
   const secs = Math.floor(sec % 60);
   return `${mins}:${secs < 10 ? "0" : ""}${secs}`;
 }
+
+function extractFirstUrl(text) {
+  if (!text || typeof text !== "string") return null;
+  const match = text.match(/(https?:\/\/[^\s<]+)/i);
+  return match ? match[0] : null;
+}
+
+function getHostname(urlStr) {
+  try {
+    const u = new URL(urlStr);
+    return u.hostname.replace(/^www\./, "");
+  } catch {
+    return urlStr;
+  }
+}
+
+const WALLPAPER_PRESETS = [
+  { id: "doodle", name: "WhatsApp Tech Doodle", desc: "Classic tech pattern overlay" },
+  { id: "solid", name: "Clean Minimal", desc: "Solid background, no pattern" },
+  { id: "dark", name: "Pitch AMOLED Dark", desc: "Deep dark contrast for night" },
+  { id: "warm", name: "Warm Vintage Paper", desc: "Subtle vintage warmth" },
+];
 
 function parseDocMeta(msg) {
   const full = msg.attachment_name || "Document";
@@ -326,6 +370,24 @@ function TexAppSendIcon({ className = "w-5 h-5", ...props }) {
 }
 
 // WhatsApp Dynamic Status Tick: Single Tick (✓) -> Double Gray Tick (✓✓) -> Double Red Tick (✓✓)
+const WHATSAPP_STICKER_PACK = [
+  { id: "stk_heart", emoji: "❤️", text: "Love" },
+  { id: "stk_laugh", emoji: "😂", text: "Haha" },
+  { id: "stk_fire", emoji: "🔥", text: "Lit" },
+  { id: "stk_party", emoji: "🎉", text: "Party" },
+  { id: "stk_clap", emoji: "👏", text: "Bravo" },
+  { id: "stk_100", emoji: "💯", text: "Perfect" },
+  { id: "stk_cool", emoji: "😎", text: "Cool" },
+  { id: "stk_mindblown", emoji: "🤯", text: "Woah" },
+  { id: "stk_thumbsup", emoji: "👍", text: "Done" },
+  { id: "stk_rocket", emoji: "🚀", text: "LFG" },
+  { id: "stk_pray", emoji: "🙏", text: "Thanks" },
+  { id: "stk_eyes", emoji: "👀", text: "Looking" },
+  { id: "stk_star", emoji: "⭐", text: "Top" },
+  { id: "stk_crown", emoji: "👑", text: "Boss" },
+  { id: "stk_gem", emoji: "💎", text: "Gem" },
+  { id: "stk_flex", emoji: "💪", text: "Strong" },
+];
 function MessageStatusTick({ msg, onMedia = false }) {
   // 1. Read check: either msg.read_at or msg.is_read or any individual receipt has read_at
   const receipts = msg.receipts || {};
@@ -500,12 +562,13 @@ function VoiceNoteBubble({ msg, isMine, isDark, onOpenDropdown }) {
               {formatSecs(isPlaying || currentTime > 0 ? currentTime : duration)}
             </span>
 
-            {/* Speed pill */}
-            {isPlaying && (
+            {/* Speed pill (always accessible when audio has progress or rate is toggled) */}
+            {(isPlaying || currentTime > 0 || playbackRate !== 1) && (
               <button
                 type="button"
                 onClick={toggleSpeed}
-                className="px-1 py-0.2 rounded-full bg-black/5 dark:bg-white/10 hover:bg-black/10 dark:hover:bg-white/15 text-[9px] font-bold text-gray-700 dark:text-gray-200 cursor-pointer"
+                className="px-1.5 py-0.5 rounded-full bg-red-100 dark:bg-red-950/60 hover:bg-red-200 dark:hover:bg-red-900/60 text-[9.5px] font-bold text-red-700 dark:text-red-300 cursor-pointer transition-colors"
+                title="Toggle playback speed (1x / 1.5x / 2x)"
               >
                 {playbackRate}x
               </button>
@@ -589,14 +652,380 @@ export default function TexAppBatchChat({
   const [inputText, setInputText] = useState("");
   const [replyingTo, setReplyingTo] = useState(null); // Message object being quoted
   const [searchQuery, setSearchQuery] = useState("");
+  const [searchMatchIndex, setSearchMatchIndex] = useState(0);
   const [showSearch, setShowSearch] = useState(false);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
-  const [mediaPickerTab, setMediaPickerTab] = useState("emoji"); // "emoji" | "gif"
+  const [mediaPickerTab, setMediaPickerTab] = useState("emoji"); // "emoji" | "gif" | "stickers"
+  const [showPickerSearch, setShowPickerSearch] = useState(false);
   const [showAttachmentTray, setShowAttachmentTray] = useState(false);
   const [showMembersDrawer, setShowMembersDrawer] = useState(false);
   const [showPinnedTray, setShowPinnedTray] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [previewImage, setPreviewImage] = useState(null); // Lightbox
+  const [galleryMediaIndex, setGalleryMediaIndex] = useState(null); // Fullscreen Gallery Index
+  const [galleryZoom, setGalleryZoom] = useState(1);
+  const [isLockedRecording, setIsLockedRecording] = useState(false); // Hands-free voice recording lock
+  const [showMuteModal, setShowMuteModal] = useState(false);
+  const [confirmClearChatModal, setConfirmClearChatModal] = useState(false);
+  const [activeInfoTab, setActiveInfoTab] = useState("info"); // "info" | "media" | "docs" | "links"
+  const [showChatOptionsDropdown, setShowChatOptionsDropdown] = useState(false);
+  const [openedFromChatOptions, setOpenedFromChatOptions] = useState(false);
+
+  // WhatsApp Navigation: Return to Chat Options drawer if sub-modal was launched from it
+  const handleCloseMembersDrawer = () => {
+    setShowMembersDrawer(false);
+    setIsEditingGroup(false);
+    if (openedFromChatOptions) {
+      setOpenedFromChatOptions(false);
+      setShowChatOptionsDropdown(true);
+    }
+  };
+
+  const handleCloseWallpaperModal = () => {
+    setShowWallpaperModal(false);
+    if (openedFromChatOptions) {
+      setOpenedFromChatOptions(false);
+      setShowChatOptionsDropdown(true);
+    }
+  };
+
+  const handleCloseMuteModal = () => {
+    setShowMuteModal(false);
+    if (openedFromChatOptions) {
+      setOpenedFromChatOptions(false);
+      setShowChatOptionsDropdown(true);
+    }
+  };
+
+  const handleCloseClearChatModal = () => {
+    setConfirmClearChatModal(false);
+    if (openedFromChatOptions) {
+      setOpenedFromChatOptions(false);
+      setShowChatOptionsDropdown(true);
+    }
+  };
+
+  const handleCloseKeyboardShortcutsModal = () => {
+    setShowKeyboardShortcutsModal(false);
+    if (openedFromChatOptions) {
+      setOpenedFromChatOptions(false);
+      setShowChatOptionsDropdown(true);
+    }
+  };
+
+  const handleCloseLabelPickerModal = () => {
+    setShowLabelPickerModal(false);
+    if (openedFromChatOptions) {
+      setOpenedFromChatOptions(false);
+      setShowChatOptionsDropdown(true);
+    }
+  };
+
+  const handleCloseDisappearingModal = () => {
+    setShowDisappearingModal(false);
+    if (openedFromChatOptions) {
+      setOpenedFromChatOptions(false);
+      setShowChatOptionsDropdown(true);
+    }
+  };
+
+  const [isDraggingOver, setIsDraggingOver] = useState(false);
+  const dragCounterRef = useRef(0);
+  const [showKeyboardShortcutsModal, setShowKeyboardShortcutsModal] = useState(false);
+  const [desktopNotifState, setDesktopNotifState] = useState(() => {
+    if (typeof window !== "undefined" && "Notification" in window) {
+      return Notification.permission;
+    }
+    return "unsupported";
+  });
+  const [showFormattingToolbar, setShowFormattingToolbar] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(null);
+  const [isRecordingPaused, setIsRecordingPaused] = useState(false);
+  const [voicePreviewUrl, setVoicePreviewUrl] = useState(null);
+  const [isPlayingVoicePreview, setIsPlayingVoicePreview] = useState(false);
+  const voicePreviewAudioRef = useRef(null);
+
+  const activeChatId = contact?.id || currentBatch?.id || batch?.id || "general";
+  const draftKey = `texweb_draft_${activeChatId}`;
+
+  const [isChatMuted, setIsChatMuted] = useState(() => {
+    try {
+      if (typeof window !== "undefined") {
+        const stored = localStorage.getItem("texweb_muted_chats");
+        if (stored) {
+          const map = JSON.parse(stored);
+          return Boolean(map[activeChatId]);
+        }
+      }
+    } catch {}
+    return false;
+  });
+
+  const CHAT_LABEL_PRESETS = [
+    { id: "important", name: "Important", color: "bg-red-500/15 text-red-600 dark:text-red-400 border-red-500/30" },
+    { id: "work", name: "Work", color: "bg-stone-500/15 text-stone-700 dark:text-stone-300 border-stone-500/30" },
+    { id: "lead", name: "Lead / Client", color: "bg-rose-500/15 text-rose-600 dark:text-rose-400 border-rose-500/30" },
+    { id: "pending", name: "Pending", color: "bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30" },
+    { id: "personal", name: "Personal", color: "bg-purple-500/15 text-purple-600 dark:text-purple-400 border-purple-500/30" },
+  ];
+
+  // 1. Archive state
+  const [isChatArchived, setIsChatArchived] = useState(() => {
+    try {
+      if (typeof window !== "undefined") {
+        const stored = localStorage.getItem("texweb_archived_chats");
+        return stored ? JSON.parse(stored).includes(activeChatId) : false;
+      }
+    } catch {}
+    return false;
+  });
+
+  const handleToggleArchiveChat = () => {
+    try {
+      if (typeof window !== "undefined") {
+        const stored = localStorage.getItem("texweb_archived_chats");
+        const list = stored ? JSON.parse(stored) : [];
+        const next = list.includes(activeChatId) ? list.filter((id) => id !== activeChatId) : [activeChatId, ...list];
+        localStorage.setItem("texweb_archived_chats", JSON.stringify(next));
+        setIsChatArchived(!isChatArchived);
+        window.dispatchEvent(new Event("texweb_draft_updated"));
+        setToast(isChatArchived ? "Chat unarchived" : "Chat archived");
+      }
+    } catch {}
+  };
+
+  // 2. Chat Label state
+  const [activeChatLabel, setActiveChatLabel] = useState(() => {
+    try {
+      if (typeof window !== "undefined") {
+        const stored = localStorage.getItem("texweb_chat_labels");
+        return stored ? JSON.parse(stored)[activeChatId] || null : null;
+      }
+    } catch {}
+    return null;
+  });
+  const [showLabelPickerModal, setShowLabelPickerModal] = useState(false);
+
+  const handleSetChatLabel = (labelId) => {
+    try {
+      if (typeof window !== "undefined") {
+        const stored = localStorage.getItem("texweb_chat_labels");
+        const map = stored ? JSON.parse(stored) : {};
+        if (!labelId) {
+          delete map[activeChatId];
+        } else {
+          map[activeChatId] = labelId;
+        }
+        localStorage.setItem("texweb_chat_labels", JSON.stringify(map));
+        setActiveChatLabel(labelId || null);
+        window.dispatchEvent(new Event("texweb_draft_updated"));
+        setShowLabelPickerModal(false);
+        setToast(labelId ? `Chat labeled as ${labelId}` : "Chat label removed");
+        if (openedFromChatOptions) {
+          setOpenedFromChatOptions(false);
+          setShowChatOptionsDropdown(true);
+        }
+      }
+    } catch {}
+  };
+
+  // 3. Block contact state (for Direct chats)
+  const [isContactBlocked, setIsContactBlocked] = useState(() => {
+    try {
+      if (typeof window !== "undefined" && mode === "direct" && contact?.id) {
+        const stored = localStorage.getItem("texweb_blocked_contacts");
+        return stored ? JSON.parse(stored).includes(contact.id) : false;
+      }
+    } catch {}
+    return false;
+  });
+
+  const handleToggleBlockContact = () => {
+    if (mode !== "direct" || !contact?.id) return;
+    try {
+      if (typeof window !== "undefined") {
+        const stored = localStorage.getItem("texweb_blocked_contacts");
+        const list = stored ? JSON.parse(stored) : [];
+        const next = list.includes(contact.id) ? list.filter((id) => id !== contact.id) : [...list, contact.id];
+        localStorage.setItem("texweb_blocked_contacts", JSON.stringify(next));
+        setIsContactBlocked(!isContactBlocked);
+        window.dispatchEvent(new Event("texweb_draft_updated"));
+        setToast(isContactBlocked ? `Unblocked ${contact.full_name || "contact"}` : `Blocked ${contact.full_name || "contact"}`);
+      }
+    } catch {}
+  };
+
+  // 4. Disappearing Messages Timer state
+  const [disappearingTimer, setDisappearingTimer] = useState(() => {
+    try {
+      if (typeof window !== "undefined") {
+        const stored = localStorage.getItem("texweb_disappearing_timers");
+        return stored ? JSON.parse(stored)[activeChatId] || "off" : "off";
+      }
+    } catch {}
+    return "off";
+  });
+  const [showDisappearingModal, setShowDisappearingModal] = useState(false);
+
+  const handleSetDisappearingTimer = (timer) => {
+    try {
+      if (typeof window !== "undefined") {
+        const stored = localStorage.getItem("texweb_disappearing_timers");
+        const map = stored ? JSON.parse(stored) : {};
+        if (timer === "off") {
+          delete map[activeChatId];
+        } else {
+          map[activeChatId] = timer;
+        }
+        localStorage.setItem("texweb_disappearing_timers", JSON.stringify(map));
+        setDisappearingTimer(timer);
+        window.dispatchEvent(new Event("texweb_draft_updated"));
+        setShowDisappearingModal(false);
+        setToast(timer === "off" ? "Disappearing messages turned off" : `Messages will disappear after ${timer === "24h" ? "24 hours" : timer === "7d" ? "7 days" : "90 days"}`);
+        if (openedFromChatOptions) {
+          setOpenedFromChatOptions(false);
+          setShowChatOptionsDropdown(true);
+        }
+      }
+    } catch {}
+  };
+
+  // Sync privacy states on activeChatId change or storage update
+  useEffect(() => {
+    const handlePrivacyUpdate = () => {
+      try {
+        if (typeof window !== "undefined") {
+          const arch = localStorage.getItem("texweb_archived_chats");
+          setIsChatArchived(arch ? JSON.parse(arch).includes(activeChatId) : false);
+          const lbls = localStorage.getItem("texweb_chat_labels");
+          setActiveChatLabel(lbls ? JSON.parse(lbls)[activeChatId] || null : null);
+          if (mode === "direct" && contact?.id) {
+            const blk = localStorage.getItem("texweb_blocked_contacts");
+            setIsContactBlocked(blk ? JSON.parse(blk).includes(contact.id) : false);
+          }
+          const dTimers = localStorage.getItem("texweb_disappearing_timers");
+          setDisappearingTimer(dTimers ? JSON.parse(dTimers)[activeChatId] || "off" : "off");
+        }
+      } catch {}
+    };
+    handlePrivacyUpdate();
+    window.addEventListener("texweb_draft_updated", handlePrivacyUpdate);
+    window.addEventListener("storage", handlePrivacyUpdate);
+    return () => {
+      window.removeEventListener("texweb_draft_updated", handlePrivacyUpdate);
+      window.removeEventListener("storage", handlePrivacyUpdate);
+    };
+  }, [activeChatId, mode, contact?.id]);
+
+  // Restore draft when active chat changes
+  useEffect(() => {
+    try {
+      if (typeof window !== "undefined") {
+        const saved = localStorage.getItem(draftKey);
+        if (saved) {
+          setInputText(saved);
+        } else {
+          setInputText("");
+        }
+      }
+    } catch {}
+  }, [draftKey]);
+
+  // Sync isChatMuted when active chat changes
+  useEffect(() => {
+    try {
+      if (typeof window !== "undefined") {
+        const stored = localStorage.getItem("texweb_muted_chats");
+        const map = stored ? JSON.parse(stored) : {};
+        setIsChatMuted(Boolean(map[activeChatId]));
+      }
+    } catch {}
+  }, [activeChatId]);
+
+  const handleInputTextChange = (val) => {
+    setInputText(val);
+    try {
+      if (typeof window !== "undefined") {
+        if (val && val.trim()) {
+          localStorage.setItem(draftKey, val);
+        } else {
+          localStorage.removeItem(draftKey);
+        }
+        window.dispatchEvent(new Event("texweb_draft_updated"));
+      }
+    } catch {}
+  };
+
+  const handleToggleMute = (duration) => {
+    try {
+      if (typeof window !== "undefined") {
+        const stored = localStorage.getItem("texweb_muted_chats");
+        const map = stored ? JSON.parse(stored) : {};
+        if (duration === "unmute" || isChatMuted) {
+          delete map[activeChatId];
+          setIsChatMuted(false);
+          showToast("Notifications unmuted");
+        } else {
+          map[activeChatId] = {
+            duration,
+            mutedAt: Date.now(),
+          };
+          setIsChatMuted(true);
+          showToast(`Notifications muted (${duration})`);
+        }
+        localStorage.setItem("texweb_muted_chats", JSON.stringify(map));
+        window.dispatchEvent(new Event("texweb_draft_updated"));
+      }
+    } catch {}
+    setShowMuteModal(false);
+    if (openedFromChatOptions) {
+      setOpenedFromChatOptions(false);
+      setShowChatOptionsDropdown(true);
+    }
+  };
+  const [copiedContactEmail, setCopiedContactEmail] = useState(false);
+  const playWhatsAppChime = useCallback(() => {
+    try {
+      if (typeof window === "undefined") return;
+      const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+      if (!AudioContextClass) return;
+      const audioContext = new AudioContextClass();
+      if (audioContext.state === "suspended") {
+        audioContext.resume().catch(() => {});
+      }
+      const t = audioContext.currentTime;
+
+      // Note 1: 880 Hz (A5)
+      const osc1 = audioContext.createOscillator();
+      const gain1 = audioContext.createGain();
+      osc1.type = "sine";
+      osc1.frequency.setValueAtTime(880, t);
+      gain1.gain.setValueAtTime(0.0001, t);
+      gain1.gain.exponentialRampToValueAtTime(0.08, t + 0.015);
+      gain1.gain.exponentialRampToValueAtTime(0.0001, t + 0.11);
+      osc1.connect(gain1);
+      gain1.connect(audioContext.destination);
+      osc1.start(t);
+      osc1.stop(t + 0.12);
+
+      // Note 2: 1320 Hz (E6 harmonic fifth)
+      const osc2 = audioContext.createOscillator();
+      const gain2 = audioContext.createGain();
+      osc2.type = "sine";
+      osc2.frequency.setValueAtTime(1320, t + 0.09);
+      gain2.gain.setValueAtTime(0.0001, t + 0.09);
+      gain2.gain.exponentialRampToValueAtTime(0.1, t + 0.105);
+      gain2.gain.exponentialRampToValueAtTime(0.0001, t + 0.23);
+      osc2.connect(gain2);
+      gain2.connect(audioContext.destination);
+      osc2.start(t + 0.09);
+      osc2.stop(t + 0.24);
+
+      setTimeout(() => {
+        audioContext.close().catch(() => {});
+      }, 400);
+    } catch {}
+  }, []);
   const [copiedId, setCopiedId] = useState(null);
   const [editingMessage, setEditingMessage] = useState(null);
   const [recordingMode, setRecordingMode] = useState(null);
@@ -631,6 +1060,115 @@ export default function TexAppBatchChat({
     }, duration);
   };
 
+  const requestDesktopNotifications = async () => {
+    if (typeof window === "undefined" || !("Notification" in window)) {
+      showToast("Desktop notifications are not supported in this browser.");
+      return;
+    }
+    try {
+      const res = await Notification.requestPermission();
+      setDesktopNotifState(res);
+      if (res === "granted") {
+        showToast("Desktop notifications enabled!");
+        try {
+          new Notification("TexWeb Notifications Enabled", {
+            body: "You will receive desktop alerts for incoming messages when TexWeb is running in the background.",
+            icon: "/favicon.ico",
+          });
+        } catch {}
+      } else if (res === "denied") {
+        showToast("Notifications were blocked. Please enable them in your browser site permissions.");
+      }
+    } catch {
+      showToast("Could not request notification permissions.");
+    }
+  };
+
+  // 1-Click Message Copy with Toast Feedback
+  const handleCopyMessageText = (msg) => {
+    const textToCopy = msg.message || msg.attachment_url || "";
+    if (!textToCopy) return;
+    try {
+      if (typeof navigator !== "undefined" && navigator.clipboard) {
+        navigator.clipboard.writeText(textToCopy);
+        showToast("Message copied to clipboard");
+      }
+    } catch {
+      showToast("Could not copy message.");
+    }
+  };
+
+  // Rich Text Formatting (*bold*, _italic_, ~strike~, `code`)
+  const applyTextFormatting = (wrapper) => {
+    const el = getActiveComposerElement();
+    if (!el) return;
+
+    if (typeof el.selectionStart === "number") {
+      const start = el.selectionStart;
+      const end = el.selectionEnd;
+      const val = el.value || "";
+      const selected = val.substring(start, end);
+      const replacement = selected ? `${wrapper}${selected}${wrapper}` : `${wrapper}${wrapper}`;
+      const updated = val.substring(0, start) + replacement + val.substring(end);
+      el.value = updated;
+      setInputText(updated);
+      el.focus();
+      const newCursor = selected ? start + replacement.length : start + wrapper.length;
+      el.setSelectionRange(newCursor, newCursor);
+    } else {
+      const sel = window.getSelection();
+      if (!sel || sel.rangeCount === 0) {
+        const current = getPlainTextFromEditor(el);
+        const updated = current + `${wrapper}${wrapper}`;
+        el.innerText = updated;
+        setInputText(updated);
+        el.focus();
+        return;
+      }
+      const range = sel.getRangeAt(0);
+      const selectedText = range.toString();
+      const replacementText = selectedText ? `${wrapper}${selectedText}${wrapper}` : `${wrapper}${wrapper}`;
+      range.deleteContents();
+      const textNode = document.createTextNode(replacementText);
+      range.insertNode(textNode);
+      range.collapse(false);
+      sel.removeAllRanges();
+      sel.addRange(range);
+      setInputText(getPlainTextFromEditor(el));
+      el.focus();
+    }
+  };
+
+  // Share Live Location
+  const handleShareCurrentLocation = () => {
+    if (!navigator?.geolocation) {
+      showToast("Geolocation is not supported by your browser.");
+      return;
+    }
+    showToast("Locating your position...");
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        const { latitude, longitude } = pos.coords;
+        const mapsUrl = `https://www.google.com/maps?q=${latitude},${longitude}`;
+        const locationMessage = `📍 Live Location: ${latitude.toFixed(5)}, ${longitude.toFixed(5)}\n${mapsUrl}`;
+        if (onSendMessage) {
+          await onSendMessage({
+            message: locationMessage,
+            attachment_url: mapsUrl,
+            attachment_name: `Location (${latitude.toFixed(4)}, ${longitude.toFixed(4)})`,
+            attachment_type: "location",
+          });
+          showToast("Location shared successfully!");
+        }
+      },
+      (err) => {
+        console.warn("Geolocation error:", err);
+        showToast("Could not access your location. Please check location permissions.");
+      },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+    );
+  };
+
   useEffect(() => {
     return () => {
       if (recordingTimerRef.current) clearInterval(recordingTimerRef.current);
@@ -649,6 +1187,43 @@ export default function TexAppBatchChat({
   const [cameraRetryKey, setCameraRetryKey] = useState(0);
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
+  const chatContainerRef = useRef(null);
+
+  // Mobile Visual Viewport & Keyboard Handling (WhatsApp Mobile UX Parity)
+  // Prevents header from scrolling off-screen when virtual keyboard opens
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const lockScroll = () => {
+      if (window.scrollY !== 0) {
+        window.scrollTo(0, 0);
+      }
+    };
+
+    window.addEventListener("scroll", lockScroll, { passive: true });
+
+    const vv = window.visualViewport;
+    if (!vv) return () => window.removeEventListener("scroll", lockScroll);
+
+    const handleViewportChange = () => {
+      lockScroll();
+      if (chatContainerRef.current) {
+        chatContainerRef.current.style.height = `${vv.height}px`;
+      }
+    };
+
+    vv.addEventListener("resize", handleViewportChange);
+    vv.addEventListener("scroll", handleViewportChange);
+
+    return () => {
+      window.removeEventListener("scroll", lockScroll);
+      vv.removeEventListener("resize", handleViewportChange);
+      vv.removeEventListener("scroll", handleViewportChange);
+      if (chatContainerRef.current) {
+        chatContainerRef.current.style.height = "";
+      }
+    };
+  }, []);
 
   const isPermissionDeniedError = (err) =>
     err?.name === "NotAllowedError" ||
@@ -1183,6 +1758,24 @@ export default function TexAppBatchChat({
     return textareaRef.current || mobileTextareaRef.current;
   };
 
+  // WhatsApp Backspace button: deletes last character/emoji from active composer
+  const handleComposerBackspace = () => {
+    try {
+      if (typeof window !== "undefined" && navigator.vibrate) {
+        navigator.vibrate(12);
+      }
+    } catch {}
+    const activeEl = getActiveComposerElement();
+    const currentText = (typeof activeEl?.value === "string" ? activeEl.value : activeEl?.innerText) || inputText || "";
+    if (currentText.length > 0) {
+      const chars = Array.from(currentText);
+      chars.pop();
+      const updated = chars.join("");
+      setComposerText(updated);
+      handleInputTextChange(updated);
+    }
+  };
+
   // Smart floating dropdown position: anchored cleanly without being clipped or covered by header
   const handleOpenDropdown = (msg, triggerElem) => {
     if (activeDropdownMsgId === msg.id) {
@@ -1255,6 +1848,185 @@ export default function TexAppBatchChat({
     setActiveReactionMsgId(null);
   };
 
+  // =========================================================================
+  // MOBILE TOUCH GESTURES (WhatsApp Swipe to Reply & Long-Press Quick Reactions)
+  // =========================================================================
+  const [swipeState, setSwipeState] = useState({ msgId: null, offset: 0 });
+  const touchCoordsRef = useRef({ x: 0, y: 0, time: 0 });
+  const longPressTimerRef = useRef(null);
+  const isDraggingSwipeRef = useRef(false);
+
+  const handleMessageTouchStart = (e, msg, bubbleElem) => {
+    if (e.touches.length !== 1) return;
+    const touch = e.touches[0];
+    touchCoordsRef.current = { x: touch.clientX, y: touch.clientY, time: Date.now() };
+    isDraggingSwipeRef.current = false;
+
+    // 420ms long-press hold for WhatsApp selection & floating emoji reaction menu
+    if (longPressTimerRef.current) clearTimeout(longPressTimerRef.current);
+    longPressTimerRef.current = setTimeout(() => {
+      try {
+        if (typeof window !== "undefined" && navigator.vibrate) {
+          navigator.vibrate(30);
+        }
+      } catch {}
+      if (bubbleElem) {
+        handleOpenDropdown(msg, bubbleElem);
+      }
+      setSelectedMsgIds((prev) => {
+        const next = new Set(prev);
+        next.add(msg.id);
+        return next;
+      });
+      setIsSelectionMode(true);
+    }, 420);
+  };
+
+  const handleMessageTouchMove = (e, msg) => {
+    if (e.touches.length !== 1) return;
+    const touch = e.touches[0];
+    const diffX = touch.clientX - touchCoordsRef.current.x;
+    const diffY = touch.clientY - touchCoordsRef.current.y;
+
+    // Movement cancels long-press
+    if (Math.abs(diffX) > 10 || Math.abs(diffY) > 10) {
+      if (longPressTimerRef.current) {
+        clearTimeout(longPressTimerRef.current);
+        longPressTimerRef.current = null;
+      }
+    }
+
+    // Vertical drag: Let native scrolling happen smoothly with ZERO JS state updates
+    if (Math.abs(diffY) > Math.abs(diffX)) {
+      return;
+    }
+
+    // Horizontal right-swipe gesture (Swipe to reply) - ONLY when predominantly horizontal
+    if (diffX > 18 && diffX > Math.abs(diffY) * 1.5) {
+      isDraggingSwipeRef.current = true;
+      const clampedOffset = Math.min(65, Math.max(0, diffX));
+      setSwipeState((prev) => {
+        if (prev.msgId === msg.id && Math.abs(prev.offset - clampedOffset) < 3) return prev;
+        return { msgId: msg.id, offset: clampedOffset };
+      });
+    }
+  };
+
+  const handleMessageTouchEnd = (e, msg) => {
+    if (longPressTimerRef.current) {
+      clearTimeout(longPressTimerRef.current);
+      longPressTimerRef.current = null;
+    }
+
+    if (swipeState.msgId === msg.id && swipeState.offset >= 45) {
+      try {
+        if (typeof window !== "undefined" && navigator.vibrate) {
+          navigator.vibrate(25);
+        }
+      } catch {}
+      setReplyingTo(msg);
+      const el = getActiveComposerElement();
+      if (el) el.focus();
+    } else if (!isDraggingSwipeRef.current && (!swipeState.offset || swipeState.offset < 10)) {
+      handleMessageTap(msg);
+    }
+
+    setSwipeState({ msgId: null, offset: 0 });
+    isDraggingSwipeRef.current = false;
+  };
+
+  // WhatsApp Double-Tap Quick React with ❤️
+  const lastTapRef = useRef({ time: 0, msgId: null });
+  const [doubleTapHeartMsgId, setDoubleTapHeartMsgId] = useState(null);
+
+  const handleMessageTap = (msg) => {
+    const now = Date.now();
+    if (lastTapRef.current.msgId === msg.id && now - lastTapRef.current.time < 350) {
+      lastTapRef.current = { time: 0, msgId: null };
+      try {
+        if (typeof window !== "undefined" && navigator.vibrate) {
+          navigator.vibrate(35);
+        }
+      } catch {}
+      handleSendReaction(msg, "❤️");
+      setDoubleTapHeartMsgId(msg.id);
+      setTimeout(() => setDoubleTapHeartMsgId(null), 850);
+      return true;
+    }
+    lastTapRef.current = { time: now, msgId: msg.id };
+    return false;
+  };
+
+  // WhatsApp Chat Wallpaper Customization
+  const [chatWallpaper, setChatWallpaper] = useState(() => {
+    try {
+      if (typeof window !== "undefined") {
+        return localStorage.getItem("texweb_chat_wallpaper") || "doodle";
+      }
+    } catch {}
+    return "doodle";
+  });
+  const [showWallpaperModal, setShowWallpaperModal] = useState(false);
+
+  const handleSelectWallpaper = (wp) => {
+    setChatWallpaper(wp);
+    try {
+      localStorage.setItem("texweb_chat_wallpaper", wp);
+    } catch {}
+    setShowWallpaperModal(false);
+    if (openedFromChatOptions) {
+      setOpenedFromChatOptions(false);
+      setShowChatOptionsDropdown(true);
+    }
+  };
+
+  // Voice recording slide-to-cancel and slide-up-to-lock touch handlers
+  const recordTouchStartRef = useRef(0);
+  const recordTouchStartYRef = useRef(0);
+  const [recordSlideOffset, setRecordSlideOffset] = useState(0);
+
+  const handleRecordTouchStart = (e) => {
+    if (e.touches.length !== 1) return;
+    recordTouchStartRef.current = e.touches[0].clientX;
+    recordTouchStartYRef.current = e.touches[0].clientY;
+    setRecordSlideOffset(0);
+  };
+
+  const handleRecordTouchMove = (e) => {
+    if (e.touches.length !== 1) return;
+    const diffX = e.touches[0].clientX - recordTouchStartRef.current;
+    const diffY = e.touches[0].clientY - recordTouchStartYRef.current;
+
+    // Slide UP (>= 40px) locks recording into hands-free mode
+    if (diffY < -40 && !isLockedRecording) {
+      setIsLockedRecording(true);
+      try {
+        if (typeof window !== "undefined" && navigator.vibrate) {
+          navigator.vibrate(50);
+        }
+      } catch {}
+    }
+
+    if (diffX < 0) {
+      const offset = Math.min(120, Math.abs(diffX));
+      setRecordSlideOffset(offset);
+      if (offset >= 85) {
+        try {
+          if (typeof window !== "undefined" && navigator.vibrate) {
+            navigator.vibrate(40);
+          }
+        } catch {}
+        handleCancelRecording();
+        setRecordSlideOffset(0);
+      }
+    }
+  };
+
+  const handleRecordTouchEnd = () => {
+    setRecordSlideOffset(0);
+  };
+
+
   // Download attachment (Save as functionality for images, pdfs, documents)
   const handleDownloadAttachment = async (msg) => {
     if (!msg?.attachment_url) return;
@@ -1304,6 +2076,187 @@ export default function TexAppBatchChat({
 
   // Deleted for everyone (optimistic state)
   const [deletedForAllIds, setDeletedForAllIds] = useState(new Set());
+
+  // Media, Docs, and Links lists for current chat (excluding deleted messages)
+  const chatMediaList = useMemo(() => {
+    return (messages || []).filter(
+      (m) =>
+        m.attachment_url &&
+        (m.attachment_type === "image" || m.attachment_type === "video") &&
+        !deletedForMeIds.has(m.id)
+    );
+  }, [messages, deletedForMeIds]);
+
+  const chatDocsList = useMemo(() => {
+    return (messages || []).filter(
+      (m) =>
+        m.attachment_url &&
+        (m.attachment_type === "pdf" || m.attachment_type === "document") &&
+        !deletedForMeIds.has(m.id)
+    );
+  }, [messages, deletedForMeIds]);
+
+  const chatLinksList = useMemo(() => {
+    const list = [];
+    (messages || []).forEach((m) => {
+      if (m.message && !deletedForMeIds.has(m.id)) {
+        const u = extractFirstUrl(m.message);
+        if (u) {
+          list.push({ msg: m, url: u, domain: getHostname(u) });
+        }
+      }
+    });
+    return list;
+  }, [messages, deletedForMeIds]);
+
+  const starredMessagesList = useMemo(() => {
+    return (messages || []).filter((m) => starredMsgIds.has(m.id) && !deletedForMeIds.has(m.id));
+  }, [messages, starredMsgIds, deletedForMeIds]);
+
+  const [enterIsSend, setEnterIsSend] = useState(() => {
+    try {
+      if (typeof window !== "undefined") {
+        const stored = localStorage.getItem("texweb_enter_is_send");
+        return stored !== null ? JSON.parse(stored) : true;
+      }
+    } catch {}
+    return true;
+  });
+
+  const toggleEnterIsSend = () => {
+    setEnterIsSend((prev) => {
+      const next = !prev;
+      try {
+        if (typeof window !== "undefined") {
+          localStorage.setItem("texweb_enter_is_send", JSON.stringify(next));
+        }
+      } catch {}
+      showToast(next ? "Press Enter to send is now ON" : "Press Enter to send is now OFF (Enter creates newline)");
+      return next;
+    });
+  };
+
+  const datePickerRef = useRef(null);
+
+  const handleJumpToDate = (e) => {
+    const selectedDateStr = e.target.value;
+    if (!selectedDateStr) return;
+    const targetMsg = (messages || []).find((m) => {
+      if (!m.created_at || deletedForMeIds.has(m.id)) return false;
+      const d = new Date(m.created_at);
+      if (isNaN(d.getTime())) return false;
+      const dateIso = d.toISOString().slice(0, 10);
+      return dateIso >= selectedDateStr;
+    });
+
+    if (targetMsg) {
+      handleJumpToMessage(targetMsg.id);
+      showToast(`Jumped to ${selectedDateStr}`);
+    } else {
+      showToast(`No messages found on or after ${selectedDateStr}`);
+    }
+  };
+
+  const handleOpenMediaGallery = (mediaUrl) => {
+    const idx = chatMediaList.findIndex((m) => m.attachment_url === mediaUrl);
+    if (idx !== -1) {
+      setGalleryMediaIndex(idx);
+      setGalleryZoom(1);
+    } else {
+      setPreviewImage(mediaUrl);
+    }
+  };
+
+  const handleClearChatConfirm = () => {
+    const idsToClear = (messages || []).map((m) => m.id);
+    setDeletedForMeIds((prev) => {
+      const next = new Set(prev);
+      idsToClear.forEach((id) => next.add(id));
+      try {
+        if (typeof window !== "undefined") {
+          localStorage.setItem(
+            `texweb_deleted_for_me_${currentUser?.id || "anon"}`,
+            JSON.stringify(Array.from(next))
+          );
+        }
+      } catch {}
+      return next;
+    });
+    setConfirmClearChatModal(false);
+    showToast("Chat cleared successfully");
+    if (openedFromChatOptions) {
+      setOpenedFromChatOptions(false);
+      setShowChatOptionsDropdown(true);
+    }
+  };
+
+  const handleExportChat = () => {
+    if (!messages || messages.length === 0) {
+      showToast("No messages to export.");
+      return;
+    }
+    const lines = [];
+    lines.push(`=======================================================`);
+    lines.push(`TexWeb Chat Transcript`);
+    lines.push(`Chat: ${headerDetails.title || "Conversation"}`);
+    lines.push(`Exported on: ${new Date().toLocaleString()}`);
+    lines.push(`Total messages: ${messages.length}`);
+    lines.push(`=======================================================\n`);
+
+    messages.forEach((m) => {
+      if (deletedForMeIds.has(m.id)) return;
+      const dateStr = formatFullDateTime(m.created_at);
+      const senderName =
+        m.sender?.full_name ||
+        m.sender_name ||
+        (m.sender_id === currentUser?.id ? "You" : "User");
+
+      let line = `[${dateStr}] ${senderName}: `;
+      if (m.is_deleted_for_all) {
+        line += "🚫 This message was deleted";
+      } else {
+        if (m.message) line += m.message;
+        if (m.attachment_url) {
+          line += ` [Attachment: ${m.attachment_name || m.attachment_type || "file"}] (${m.attachment_url})`;
+        }
+      }
+      lines.push(line);
+    });
+
+    const blob = new Blob([lines.join("\n")], { type: "text/plain;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    const sanitizedTitle = (headerDetails.title || "chat").replace(/[^a-zA-Z0-9_-]/g, "_");
+    link.download = `${sanitizedTitle}_transcript.txt`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    showToast("Chat transcript exported successfully");
+  };
+
+  const searchMatchingIds = useMemo(() => {
+    if (!searchQuery || !searchQuery.trim()) return [];
+    const q = searchQuery.toLowerCase();
+    return (messages || [])
+      .filter((m) => !deletedForMeIds.has(m.id) && m.message && m.message.toLowerCase().includes(q))
+      .map((m) => m.id);
+  }, [messages, searchQuery, deletedForMeIds]);
+
+  const handleNextSearchMatch = () => {
+    if (searchMatchingIds.length === 0) return;
+    const nextIdx = (searchMatchIndex + 1) % searchMatchingIds.length;
+    setSearchMatchIndex(nextIdx);
+    handleJumpToMessage(searchMatchingIds[nextIdx]);
+  };
+
+  const handlePrevSearchMatch = () => {
+    if (searchMatchingIds.length === 0) return;
+    const prevIdx = (searchMatchIndex - 1 + searchMatchingIds.length) % searchMatchingIds.length;
+    setSearchMatchIndex(prevIdx);
+    handleJumpToMessage(searchMatchingIds[prevIdx]);
+  };
 
   // Dismiss dropdowns & reaction popups on document click outside, contextmenu outside, or scroll
   useEffect(() => {
@@ -1385,12 +2338,16 @@ export default function TexAppBatchChat({
 
   // Monitor internal chat scroll to toggle floating scroll-down arrow
   const handleChatScroll = () => {
-    closeDropdown();
+    if (activeDropdownMsgId || dropdownMenuState) {
+      closeDropdown();
+    }
     if (!chatScrollRef.current) return;
     const { scrollTop, scrollHeight, clientHeight } = chatScrollRef.current;
     const isScrolledUp = scrollHeight - scrollTop - clientHeight > 140;
-    setShowScrollBottomBtn(isScrolledUp);
-    if (!isScrolledUp) setNewMessageCount(0);
+    setShowScrollBottomBtn((prev) => (prev !== isScrolledUp ? isScrolledUp : prev));
+    if (!isScrolledUp) {
+      setNewMessageCount((prev) => (prev !== 0 ? 0 : prev));
+    }
   };
 
   // Auto-scroll to bottom only within chat body (NEVER scrolls parent page/window)
@@ -1432,28 +2389,29 @@ export default function TexAppBatchChat({
 
     if (messages.length > previousCount && isIncoming) {
       if (isScrolledUp) setNewMessageCount((count) => count + (messages.length - previousCount));
-      try {
-        const AudioContextClass = window.AudioContext || window.webkitAudioContext;
-        if (AudioContextClass) {
-          const audioContext = new AudioContextClass();
-          const oscillator = audioContext.createOscillator();
-          const gain = audioContext.createGain();
-          oscillator.type = "sine";
-          oscillator.frequency.value = 880;
-          gain.gain.setValueAtTime(0.001, audioContext.currentTime);
-          gain.gain.exponentialRampToValueAtTime(0.08, audioContext.currentTime + 0.01);
-          gain.gain.exponentialRampToValueAtTime(0.001, audioContext.currentTime + 0.16);
-          oscillator.connect(gain);
-          gain.connect(audioContext.destination);
-          oscillator.start();
-          oscillator.stop(audioContext.currentTime + 0.17);
-          setTimeout(() => audioContext.close().catch(() => {}), 250);
+      if (!isChatMuted) {
+        playWhatsAppChime();
+        // Desktop background notification
+        if (typeof window !== "undefined" && "Notification" in window && Notification.permission === "granted" && document.hidden) {
+          try {
+            const senderName = latest?.sender_name || latest?.sender?.name || (contact?.name || "TexWeb Chat");
+            const body = latest?.content || (latest?.attachments?.length ? "📎 Sent an attachment" : "New message");
+            const notif = new Notification(senderName, {
+              body: body.length > 100 ? body.slice(0, 97) + "..." : body,
+              icon: "/favicon.ico",
+              tag: `texweb-${latest?.id || Date.now()}`,
+            });
+            notif.onclick = () => {
+              window.focus();
+              notif.close();
+            };
+          } catch {}
         }
-      } catch {}
+      }
     }
 
     previousMessageCountRef.current = messages.length;
-  }, [messages, currentUser?.id]);
+  }, [messages, currentUser?.id, isChatMuted, playWhatsAppChime, contact?.name]);
 
   // Automatically acknowledge delivery for unread incoming messages
   useEffect(() => {
@@ -1575,17 +2533,33 @@ export default function TexAppBatchChat({
     return { displayMessages: regular, reactionsByParentId: reactions };
   }, [messages, deletedForMeIds]);
 
-  // Filter messages based on search query
+  // Filter messages based on disappearing messages timer & search query
   const filteredMessages = useMemo(() => {
-    if (!searchQuery.trim()) return displayMessages;
+    let list = displayMessages;
+    if (disappearingTimer && disappearingTimer !== "off") {
+      const msMap = {
+        "24h": 24 * 60 * 60 * 1000,
+        "7d": 7 * 24 * 60 * 60 * 1000,
+        "90d": 90 * 24 * 60 * 60 * 1000,
+      };
+      const maxAgeMs = msMap[disappearingTimer];
+      if (maxAgeMs) {
+        const cutoff = Date.now() - maxAgeMs;
+        list = list.filter((m) => {
+          const time = new Date(m.created_at).getTime();
+          return isNaN(time) || time >= cutoff;
+        });
+      }
+    }
+    if (!searchQuery.trim()) return list;
     const q = searchQuery.toLowerCase();
-    return displayMessages.filter(
+    return list.filter(
       (m) =>
         m.message?.toLowerCase().includes(q) ||
         m.sender?.full_name?.toLowerCase().includes(q) ||
         m.attachment_name?.toLowerCase().includes(q)
     );
-  }, [displayMessages, searchQuery]);
+  }, [displayMessages, searchQuery, disappearingTimer]);
 
   // Pinned messages
   const pinnedMessages = useMemo(() => {
@@ -1604,7 +2578,7 @@ export default function TexAppBatchChat({
   // Handle textarea text change & detect @mention
   const handleTextChange = (e) => {
     const val = e.target.value;
-    setInputText(val);
+    handleInputTextChange(val);
 
     const cursorPos = e.target.selectionStart;
     const textBeforeCursor = val.slice(0, cursorPos);
@@ -1634,12 +2608,12 @@ export default function TexAppBatchChat({
       } else {
         el.innerText = updated;
       }
-      setInputText(updated);
+      handleInputTextChange(updated);
       el.focus();
     } else {
       const before = inputText.slice(0, mentionIndex);
       const updated = `${before}@${member.full_name} `;
-      setInputText(updated);
+      handleInputTextChange(updated);
     }
     setMentionQuery(null);
   };
@@ -1670,8 +2644,219 @@ export default function TexAppBatchChat({
     setMentionQuery(null);
   };
 
-  // ContentEditable Paste Handler (converts pasted emojis to Apple emoji images)
+  // Reusable Stage Files Handler for manual upload, clipboard paste, and drag-and-drop
+  const stageFiles = useCallback((rawFiles, type = "document") => {
+    const filesArray = rawFiles ? Array.from(rawFiles) : [];
+    if (!filesArray.length) return;
+
+    const isMedia = type === "media";
+    const newItems = filesArray.map((file) => {
+      const isVideo = file.type?.startsWith("video/");
+      const isAudio = file.type?.startsWith("audio/");
+      const isPdf = file.name?.toLowerCase().endsWith(".pdf");
+      const isImage = file.type?.startsWith("image/");
+
+      let attachmentType = "document";
+      if (isMedia || isImage || isVideo || isAudio) {
+        attachmentType = isVideo ? "video" : isAudio ? "audio" : isImage ? "image" : isPdf ? "pdf" : "document";
+      } else {
+        attachmentType = isPdf ? "pdf" : "document";
+      }
+
+      let previewUrl = "";
+      if (isImage || isVideo || isAudio) {
+        try {
+          previewUrl = URL.createObjectURL(file);
+        } catch {
+          previewUrl = "";
+        }
+      }
+
+      const sizeStr = formatBytes(file.size);
+      const displayName = sizeStr ? `${file.name} • ${sizeStr}` : file.name;
+
+      return {
+        id: `media_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+        file,
+        name: file.name || "Pasted-Image.png",
+        sizeStr,
+        displayName,
+        attachmentType,
+        isMedia: isMedia || isImage || isVideo,
+        isVideo,
+        isAudio,
+        isImage,
+        previewUrl,
+        type,
+      };
+    });
+
+    if (showMediaPreviewModal) {
+      setPendingMediaItems((prev) => [...prev, ...newItems]);
+    } else {
+      setPendingMediaItems(newItems);
+      setActiveMediaIndex(0);
+      setMediaCaption("");
+      setShowMediaPreviewModal(true);
+    }
+  }, [showMediaPreviewModal]);
+
+  // Drag and drop event handlers
+  const handleDragEnter = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    dragCounterRef.current += 1;
+    if (e.dataTransfer?.items && e.dataTransfer.items.length > 0) {
+      setIsDraggingOver(true);
+    }
+  };
+
+  const handleDragLeave = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    dragCounterRef.current -= 1;
+    if (dragCounterRef.current <= 0) {
+      dragCounterRef.current = 0;
+      setIsDraggingOver(false);
+    }
+  };
+
+  const handleDragOver = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+  };
+
+  const handleDrop = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    dragCounterRef.current = 0;
+    setIsDraggingOver(false);
+    if (e.dataTransfer?.files && e.dataTransfer.files.length > 0) {
+      const droppedFiles = Array.from(e.dataTransfer.files);
+      const hasMedia = droppedFiles.some((f) => f.type?.startsWith("image/") || f.type?.startsWith("video/"));
+      stageFiles(droppedFiles, hasMedia ? "media" : "document");
+    }
+  };
+
+  // Global Keyboard Shortcuts (Ctrl+F, Ctrl+/, Esc, Left/Right for gallery)
+  useEffect(() => {
+    const handleGlobalKeyDown = (e) => {
+      // Ctrl+F or Cmd+F -> Toggle in-chat search
+      if ((e.ctrlKey || e.metaKey) && e.key?.toLowerCase() === "f") {
+        e.preventDefault();
+        setShowSearch((prev) => !prev);
+        return;
+      }
+
+      // Ctrl+/ or Cmd+/ -> Toggle keyboard shortcuts modal
+      if ((e.ctrlKey || e.metaKey) && e.key === "/") {
+        e.preventDefault();
+        setShowKeyboardShortcutsModal((prev) => !prev);
+        return;
+      }
+
+      // Left / Right arrow navigation in fullscreen gallery
+      if (galleryMediaIndex !== null) {
+        if (e.key === "ArrowLeft") {
+          e.preventDefault();
+          setGalleryMediaIndex((i) => (i > 0 ? i - 1 : i));
+          setGalleryZoom(1);
+          return;
+        }
+        if (e.key === "ArrowRight") {
+          e.preventDefault();
+          setGalleryMediaIndex((i) => (i < chatMediaList.length - 1 ? i + 1 : i));
+          setGalleryZoom(1);
+          return;
+        }
+      }
+
+      // Esc -> Dismiss topmost active modal / drawer / overlay
+      if (e.key === "Escape") {
+        if (showKeyboardShortcutsModal) {
+          setShowKeyboardShortcutsModal(false);
+          return;
+        }
+        if (galleryMediaIndex !== null) {
+          setGalleryMediaIndex(null);
+          setGalleryZoom(1);
+          return;
+        }
+        if (previewImage) {
+          setPreviewImage(null);
+          return;
+        }
+        if (showMediaPreviewModal) {
+          handleCloseMediaPreviewModal();
+          return;
+        }
+        if (showMembersDrawer) {
+          setShowMembersDrawer(false);
+          return;
+        }
+        if (showSearch) {
+          setShowSearch(false);
+          return;
+        }
+        if (showEmojiPicker) {
+          setShowEmojiPicker(false);
+          return;
+        }
+        if (showLabelPickerModal) {
+          setShowLabelPickerModal(false);
+          return;
+        }
+        if (showMuteModal) {
+          setShowMuteModal(false);
+          return;
+        }
+        if (showChatOptionsDropdown) {
+          setShowChatOptionsDropdown(false);
+          return;
+        }
+      }
+    };
+
+    window.addEventListener("keydown", handleGlobalKeyDown);
+    return () => window.removeEventListener("keydown", handleGlobalKeyDown);
+  }, [
+    showKeyboardShortcutsModal,
+    galleryMediaIndex,
+    previewImage,
+    showMediaPreviewModal,
+    showMembersDrawer,
+    showSearch,
+    showEmojiPicker,
+    showLabelPickerModal,
+    showMuteModal,
+    showChatOptionsDropdown,
+    chatMediaList?.length,
+  ]);
+
+  // ContentEditable Paste Handler (converts pasted emojis to Apple emoji images and stages pasted screenshots/files)
   const handleContentEditablePaste = (e) => {
+    // 1. Check for pasted files or images (e.g. screenshots from Win+Shift+S or copied files)
+    if (e.clipboardData) {
+      const files = Array.from(e.clipboardData.files || []);
+      if (files.length > 0) {
+        e.preventDefault();
+        const hasMedia = files.some((f) => f.type?.startsWith("image/") || f.type?.startsWith("video/"));
+        stageFiles(files, hasMedia ? "media" : "document");
+        return;
+      }
+      const items = Array.from(e.clipboardData.items || []);
+      const fileItems = items.filter((it) => it.kind === "file");
+      if (fileItems.length > 0) {
+        const itemFiles = fileItems.map((it) => it.getAsFile()).filter(Boolean);
+        if (itemFiles.length > 0) {
+          e.preventDefault();
+          const hasMedia = itemFiles.some((f) => f.type?.startsWith("image/") || f.type?.startsWith("video/"));
+          stageFiles(itemFiles, hasMedia ? "media" : "document");
+          return;
+        }
+      }
+    }
+
     e.preventDefault();
     const text = e.clipboardData?.getData("text/plain") || "";
     if (!text) return;
@@ -1748,6 +2933,12 @@ export default function TexAppBatchChat({
       }
     });
     setInputText("");
+    try {
+      if (typeof window !== "undefined") {
+        localStorage.removeItem(draftKey);
+        window.dispatchEvent(new Event("texweb_draft_updated"));
+      }
+    } catch {}
     if (onTyping) onTyping(false);
     setReplyingTo(null);
     setShowEmojiPicker(false);
@@ -1780,57 +2971,7 @@ export default function TexAppBatchChat({
     const rawFiles = e.target.files ? Array.from(e.target.files) : [];
     if (!rawFiles.length) return;
     e.target.value = "";
-
-    const isMedia = type === "media";
-    const newItems = rawFiles.map((file) => {
-      const isVideo = file.type.startsWith("video/");
-      const isAudio = file.type.startsWith("audio/");
-      const isPdf = file.name.toLowerCase().endsWith(".pdf");
-      const isImage = file.type.startsWith("image/");
-
-      let attachmentType = "document";
-      if (isMedia) {
-        attachmentType = isVideo ? "video" : isAudio ? "audio" : "image";
-      } else {
-        attachmentType = isPdf ? "pdf" : "document";
-      }
-
-      let previewUrl = "";
-      if (isImage || isVideo || isAudio) {
-        try {
-          previewUrl = URL.createObjectURL(file);
-        } catch {
-          previewUrl = "";
-        }
-      }
-
-      const sizeStr = formatBytes(file.size);
-      const displayName = sizeStr ? `${file.name} • ${sizeStr}` : file.name;
-
-      return {
-        id: `media_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
-        file,
-        name: file.name,
-        sizeStr,
-        displayName,
-        attachmentType,
-        isMedia,
-        isVideo,
-        isAudio,
-        isImage,
-        previewUrl,
-        type,
-      };
-    });
-
-    if (showMediaPreviewModal) {
-      setPendingMediaItems((prev) => [...prev, ...newItems]);
-    } else {
-      setPendingMediaItems(newItems);
-      setActiveMediaIndex(0);
-      setMediaCaption("");
-      setShowMediaPreviewModal(true);
-    }
+    stageFiles(rawFiles, type);
   };
 
   // Close media preview modal and clean up object URLs
@@ -1868,13 +3009,25 @@ export default function TexAppBatchChat({
     try {
       const caption = mediaCaption.trim();
       const currentBatchId = batch?.id || (contact?.id ? `direct-${contact.id}` : "general");
+      const total = pendingMediaItems.length;
 
-      for (let i = 0; i < pendingMediaItems.length; i++) {
+      for (let i = 0; i < total; i++) {
         const item = pendingMediaItems[i];
         let fileUrl = "";
 
+        const basePercent = Math.round((i / total) * 100);
+        setUploadProgress({
+          percent: Math.min(95, basePercent + 15),
+          text: `Uploading ${i + 1} of ${total}: ${item.name}`,
+        });
+
         // 1. Upload to Supabase Storage
         const uploadRes = await uploadBatchFile(item.file, currentBatchId);
+        setUploadProgress({
+          percent: Math.min(98, Math.round(((i + 0.85) / total) * 100)),
+          text: `Processing ${item.name}...`,
+        });
+
         if (uploadRes?.file_url) {
           fileUrl = uploadRes.file_url;
         } else if (item.file.size <= 2 * 1024 * 1024) {
@@ -1902,6 +3055,11 @@ export default function TexAppBatchChat({
           attachment_type: item.attachmentType,
           reference_type: "none",
         });
+
+        setUploadProgress({
+          percent: Math.round(((i + 1) / total) * 100),
+          text: `Uploaded ${i + 1} of ${total}`,
+        });
       }
 
       // Cleanup object URLs
@@ -1915,6 +3073,7 @@ export default function TexAppBatchChat({
       console.error("Error sending media queue:", err);
     } finally {
       setIsUploadingMediaQueue(false);
+      setUploadProgress(null);
     }
   };
 
@@ -2121,6 +3280,13 @@ export default function TexAppBatchChat({
 
   const handleCancelRecording = () => {
     isDiscardedRef.current = true;
+    setIsLockedRecording(false);
+    setIsRecordingPaused(false);
+    if (voicePreviewUrl) {
+      URL.revokeObjectURL(voicePreviewUrl);
+      setVoicePreviewUrl(null);
+    }
+    setIsPlayingVoicePreview(false);
     if (recordingTimerRef.current) {
       clearInterval(recordingTimerRef.current);
       recordingTimerRef.current = null;
@@ -2141,6 +3307,13 @@ export default function TexAppBatchChat({
 
   const handleStopAndSendVoice = () => {
     isDiscardedRef.current = false;
+    setIsLockedRecording(false);
+    setIsRecordingPaused(false);
+    if (voicePreviewUrl) {
+      URL.revokeObjectURL(voicePreviewUrl);
+      setVoicePreviewUrl(null);
+    }
+    setIsPlayingVoicePreview(false);
     if (recordingTimerRef.current) {
       clearInterval(recordingTimerRef.current);
       recordingTimerRef.current = null;
@@ -2149,6 +3322,61 @@ export default function TexAppBatchChat({
       try {
         mediaRecorderRef.current.stop();
       } catch {}
+    }
+  };
+
+  const handleTogglePauseRecording = () => {
+    const recorder = mediaRecorderRef.current;
+    if (!recorder || recorder.state === "inactive") return;
+
+    if (recorder.state === "recording") {
+      try {
+        recorder.pause();
+      } catch {}
+      if (recordingTimerRef.current) {
+        clearInterval(recordingTimerRef.current);
+        recordingTimerRef.current = null;
+      }
+      setIsRecordingPaused(true);
+
+      // Create preview audio URL from recorded chunks
+      try {
+        const actualType = recorder.mimeType || "audio/webm";
+        const previewBlob = new Blob(mediaChunksRef.current, { type: actualType });
+        if (previewBlob.size > 0) {
+          if (voicePreviewUrl) URL.revokeObjectURL(voicePreviewUrl);
+          const url = URL.createObjectURL(previewBlob);
+          setVoicePreviewUrl(url);
+        }
+      } catch {}
+    } else if (recorder.state === "paused") {
+      if (voicePreviewAudioRef.current) {
+        voicePreviewAudioRef.current.pause();
+        setIsPlayingVoicePreview(false);
+      }
+      if (voicePreviewUrl) {
+        URL.revokeObjectURL(voicePreviewUrl);
+        setVoicePreviewUrl(null);
+      }
+      try {
+        recorder.resume();
+      } catch {}
+      setIsRecordingPaused(false);
+      recordingTimerRef.current = setInterval(() => {
+        setRecordingSeconds((s) => s + 1);
+      }, 1000);
+    }
+  };
+
+  const handleTogglePlayVoicePreview = () => {
+    if (!voicePreviewAudioRef.current || !voicePreviewUrl) return;
+    if (isPlayingVoicePreview) {
+      voicePreviewAudioRef.current.pause();
+      setIsPlayingVoicePreview(false);
+    } else {
+      voicePreviewAudioRef.current.play()
+        .then(() => setIsPlayingVoicePreview(true))
+        .catch(() => setIsPlayingVoicePreview(false));
     }
   };
 
@@ -2193,6 +3421,7 @@ export default function TexAppBatchChat({
       }
     }
     setCopiedId(msg.id);
+    showToast("Message copied to clipboard");
     setTimeout(() => setCopiedId(null), 1500);
   };
 
@@ -2866,8 +4095,33 @@ export default function TexAppBatchChat({
   };
 
   return (
-    <div className={`flex flex-col flex-1 h-full max-h-full w-full overflow-hidden min-h-0 relative transition-colors ${isDark ? "bg-[#100f0b] text-[#f4ead2]" : "bg-[#f4eee6] text-gray-900"
-      }`}>
+    <div
+      ref={chatContainerRef}
+      onDragEnter={handleDragEnter}
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
+      className={`flex flex-col flex-1 h-full max-h-full w-full overflow-hidden min-h-0 relative transition-colors ${
+        isDark ? "bg-[#100f0b] text-[#f4ead2]" : "bg-[#f4eee6] text-gray-900"
+      }`}
+    >
+      {/* Live Upload Progress Indicator */}
+      {uploadProgress && (
+        <div className="fixed top-14 sm:top-16 left-1/2 -translate-x-1/2 z-50 bg-[#18150f]/95 backdrop-blur-md text-white px-4 py-2.5 rounded-2xl shadow-2xl border border-red-500/40 flex items-center gap-3 animate-fadeIn select-none">
+          <div className="w-5 h-5 rounded-full border-2 border-red-500 border-t-transparent animate-spin shrink-0" />
+          <div className="flex flex-col min-w-[140px]">
+            <span className="text-xs font-bold text-red-100 truncate max-w-[220px]">{uploadProgress.text}</span>
+            <div className="w-full h-1.5 bg-white/20 rounded-full mt-1 overflow-hidden">
+              <div
+                className="h-full bg-gradient-to-r from-red-600 to-rose-500 rounded-full transition-all duration-200"
+                style={{ width: `${uploadProgress.percent}%` }}
+              />
+            </div>
+          </div>
+          <span className="text-xs font-mono font-bold text-red-400 shrink-0">{uploadProgress.percent}%</span>
+        </div>
+      )}
+
       {/* Hidden File Inputs */}
       {/* Photos & videos: images & videos for direct inline chat media */}
       <input
@@ -2897,19 +4151,47 @@ export default function TexAppBatchChat({
         onChange={(e) => handleFileUpload(e, "document")}
       />
 
-      {/* Tech Chat Doodle Wallpaper Overlay (Developer themed tech doodles matching WhatsApp wallpaper) */}
-      <div
-        className="absolute inset-0 pointer-events-none bg-repeat transition-opacity z-0 opacity-[0.06] dark:opacity-[0.045] dark:invert"
-        style={{
-          backgroundImage: "url('/tech-chat-doodle.svg')",
-          backgroundSize: "360px 360px",
-        }}
-      />
+      {/* Dynamic Chat Wallpaper Background (WhatsApp Doodle, Minimal, AMOLED Dark, Warm Paper) */}
+      {chatWallpaper === "doodle" && (
+        <div
+          className="absolute inset-0 pointer-events-none bg-repeat transition-opacity z-0 opacity-[0.06] dark:opacity-[0.045] dark:invert"
+          style={{
+            backgroundImage: "url('/tech-chat-doodle.svg')",
+            backgroundSize: "360px 360px",
+          }}
+        />
+      )}
+      {chatWallpaper === "dark" && (
+        <div className="absolute inset-0 pointer-events-none z-0 bg-[#070709]/95 dark:bg-[#050507]" />
+      )}
+      {chatWallpaper === "warm" && (
+        <div
+          className="absolute inset-0 pointer-events-none z-0 bg-[#fbf5e8]/90 dark:bg-[#1a1612]/90 bg-repeat"
+          style={{
+            backgroundImage: "url('/tech-chat-doodle.svg')",
+            backgroundSize: "360px 360px",
+            opacity: 0.035,
+          }}
+        />
+      )}
+
+      {/* Drag & Drop File Upload Overlay */}
+      {isDraggingOver && (
+        <div className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-black/75 backdrop-blur-xs pointer-events-none animate-in fade-in duration-150">
+          <div className="p-8 rounded-3xl border-2 border-dashed border-red-500 bg-red-950/50 border-red-500/80 flex flex-col items-center max-w-sm text-center shadow-2xl">
+            <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-red-600 to-rose-500 text-white flex items-center justify-center mb-4 shadow-xl shadow-red-600/40 animate-bounce">
+              <Paperclip className="w-8 h-8" />
+            </div>
+            <h3 className="text-lg font-bold text-white mb-1">Drop files here to send</h3>
+            <p className="text-xs text-red-200/90 font-medium">Add photos, videos, voice notes or documents directly to this chat</p>
+          </div>
+        </div>
+      )}
 
       {/* =========================================================================
-          1. WHATSAPP HEADER BAR
+          1. WHATSAPP HEADER BAR (Pinned & Sticky at Top - Never scrolls)
           ========================================================================= */}
-      <div className={`px-3 sm:px-4 py-2.5 sm:py-3 border-b flex items-center justify-between gap-2.5 z-20 shrink-0 backdrop-blur-md shadow-none ${isDark ? "bg-[#18150f]/95 border-[#3a3020] text-[#f4ead2]" : "bg-white/95 border-gray-200/80 text-gray-900"
+      <div className={`sticky top-0 px-3 sm:px-4 pt-[max(env(safe-area-inset-top),0.625rem)] pb-2.5 sm:pb-3 border-0 border-transparent flex items-center justify-between gap-2.5 z-30 shrink-0 backdrop-blur-md shadow-none ${isDark ? "bg-[#18150f]/95 text-[#f4ead2]" : "bg-white/95 text-gray-900"
         }`}>
         <div className="flex items-center gap-2 sm:gap-3 min-w-0">
           {/* Mobile / Desktop Back Button */}
@@ -2925,7 +4207,7 @@ export default function TexAppBatchChat({
           )}
 
           {/* Avatar */}
-          <div className="relative shrink-0">
+          <div className="relative shrink-0 cursor-pointer" onClick={() => setShowMembersDrawer(true)}>
             {(() => {
               const headerAvatarSrc = typeof headerDetails.avatarUrl === "string" && headerDetails.avatarUrl.trim() ? headerDetails.avatarUrl.trim() : null;
               if (headerAvatarSrc && !headerAvatarError) {
@@ -2948,7 +4230,7 @@ export default function TexAppBatchChat({
             {!headerDetails.isGroup && (
               <span
                 className={`absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full ring-2 ring-white dark:ring-[#18150f] ${
-                  headerDetails.isOnline ? "bg-emerald-500" : "bg-gray-400"
+                  headerDetails.isOnline ? "bg-amber-500" : "bg-gray-400"
                 }`}
                 title={headerDetails.isOnline ? "Online" : "Offline"}
               />
@@ -2956,9 +4238,50 @@ export default function TexAppBatchChat({
           </div>
 
           {/* Group / Contact Meta */}
-          <div className="min-w-0 cursor-pointer" onClick={() => headerDetails.isGroup && setShowMembersDrawer(true)}>
+          <div className="flex-1 min-w-0 cursor-pointer" onClick={() => setShowMembersDrawer(true)}>
             <div className="flex items-center gap-1.5 sm:gap-2">
-              <h2 className="text-xs sm:text-sm font-bold truncate">{headerDetails.title}</h2>
+              <h2 className="text-xs sm:text-sm font-bold truncate flex items-center gap-1.5 min-w-0">
+                <span className="truncate">{headerDetails.title}</span>
+                {isChatArchived && (
+                  <span className="p-0.5 px-1 rounded bg-red-100 dark:bg-red-950/50 text-red-600 dark:text-red-400 text-[10px] font-bold flex items-center gap-0.5 shrink-0" title="Archived chat">
+                    <Archive className="w-3 h-3" />
+                    <span className="text-[9px]">Archived</span>
+                  </span>
+                )}
+                {isChatMuted && (
+                  <VolumeX className="w-3.5 h-3.5 text-gray-400 dark:text-gray-500 shrink-0" title="Notifications muted" />
+                )}
+                {disappearingTimer && disappearingTimer !== "off" && (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setShowDisappearingModal(true);
+                    }}
+                    className="p-0.5 px-1 rounded bg-amber-500/10 text-amber-600 dark:text-amber-400 text-[10px] font-bold flex items-center gap-0.5 shrink-0 hover:bg-amber-500/20 transition cursor-pointer"
+                    title={`Disappearing messages: ${disappearingTimer}`}
+                  >
+                    <Clock className="w-3 h-3" />
+                    <span className="text-[9px]">{disappearingTimer}</span>
+                  </button>
+                )}
+                {activeChatLabel && (() => {
+                  const lbl = CHAT_LABEL_PRESETS.find((p) => p.id === activeChatLabel);
+                  return lbl ? (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setShowLabelPickerModal(true);
+                      }}
+                      className={`text-[9px] px-1.5 py-0.2 rounded-md font-bold border shrink-0 cursor-pointer ${lbl.color}`}
+                      title="Chat Label"
+                    >
+                      {lbl.name}
+                    </button>
+                  ) : null;
+                })()}
+              </h2>
               {headerDetails.isGroup && canAdminOrHrEditGroup && (
                 <button
                   type="button"
@@ -2979,7 +4302,7 @@ export default function TexAppBatchChat({
             </div>
             <p className="text-[10px] sm:text-[11px] text-gray-500 dark:text-gray-400 truncate flex items-center gap-1.5">
               {typingLabel ? (
-                <span className="text-emerald-600 dark:text-emerald-400 font-semibold">{typingLabel} typing...</span>
+                <span className="text-amber-600 dark:text-amber-400 font-semibold">{typingLabel} typing...</span>
               ) : headerDetails.isGroup ? (
                 <span className="flex items-center gap-1.5 truncate">
                   <span className="truncate font-medium">{headerDetails.subtitle.split(" • ")[0]}</span>
@@ -2987,8 +4310,8 @@ export default function TexAppBatchChat({
                   <span className="shrink-0 font-semibold">{effectiveBatchMembers.length} members</span>
                   <span>•</span>
                   {onlineMembersCount > 0 ? (
-                    <span className="text-emerald-600 dark:text-emerald-400 font-bold inline-flex items-center gap-1 shrink-0">
-                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                    <span className="text-amber-600 dark:text-amber-400 font-bold inline-flex items-center gap-1 shrink-0">
+                      <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
                       {onlineMembersCount} online
                     </span>
                   ) : (
@@ -3000,8 +4323,8 @@ export default function TexAppBatchChat({
                   <span>{ROLE_DISPLAY_NAMES[contact?.role] || contact?.role || "Member"}</span>
                   <span>•</span>
                   {headerDetails.isOnline ? (
-                    <span className="text-emerald-600 dark:text-emerald-400 font-bold inline-flex items-center gap-1">
-                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                    <span className="text-amber-600 dark:text-amber-400 font-bold inline-flex items-center gap-1">
+                      <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
                       Online
                     </span>
                   ) : (
@@ -3014,18 +4337,8 @@ export default function TexAppBatchChat({
           </div>
         </div>
 
-        {/* Action Controls */}
+        {/* Action Controls - Clean 2-action header (Search & 3-Dots) giving full width to chat name */}
         <div className="flex items-center gap-1 shrink-0 text-gray-600 dark:text-gray-300">
-          {/* Refresh Action */}
-          <button
-            type="button"
-            onClick={handleRefresh}
-            className="p-1.5 sm:p-2 rounded-xl transition text-gray-500 hover:text-gray-900 dark:text-slate-400 dark:hover:text-white cursor-pointer"
-            aria-label="Refresh messages"
-          >
-            <RefreshCw className={`w-4 h-4 transition-transform ${isRefreshing ? "animate-spin text-red-500" : ""}`} />
-          </button>
-
           {/* Toggle Search */}
           <button
             type="button"
@@ -3033,49 +4346,559 @@ export default function TexAppBatchChat({
               setShowSearch((prev) => !prev);
               if (showSearch) setSearchQuery("");
             }}
-            className={`p-1.5 sm:p-2 rounded-xl transition cursor-pointer ${showSearch ? "bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-400" : "hover:text-gray-900 dark:hover:text-white"
-              }`}
+            className={`p-1.5 sm:p-2 rounded-xl transition cursor-pointer ${
+              showSearch ? "bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-400" : "hover:text-gray-900 dark:hover:text-white"
+            }`}
             aria-label="Search in messages"
+            title="Search messages"
           >
-            <Search className="w-4 h-4" />
+            <Search className="w-4 h-4 sm:w-4.5 sm:h-4.5" />
           </button>
 
-
-
-          {/* Group Members Drawer Toggle */}
-          {headerDetails.isGroup && (
-            <button
-              type="button"
-              onClick={() => setShowMembersDrawer((prev) => !prev)}
-              className="p-2 rounded-xl hover:text-gray-900 dark:hover:text-white transition cursor-pointer"
-              aria-label="Batch Members list"
-            >
-              <Users className="w-4 h-4" />
-            </button>
-          )}
+          {/* WhatsApp 3-Dots More Options Trigger */}
+          <button
+            type="button"
+            onClick={() => setShowChatOptionsDropdown(true)}
+            className="p-1.5 sm:p-2 rounded-xl text-gray-500 hover:text-gray-900 dark:text-slate-400 dark:hover:text-white transition cursor-pointer"
+            aria-label="More chat options"
+            title="More options"
+          >
+            <MoreVertical className="w-4 h-4 sm:w-4.5 sm:h-4.5" />
+          </button>
         </div>
       </div>
 
       {/* =========================================================================
-          2. SEARCH BAR (When active)
+          WHATSAPP RIGHT SIDEBAR SLIDE-OVER DRAWER (Chat Options & Settings Page)
+          ========================================================================= */}
+      {showChatOptionsDropdown && (
+        <div
+          className="fixed inset-0 z-50 flex justify-end bg-black/60 backdrop-blur-2xs transition-opacity animate-fadeIn select-none"
+          onClick={() => setShowChatOptionsDropdown(false)}
+        >
+          <div
+            className={`w-full max-w-xs sm:max-w-sm h-full shadow-2xl flex flex-col animate-in slide-in-from-right duration-200 border-l ${
+              isDark ? "bg-[#18150f] border-[#3a3020] text-[#f4ead2]" : "bg-white border-gray-200 text-gray-900"
+            }`}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Sidebar Drawer Header */}
+            <div className={`px-4 py-3.5 border-b flex items-center justify-between shrink-0 ${
+              isDark ? "border-[#3a3020] bg-[#14120d]" : "border-gray-200 bg-gray-50"
+            }`}>
+              <div className="flex items-center gap-2.5 min-w-0">
+                <button
+                  type="button"
+                  onClick={() => setShowChatOptionsDropdown(false)}
+                  className="p-1 -ml-1 rounded-xl text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white transition cursor-pointer"
+                  title="Close options"
+                  aria-label="Close"
+                >
+                  <ArrowLeft className="w-5 h-5" />
+                </button>
+                <div className="min-w-0">
+                  <h3 className="text-sm font-bold truncate">Chat Options</h3>
+                  <p className="text-[11px] text-gray-500 dark:text-gray-400 truncate">{headerDetails.title}</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowChatOptionsDropdown(false)}
+                className="p-1.5 rounded-xl text-gray-400 hover:text-gray-600 dark:hover:text-white cursor-pointer transition"
+                aria-label="Close"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Sidebar Drawer Content - Cleanly categorized cards */}
+            <div className="flex-1 overflow-y-auto p-3.5 sm:p-4 space-y-3.5">
+              {/* Category 1: Overview & Details */}
+              <div className={`rounded-2xl border p-2 space-y-0.5 ${
+                isDark ? "bg-[#1d1913] border-[#3a3020]" : "bg-gray-50/70 border-gray-200/80"
+              }`}>
+                <div className="px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-gray-400">
+                  Overview & Details
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setOpenedFromChatOptions(true);
+                    setShowChatOptionsDropdown(false);
+                    setShowMembersDrawer(true);
+                    setActiveInfoTab("info");
+                  }}
+                  className="w-full px-3 py-2 rounded-xl text-xs flex items-center justify-between hover:bg-red-50/70 dark:hover:bg-red-950/40 hover:text-red-600 transition text-left cursor-pointer group"
+                >
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <div className="w-7 h-7 rounded-xl bg-red-500/10 text-red-600 dark:text-red-400 flex items-center justify-center shrink-0">
+                      <Info className="w-3.5 h-3.5" />
+                    </div>
+                    <div className="min-w-0">
+                      <div className="font-semibold text-xs truncate">{headerDetails.isGroup ? "Group info & members" : "Contact info"}</div>
+                      <div className="text-[10.5px] text-gray-400 truncate">View participants, roles & details</div>
+                    </div>
+                  </div>
+                  <ChevronRight className="w-3.5 h-3.5 text-gray-400 group-hover:text-red-500 transition-transform group-hover:translate-x-0.5 shrink-0" />
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setOpenedFromChatOptions(true);
+                    setShowChatOptionsDropdown(false);
+                    setShowMembersDrawer(true);
+                    setActiveInfoTab("media");
+                  }}
+                  className="w-full px-3 py-2 rounded-xl text-xs flex items-center justify-between hover:bg-red-50/70 dark:hover:bg-red-950/40 hover:text-red-600 transition text-left cursor-pointer group"
+                >
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <div className="w-7 h-7 rounded-xl bg-stone-500/10 text-stone-600 dark:text-stone-300 flex items-center justify-center shrink-0">
+                      <ImageIcon className="w-3.5 h-3.5" />
+                    </div>
+                    <div className="min-w-0">
+                      <div className="font-semibold text-xs truncate">Media, links & docs</div>
+                      <div className="text-[10.5px] text-gray-400 truncate">{chatMediaList.length} media • {chatDocsList.length} docs • {chatLinksList.length} links</div>
+                    </div>
+                  </div>
+                  <ChevronRight className="w-3.5 h-3.5 text-gray-400 group-hover:text-red-500 transition-transform group-hover:translate-x-0.5 shrink-0" />
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setOpenedFromChatOptions(true);
+                    setShowChatOptionsDropdown(false);
+                    setShowMembersDrawer(true);
+                    setActiveInfoTab("starred");
+                  }}
+                  className="w-full px-3 py-2 rounded-xl text-xs flex items-center justify-between hover:bg-red-50/70 dark:hover:bg-red-950/40 hover:text-red-600 transition text-left cursor-pointer group"
+                >
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <div className="w-7 h-7 rounded-xl bg-amber-500/10 text-amber-500 flex items-center justify-center shrink-0">
+                      <Star className="w-3.5 h-3.5 fill-amber-500" />
+                    </div>
+                    <div className="min-w-0">
+                      <div className="font-semibold text-xs truncate">Starred messages</div>
+                      <div className="text-[10.5px] text-gray-400 truncate">{starredMessagesList.length} starred items</div>
+                    </div>
+                  </div>
+                  <ChevronRight className="w-3.5 h-3.5 text-gray-400 group-hover:text-red-500 transition-transform group-hover:translate-x-0.5 shrink-0" />
+                </button>
+              </div>
+
+              {/* Category 2: Chat Tools & Preferences */}
+              <div className={`rounded-2xl border p-2 space-y-0.5 ${
+                isDark ? "bg-[#1d1913] border-[#3a3020]" : "bg-gray-50/70 border-gray-200/80"
+              }`}>
+                <div className="px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-gray-400">
+                  Chat Tools & Settings
+                </div>
+
+                {/* Refresh */}
+                <button
+                  type="button"
+                  onClick={() => handleRefresh()}
+                  className="w-full px-3 py-2 rounded-xl text-xs flex items-center justify-between hover:bg-red-50/70 dark:hover:bg-red-950/40 hover:text-red-600 transition text-left cursor-pointer"
+                >
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <div className="w-7 h-7 rounded-xl bg-gray-500/10 text-gray-500 dark:text-gray-400 flex items-center justify-center shrink-0">
+                      <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? "animate-spin text-red-500" : ""}`} />
+                    </div>
+                    <div className="min-w-0">
+                      <div className="font-semibold text-xs truncate">Refresh chat</div>
+                      <div className="text-[10.5px] text-gray-400 truncate">Sync latest messages</div>
+                    </div>
+                  </div>
+                  <span className="text-[10px] px-2 py-0.5 rounded font-bold bg-gray-200 dark:bg-stone-800 text-gray-700 dark:text-gray-300 shrink-0">
+                    {isRefreshing ? "Syncing..." : "Sync"}
+                  </span>
+                </button>
+
+                {/* Screen Lock */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowChatOptionsDropdown(false);
+                    window.dispatchEvent(new Event("texweb_draft_updated"));
+                  }}
+                  className="w-full px-3 py-2 rounded-xl text-xs flex items-center justify-between hover:bg-red-50/70 dark:hover:bg-red-950/40 hover:text-red-600 transition text-left cursor-pointer"
+                >
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <div className="w-7 h-7 rounded-xl bg-gray-500/10 text-gray-500 dark:text-gray-400 flex items-center justify-center shrink-0">
+                      <Lock className="w-3.5 h-3.5" />
+                    </div>
+                    <div className="min-w-0">
+                      <div className="font-semibold text-xs truncate">Screen lock</div>
+                      <div className="text-[10.5px] text-gray-400 truncate">Lock chat with 4-digit PIN</div>
+                    </div>
+                  </div>
+                  <span className="text-[10px] px-2 py-0.5 rounded font-bold bg-gray-200 dark:bg-stone-800 text-gray-700 dark:text-gray-300 shrink-0">Lock</span>
+                </button>
+
+                {/* Text formatting toolbar toggle */}
+                <button
+                  type="button"
+                  onClick={() => setShowFormattingToolbar((prev) => !prev)}
+                  className="w-full px-3 py-2 rounded-xl text-xs flex items-center justify-between hover:bg-red-50/70 dark:hover:bg-red-950/40 hover:text-red-600 transition text-left cursor-pointer"
+                >
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <div className="w-7 h-7 rounded-xl bg-red-500/10 text-red-600 dark:text-red-400 flex items-center justify-center shrink-0 font-serif font-bold text-xs">
+                      T
+                    </div>
+                    <div className="min-w-0">
+                      <div className="font-semibold text-xs truncate">Text formatting toolbar</div>
+                      <div className="text-[10.5px] text-gray-400 truncate">Bold, italic, strike, code</div>
+                    </div>
+                  </div>
+                  <span className={`text-[10px] px-2 py-0.5 rounded font-bold shrink-0 ${showFormattingToolbar ? "bg-red-600 text-white" : "bg-gray-200 dark:bg-stone-800 text-gray-600 dark:text-gray-400"}`}>
+                    {showFormattingToolbar ? "ON" : "OFF"}
+                  </span>
+                </button>
+
+                {/* Enter is send toggle */}
+                <button
+                  type="button"
+                  onClick={() => toggleEnterIsSend()}
+                  className="w-full px-3 py-2 rounded-xl text-xs flex items-center justify-between hover:bg-red-50/70 dark:hover:bg-red-950/40 hover:text-red-600 transition text-left cursor-pointer"
+                >
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <div className="w-7 h-7 rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0">
+                      <CheckSquare className="w-3.5 h-3.5" />
+                    </div>
+                    <div className="min-w-0">
+                      <div className="font-semibold text-xs truncate">Enter is send</div>
+                      <div className="text-[10.5px] text-gray-400 truncate">Send message on Enter key</div>
+                    </div>
+                  </div>
+                  <span className={`text-[10px] px-2 py-0.5 rounded font-bold shrink-0 ${enterIsSend ? "bg-red-600 text-white" : "bg-gray-200 dark:bg-stone-800 text-gray-600 dark:text-gray-400"}`}>
+                    {enterIsSend ? "ON" : "OFF"}
+                  </span>
+                </button>
+
+                {/* Mute notifications */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setOpenedFromChatOptions(true);
+                    setShowChatOptionsDropdown(false);
+                    setShowMuteModal(true);
+                  }}
+                  className="w-full px-3 py-2 rounded-xl text-xs flex items-center justify-between hover:bg-red-50/70 dark:hover:bg-red-950/40 hover:text-red-600 transition text-left cursor-pointer"
+                >
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <div className="w-7 h-7 rounded-xl bg-gray-500/10 text-gray-500 dark:text-gray-400 flex items-center justify-center shrink-0">
+                      <VolumeX className="w-3.5 h-3.5" />
+                    </div>
+                    <div className="min-w-0">
+                      <div className="font-semibold text-xs truncate">Mute notifications</div>
+                      <div className="text-[10.5px] text-gray-400 truncate">{isChatMuted ? "Muted" : "Active sound alerts"}</div>
+                    </div>
+                  </div>
+                  <span className={`text-[10px] px-2 py-0.5 rounded font-bold shrink-0 ${isChatMuted ? "bg-amber-600 text-white" : "bg-gray-200 dark:bg-stone-800 text-gray-600 dark:text-gray-400"}`}>
+                    {isChatMuted ? "MUTED" : "ACTIVE"}
+                  </span>
+                </button>
+
+                {/* Wallpaper */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setOpenedFromChatOptions(true);
+                    setShowChatOptionsDropdown(false);
+                    setShowWallpaperModal(true);
+                  }}
+                  className="w-full px-3 py-2 rounded-xl text-xs flex items-center justify-between hover:bg-red-50/70 dark:hover:bg-red-950/40 hover:text-red-600 transition text-left cursor-pointer group"
+                >
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <div className="w-7 h-7 rounded-xl bg-purple-500/10 text-purple-600 dark:text-purple-400 flex items-center justify-center shrink-0">
+                      <Palette className="w-3.5 h-3.5" />
+                    </div>
+                    <div className="min-w-0">
+                      <div className="font-semibold text-xs truncate">Chat wallpaper</div>
+                      <div className="text-[10.5px] text-gray-400 truncate">Theme, solid colors & doodles</div>
+                    </div>
+                  </div>
+                  <ChevronRight className="w-3.5 h-3.5 text-gray-400 group-hover:text-red-500 transition-transform group-hover:translate-x-0.5 shrink-0" />
+                </button>
+
+                {/* Desktop alerts */}
+                <button
+                  type="button"
+                  onClick={() => requestDesktopNotifications()}
+                  className="w-full px-3 py-2 rounded-xl text-xs flex items-center justify-between hover:bg-red-50/70 dark:hover:bg-red-950/40 hover:text-red-600 transition text-left cursor-pointer"
+                >
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <div className="w-7 h-7 rounded-xl bg-red-500/10 text-red-600 dark:text-red-400 flex items-center justify-center shrink-0">
+                      <Bell className="w-3.5 h-3.5" />
+                    </div>
+                    <div className="min-w-0">
+                      <div className="font-semibold text-xs truncate">Desktop alerts</div>
+                      <div className="text-[10.5px] text-gray-400 truncate">Background tab push notifications</div>
+                    </div>
+                  </div>
+                  <span className={`text-[10px] px-2 py-0.5 rounded font-bold shrink-0 ${
+                    desktopNotifState === "granted"
+                      ? "bg-red-600 text-white"
+                      : desktopNotifState === "denied"
+                      ? "bg-red-900/60 text-red-300"
+                      : "bg-gray-200 dark:bg-stone-800 text-gray-600 dark:text-gray-400"
+                  }`}>
+                    {desktopNotifState === "granted" ? "ON" : desktopNotifState === "denied" ? "BLOCKED" : "OFF"}
+                  </span>
+                </button>
+
+                {/* Shortcuts */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setOpenedFromChatOptions(true);
+                    setShowChatOptionsDropdown(false);
+                    setShowKeyboardShortcutsModal(true);
+                  }}
+                  className="w-full px-3 py-2 rounded-xl text-xs flex items-center justify-between hover:bg-red-50/70 dark:hover:bg-red-950/40 hover:text-red-600 transition text-left cursor-pointer"
+                >
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <div className="w-7 h-7 rounded-xl bg-gray-500/10 text-gray-500 dark:text-gray-400 flex items-center justify-center shrink-0">
+                      <Keyboard className="w-3.5 h-3.5" />
+                    </div>
+                    <div className="min-w-0">
+                      <div className="font-semibold text-xs truncate">Keyboard shortcuts</div>
+                      <div className="text-[10.5px] text-gray-400 truncate">Hotkeys for messaging navigation</div>
+                    </div>
+                  </div>
+                  <span className="text-[10px] px-2 py-0.5 rounded font-mono bg-gray-200 dark:bg-stone-800 text-gray-600 dark:text-gray-400 shrink-0">Ctrl+/</span>
+                </button>
+
+                {/* Chat Label */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setOpenedFromChatOptions(true);
+                    setShowChatOptionsDropdown(false);
+                    setShowLabelPickerModal(true);
+                  }}
+                  className="w-full px-3 py-2 rounded-xl text-xs flex items-center justify-between hover:bg-red-50/70 dark:hover:bg-red-950/40 hover:text-red-600 transition text-left cursor-pointer group"
+                >
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <div className="w-7 h-7 rounded-xl bg-rose-500/10 text-rose-600 dark:text-rose-400 flex items-center justify-center shrink-0">
+                      <Tag className="w-3.5 h-3.5" />
+                    </div>
+                    <div className="min-w-0">
+                      <div className="font-semibold text-xs truncate">Chat label</div>
+                      <div className="text-[10.5px] text-gray-400 truncate">Color-coded business tag</div>
+                    </div>
+                  </div>
+                  {activeChatLabel ? (() => {
+                    const lbl = CHAT_LABEL_PRESETS.find((p) => p.id === activeChatLabel);
+                    return lbl ? (
+                      <span className={`text-[9px] px-2 py-0.5 rounded font-bold border shrink-0 ${lbl.color}`}>
+                        {lbl.name}
+                      </span>
+                    ) : null;
+                  })() : (
+                    <ChevronRight className="w-3.5 h-3.5 text-gray-400 group-hover:text-red-500 transition-transform group-hover:translate-x-0.5 shrink-0" />
+                  )}
+                </button>
+
+                {/* Disappearing Messages */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setOpenedFromChatOptions(true);
+                    setShowChatOptionsDropdown(false);
+                    setShowDisappearingModal(true);
+                  }}
+                  className="w-full px-3 py-2 rounded-xl text-xs flex items-center justify-between hover:bg-red-50/70 dark:hover:bg-red-950/40 hover:text-red-600 transition text-left cursor-pointer"
+                >
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <div className="w-7 h-7 rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0">
+                      <Clock className="w-3.5 h-3.5" />
+                    </div>
+                    <div className="min-w-0">
+                      <div className="font-semibold text-xs truncate">Disappearing messages</div>
+                      <div className="text-[10.5px] text-gray-400 truncate">Auto-expiry timer</div>
+                    </div>
+                  </div>
+                  <span className="text-[10px] font-bold text-gray-400 shrink-0">
+                    {disappearingTimer === "off" ? "Off" : disappearingTimer}
+                  </span>
+                </button>
+              </div>
+
+              {/* Category 3: Actions & Privacy */}
+              <div className={`rounded-2xl border p-2 space-y-0.5 ${
+                isDark ? "bg-[#1d1913] border-[#3a3020]" : "bg-gray-50/70 border-gray-200/80"
+              }`}>
+                <div className="px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-gray-400">
+                  Actions & Privacy
+                </div>
+
+                {/* Export Chat */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowChatOptionsDropdown(false);
+                    handleExportChat();
+                  }}
+                  className="w-full px-3 py-2 rounded-xl text-xs flex items-center justify-between hover:bg-red-50/70 dark:hover:bg-red-950/40 hover:text-red-600 transition text-left cursor-pointer"
+                >
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <div className="w-7 h-7 rounded-xl bg-gray-500/10 text-gray-500 dark:text-gray-400 flex items-center justify-center shrink-0">
+                      <Download className="w-3.5 h-3.5" />
+                    </div>
+                    <div className="min-w-0">
+                      <div className="font-semibold text-xs truncate">Export chat transcript</div>
+                      <div className="text-[10.5px] text-gray-400 truncate">Download text transcript</div>
+                    </div>
+                  </div>
+                  <Download className="w-3.5 h-3.5 text-gray-400 shrink-0" />
+                </button>
+
+                {/* Archive Chat */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowChatOptionsDropdown(false);
+                    handleToggleArchiveChat();
+                  }}
+                  className="w-full px-3 py-2 rounded-xl text-xs flex items-center justify-between hover:bg-red-50/70 dark:hover:bg-red-950/40 hover:text-red-600 transition text-left cursor-pointer"
+                >
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <div className="w-7 h-7 rounded-xl bg-gray-500/10 text-gray-500 dark:text-gray-400 flex items-center justify-center shrink-0">
+                      <Archive className="w-3.5 h-3.5" />
+                    </div>
+                    <div className="min-w-0">
+                      <div className="font-semibold text-xs truncate">{isChatArchived ? "Unarchive chat" : "Archive chat"}</div>
+                      <div className="text-[10.5px] text-gray-400 truncate">{isChatArchived ? "Move back to active inbox" : "Hide from inbox list"}</div>
+                    </div>
+                  </div>
+                  <span className={`text-[10px] px-2 py-0.5 rounded font-bold shrink-0 ${isChatArchived ? "bg-red-600 text-white" : "bg-gray-200 dark:bg-stone-800 text-gray-600 dark:text-gray-400"}`}>
+                    {isChatArchived ? "ARCHIVED" : "ACTIVE"}
+                  </span>
+                </button>
+
+                {/* Block contact if direct */}
+                {mode === "direct" && contact?.id && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowChatOptionsDropdown(false);
+                      handleToggleBlockContact();
+                    }}
+                    className="w-full px-3 py-2 rounded-xl text-xs flex items-center justify-between hover:bg-red-500/10 text-red-600 dark:text-red-400 transition text-left cursor-pointer font-semibold"
+                  >
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <div className="w-7 h-7 rounded-xl bg-red-500/10 text-red-600 flex items-center justify-center shrink-0">
+                        <Ban className="w-3.5 h-3.5 text-red-500" />
+                      </div>
+                      <div className="min-w-0">
+                        <div className="font-semibold text-xs truncate">{isContactBlocked ? "Unblock contact" : "Block contact"}</div>
+                        <div className="text-[10.5px] opacity-80 truncate">{isContactBlocked ? "Allow messaging again" : "Stop receiving messages"}</div>
+                      </div>
+                    </div>
+                  </button>
+                )}
+
+                {/* Clear Chat */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setOpenedFromChatOptions(true);
+                    setShowChatOptionsDropdown(false);
+                    setConfirmClearChatModal(true);
+                  }}
+                  className="w-full px-3 py-2 rounded-xl text-xs flex items-center justify-between hover:bg-red-500/10 text-red-600 dark:text-red-400 transition text-left cursor-pointer font-semibold"
+                >
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <div className="w-7 h-7 rounded-xl bg-red-500/10 text-red-600 flex items-center justify-center shrink-0">
+                      <Trash2 className="w-3.5 h-3.5 text-red-500" />
+                    </div>
+                    <div className="min-w-0">
+                      <div className="font-semibold text-xs truncate">Clear chat history</div>
+                      <div className="text-[10.5px] opacity-80 truncate">Delete all messages</div>
+                    </div>
+                  </div>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* =========================================================================
+          2. SEARCH BAR (When active, with WhatsApp Match Navigator)
           ========================================================================= */}
       {showSearch && (
-        <div className={`px-4 py-2 border-b flex items-center gap-2 z-10 animate-fadeIn ${isDark ? "bg-[#100f0b] border-[#3a3020]" : "bg-white border-gray-200"
+        <div className={`px-4 py-2 border-0 border-transparent flex items-center gap-2 z-10 animate-fadeIn ${isDark ? "bg-[#100f0b]" : "bg-white"
           }`}>
           <Search className="w-4 h-4 text-gray-400" />
           <input
             type="text"
             placeholder="Search conversation..."
             value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
+            onChange={(e) => {
+              setSearchQuery(e.target.value);
+              setSearchMatchIndex(0);
+            }}
             className="flex-1 bg-transparent text-xs focus:outline-none placeholder-gray-400 dark:placeholder-slate-500"
             autoFocus
           />
           {searchQuery && (
-            <span className="text-[10px] font-mono text-gray-400">
-              {filteredMessages.length} found
-            </span>
+            <div className="flex items-center gap-1.5 shrink-0 select-none">
+              <span className="text-[10.5px] font-medium text-gray-500 dark:text-gray-400">
+                {searchMatchingIds.length > 0 ? `${searchMatchIndex + 1} of ${searchMatchingIds.length}` : "0 matches"}
+              </span>
+              <button
+                type="button"
+                onClick={handlePrevSearchMatch}
+                disabled={searchMatchingIds.length === 0}
+                className="p-1 rounded-md text-gray-500 hover:text-gray-800 dark:hover:text-white disabled:opacity-30 cursor-pointer transition"
+                title="Previous match"
+                aria-label="Previous match"
+              >
+                <ChevronUp className="w-3.5 h-3.5" />
+              </button>
+              <button
+                type="button"
+                onClick={handleNextSearchMatch}
+                disabled={searchMatchingIds.length === 0}
+                className="p-1 rounded-md text-gray-500 hover:text-gray-800 dark:hover:text-white disabled:opacity-30 cursor-pointer transition"
+                title="Next match"
+                aria-label="Next match"
+              >
+                <ChevronDown className="w-3.5 h-3.5" />
+              </button>
+            </div>
           )}
+          {/* Jump to Date Calendar Picker */}
+          <div className="relative shrink-0">
+            <button
+              type="button"
+              onClick={() => {
+                if (datePickerRef.current) {
+                  if (typeof datePickerRef.current.showPicker === "function") {
+                    datePickerRef.current.showPicker();
+                  } else {
+                    datePickerRef.current.focus();
+                  }
+                }
+              }}
+              className="p-1 rounded-lg text-gray-400 hover:text-red-600 dark:hover:text-red-400 cursor-pointer transition"
+              title="Jump to date"
+              aria-label="Jump to date"
+            >
+              <Calendar className="w-4 h-4" />
+            </button>
+            <input
+              ref={datePickerRef}
+              type="date"
+              className="absolute inset-0 opacity-0 pointer-events-auto cursor-pointer w-full h-full"
+              onChange={handleJumpToDate}
+            />
+          </div>
+
           <button
             type="button"
             onClick={() => {
@@ -3140,7 +4963,7 @@ export default function TexAppBatchChat({
           2B. WHATSAPP SELECTION ACTION BAR (When selection mode is active)
           ========================================================================= */}
       {isSelectionMode && (
-        <div className={`px-4 py-2.5 border-b flex items-center justify-between gap-2 z-20 animate-fadeIn ${isDark ? "bg-[#18150f] border-[#3a3020] text-[#f4ead2]" : "bg-white border-gray-200 text-gray-900 shadow-sm"
+        <div className={`px-4 py-2.5 border-0 border-transparent flex items-center justify-between gap-2 z-20 animate-fadeIn ${isDark ? "bg-[#18150f] text-[#f4ead2]" : "bg-white text-gray-900 shadow-sm"
           }`}>
           <div className="flex items-center gap-3">
             <button
@@ -3200,7 +5023,7 @@ export default function TexAppBatchChat({
           3. PINNED MESSAGES BANNER (Sticky Top)
           ========================================================================= */}
       {pinnedMessages.length > 0 && (
-        <div className={`px-4 py-2 border-b flex items-center justify-between gap-3 text-xs z-10 ${isDark ? "bg-[#182229] border-slate-800 text-[#d1d7db]" : "bg-amber-50/90 border-amber-200 text-amber-950"
+        <div className={`px-4 py-2 border-0 border-transparent flex items-center justify-between gap-3 text-xs z-10 ${isDark ? "bg-[#182229] text-[#d1d7db]" : "bg-amber-50/90 text-amber-950"
           }`}>
           <div
             className="flex items-center gap-2 min-w-0 cursor-pointer"
@@ -3252,7 +5075,6 @@ export default function TexAppBatchChat({
         style={{
           overflowY: "auto",
           overflowX: "hidden",
-          overscrollBehaviorY: "contain",
           WebkitOverflowScrolling: "touch",
           scrollbarWidth: "thin",
           scrollbarColor: isDark ? "rgba(255, 255, 255, 0.35) transparent" : "rgba(148, 163, 184, 0.55) transparent",
@@ -3275,7 +5097,38 @@ export default function TexAppBatchChat({
             </p>
           </div>
         ) : (
-          filteredMessages.map((msg, index) => {
+          <>
+            {/* WhatsApp End-to-End Encryption Security Pill */}
+            {!searchQuery && (
+              <div className="w-full flex justify-center my-3 px-4 select-none relative z-10">
+                <div className="max-w-md px-3.5 py-1.5 rounded-xl text-[11px] leading-relaxed text-center shadow-2xs border bg-amber-50/90 dark:bg-[#201c13]/90 text-amber-900/90 dark:text-amber-200/90 border-amber-200/70 dark:border-amber-900/40 backdrop-blur-xs flex items-center justify-center gap-1.5">
+                  <Lock className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 shrink-0 inline -mt-0.5" />
+                  <span>Messages and calls are end-to-end encrypted. No one outside of this chat can read or listen to them.</span>
+                </div>
+              </div>
+            )}
+
+            {/* WhatsApp Disappearing Messages Notice Pill */}
+            {!searchQuery && disappearingTimer && disappearingTimer !== "off" && (
+              <div className="w-full flex justify-center my-2 px-4 select-none relative z-10">
+                <button
+                  type="button"
+                  onClick={() => setShowDisappearingModal(true)}
+                  className="max-w-md px-3.5 py-1.5 rounded-xl text-[11px] leading-relaxed text-center shadow-2xs border bg-amber-500/10 dark:bg-amber-500/15 text-amber-800 dark:text-amber-300 border-amber-500/30 backdrop-blur-xs flex items-center justify-center gap-1.5 hover:bg-amber-500/20 transition cursor-pointer"
+                >
+                  <Clock className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 shrink-0" />
+                  <span>
+                    Messages in this chat disappear after{" "}
+                    <strong>
+                      {disappearingTimer === "24h" ? "24 hours" : disappearingTimer === "7d" ? "7 days" : "90 days"}
+                    </strong>
+                    . Tap to change.
+                  </span>
+                </button>
+              </div>
+            )}
+
+            {filteredMessages.map((msg, index) => {
             const isMine = msg.sender_id === currentUser?.id;
             const memberFromBatch = !isMine && (mode === "batch" || headerDetails.isGroup)
               ? batchMembers.find((m) => m.id === msg.sender_id)
@@ -3408,15 +5261,50 @@ export default function TexAppBatchChat({
                       isMine ? "flex-row-reverse" : "flex-row"
                     }`}
                   >
-                    {/* 1. WhatsApp Compact Bubble Container */}
-                    <div
-                      data-message-bubble="true"
-                      onContextMenu={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        const chevronBtn = e.currentTarget.querySelector('[data-dropdown-trigger="true"]') || e.currentTarget;
-                        handleOpenDropdown(msg, chevronBtn);
-                      }}
+                    {/* 1. WhatsApp Compact Bubble Container with Swipe to Reply & Long Press */}
+                    <div className="relative inline-block">
+                      {/* WhatsApp Swipe to Reply Indicator */}
+                      {swipeState.msgId === msg.id && swipeState.offset > 5 && (
+                        <div
+                          style={{
+                            opacity: Math.min(1, swipeState.offset / 35),
+                            transform: `scale(${Math.min(1, swipeState.offset / 35)}) translateY(-50%)`,
+                          }}
+                          className="absolute -left-9 top-1/2 w-7 h-7 rounded-full bg-red-100 dark:bg-red-950/80 text-red-600 dark:text-red-300 flex items-center justify-center shadow-xs pointer-events-none z-30 transition-transform"
+                        >
+                          <Reply className="w-3.5 h-3.5 stroke-[2.5]" />
+                        </div>
+                      )}
+
+                      <div
+                        data-message-bubble="true"
+                        style={{
+                          transform:
+                            swipeState.msgId === msg.id && swipeState.offset > 0
+                              ? `translateX(${swipeState.offset}px)`
+                              : undefined,
+                          transition:
+                            swipeState.msgId === msg.id && isDraggingSwipeRef.current
+                              ? "none"
+                              : "transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275)",
+                          touchAction: "pan-y",
+                        }}
+                        onTouchStart={(e) => handleMessageTouchStart(e, msg, e.currentTarget)}
+                        onTouchMove={(e) => handleMessageTouchMove(e, msg)}
+                        onTouchEnd={(e) => handleMessageTouchEnd(e, msg)}
+                        onTouchCancel={(e) => handleMessageTouchEnd(e, msg)}
+                        onContextMenu={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          const chevronBtn = e.currentTarget.querySelector('[data-dropdown-trigger="true"]') || e.currentTarget;
+                          handleOpenDropdown(msg, chevronBtn);
+                        }}
+                        onDoubleClick={(e) => {
+                          e.stopPropagation();
+                          setReplyingTo(msg);
+                          const el = getActiveComposerElement();
+                          if (el) el.focus();
+                        }}
                       className={`rounded-2xl ${
                         isDocAttachment && !msg.message && !replyMsg && !msg.is_pinned
                           ? (showSenderHeader ? "p-1 pb-0" : "p-0")
@@ -3439,6 +5327,12 @@ export default function TexAppBatchChat({
                           : "bg-white text-gray-900 border-gray-200/80 dark:bg-[#18150f] dark:text-[#f4ead2] dark:border-[#3a3020]/80 rounded-tl-none"
                       }`}
                     >
+                      {/* WhatsApp Double-Tap Quick Heart Animation Pop */}
+                      {doubleTapHeartMsgId === msg.id && (
+                        <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-40 animate-scaleUp">
+                          <span className="text-3xl sm:text-4xl drop-shadow-md animate-bounce">❤️</span>
+                        </div>
+                      )}
                       {/* WhatsApp Bubble Tail ("Choch" - Left pointing for incoming, Right pointing for outgoing) */}
                       {isMine ? (
                         <svg
@@ -3526,7 +5420,7 @@ export default function TexAppBatchChat({
                               className={`relative overflow-hidden cursor-pointer group/img select-none min-w-[150px] max-w-[250px] sm:max-w-[280px] ${
                                 msg.message ? "rounded-t-[13px] rounded-b-[4px]" : "rounded-[13px]"
                               }`}
-                              onClick={() => setPreviewImage(msg.attachment_url)}
+                              onClick={() => handleOpenMediaGallery(msg.attachment_url)}
                             >
                               {/* eslint-disable-next-line @next/next/no-img-element */}
                               <img
@@ -3667,7 +5561,7 @@ export default function TexAppBatchChat({
                                         e.stopPropagation();
                                         if (msg.attachment_url) {
                                           if (isImageDoc) {
-                                            setPreviewImage(msg.attachment_url);
+                                            handleOpenMediaGallery(msg.attachment_url);
                                           } else {
                                             window.open(msg.attachment_url, "_blank");
                                           }
@@ -3689,6 +5583,45 @@ export default function TexAppBatchChat({
                                     >
                                       Save as...
                                     </button>
+                                  </div>
+                                </div>
+                              );
+                            })()
+                          ) : msg.attachment_type === "location" || msg.message?.includes("📍 Live Location") ? (
+                            /* WhatsApp Interactive Google Maps Location Card */
+                            (() => {
+                              const match = msg.message?.match(/https?:\/\/(?:www\.)?google\.com\/maps[^\s]+/);
+                              const mapsUrl = match ? match[0] : (msg.attachment_url || "https://maps.google.com");
+                              const coordsMatch = msg.message?.match(/([-+]?\d+\.\d+),\s*([-+]?\d+\.\d+)/);
+                              const coordsText = coordsMatch ? `${coordsMatch[1]}, ${coordsMatch[2]}` : "Live Pinned Location";
+
+                              return (
+                                <div className="w-56 sm:w-64 max-w-[calc(100vw-4rem)] rounded-xl overflow-hidden select-none">
+                                  <div className="h-24 bg-gradient-to-br from-red-950 via-stone-900 to-slate-900 relative flex items-center justify-center p-3 text-center overflow-hidden border-b border-black/10">
+                                    <div className="absolute inset-0 opacity-20 bg-[radial-gradient(#fff_1px,transparent_1px)] [background-size:12px_12px]" />
+                                    <div className="relative z-10 flex flex-col items-center">
+                                      <div className="w-8 h-8 rounded-full bg-red-600 text-white flex items-center justify-center shadow-lg shadow-red-600/40 animate-bounce mb-1">
+                                        <MapPin className="w-4 h-4 fill-white" />
+                                      </div>
+                                      <span className="text-[11px] font-bold text-white tracking-wide">Live Location</span>
+                                      <span className="text-[9.5px] text-amber-100/90 font-mono mt-0.5">{coordsText}</span>
+                                    </div>
+                                  </div>
+
+                                  <div className="p-2 bg-black/5 dark:bg-white/5 flex items-center justify-between gap-2">
+                                    <span className="text-[10.5px] font-medium text-gray-700 dark:text-gray-300 truncate">
+                                      Google Maps
+                                    </span>
+                                    <a
+                                      href={mapsUrl}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      onClick={(e) => e.stopPropagation()}
+                                      className="px-2.5 py-1 rounded-lg bg-red-600 hover:bg-red-700 text-white text-[10.5px] font-bold flex items-center gap-1 shrink-0 transition shadow-xs cursor-pointer"
+                                    >
+                                      <span>Open</span>
+                                      <ExternalLink className="w-3 h-3" />
+                                    </a>
                                   </div>
                                 </div>
                               );
@@ -3934,6 +5867,35 @@ export default function TexAppBatchChat({
                           <span className="whitespace-pre-wrap font-normal text-gray-900 dark:text-[#f4ead2]">
                             <RenderWithAppleEmojis text={msg.message} />
                           </span>
+
+                          {/* WhatsApp Auto Link Preview Card */}
+                          {(() => {
+                            const detectedUrl = extractFirstUrl(msg.message);
+                            if (!detectedUrl) return null;
+                            const domain = getHostname(detectedUrl);
+                            return (
+                              <a
+                                href={detectedUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                onClick={(e) => e.stopPropagation()}
+                                className="my-1.5 p-2 rounded-xl bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10 transition border border-black/5 dark:border-white/10 flex items-center gap-2.5 group/link text-left select-none max-w-full block clear-both cursor-pointer"
+                              >
+                                <div className="w-8 h-8 rounded-lg bg-red-100 dark:bg-red-950/60 text-red-600 dark:text-red-400 flex items-center justify-center shrink-0 shadow-2xs">
+                                  <Globe className="w-4 h-4 group-hover/link:scale-110 transition-transform" />
+                                </div>
+                                <div className="min-w-0 flex-1">
+                                  <div className="text-[11px] font-bold text-gray-800 dark:text-gray-200 truncate flex items-center gap-1">
+                                    <span>{domain}</span>
+                                    <ExternalLink className="w-2.5 h-2.5 opacity-60 shrink-0" />
+                                  </div>
+                                  <div className="text-[10px] text-gray-500 dark:text-gray-400 truncate font-mono">
+                                    {detectedUrl}
+                                  </div>
+                                </div>
+                              </a>
+                            );
+                          })()}
                           {/* WhatsApp Float-right Timestamp + Checkmarks */}
                           <span className="inline-flex items-center gap-1 text-[9.5px] sm:text-[10px] leading-none text-gray-500 dark:text-gray-400 opacity-85 ml-2.5 float-right translate-y-0.5 select-none shrink-0 font-normal">
                             {isStarred && (
@@ -3985,6 +5947,7 @@ export default function TexAppBatchChat({
                       </div>
                     )}
                   </div>
+                </div>
 
                   {/* 2. Side Actions: Round Smiley Button + Forward/Reply (WhatsApp Style: Shows on hover) */}
                   {!isDeletedForAll && (
@@ -4051,14 +6014,46 @@ export default function TexAppBatchChat({
                         )}
                       </div>
 
-                      {/* Reply / Forward Arrow Button (WhatsApp Style: Shows on hover / prominent for media) */}
+                      {/* Reply Button (WhatsApp Style: Shows on hover) */}
                       <button
                         type="button"
                         onClick={(e) => {
                           e.stopPropagation();
-                          handleReplyTo(msg);
+                          setReplyingTo(msg);
+                          const el = getActiveComposerElement();
+                          if (el) el.focus();
                         }}
-                        className={`w-7 h-7 rounded-full bg-white dark:bg-[#18150f] border border-gray-200/90 dark:border-[#3a3020] shadow-2xs flex items-center justify-center text-gray-500 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200 cursor-pointer transition-all duration-150 ${
+                        className="w-6.5 h-6.5 rounded-full bg-white dark:bg-[#18150f] border border-gray-200/90 dark:border-[#3a3020] shadow-2xs flex items-center justify-center text-gray-400 hover:text-red-600 dark:text-gray-400 dark:hover:text-red-400 cursor-pointer transition-all duration-150 opacity-0 pointer-events-none group-hover/msg:opacity-100 group-hover/msg:pointer-events-auto"
+                        title="Reply"
+                        aria-label="Reply to message"
+                      >
+                        <Reply className="w-3.5 h-3.5 stroke-[2]" />
+                      </button>
+
+                      {/* Copy Text Button (WhatsApp Style: Shows on hover) */}
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleCopyMessageText(msg);
+                        }}
+                        className="w-6.5 h-6.5 rounded-full bg-white dark:bg-[#18150f] border border-gray-200/90 dark:border-[#3a3020] shadow-2xs flex items-center justify-center text-gray-400 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200 cursor-pointer transition-all duration-150 opacity-0 pointer-events-none group-hover/msg:opacity-100 group-hover/msg:pointer-events-auto"
+                        title="Copy message"
+                        aria-label="Copy message text"
+                      >
+                        <Copy className="w-3.5 h-3.5 stroke-[2]" />
+                      </button>
+
+                      {/* Forward Arrow Button (WhatsApp Style: Shows on hover / prominent for media) */}
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setForwardTargetMessages([msg]);
+                          setSelectedForwardTargets(new Set());
+                          setForwardModalOpen(true);
+                        }}
+                        className={`w-6.5 h-6.5 rounded-full bg-white dark:bg-[#18150f] border border-gray-200/90 dark:border-[#3a3020] shadow-2xs flex items-center justify-center text-gray-400 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200 cursor-pointer transition-all duration-150 ${
                           hasMediaAttachment
                             ? "opacity-85 hover:opacity-100 group-hover/msg:opacity-100 pointer-events-auto"
                             : "opacity-0 pointer-events-none group-hover/msg:opacity-100 group-hover/msg:pointer-events-auto"
@@ -4074,8 +6069,9 @@ export default function TexAppBatchChat({
                 </div>
               </Fragment>
             );
-          })
-        )}
+          })}
+        </>
+      )}
         <div ref={messagesEndRef} />
       </div>
 
@@ -4110,198 +6106,220 @@ export default function TexAppBatchChat({
       )}
 
       {/* =========================================================================
-          6. ATTACHMENT TRAY / SPEED-DIAL (WhatsApp Style Design Matching User Screenshot)
-          ========================================================================= */}
-      {showAttachmentTray && (
-        <div
-          className={`absolute bottom-16 sm:bottom-20 left-3 sm:left-4 z-40 w-52 p-1.5 rounded-2xl border shadow-2xl space-y-0.5 animate-scaleUp ${
-            isDark ? "bg-[#18150f] border-[#3a3020]" : "bg-white border-gray-200/90"
-          }`}
-        >
-          {/* 1. Document */}
-          <button
-            type="button"
-            onClick={() => {
-              setShowAttachmentTray(false);
-              docInputRef.current?.click();
-            }}
-            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold hover:bg-gray-100/80 dark:hover:bg-white/5 text-gray-800 dark:text-gray-200 text-left transition cursor-pointer"
-          >
-            <div className="w-8 h-8 rounded-full bg-indigo-500/15 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shrink-0">
-              <FileText className="w-4 h-4" />
-            </div>
-            <span className="text-sm font-medium">Document</span>
-          </button>
-
-          {/* 2. Photos & videos */}
-          <button
-            type="button"
-            onClick={() => {
-              setShowAttachmentTray(false);
-              fileInputRef.current?.click();
-            }}
-            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold hover:bg-gray-100/80 dark:hover:bg-white/5 text-gray-800 dark:text-gray-200 text-left transition cursor-pointer"
-          >
-            <div className="w-8 h-8 rounded-full bg-sky-500/15 text-sky-600 dark:text-sky-400 flex items-center justify-center shrink-0">
-              <ImageIcon className="w-4 h-4" />
-            </div>
-            <span className="text-sm font-medium">Photos & videos</span>
-          </button>
-
-          {/* 3. Camera */}
-          <button
-            type="button"
-            onClick={() => {
-              setShowAttachmentTray(false);
-              setShowCameraModal(true);
-            }}
-            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold hover:bg-gray-100/80 dark:hover:bg-white/5 text-gray-800 dark:text-gray-200 text-left transition cursor-pointer"
-          >
-            <div className="w-8 h-8 rounded-full bg-rose-500/15 text-rose-600 dark:text-rose-400 flex items-center justify-center shrink-0">
-              <Camera className="w-4 h-4" />
-            </div>
-            <span className="text-sm font-medium">Camera</span>
-          </button>
-
-          {/* 4. Poll */}
-          <button
-            type="button"
-            onClick={() => {
-              setShowAttachmentTray(false);
-              setShowPollModal(true);
-            }}
-            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold hover:bg-gray-100/80 dark:hover:bg-white/5 text-gray-800 dark:text-gray-200 text-left transition cursor-pointer"
-          >
-            <div className="w-8 h-8 rounded-full bg-amber-500/15 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0">
-              <BarChart2 className="w-4 h-4" />
-            </div>
-            <span className="text-sm font-medium">Poll</span>
-          </button>
-        </div>
-      )}
-
-      {/* =========================================================================
-          7. EMOJI MART & GIF PICKER POPOVER (WhatsApp Web Style Design)
+          7. EMOJI, GIF & STICKER PICKER (WhatsApp Mobile Native Bottom Sheet & Desktop Dock)
           ========================================================================= */}
       {showEmojiPicker && (
-        <div
-          data-emoji-mart-popover="true"
-          className="absolute bottom-16 sm:bottom-20 left-2 sm:left-4 z-40 w-[456px] h-[430px] max-w-[calc(100vw-1rem)] max-h-[calc(100vh-7rem)] rounded-2xl overflow-hidden shadow-2xl border border-red-200/80 dark:border-[#3a3020] bg-white dark:bg-[#18150f] flex flex-col animate-scaleUp"
-        >
-          {/* Reaction Banner if opened from '+' button to react to a message */}
-          {reactionTargetMessage && (
-            <div className="px-3.5 py-2 bg-red-50 dark:bg-red-950/60 border-b border-red-200 dark:border-red-800/60 flex items-center justify-between text-xs text-red-800 dark:text-red-200 shrink-0 select-none">
-              <span className="font-semibold truncate">
-                React to {reactionTargetMessage.sender?.full_name || "message"}
-              </span>
-              <button
-                type="button"
-                onClick={() => setReactionTargetMessage(null)}
-                className="p-0.5 rounded-full text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-white cursor-pointer transition"
-                title="Cancel reaction"
-              >
-                <X className="w-3.5 h-3.5" />
-              </button>
+        <>
+          {/* Mobile Backdrop to tap out and close sheet */}
+          <div
+            className="fixed inset-0 z-40 bg-black/25 sm:hidden backdrop-blur-2xs transition-opacity"
+            onClick={() => {
+              setShowEmojiPicker(false);
+              setReactionTargetMessage(null);
+            }}
+          />
+
+          <div
+            data-emoji-mart-popover="true"
+            className="fixed sm:absolute inset-x-0 bottom-0 sm:bottom-20 sm:left-4 sm:right-auto z-40 w-full sm:w-[460px] h-[390px] sm:h-[440px] max-h-[55vh] sm:max-h-[calc(100vh-7rem)] rounded-t-3xl sm:rounded-2xl overflow-hidden shadow-2xl border-t sm:border border-gray-200 dark:border-[#3a3020] bg-white dark:bg-[#18150f] flex flex-col animate-in slide-in-from-bottom duration-200 select-none"
+          >
+            {/* Mobile Top Drag Handle Bar */}
+            <div className="pt-2 pb-0.5 flex justify-center sm:hidden shrink-0">
+              <div className="w-10 h-1 rounded-full bg-gray-300 dark:bg-stone-700" />
             </div>
-          )}
 
-          {/* Main Media Content Area */}
-          <div className="flex-1 w-full h-full overflow-hidden flex flex-col">
-            {mediaPickerTab === "emoji" ? (
-              <EmojiMartPicker
-                isDark={isDark}
-                onEmojiSelect={(emoji) => {
-                  if (reactionTargetMessage) {
-                    handleSendReaction(reactionTargetMessage, emoji);
-                    setReactionTargetMessage(null);
-                    setShowEmojiPicker(false);
-                  } else {
-                    handleInsertEmoji(emoji);
-                  }
-                }}
-                perLine={12}
-                previewPosition="none"
-              />
-            ) : (
-              <GiphyPicker
-                isDark={isDark}
-                onSelectGif={(gif) => {
-                  handleSendAttachment({
-                    message: "",
-                    attachment_url: gif.url,
-                    attachment_name: "GIF",
-                    attachment_type: "image",
-                    reference_type: "none",
-                  });
-                  setShowEmojiPicker(false);
-                  setReactionTargetMessage(null);
-                }}
-                onClose={() => {
-                  setShowEmojiPicker(false);
-                  setReactionTargetMessage(null);
-                }}
-              />
-            )}
-          </div>
-
-          {/* WhatsApp Web Bottom Centered Segmented Pill: [ 😃 | GIF ] */}
-          <div className="py-2.5 px-4 flex items-center justify-center bg-white dark:bg-[#18150f] border-t border-gray-100 dark:border-[#3a3020] shrink-0 select-none">
-            <div className="inline-flex items-stretch h-[34px] rounded-full border border-red-200 dark:border-[#5a4a32] overflow-hidden divide-x divide-red-200 dark:divide-[#5a4a32] bg-white dark:bg-[#18150f] shadow-xs">
-              {/* Emoji Icon Button */}
-              <button
-                type="button"
-                onClick={() => setMediaPickerTab("emoji")}
-                className={`w-20 sm:w-[84px] h-full flex items-center justify-center transition-colors cursor-pointer ${
-                  mediaPickerTab === "emoji"
-                    ? "bg-red-50 dark:bg-[#3a1715] text-red-700 dark:text-red-200"
-                    : "bg-white dark:bg-[#18150f] text-stone-600 dark:text-stone-300 hover:text-red-700 dark:hover:text-red-200"
-                }`}
-                aria-label="Emojis"
-                title="Emojis"
-              >
-                <TexAppStickerSmileyIcon className="w-[19px] h-[19px] stroke-[2]" />
-              </button>
-
-              {/* GIF Text Button */}
-              <button
-                type="button"
-                onClick={() => setMediaPickerTab("gif")}
-                className={`w-20 sm:w-[84px] h-full flex items-center justify-center transition-colors cursor-pointer ${
-                  mediaPickerTab === "gif"
-                    ? "bg-red-50 dark:bg-[#3a1715] text-red-700 dark:text-red-200"
-                    : "bg-white dark:bg-[#18150f] text-stone-600 dark:text-stone-300 hover:text-red-700 dark:hover:text-red-200"
-                }`}
-                aria-label="GIFs"
-                title="GIFs"
-              >
-                <span className="text-[12px] font-bold tracking-wider uppercase font-sans">
-                  GIF
+            {/* Reaction Banner if opened from '+' button to react to a message */}
+            {reactionTargetMessage && (
+              <div className="px-3.5 py-2 bg-red-50 dark:bg-red-950/60 border-b border-red-200 dark:border-red-800/60 flex items-center justify-between text-xs text-red-800 dark:text-red-200 shrink-0">
+                <span className="font-semibold truncate">
+                  React to {reactionTargetMessage.sender?.full_name || "message"}
                 </span>
+                <button
+                  type="button"
+                  onClick={() => setReactionTargetMessage(null)}
+                  className="p-0.5 rounded-full text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-white cursor-pointer transition"
+                  title="Cancel reaction"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            )}
+
+            {/* WhatsApp Mobile Top Action Strip: [ 🔍 Search | [ 😃 | GIF | 🏷️ ] | ⌫ Backspace ] */}
+            <div className="pt-1.5 pb-2 px-3 sm:px-4 flex items-center justify-between border-b border-gray-100 dark:border-[#3a3020]/60 shrink-0">
+              {/* Left: Search Toggle Icon Button */}
+              <button
+                type="button"
+                onClick={() => setShowPickerSearch((prev) => !prev)}
+                className={`p-2 rounded-full transition cursor-pointer ${
+                  showPickerSearch
+                    ? "text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/40"
+                    : "text-gray-500 hover:text-gray-900 dark:text-stone-400 dark:hover:text-white"
+                }`}
+                aria-label="Search emojis"
+                title="Search"
+              >
+                <Search className="w-5 h-5" />
+              </button>
+
+              {/* Center: Segmented Capsule Pill [ 😃 | GIF | 🏷️ ] */}
+              <div className="inline-flex items-center p-0.5 rounded-full border border-gray-200 dark:border-[#3a3020] bg-gray-100/80 dark:bg-[#100f0b]">
+                {/* Emoji Icon Button */}
+                <button
+                  type="button"
+                  onClick={() => setMediaPickerTab("emoji")}
+                  className={`px-3.5 py-1 rounded-full flex items-center justify-center transition cursor-pointer ${
+                    mediaPickerTab === "emoji"
+                      ? "bg-white dark:bg-[#272118] text-red-600 dark:text-red-400 shadow-xs font-bold"
+                      : "text-gray-500 hover:text-gray-900 dark:text-stone-400 dark:hover:text-white"
+                  }`}
+                  aria-label="Emojis"
+                  title="Emojis"
+                >
+                  <TexAppStickerSmileyIcon className="w-5 h-5 stroke-[2]" />
+                </button>
+
+                {/* GIF Button */}
+                <button
+                  type="button"
+                  onClick={() => setMediaPickerTab("gif")}
+                  className={`px-3.5 py-1 rounded-full flex items-center justify-center transition cursor-pointer ${
+                    mediaPickerTab === "gif"
+                      ? "bg-white dark:bg-[#272118] text-red-600 dark:text-red-400 shadow-xs font-bold"
+                      : "text-gray-500 hover:text-gray-900 dark:text-stone-400 dark:hover:text-white"
+                  }`}
+                  aria-label="GIFs"
+                  title="GIFs"
+                >
+                  <span className="text-xs font-black tracking-wider uppercase font-sans">
+                    GIF
+                  </span>
+                </button>
+
+                {/* Stickers Button */}
+                <button
+                  type="button"
+                  onClick={() => setMediaPickerTab("stickers")}
+                  className={`px-3.5 py-1 rounded-full flex items-center justify-center transition cursor-pointer ${
+                    mediaPickerTab === "stickers"
+                      ? "bg-white dark:bg-[#272118] text-red-600 dark:text-red-400 shadow-xs font-bold"
+                      : "text-gray-500 hover:text-gray-900 dark:text-stone-400 dark:hover:text-white"
+                  }`}
+                  aria-label="Stickers"
+                  title="Stickers"
+                >
+                  <svg viewBox="0 0 24 24" className="w-5 h-5 stroke-[1.9]" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M15 3H6a3 3 0 0 0-3 3v12a3 3 0 0 0 3 3h8l7-7V6a3 3 0 0 0-3-3z" />
+                    <path d="M14 21v-4a3 3 0 0 1 3-3h4" />
+                  </svg>
+                </button>
+              </div>
+
+              {/* Right: Backspace / Delete Button */}
+              <button
+                type="button"
+                onClick={handleComposerBackspace}
+                className="p-2 rounded-full text-gray-500 hover:text-red-600 dark:text-stone-400 dark:hover:text-red-400 transition cursor-pointer active:scale-90"
+                aria-label="Delete last character"
+                title="Backspace"
+              >
+                <svg viewBox="0 0 24 24" className="w-5 h-5 stroke-[1.9]" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M21 4H8l-7 8 7 8h13a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2z" />
+                  <line x1="18" y1="9" x2="12" y2="15" />
+                  <line x1="12" y1="9" x2="18" y2="15" />
+                </svg>
               </button>
             </div>
+
+            {/* Main Content Area */}
+            <div className="flex-1 w-full h-full overflow-hidden flex flex-col">
+              {mediaPickerTab === "emoji" ? (
+                <EmojiMartPicker
+                  isDark={isDark}
+                  onEmojiSelect={(emoji) => {
+                    if (reactionTargetMessage) {
+                      handleSendReaction(reactionTargetMessage, emoji);
+                      setReactionTargetMessage(null);
+                      setShowEmojiPicker(false);
+                    } else {
+                      handleInsertEmoji(emoji);
+                    }
+                  }}
+                  perLine={9}
+                  navPosition="bottom"
+                  searchPosition={showPickerSearch ? "top" : "none"}
+                  previewPosition="none"
+                />
+              ) : mediaPickerTab === "gif" ? (
+                <GiphyPicker
+                  isDark={isDark}
+                  onSelectGif={(gif) => {
+                    handleSendAttachment({
+                      message: "",
+                      attachment_url: gif.url,
+                      attachment_name: "GIF",
+                      attachment_type: "image",
+                      reference_type: "none",
+                    });
+                    setShowEmojiPicker(false);
+                    setReactionTargetMessage(null);
+                  }}
+                  onClose={() => {
+                    setShowEmojiPicker(false);
+                    setReactionTargetMessage(null);
+                  }}
+                />
+              ) : (
+                /* WhatsApp Curated Stickers Grid */
+                <div className="flex-1 overflow-y-auto p-3 grid grid-cols-4 gap-2.5">
+                  {WHATSAPP_STICKER_PACK.map((stk) => (
+                    <button
+                      key={stk.id}
+                      type="button"
+                      onClick={() => {
+                        handleInsertEmoji(stk.emoji);
+                      }}
+                      className="p-3 rounded-2xl border border-gray-200/80 dark:border-[#3a3020] bg-gray-50/70 dark:bg-[#100f0b] hover:border-red-500 flex flex-col items-center justify-center gap-1 hover:scale-105 transition active:scale-95 cursor-pointer shadow-2xs"
+                    >
+                      <span className="text-3xl">{stk.emoji}</span>
+                      <span className="text-[10px] font-bold text-gray-500 dark:text-stone-400">{stk.text}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
-        </div>
+        </>
       )}
 
       {/* WhatsApp Floating Scroll to Bottom Button */}
       {showScrollBottomBtn && (
         <button
           type="button"
-          onClick={() => scrollToBottom("smooth")}
-          className="absolute right-4 sm:right-6 bottom-16 sm:bottom-20 z-30 w-10 h-10 rounded-full bg-white dark:bg-[#18150f] text-stone-600 dark:text-stone-300 hover:text-red-700 dark:hover:text-red-200 shadow-md border border-gray-200/90 dark:border-[#3a3020]/80 p-0 flex items-center justify-center hover:scale-105 transition-all transform active:scale-95 cursor-pointer animate-in fade-in zoom-in-90"
+          onClick={() => {
+            scrollToBottom("smooth");
+            setNewMessageCount(0);
+          }}
+          className="absolute right-4 sm:right-6 bottom-20 z-40 w-10 h-10 rounded-full bg-white dark:bg-[#18150f] text-stone-600 dark:text-stone-300 hover:text-red-700 dark:hover:text-red-200 shadow-md border border-gray-200/90 dark:border-[#3a3020]/80 p-0 flex items-center justify-center hover:scale-105 transition-all transform active:scale-95 cursor-pointer animate-in fade-in zoom-in-90 shrink-0"
           aria-label="Scroll to bottom"
+          title="Scroll to bottom"
         >
           <TexAppScrollDownIcon className="w-4 h-4" />
+          {newMessageCount > 0 && (
+            <span className="absolute -top-1.5 -right-1.5 min-w-[19px] h-[19px] px-1 rounded-full bg-red-600 text-white text-[10px] font-bold flex items-center justify-center shadow-xs">
+              {newMessageCount > 99 ? "99+" : newMessageCount}
+            </span>
+          )}
         </button>
       )}
-      {newMessageCount > 0 && (
+      {newMessageCount > 0 && !showScrollBottomBtn && (
         <button
           type="button"
           onClick={() => {
             scrollToBottom("smooth");
             setNewMessageCount(0);
           }}
-          className="absolute left-1/2 -translate-x-1/2 bottom-16 sm:bottom-20 z-30 px-3 py-1.5 rounded-full bg-red-600 text-white text-[11px] font-bold shadow-lg shadow-red-500/25 border border-red-500/50 hover:bg-red-700 transition cursor-pointer"
+          className="absolute right-4 sm:right-6 bottom-20 z-40 px-3.5 py-1.5 rounded-full bg-red-600 text-white text-[11px] font-bold shadow-lg shadow-red-500/25 border border-red-500/50 hover:bg-red-700 transition cursor-pointer shrink-0"
           aria-label="Jump to new messages"
         >
           {newMessageCount} new message{newMessageCount > 1 ? "s" : ""}
@@ -4356,7 +6374,78 @@ export default function TexAppBatchChat({
           </div>
         )}
 
+        {/* Rich Text Formatting Toolbar Strip */}
+        {showFormattingToolbar && (
+          <div className={`mb-2 px-3 py-1.5 rounded-2xl flex items-center justify-between gap-1.5 border shadow-xs animate-fadeIn select-none ${
+            isDark ? "bg-[#18150f] border-[#3a3020] text-gray-200" : "bg-white border-gray-200/90 text-gray-800"
+          }`}>
+            <div className="flex items-center gap-1.5 overflow-x-auto">
+              <span className="text-[10px] uppercase font-bold text-gray-400 mr-1">Format:</span>
+              <button
+                type="button"
+                onClick={() => applyTextFormatting("*")}
+                className="px-2 py-1 rounded-xl hover:bg-red-50 dark:hover:bg-red-950/40 hover:text-red-600 font-bold transition cursor-pointer text-xs flex items-center gap-1"
+                title="Bold (*text*)"
+              >
+                <Bold className="w-3.5 h-3.5" />
+                <span className="text-[11px]">Bold</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => applyTextFormatting("_")}
+                className="px-2 py-1 rounded-xl hover:bg-red-50 dark:hover:bg-red-950/40 hover:text-red-600 italic transition cursor-pointer text-xs flex items-center gap-1"
+                title="Italic (_text_)"
+              >
+                <Italic className="w-3.5 h-3.5" />
+                <span className="text-[11px]">Italic</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => applyTextFormatting("~")}
+                className="px-2 py-1 rounded-xl hover:bg-red-50 dark:hover:bg-red-950/40 hover:text-red-600 line-through transition cursor-pointer text-xs flex items-center gap-1"
+                title="Strikethrough (~text~)"
+              >
+                <Strikethrough className="w-3.5 h-3.5" />
+                <span className="text-[11px]">Strike</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => applyTextFormatting("`")}
+                className="px-2 py-1 rounded-xl hover:bg-red-50 dark:hover:bg-red-950/40 hover:text-red-600 font-mono transition cursor-pointer text-xs flex items-center gap-1"
+                title="Monospace (`code`)"
+              >
+                <Code className="w-3.5 h-3.5" />
+                <span className="text-[11px]">Code</span>
+              </button>
+            </div>
+            <button
+              type="button"
+              onClick={() => setShowFormattingToolbar(false)}
+              className="p-1 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/40 transition cursor-pointer shrink-0"
+              title="Close formatting"
+              aria-label="Close formatting"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        )}
+
         {/* WhatsApp Composer Row (Single Unified Pill Design matching user sample) */}
+        {isContactBlocked ? (
+          <div className="w-full p-3.5 rounded-2xl bg-red-500/10 border border-red-500/20 text-center flex flex-col sm:flex-row items-center justify-center gap-2.5 text-xs font-semibold text-red-600 dark:text-red-400 select-none shadow-xs">
+            <div className="flex items-center gap-2">
+              <Ban className="w-4 h-4 shrink-0" />
+              <span>You blocked this contact. Unblock to send messages or media.</span>
+            </div>
+            <button
+              type="button"
+              onClick={handleToggleBlockContact}
+              className="px-3.5 py-1 rounded-xl bg-red-600 hover:bg-red-700 text-white font-bold text-xs transition cursor-pointer shadow-xs"
+            >
+              Unblock
+            </button>
+          </div>
+        ) : (
         <form onSubmit={handleSend} className="w-full flex items-center">
           <div
             className={`w-full flex items-center rounded-full px-2 sm:px-2.5 py-1 min-h-[48px] shadow-sm border transition-colors gap-1 sm:gap-2 ${
@@ -4370,10 +6459,16 @@ export default function TexAppBatchChat({
             }`}
           >
             {recordingMode === "audio" ? (
-              /* ACTIVE VOICE RECORDING BAR (WhatsApp Web Style) */
-              <div className="w-full flex items-center justify-between px-2 gap-2 animate-fadeIn select-none">
+              /* ACTIVE VOICE RECORDING BAR (WhatsApp Web & Mobile Style) */
+              <div
+                onTouchStart={handleRecordTouchStart}
+                onTouchMove={handleRecordTouchMove}
+                onTouchEnd={handleRecordTouchEnd}
+                onTouchCancel={handleRecordTouchEnd}
+                className="w-full flex items-center justify-between px-2 gap-2 animate-fadeIn select-none touch-pan-y"
+              >
                 {/* Left: Blinking Red Dot & Timer & Waveform animation */}
-                <div className="flex items-center gap-2.5 min-w-0">
+                <div className="flex items-center gap-2 sm:gap-2.5 min-w-0">
                   <div className="relative flex items-center justify-center w-4 h-4 shrink-0">
                     <span className="absolute w-3 h-3 rounded-full bg-red-600 animate-ping opacity-75" />
                     <span className="w-2.5 h-2.5 rounded-full bg-red-600" />
@@ -4384,7 +6479,7 @@ export default function TexAppBatchChat({
                   </span>
 
                   {/* Sound Wave Dancing Bars Animation */}
-                  <div className="hidden sm:flex items-center gap-[3px] h-4 px-2">
+                  <div className="hidden sm:flex items-center gap-[3px] h-4 px-1.5">
                     <span className="w-[3px] h-2.5 bg-red-500 rounded-full animate-pulse" />
                     <span className="w-[3px] h-4 bg-red-600 rounded-full animate-bounce" style={{ animationDuration: "0.6s" }} />
                     <span className="w-[3px] h-3 bg-red-500 rounded-full animate-pulse" style={{ animationDuration: "0.8s" }} />
@@ -4392,19 +6487,100 @@ export default function TexAppBatchChat({
                     <span className="w-[3px] h-2 bg-red-400 rounded-full animate-pulse" />
                   </div>
 
-                  <span className="text-xs text-gray-500 dark:text-gray-400 truncate hidden md:inline">
-                    {isUploadingVoice ? "Sending voice note..." : "Recording voice message..."}
+                  <span className="text-xs text-gray-500 dark:text-gray-400 truncate hidden lg:inline">
+                    {isUploadingVoice
+                      ? "Sending voice note..."
+                      : isRecordingPaused
+                      ? "Voice recording paused"
+                      : "Recording voice message..."}
                   </span>
                 </div>
 
-                {/* Right: Discard Trash Button + Send Button */}
-                <div className="flex items-center gap-2 shrink-0">
+                {/* Center: Slide to cancel or Locked indicator or Audio Preview */}
+                {isLockedRecording && isRecordingPaused && voicePreviewUrl ? (
+                  <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-red-100 dark:bg-red-950/70 border border-red-300/80 dark:border-red-900/60 text-xs font-bold text-red-600 dark:text-red-400 select-none">
+                    <audio
+                      ref={voicePreviewAudioRef}
+                      src={voicePreviewUrl}
+                      onEnded={() => setIsPlayingVoicePreview(false)}
+                      className="hidden"
+                    />
+                    <button
+                      type="button"
+                      onClick={handleTogglePlayVoicePreview}
+                      className="w-5 h-5 rounded-full bg-red-600 text-white flex items-center justify-center cursor-pointer hover:scale-105 transition shrink-0"
+                      title={isPlayingVoicePreview ? "Pause preview" : "Play preview"}
+                    >
+                      {isPlayingVoicePreview ? (
+                        <Pause className="w-3 h-3 fill-white" />
+                      ) : (
+                        <Play className="w-3 h-3 fill-white translate-x-0.5" />
+                      )}
+                    </button>
+                    <span className="text-[11px] font-semibold truncate">Preview audio</span>
+                  </div>
+                ) : isLockedRecording ? (
+                  <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-red-100 dark:bg-red-950/70 border border-red-300/80 dark:border-red-900/60 text-[11px] font-bold text-red-600 dark:text-red-400 animate-pulse select-none">
+                    <Lock className="w-3 h-3" />
+                    <span>Hands-free locked</span>
+                  </div>
+                ) : (
+                  <div
+                    style={{
+                      transform: recordSlideOffset > 0 ? `translateX(-${recordSlideOffset}px)` : undefined,
+                      opacity: Math.max(0.2, 1 - recordSlideOffset / 100),
+                    }}
+                    className="flex items-center gap-1 text-[11px] sm:text-xs text-gray-500 dark:text-gray-400 font-medium select-none transition-transform"
+                  >
+                    <span className="text-gray-400 dark:text-gray-500 animate-pulse font-bold">‹‹</span>
+                    <span className="truncate">Slide left to cancel</span>
+                  </div>
+                )}
+
+                {/* Right: Lock, Pause/Resume, Discard Trash Button + Send Button */}
+                <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+                  {!isLockedRecording && (
+                    <button
+                      type="button"
+                      onClick={() => setIsLockedRecording(true)}
+                      className="p-1.5 sm:p-2 rounded-full text-gray-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/40 transition cursor-pointer flex items-center gap-1 text-[10px] font-semibold"
+                      title="Lock hands-free recording (or slide up)"
+                      aria-label="Lock recording"
+                    >
+                      <Lock className="w-3.5 h-3.5" />
+                      <span className="hidden sm:inline">Lock</span>
+                    </button>
+                  )}
+
+                  {/* Pause / Resume Button for locked recording */}
+                  {isLockedRecording && (
+                    <button
+                      type="button"
+                      onClick={handleTogglePauseRecording}
+                      disabled={isUploadingVoice}
+                      className="p-1.5 sm:p-2 rounded-full text-red-600 hover:bg-red-100/60 dark:hover:bg-red-950/50 transition cursor-pointer flex items-center gap-1 text-[10px] font-semibold"
+                      title={isRecordingPaused ? "Resume recording" : "Pause recording"}
+                      aria-label="Pause or resume recording"
+                    >
+                      {isRecordingPaused ? (
+                        <Mic className="w-4 h-4 text-red-600 animate-pulse" />
+                      ) : (
+                        <Pause className="w-4 h-4 text-red-600" />
+                      )}
+                      <span className="hidden sm:inline">{isRecordingPaused ? "Resume" : "Pause"}</span>
+                    </button>
+                  )}
+
                   {/* Cancel / Trash Button */}
                   <button
                     type="button"
                     onClick={handleCancelRecording}
                     disabled={isUploadingVoice}
-                    className="p-2 rounded-full text-gray-500 hover:text-red-600 hover:bg-red-100/50 dark:hover:bg-white/10 transition cursor-pointer"
+                    className={`p-2 rounded-full transition cursor-pointer ${
+                      recordSlideOffset > 40
+                        ? "text-red-600 bg-red-100 dark:bg-red-950/60 scale-110"
+                        : "text-gray-500 hover:text-red-600 hover:bg-red-100/50 dark:hover:bg-white/10"
+                    }`}
                     title="Cancel and discard voice note"
                     aria-label="Discard recording"
                   >
@@ -4432,22 +6608,131 @@ export default function TexAppBatchChat({
               /* NORMAL COMPOSER CONTENT */
               <>
                 {/* Attachment Paperclip 📎 */}
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowAttachmentTray(!showAttachmentTray);
-                    setShowEmojiPicker(false);
-                  }}
-                  className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors cursor-pointer shrink-0 ${
-                    showAttachmentTray
-                      ? "text-red-600 bg-red-50 dark:bg-red-500/10"
-                      : "text-gray-500 hover:text-gray-800 dark:text-slate-400 dark:hover:text-white"
-                  }`}
-                  aria-label="Attach media or files"
-                  title="Attach"
-                >
-                  <TexAppPaperclipIcon className="w-5 h-5 stroke-[2]" />
-                </button>
+                <div className="relative shrink-0">
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setShowAttachmentTray((prev) => !prev);
+                      setShowEmojiPicker(false);
+                    }}
+                    className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors cursor-pointer shrink-0 ${
+                      showAttachmentTray
+                        ? "text-red-600 bg-red-50 dark:bg-red-500/10"
+                        : "text-gray-500 hover:text-gray-800 dark:text-slate-400 dark:hover:text-white"
+                    }`}
+                    aria-label="Attach media or files"
+                    title="Attach"
+                  >
+                    <TexAppPaperclipIcon className="w-5 h-5 stroke-[2]" />
+                  </button>
+
+                  {/* WhatsApp Speed-Dial Attachment Tray (Cleanly anchored right above clip icon) */}
+                  {showAttachmentTray && (
+                    <>
+                      <div
+                        className="fixed inset-0 z-40 bg-black/25 sm:bg-transparent backdrop-blur-2xs sm:backdrop-blur-none"
+                        onClick={() => setShowAttachmentTray(false)}
+                      />
+                      <div
+                        className={`absolute bottom-full mb-3 left-0 z-50 w-52 p-1.5 rounded-2xl border shadow-2xl space-y-0.5 animate-scaleUp select-none ${
+                          isDark ? "bg-[#18150f] border-[#3a3020]" : "bg-white border-gray-200/90"
+                        }`}
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        {/* 1. Document */}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setShowAttachmentTray(false);
+                            docInputRef.current?.click();
+                          }}
+                          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold hover:bg-gray-100/80 dark:hover:bg-white/5 text-gray-800 dark:text-gray-200 text-left transition cursor-pointer"
+                        >
+                          <div className="w-8 h-8 rounded-full bg-indigo-500/15 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shrink-0">
+                            <FileText className="w-4 h-4" />
+                          </div>
+                          <span className="text-sm font-medium">Document</span>
+                        </button>
+
+                        {/* 2. Photos & videos */}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setShowAttachmentTray(false);
+                            fileInputRef.current?.click();
+                          }}
+                          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold hover:bg-gray-100/80 dark:hover:bg-white/5 text-gray-800 dark:text-gray-200 text-left transition cursor-pointer"
+                        >
+                          <div className="w-8 h-8 rounded-full bg-stone-500/15 text-stone-600 dark:text-stone-300 flex items-center justify-center shrink-0">
+                            <ImageIcon className="w-4 h-4" />
+                          </div>
+                          <span className="text-sm font-medium">Photos & videos</span>
+                        </button>
+
+                        {/* 3. Camera */}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setShowAttachmentTray(false);
+                            setShowCameraModal(true);
+                          }}
+                          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold hover:bg-gray-100/80 dark:hover:bg-white/5 text-gray-800 dark:text-gray-200 text-left transition cursor-pointer"
+                        >
+                          <div className="w-8 h-8 rounded-full bg-rose-500/15 text-rose-600 dark:text-rose-400 flex items-center justify-center shrink-0">
+                            <Camera className="w-4 h-4" />
+                          </div>
+                          <span className="text-sm font-medium">Camera</span>
+                        </button>
+
+                        {/* 4. Poll */}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setShowAttachmentTray(false);
+                            setShowPollModal(true);
+                          }}
+                          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold hover:bg-gray-100/80 dark:hover:bg-white/5 text-gray-800 dark:text-gray-200 text-left transition cursor-pointer"
+                        >
+                          <div className="w-8 h-8 rounded-full bg-amber-500/15 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0">
+                            <BarChart2 className="w-4 h-4" />
+                          </div>
+                          <span className="text-sm font-medium">Poll</span>
+                        </button>
+
+                        {/* 5. Location */}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setShowAttachmentTray(false);
+                            handleShareCurrentLocation();
+                          }}
+                          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold hover:bg-gray-100/80 dark:hover:bg-white/5 text-gray-800 dark:text-gray-200 text-left transition cursor-pointer"
+                        >
+                          <div className="w-8 h-8 rounded-full bg-amber-500/15 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0">
+                            <MapPin className="w-4 h-4" />
+                          </div>
+                          <span className="text-sm font-medium">Location</span>
+                        </button>
+
+                        {/* 6. Text formatting (T) */}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setShowAttachmentTray(false);
+                            setShowFormattingToolbar((prev) => !prev);
+                          }}
+                          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold hover:bg-gray-100/80 dark:hover:bg-white/5 text-gray-800 dark:text-gray-200 text-left transition cursor-pointer"
+                        >
+                          <div className="w-8 h-8 rounded-full bg-red-500/15 text-red-600 dark:text-red-400 flex items-center justify-center shrink-0 font-serif font-bold text-sm">
+                            T
+                          </div>
+                          <span className="text-sm font-medium">Text formatting</span>
+                        </button>
+                      </div>
+                    </>
+                  )}
+                </div>
 
                 {/* Emoji / Sticker Toggle */}
                 <button
@@ -4477,13 +6762,27 @@ export default function TexAppBatchChat({
                   rows={1}
                   placeholder="Type a message"
                   onChange={handleTextChange}
+                  onPaste={handleContentEditablePaste}
+                  onFocus={() => {
+                    if (typeof window !== "undefined") {
+                      window.scrollTo(0, 0);
+                      setTimeout(() => window.scrollTo(0, 0), 50);
+                    }
+                  }}
                   onInput={(e) => {
                     if (onTyping) onTyping(Boolean(e.currentTarget.value.trim()));
                   }}
                   onKeyDown={(e) => {
-                    if (e.key === "Enter" && !e.shiftKey) {
-                      e.preventDefault();
-                      handleSend();
+                    if (enterIsSend) {
+                      if (e.key === "Enter" && !e.shiftKey) {
+                        e.preventDefault();
+                        handleSend();
+                      }
+                    } else {
+                      if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
+                        e.preventDefault();
+                        handleSend();
+                      }
                     }
                   }}
                   className="chat-composer-input sm:hidden flex-1 resize-none !bg-transparent !border-none outline-none focus:outline-none focus:ring-0 !shadow-none text-sm text-gray-900 dark:text-[#f4ead2] px-2 py-1.5 max-h-28 min-h-[28px] overflow-y-auto leading-relaxed placeholder:text-gray-400 dark:placeholder:text-slate-500"
@@ -4493,12 +6792,25 @@ export default function TexAppBatchChat({
                   contentEditable
                   role="textbox"
                   data-placeholder="Type a message"
+                  onFocus={() => {
+                    if (typeof window !== "undefined") {
+                      window.scrollTo(0, 0);
+                      setTimeout(() => window.scrollTo(0, 0), 50);
+                    }
+                  }}
                   onInput={handleContentEditableInput}
                   onPaste={handleContentEditablePaste}
                   onKeyDown={(e) => {
-                    if (e.key === "Enter" && !e.shiftKey) {
-                      e.preventDefault();
-                      handleSend();
+                    if (enterIsSend) {
+                      if (e.key === "Enter" && !e.shiftKey) {
+                        e.preventDefault();
+                        handleSend();
+                      }
+                    } else {
+                      if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
+                        e.preventDefault();
+                        handleSend();
+                      }
                     }
                   }}
                   style={{ background: "transparent", backgroundColor: "transparent" }}
@@ -4533,6 +6845,7 @@ export default function TexAppBatchChat({
             )}
           </div>
         </form>
+        )}
       </div>
 
       {/* =========================================================================
@@ -5001,10 +7314,7 @@ export default function TexAppBatchChat({
       {showMembersDrawer && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-xs animate-fadeIn"
-          onClick={() => {
-            setShowMembersDrawer(false);
-            setIsEditingGroup(false);
-          }}
+          onClick={handleCloseMembersDrawer}
         >
           <div
             className={`w-full max-w-md rounded-3xl border shadow-2xl flex flex-col max-h-[90vh] animate-scaleUp overflow-hidden ${
@@ -5012,24 +7322,555 @@ export default function TexAppBatchChat({
             }`}
             onClick={(e) => e.stopPropagation()}
           >
-            {/* Modal Header */}
-            <div className="flex items-center justify-between px-5 py-3.5 border-b border-gray-100 dark:border-slate-800">
-              <h3 className="text-sm font-bold">Group Info & Participants</h3>
+            {/* Modal Header with WhatsApp-style Back & Close */}
+            <div className="flex items-center justify-between px-4 sm:px-5 py-3.5 border-b border-gray-100 dark:border-slate-800 shrink-0">
+              <div className="flex items-center gap-2.5 min-w-0">
+                <button
+                  type="button"
+                  onClick={handleCloseMembersDrawer}
+                  className="p-1 -ml-1 rounded-xl text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white transition cursor-pointer"
+                  title={openedFromChatOptions ? "Back to Chat Options" : "Close"}
+                  aria-label="Back"
+                >
+                  <ArrowLeft className="w-5 h-5" />
+                </button>
+                <h3 className="text-sm font-bold truncate">{headerDetails.isGroup ? "Group Info & Participants" : "Contact Info"}</h3>
+              </div>
               <button
                 type="button"
-                onClick={() => {
-                  setShowMembersDrawer(false);
-                  setIsEditingGroup(false);
-                }}
-                className="p-1 rounded-lg text-gray-400 hover:text-gray-600 dark:hover:text-white cursor-pointer"
-                aria-label="Close members drawer"
+                onClick={handleCloseMembersDrawer}
+                className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 dark:hover:text-white cursor-pointer transition"
+                aria-label="Close"
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
 
+            {/* WhatsApp Tabs Bar: Info / Media / Docs / Links / Starred (Scrollable) */}
+            <div className="flex items-center overflow-x-auto no-scrollbar scrollbar-none border-b border-gray-100 dark:border-stone-800 bg-gray-50/60 dark:bg-stone-900/40 px-3 pt-2 gap-1 text-xs select-none shrink-0 whitespace-nowrap scroll-smooth touch-pan-x">
+              <button
+                type="button"
+                onClick={() => setActiveInfoTab("info")}
+                className={`pb-2 px-3 font-semibold border-b-2 transition cursor-pointer shrink-0 whitespace-nowrap ${
+                  activeInfoTab === "info"
+                    ? "border-red-600 text-red-600 dark:text-red-400"
+                    : "border-transparent text-gray-500 hover:text-gray-800 dark:hover:text-gray-300"
+                }`}
+              >
+                {headerDetails.isGroup ? "Members" : "Info"}
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveInfoTab("media")}
+                className={`pb-2 px-3 font-semibold border-b-2 transition cursor-pointer flex items-center gap-1.5 shrink-0 whitespace-nowrap ${
+                  activeInfoTab === "media"
+                    ? "border-red-600 text-red-600 dark:text-red-400"
+                    : "border-transparent text-gray-500 hover:text-gray-800 dark:hover:text-gray-300"
+                }`}
+              >
+                <span>Media</span>
+                <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-gray-200 dark:bg-stone-800 text-gray-700 dark:text-gray-300 font-bold">
+                  {chatMediaList.length}
+                </span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveInfoTab("docs")}
+                className={`pb-2 px-3 font-semibold border-b-2 transition cursor-pointer flex items-center gap-1.5 shrink-0 whitespace-nowrap ${
+                  activeInfoTab === "docs"
+                    ? "border-red-600 text-red-600 dark:text-red-400"
+                    : "border-transparent text-gray-500 hover:text-gray-800 dark:hover:text-gray-300"
+                }`}
+              >
+                <span>Docs</span>
+                <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-gray-200 dark:bg-stone-800 text-gray-700 dark:text-gray-300 font-bold">
+                  {chatDocsList.length}
+                </span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveInfoTab("links")}
+                className={`pb-2 px-3 font-semibold border-b-2 transition cursor-pointer flex items-center gap-1.5 shrink-0 whitespace-nowrap ${
+                  activeInfoTab === "links"
+                    ? "border-red-600 text-red-600 dark:text-red-400"
+                    : "border-transparent text-gray-500 hover:text-gray-800 dark:hover:text-gray-300"
+                }`}
+              >
+                <span>Links</span>
+                <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-gray-200 dark:bg-stone-800 text-gray-700 dark:text-gray-300 font-bold">
+                  {chatLinksList.length}
+                </span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveInfoTab("starred")}
+                className={`pb-2 px-3 font-semibold border-b-2 transition cursor-pointer flex items-center gap-1.5 shrink-0 whitespace-nowrap ${
+                  activeInfoTab === "starred"
+                    ? "border-red-600 text-red-600 dark:text-red-400"
+                    : "border-transparent text-gray-500 hover:text-gray-800 dark:hover:text-gray-300"
+                }`}
+              >
+                <span>Starred</span>
+                <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-gray-200 dark:bg-stone-800 text-gray-700 dark:text-gray-300 font-bold">
+                  {starredMessagesList.length}
+                </span>
+              </button>
+            </div>
+
             {/* Scrollable Container */}
             <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-4">
+              {activeInfoTab === "media" ? (
+                <div className="space-y-3">
+                  {chatMediaList.length === 0 ? (
+                    <div className="py-16 text-center text-xs text-gray-400">
+                      <ImageIcon className="w-10 h-10 mx-auto mb-2 opacity-30 text-red-500" />
+                      No photos or videos shared in this chat yet.
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-3 gap-2">
+                      {chatMediaList.map((m, idx) => (
+                        <div
+                          key={m.id || idx}
+                          onClick={() => {
+                            setGalleryMediaIndex(idx);
+                            setGalleryZoom(1);
+                          }}
+                          className="aspect-square relative rounded-xl overflow-hidden cursor-pointer group bg-gray-100 dark:bg-stone-900 border border-black/5 dark:border-white/5 shadow-2xs"
+                        >
+                          {m.attachment_type === "video" ? (
+                            <div className="w-full h-full flex items-center justify-center bg-stone-900 text-white">
+                              <Play className="w-6 h-6 fill-white drop-shadow-md" />
+                            </div>
+                          ) : (
+                            /* eslint-disable-next-line @next/next/no-img-element */
+                            <img
+                              src={m.attachment_url}
+                              alt=""
+                              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
+                            />
+                          )}
+                          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/25 transition-colors" />
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ) : activeInfoTab === "docs" ? (
+                <div className="space-y-2">
+                  {chatDocsList.length === 0 ? (
+                    <div className="py-16 text-center text-xs text-gray-400">
+                      <FileText className="w-10 h-10 mx-auto mb-2 opacity-30 text-red-500" />
+                      No documents shared in this chat yet.
+                    </div>
+                  ) : (
+                    chatDocsList.map((m) => (
+                      <div
+                        key={m.id}
+                        className="flex items-center justify-between p-3 rounded-2xl border border-gray-200/80 dark:border-stone-800 hover:bg-gray-50 dark:hover:bg-white/5 transition shadow-2xs"
+                      >
+                        <div className="flex items-center gap-3 min-w-0">
+                          <div className="p-2.5 rounded-xl bg-red-100 dark:bg-red-950/50 text-red-600 dark:text-red-400 shrink-0">
+                            <FileText className="w-4 h-4" />
+                          </div>
+                          <div className="min-w-0">
+                            <div className="text-xs font-semibold text-gray-900 dark:text-white truncate">
+                              {m.attachment_name || "Document"}
+                            </div>
+                            <div className="text-[10px] text-gray-500 dark:text-gray-400">
+                              {formatMessageTime(m.created_at)}
+                            </div>
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => handleDownloadAttachment(m)}
+                          className="p-2 rounded-xl text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40 transition cursor-pointer"
+                          title="Download document"
+                        >
+                          <Download className="w-4 h-4" />
+                        </button>
+                      </div>
+                    ))
+                  )}
+                </div>
+              ) : activeInfoTab === "links" ? (
+                <div className="space-y-2">
+                  {chatLinksList.length === 0 ? (
+                    <div className="py-16 text-center text-xs text-gray-400">
+                      <LinkIcon className="w-10 h-10 mx-auto mb-2 opacity-30 text-red-500" />
+                      No links shared in this chat yet.
+                    </div>
+                  ) : (
+                    chatLinksList.map(({ msg: m, url, domain }) => (
+                      <a
+                        key={m.id}
+                        href={url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center justify-between p-3 rounded-2xl border border-gray-200/80 dark:border-stone-800 hover:bg-gray-50 dark:hover:bg-white/5 transition group shadow-2xs"
+                      >
+                        <div className="flex items-center gap-3 min-w-0">
+                          <div className="p-2.5 rounded-xl bg-red-100 dark:bg-red-950/50 text-red-600 dark:text-red-400 shrink-0">
+                            <Globe className="w-4 h-4" />
+                          </div>
+                          <div className="min-w-0">
+                            <div className="text-xs font-semibold text-gray-900 dark:text-white truncate group-hover:text-red-600 dark:group-hover:text-red-400">
+                              {domain}
+                            </div>
+                            <div className="text-[10.5px] text-gray-500 dark:text-gray-400 truncate">
+                              {url}
+                            </div>
+                          </div>
+                        </div>
+                        <ExternalLink className="w-4 h-4 text-gray-400 group-hover:text-red-600 shrink-0 ml-2" />
+                      </a>
+                    ))
+                  )}
+                </div>
+              ) : activeInfoTab === "starred" ? (
+                <div className="space-y-2">
+                  {starredMessagesList.length === 0 ? (
+                    <div className="py-16 text-center text-xs text-gray-400">
+                      <Star className="w-10 h-10 mx-auto mb-2 opacity-30 text-amber-500 fill-amber-500" />
+                      No starred messages in this chat yet.
+                      <p className="text-[11px] text-gray-400 mt-1">Tap Star on any message to save it here for quick access.</p>
+                    </div>
+                  ) : (
+                    starredMessagesList.map((m) => {
+                      const isMine = m.sender_id === currentUser?.id;
+                      const senderName = isMine ? "You" : m.sender_name || "Member";
+                      return (
+                        <div
+                          key={m.id}
+                          className="p-3 rounded-2xl border border-gray-200/80 dark:border-stone-800 bg-white dark:bg-stone-900/40 shadow-2xs hover:border-red-400/50 transition group"
+                        >
+                          <div className="flex items-center justify-between gap-2 mb-1.5">
+                            <div className="flex items-center gap-1.5 min-w-0">
+                              <span className="text-xs font-bold text-gray-900 dark:text-white truncate">
+                                {senderName}
+                              </span>
+                              <span className="text-[10.5px] text-gray-400">
+                                {formatMessageTime(m.created_at)}
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-1 shrink-0">
+                              <button
+                                type="button"
+                                onClick={() => handleToggleStar(m.id)}
+                                className="p-1 rounded-lg text-amber-500 hover:bg-amber-50 dark:hover:bg-amber-950/30 transition cursor-pointer"
+                                title="Unstar message"
+                              >
+                                <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleJumpToMessage(m.id)}
+                                className="p-1 px-2 rounded-lg text-[10.5px] font-bold text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30 transition cursor-pointer flex items-center gap-1"
+                                title="Jump to message in chat"
+                              >
+                                <span>Jump</span>
+                                <ChevronRight className="w-3 h-3" />
+                              </button>
+                            </div>
+                          </div>
+                          {m.attachment_url && (
+                            <div className="mb-1.5 rounded-xl overflow-hidden max-h-32 bg-gray-100 dark:bg-stone-950 border border-black/5">
+                              {m.attachment_type === "video" ? (
+                                <div className="p-2 flex items-center gap-2 text-xs text-gray-500">
+                                  <Play className="w-4 h-4 text-red-600" />
+                                  <span>Video attachment</span>
+                                </div>
+                              ) : m.attachment_type === "audio" ? (
+                                <div className="p-2 flex items-center gap-2 text-xs text-gray-500">
+                                  <Mic className="w-4 h-4 text-red-600" />
+                                  <span>Voice message</span>
+                                </div>
+                              ) : m.attachment_type === "document" ? (
+                                <div className="p-2 flex items-center gap-2 text-xs text-gray-500">
+                                  <FileText className="w-4 h-4 text-red-600" />
+                                  <span className="truncate">{m.attachment_name || "Document"}</span>
+                                </div>
+                              ) : (
+                                /* eslint-disable-next-line @next/next/no-img-element */
+                                <img src={m.attachment_url} alt="" className="w-full h-28 object-cover" />
+                              )}
+                            </div>
+                          )}
+                          {m.message && (
+                            <p className="text-xs text-gray-700 dark:text-gray-300 whitespace-pre-wrap break-words line-clamp-3">
+                              {m.message}
+                            </p>
+                          )}
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+              ) : !headerDetails.isGroup ? (
+                /* Contact Profile Card for Direct Chat */
+                <div className="space-y-4 animate-fadeIn">
+                  {/* Profile Card Header */}
+                  <div className="p-5 rounded-2xl bg-gradient-to-br from-red-50/70 to-rose-50/40 dark:from-red-950/20 dark:to-transparent border border-red-200/70 dark:border-red-900/40 flex flex-col items-center text-center relative">
+                    {/* Large Avatar */}
+                    <div className="relative mb-3">
+                      {(() => {
+                        const avatarSrc = typeof headerDetails.avatarUrl === "string" && headerDetails.avatarUrl.trim() ? headerDetails.avatarUrl.trim() : null;
+                        if (avatarSrc && !headerAvatarError) {
+                          return (
+                            /* eslint-disable-next-line @next/next/no-img-element */
+                            <img
+                              src={avatarSrc}
+                              alt=""
+                              onError={() => setHeaderAvatarError(true)}
+                              className="w-20 h-20 rounded-full object-cover ring-3 ring-red-500/40 shadow-sm"
+                            />
+                          );
+                        }
+                        return (
+                          <div className="w-20 h-20 rounded-full bg-gradient-to-tr from-red-600 to-rose-600 text-white font-black text-2xl flex items-center justify-center shadow-sm">
+                            {headerDetails.avatarLetter}
+                          </div>
+                        );
+                      })()}
+                      <span
+                        className={`absolute bottom-0 right-1 w-4 h-4 rounded-full ring-2 ring-white dark:ring-[#18150f] ${
+                          headerDetails.isOnline ? "bg-amber-500 ring-amber-300" : "bg-gray-400"
+                        }`}
+                        title={headerDetails.isOnline ? "Online" : "Offline"}
+                      />
+                    </div>
+
+                    <h4 className="text-base sm:text-lg font-black text-gray-900 dark:text-white truncate max-w-full">
+                      {headerDetails.title}
+                    </h4>
+
+                    <div className="flex items-center gap-2 mt-1.5 flex-wrap justify-center">
+                      <span className={`text-[10px] px-2.5 py-0.5 rounded-full border font-bold ${ROLE_BADGES[contact?.role] || "bg-gray-100 dark:bg-stone-800 text-gray-700 dark:text-gray-300 border-gray-200 dark:border-stone-700"}`}>
+                        {ROLE_DISPLAY_NAMES[contact?.role] || contact?.role || "Member"}
+                      </span>
+                      <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold flex items-center gap-1 ${
+                        headerDetails.isOnline
+                          ? "bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300"
+                          : "bg-gray-100 text-gray-600 dark:bg-stone-800 dark:text-gray-400"
+                      }`}>
+                        <span className={`w-1.5 h-1.5 rounded-full ${headerDetails.isOnline ? "bg-amber-500" : "bg-gray-400"}`} />
+                        <span>{headerDetails.isOnline ? "Online" : "Offline"}</span>
+                      </span>
+                    </div>
+
+                    {(contact?.batch_name || contact?.domain) && (
+                      <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-1.5">
+                        {contact?.batch_name || ""} {contact?.domain ? `• ${contact.domain}` : ""}
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Contact Email & Quick Copy */}
+                  {contact?.email && (
+                    <div className="p-3.5 rounded-2xl border border-gray-200/80 dark:border-stone-800 bg-gray-50/50 dark:bg-stone-900/30 flex items-center justify-between gap-3 shadow-2xs">
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <div className="p-2 rounded-xl bg-red-100 dark:bg-red-950/50 text-red-600 dark:text-red-400 shrink-0">
+                          <Mail className="w-4 h-4" />
+                        </div>
+                        <div className="min-w-0">
+                          <div className="text-[10px] font-bold text-gray-400 dark:text-stone-400 uppercase tracking-wider">Email Address</div>
+                          <div className="text-xs font-semibold text-gray-800 dark:text-gray-200 truncate">{contact.email}</div>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (typeof navigator !== "undefined" && navigator.clipboard) {
+                            navigator.clipboard.writeText(contact.email);
+                          }
+                          setCopiedContactEmail(true);
+                          showToast("Email address copied to clipboard!");
+                          setTimeout(() => setCopiedContactEmail(false), 2000);
+                        }}
+                        className="p-1.5 rounded-xl hover:bg-black/5 dark:hover:bg-white/5 text-gray-400 hover:text-red-600 transition shrink-0 cursor-pointer"
+                        title="Copy Email"
+                        aria-label="Copy contact email"
+                      >
+                        {copiedContactEmail ? <Check className="w-4 h-4 text-amber-500" /> : <Copy className="w-4 h-4" />}
+                      </button>
+                    </div>
+                  )}
+
+                  {/* Media, Docs, Links & Starred Overview Cards */}
+                  <div className="grid grid-cols-4 gap-1.5 sm:gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setActiveInfoTab("media")}
+                      className="p-2.5 sm:p-3 rounded-2xl border border-gray-200/80 dark:border-stone-800 bg-white dark:bg-stone-900/40 hover:border-red-400 transition text-center cursor-pointer shadow-2xs"
+                    >
+                      <div className="text-sm sm:text-base font-black text-red-600 dark:text-red-400">{chatMediaList.length}</div>
+                      <div className="text-[10px] sm:text-[10.5px] font-semibold text-gray-500 dark:text-gray-400 mt-0.5">Media</div>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setActiveInfoTab("docs")}
+                      className="p-2.5 sm:p-3 rounded-2xl border border-gray-200/80 dark:border-stone-800 bg-white dark:bg-stone-900/40 hover:border-red-400 transition text-center cursor-pointer shadow-2xs"
+                    >
+                      <div className="text-sm sm:text-base font-black text-red-600 dark:text-red-400">{chatDocsList.length}</div>
+                      <div className="text-[10px] sm:text-[10.5px] font-semibold text-gray-500 dark:text-gray-400 mt-0.5">Docs</div>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setActiveInfoTab("links")}
+                      className="p-2.5 sm:p-3 rounded-2xl border border-gray-200/80 dark:border-stone-800 bg-white dark:bg-stone-900/40 hover:border-red-400 transition text-center cursor-pointer shadow-2xs"
+                    >
+                      <div className="text-sm sm:text-base font-black text-red-600 dark:text-red-400">{chatLinksList.length}</div>
+                      <div className="text-[10px] sm:text-[10.5px] font-semibold text-gray-500 dark:text-gray-400 mt-0.5">Links</div>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setActiveInfoTab("starred")}
+                      className="p-2.5 sm:p-3 rounded-2xl border border-gray-200/80 dark:border-stone-800 bg-white dark:bg-stone-900/40 hover:border-amber-400 transition text-center cursor-pointer shadow-2xs"
+                    >
+                      <div className="text-sm sm:text-base font-black text-amber-500">{starredMessagesList.length}</div>
+                      <div className="text-[10px] sm:text-[10.5px] font-semibold text-gray-500 dark:text-gray-400 mt-0.5">Starred</div>
+                    </button>
+                  </div>
+
+                  {/* Quick Chat Actions */}
+                  <div className="space-y-1.5 pt-1">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setActiveInfoTab("starred");
+                      }}
+                      className="w-full flex items-center justify-between p-3 rounded-2xl border border-gray-200/80 dark:border-stone-800 hover:bg-gray-50 dark:hover:bg-white/5 transition cursor-pointer text-left shadow-2xs"
+                    >
+                      <div className="flex items-center gap-2.5">
+                        <Star className="w-4 h-4 text-amber-500 fill-amber-500" />
+                        <span className="text-xs font-semibold text-gray-800 dark:text-gray-200">Starred Messages</span>
+                      </div>
+                      <span className="text-[10.5px] text-gray-400">{starredMessagesList.length} saved</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowMembersDrawer(false);
+                        setShowMuteModal(true);
+                      }}
+                      className="w-full flex items-center justify-between p-3 rounded-2xl border border-gray-200/80 dark:border-stone-800 hover:bg-gray-50 dark:hover:bg-white/5 transition cursor-pointer text-left shadow-2xs"
+                    >
+                      <div className="flex items-center gap-2.5">
+                        <VolumeX className="w-4 h-4 text-gray-500" />
+                        <span className="text-xs font-semibold text-gray-800 dark:text-gray-200">
+                          {isChatMuted ? "Unmute Notifications" : "Mute Notifications"}
+                        </span>
+                      </div>
+                      <span className="text-[10.5px] text-gray-400">{isChatMuted ? "Muted" : "Enabled"}</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowMembersDrawer(false);
+                        handleExportChat();
+                      }}
+                      className="w-full flex items-center justify-between p-3 rounded-2xl border border-gray-200/80 dark:border-stone-800 hover:bg-gray-50 dark:hover:bg-white/5 transition cursor-pointer text-left shadow-2xs"
+                    >
+                      <div className="flex items-center gap-2.5">
+                        <Download className="w-4 h-4 text-gray-500" />
+                        <span className="text-xs font-semibold text-gray-800 dark:text-gray-200">Export Chat History</span>
+                      </div>
+                      <span className="text-[10.5px] text-gray-400">.txt</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        handleToggleArchiveChat();
+                      }}
+                      className="w-full flex items-center justify-between p-3 rounded-2xl border border-gray-200/80 dark:border-stone-800 hover:bg-gray-50 dark:hover:bg-white/5 transition cursor-pointer text-left shadow-2xs"
+                    >
+                      <div className="flex items-center gap-2.5">
+                        <Archive className="w-4 h-4 text-gray-500" />
+                        <span className="text-xs font-semibold text-gray-800 dark:text-gray-200">
+                          {isChatArchived ? "Unarchive Chat" : "Archive Chat"}
+                        </span>
+                      </div>
+                      <span className="text-[10.5px] text-gray-400">{isChatArchived ? "Archived" : "Inbox"}</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowLabelPickerModal(true);
+                      }}
+                      className="w-full flex items-center justify-between p-3 rounded-2xl border border-gray-200/80 dark:border-stone-800 hover:bg-gray-50 dark:hover:bg-white/5 transition cursor-pointer text-left shadow-2xs"
+                    >
+                      <div className="flex items-center gap-2.5">
+                        <Tag className="w-4 h-4 text-gray-500" />
+                        <span className="text-xs font-semibold text-gray-800 dark:text-gray-200">Chat Label</span>
+                      </div>
+                      {activeChatLabel ? (() => {
+                        const lbl = CHAT_LABEL_PRESETS.find((p) => p.id === activeChatLabel);
+                        return lbl ? (
+                          <span className={`text-[9.5px] px-2 py-0.5 rounded-md font-bold border ${lbl.color}`}>
+                            {lbl.name}
+                          </span>
+                        ) : null;
+                      })() : (
+                        <span className="text-[10.5px] text-gray-400">None</span>
+                      )}
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowDisappearingModal(true);
+                      }}
+                      className="w-full flex items-center justify-between p-3 rounded-2xl border border-gray-200/80 dark:border-stone-800 hover:bg-gray-50 dark:hover:bg-white/5 transition cursor-pointer text-left shadow-2xs"
+                    >
+                      <div className="flex items-center gap-2.5">
+                        <Clock className="w-4 h-4 text-gray-500" />
+                        <span className="text-xs font-semibold text-gray-800 dark:text-gray-200">Disappearing Messages</span>
+                      </div>
+                      <span className="text-[10.5px] font-bold text-gray-500 dark:text-gray-400">
+                        {disappearingTimer === "off" ? "Off" : disappearingTimer === "24h" ? "24 hours" : disappearingTimer === "7d" ? "7 days" : "90 days"}
+                      </span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        handleToggleBlockContact();
+                      }}
+                      className={`w-full flex items-center justify-between p-3 rounded-2xl border transition cursor-pointer text-left shadow-2xs ${
+                        isContactBlocked
+                          ? "border-amber-200/80 dark:border-amber-900/40 text-amber-600 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950/20"
+                          : "border-red-200/60 dark:border-red-900/40 text-red-600 dark:text-red-400 hover:bg-red-50/50 dark:hover:bg-red-950/20"
+                      }`}
+                    >
+                      <div className="flex items-center gap-2.5">
+                        <Ban className="w-4 h-4" />
+                        <span className="text-xs font-bold">
+                          {isContactBlocked ? `Unblock ${contact?.full_name || "Contact"}` : `Block ${contact?.full_name || "Contact"}`}
+                        </span>
+                      </div>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowMembersDrawer(false);
+                        setConfirmClearChatModal(true);
+                      }}
+                      className="w-full flex items-center justify-between p-3 rounded-2xl border border-red-200/60 dark:border-red-900/40 hover:bg-red-50/50 dark:hover:bg-red-950/20 text-red-600 dark:text-red-400 transition cursor-pointer text-left shadow-2xs"
+                    >
+                      <div className="flex items-center gap-2.5">
+                        <Trash2 className="w-4 h-4" />
+                        <span className="text-xs font-bold">Clear Chat Messages</span>
+                      </div>
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <>
               {/* Group Profile Banner */}
               <div className="p-4 rounded-2xl bg-gradient-to-br from-red-50/70 to-rose-50/40 dark:from-red-950/20 dark:to-transparent border border-red-200/70 dark:border-red-900/40 flex flex-col items-center text-center relative">
                 {/* Group DP */}
@@ -5180,11 +8021,11 @@ export default function TexAppBatchChat({
                     onClick={() => setMembersFilterTab("online")}
                     className={`flex-1 py-1.5 px-2 rounded-xl transition cursor-pointer text-center flex items-center justify-center gap-1.5 ${
                       membersFilterTab === "online"
-                        ? "bg-white dark:bg-[#18150f] text-emerald-600 dark:text-emerald-400 shadow-xs"
-                        : "text-gray-500 hover:text-emerald-600 dark:text-gray-400 dark:hover:text-emerald-400"
+                        ? "bg-white dark:bg-[#18150f] text-amber-600 dark:text-amber-400 shadow-xs"
+                        : "text-gray-500 hover:text-amber-600 dark:text-gray-400 dark:hover:text-amber-400"
                     }`}
                   >
-                    <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                    <span className="w-2 h-2 rounded-full bg-amber-500" />
                     <span>Online ({onlineMembersCount})</span>
                   </button>
                   <button
@@ -5276,29 +8117,29 @@ export default function TexAppBatchChat({
                             )}
                             <span
                               className={`absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full ring-2 ring-white dark:ring-[#18150f] ${
-                                isOnline ? "bg-emerald-500" : "bg-gray-400"
+                                isOnline ? "bg-amber-500" : "bg-gray-400"
                               }`}
                               title={isOnline ? "Online" : "Offline"}
                             />
                           </div>
 
                           <div className="min-w-0 flex-1">
-                            <div className="font-bold text-xs truncate flex items-center gap-1.5">
+                            <div className="font-bold text-xs flex items-center gap-1.5 flex-wrap leading-tight">
                               {isMe ? (
                                 <>
                                   <span className="text-red-600 dark:text-red-400 font-black">You</span>
-                                  <span className="text-[11px] text-gray-500 dark:text-gray-400 font-normal truncate">
+                                  <span className="text-[11px] text-gray-500 dark:text-gray-400 font-normal">
                                     ({m.full_name || "Myself"})
                                   </span>
                                 </>
                               ) : (
-                                <span>{m.full_name || "Member"}</span>
+                                <span className="font-bold break-words">{m.full_name || "Member"}</span>
                               )}
                             </div>
                             <div className="flex items-center gap-2 mt-0.5">
                               {isOnline ? (
-                                <span className="text-emerald-600 dark:text-emerald-400 font-bold text-[10.5px] flex items-center gap-1">
-                                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                                <span className="text-amber-600 dark:text-amber-400 font-bold text-[10.5px] flex items-center gap-1">
+                                  <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
                                   <span>Online</span>
                                 </span>
                               ) : (
@@ -5341,6 +8182,8 @@ export default function TexAppBatchChat({
                   });
                 })()}
               </div>
+                </>
+              )}
             </div>
           </div>
         </div>
@@ -5691,47 +8534,242 @@ export default function TexAppBatchChat({
       )}
 
       {/* =========================================================================
-          13. IMAGE LIGHTBOX ZOOM MODAL
+          13. WHATSAPP FULLSCREEN MEDIA GALLERY VIEWER
           ========================================================================= */}
-      {previewImage && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-fadeIn"
-          onClick={() => setPreviewImage(null)}
-        >
-          <div className="relative max-w-3xl max-h-[85vh]">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={previewImage}
-              alt="Enlarged preview"
-              className="w-auto h-auto max-h-[85vh] rounded-2xl object-contain shadow-2xl"
-            />
-            <div className="absolute -top-3 -right-3 flex items-center gap-2">
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleDownloadAttachment({
-                    attachment_url: previewImage,
-                    attachment_type: "image",
-                    attachment_name: `image_${Date.now()}.png`,
-                  });
-                }}
-                className="p-2 rounded-full bg-white text-black font-bold shadow-lg hover:opacity-85 transition cursor-pointer"
-                aria-label="Save as"
+      {(galleryMediaIndex !== null || previewImage) && (() => {
+        const currentMsg = galleryMediaIndex !== null ? chatMediaList[galleryMediaIndex] : null;
+        const currentUrl = currentMsg?.attachment_url || previewImage;
+        const isVideo = currentMsg?.attachment_type === "video";
+        const hasPrev = galleryMediaIndex !== null && galleryMediaIndex > 0;
+        const hasNext = galleryMediaIndex !== null && galleryMediaIndex < chatMediaList.length - 1;
+
+        const senderName =
+          currentMsg?.sender?.full_name ||
+          currentMsg?.sender_name ||
+          (currentMsg?.sender_id === currentUser?.id ? "You" : "User");
+
+        return (
+          <div
+            className="fixed inset-0 z-50 flex flex-col bg-black/95 text-white select-none animate-fadeIn"
+            onClick={() => {
+              setGalleryMediaIndex(null);
+              setPreviewImage(null);
+              setGalleryZoom(1);
+            }}
+          >
+            {/* Top Bar */}
+            <div
+              className="flex items-center justify-between px-3 sm:px-5 py-3 bg-black/70 backdrop-blur-md z-20 border-b border-white/10 shrink-0"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Left: Close/Back & Sender Info */}
+              <div className="flex items-center gap-3 min-w-0">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setGalleryMediaIndex(null);
+                    setPreviewImage(null);
+                    setGalleryZoom(1);
+                  }}
+                  className="p-1.5 rounded-full hover:bg-white/10 text-white/80 hover:text-white transition cursor-pointer"
+                  aria-label="Back"
+                >
+                  <ArrowLeft className="w-5 h-5" />
+                </button>
+
+                <div className="min-w-0">
+                  <div className="text-xs sm:text-sm font-bold truncate text-white">{senderName}</div>
+                  <div className="text-[10.5px] sm:text-[11px] text-white/60 truncate flex items-center gap-1.5">
+                    {currentMsg?.created_at && (
+                      <span>{formatFullDateTime(currentMsg.created_at)}</span>
+                    )}
+                    {galleryMediaIndex !== null && chatMediaList.length > 1 && (
+                      <>
+                        <span>•</span>
+                        <span className="font-semibold text-white/80">
+                          {galleryMediaIndex + 1} of {chatMediaList.length}
+                        </span>
+                      </>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Right: Actions (Zoom in/out, Forward, Download, Close) */}
+              <div className="flex items-center gap-1 sm:gap-2">
+                {!isVideo && (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => setGalleryZoom((z) => Math.max(0.5, z - 0.25))}
+                      className="p-2 rounded-full hover:bg-white/10 text-white/80 hover:text-white transition cursor-pointer"
+                      title="Zoom Out"
+                    >
+                      <ZoomOut className="w-4 h-4" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setGalleryZoom((z) => Math.min(3, z + 0.25))}
+                      className="p-2 rounded-full hover:bg-white/10 text-white/80 hover:text-white transition cursor-pointer"
+                      title="Zoom In"
+                    >
+                      <ZoomIn className="w-4 h-4" />
+                    </button>
+                  </>
+                )}
+
+                {currentMsg && (
+                  <button
+                    type="button"
+                    onClick={() => handleForwardMessage(currentMsg)}
+                    className="p-2 rounded-full hover:bg-white/10 text-white/80 hover:text-white transition cursor-pointer"
+                    title="Forward"
+                  >
+                    <Forward className="w-4 h-4" />
+                  </button>
+                )}
+
+                <button
+                  type="button"
+                  onClick={() =>
+                    handleDownloadAttachment(
+                      currentMsg || {
+                        attachment_url: currentUrl,
+                        attachment_type: isVideo ? "video" : "image",
+                        attachment_name: isVideo ? `video_${Date.now()}.mp4` : `image_${Date.now()}.png`,
+                      }
+                    )
+                  }
+                  className="p-2 rounded-full hover:bg-white/10 text-white/80 hover:text-white transition cursor-pointer"
+                  title="Download"
+                >
+                  <Download className="w-4 h-4" />
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setGalleryMediaIndex(null);
+                    setPreviewImage(null);
+                    setGalleryZoom(1);
+                  }}
+                  className="p-2 rounded-full hover:bg-white/10 text-white/80 hover:text-white transition cursor-pointer"
+                  title="Close"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+
+            {/* Main Stage */}
+            <div className="relative flex-1 flex items-center justify-center p-3 sm:p-6 overflow-hidden">
+              {/* Prev Button */}
+              {hasPrev && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setGalleryMediaIndex((i) => (i > 0 ? i - 1 : i));
+                    setGalleryZoom(1);
+                  }}
+                  className="absolute left-2 sm:left-6 z-30 p-2 sm:p-3 rounded-full bg-black/60 hover:bg-black/90 text-white/90 hover:text-white border border-white/15 transition cursor-pointer shadow-2xl backdrop-blur-xs"
+                  aria-label="Previous media"
+                >
+                  <ChevronLeft className="w-5 h-5 sm:w-6 sm:h-6" />
+                </button>
+              )}
+
+              {/* Media Content */}
+              <div
+                className="max-w-full max-h-full flex items-center justify-center"
+                onClick={(e) => e.stopPropagation()}
               >
-                <Download className="w-4 h-4" />
-              </button>
-              <button
-                type="button"
-                onClick={() => setPreviewImage(null)}
-                className="p-2 rounded-full bg-white text-black font-bold shadow-lg hover:opacity-85 transition cursor-pointer"
-              >
-                <X className="w-4 h-4" />
-              </button>
+                {isVideo ? (
+                  <video
+                    controls
+                    autoPlay
+                    src={currentUrl}
+                    className="max-h-[70vh] sm:max-h-[75vh] max-w-[90vw] rounded-xl object-contain shadow-2xl"
+                  />
+                ) : (
+                  /* eslint-disable-next-line @next/next/no-img-element */
+                  <img
+                    src={currentUrl}
+                    alt="Gallery item"
+                    style={{ transform: `scale(${galleryZoom})` }}
+                    className="max-h-[70vh] sm:max-h-[75vh] max-w-[90vw] rounded-xl object-contain shadow-2xl transition-transform duration-200"
+                  />
+                )}
+              </div>
+
+              {/* Next Button */}
+              {hasNext && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setGalleryMediaIndex((i) => (i < chatMediaList.length - 1 ? i + 1 : i));
+                    setGalleryZoom(1);
+                  }}
+                  className="absolute right-2 sm:right-6 z-30 p-2 sm:p-3 rounded-full bg-black/60 hover:bg-black/90 text-white/90 hover:text-white border border-white/15 transition cursor-pointer shadow-2xl backdrop-blur-xs"
+                  aria-label="Next media"
+                >
+                  <ChevronRight className="w-5 h-5 sm:w-6 sm:h-6" />
+                </button>
+              )}
+            </div>
+
+            {/* Bottom Caption & Thumbnails Carousel */}
+            <div
+              className="bg-black/75 backdrop-blur-md px-4 py-3 z-20 flex flex-col items-center gap-2 border-t border-white/10 shrink-0"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {currentMsg?.message && (
+                <div className="max-w-xl text-center text-xs text-white/90 bg-white/10 px-4 py-1.5 rounded-full truncate">
+                  {currentMsg.message}
+                </div>
+              )}
+
+              {/* Media Thumbnails Scroller */}
+              {chatMediaList.length > 1 && (
+                <div className="flex items-center gap-2 max-w-full overflow-x-auto py-1 px-2 no-scrollbar">
+                  {chatMediaList.map((m, idx) => {
+                    const isSelected = idx === galleryMediaIndex;
+                    return (
+                      <button
+                        key={m.id || idx}
+                        type="button"
+                        onClick={() => {
+                          setGalleryMediaIndex(idx);
+                          setGalleryZoom(1);
+                        }}
+                        className={`relative w-11 h-11 rounded-lg overflow-hidden shrink-0 border-2 transition cursor-pointer ${
+                          isSelected
+                            ? "border-red-500 scale-105 opacity-100 shadow-md ring-2 ring-red-500/50"
+                            : "border-transparent opacity-50 hover:opacity-85"
+                        }`}
+                      >
+                        {m.attachment_type === "video" ? (
+                          <div className="w-full h-full bg-stone-900 flex items-center justify-center text-white">
+                            <Play className="w-3.5 h-3.5 fill-white" />
+                          </div>
+                        ) : (
+                          /* eslint-disable-next-line @next/next/no-img-element */
+                          <img
+                            src={m.attachment_url}
+                            alt=""
+                            className="w-full h-full object-cover"
+                          />
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
 
       {/* =========================================================================
@@ -5989,6 +9027,357 @@ export default function TexAppBatchChat({
               >
                 <Forward className="w-3.5 h-3.5" />
                 <span>Forward</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* =========================================================================
+          WHATSAPP CHAT WALLPAPER SELECTION MODAL
+          ========================================================================= */}
+      {showWallpaperModal && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-fadeIn"
+          onClick={handleCloseWallpaperModal}
+        >
+          <div
+            className="w-full max-w-sm rounded-2xl bg-white dark:bg-[#18150f] border border-gray-200/90 dark:border-[#3a3020] shadow-2xl p-5 select-none animate-scaleUp"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between pb-3 border-b border-gray-100 dark:border-stone-800">
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={handleCloseWallpaperModal}
+                  className="p-1 -ml-1 rounded-xl text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white transition cursor-pointer"
+                  title={openedFromChatOptions ? "Back to Chat Options" : "Close"}
+                  aria-label="Back"
+                >
+                  <ArrowLeft className="w-4 h-4" />
+                </button>
+                <Palette className="w-5 h-5 text-red-600 dark:text-red-400" />
+                <h3 className="text-sm font-bold text-gray-900 dark:text-white">Chat Wallpaper</h3>
+              </div>
+              <button
+                type="button"
+                onClick={handleCloseWallpaperModal}
+                className="p-1 rounded-lg text-gray-400 hover:text-gray-700 dark:hover:text-white transition cursor-pointer"
+                aria-label="Close"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="mt-4 space-y-2">
+              {WALLPAPER_PRESETS.map((wp) => {
+                const isSelected = chatWallpaper === wp.id;
+                return (
+                  <button
+                    key={wp.id}
+                    type="button"
+                    onClick={() => handleSelectWallpaper(wp.id)}
+                    className={`w-full flex items-center justify-between p-3 rounded-xl border text-left transition cursor-pointer ${
+                      isSelected
+                        ? "border-red-500 bg-red-50/70 dark:bg-red-950/40 text-red-700 dark:text-red-300 font-semibold shadow-2xs"
+                        : "border-gray-200/80 dark:border-stone-800 hover:bg-gray-50 dark:hover:bg-white/5 text-gray-800 dark:text-gray-200"
+                    }`}
+                  >
+                    <div>
+                      <div className="text-xs font-bold">{wp.name}</div>
+                      <div className="text-[10px] text-gray-500 dark:text-gray-400">{wp.desc}</div>
+                    </div>
+                    {isSelected && <Check className="w-4 h-4 text-red-600 dark:text-red-400 shrink-0" />}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* =========================================================================
+          WHATSAPP MUTE NOTIFICATIONS MODAL
+          ========================================================================= */}
+      {showMuteModal && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-fadeIn"
+          onClick={handleCloseMuteModal}
+        >
+          <div
+            className={`w-full max-w-sm rounded-2xl border shadow-2xl p-5 select-none animate-scaleUp ${
+              isDark ? "bg-[#18150f] border-[#3a3020] text-gray-200" : "bg-white border-gray-200 text-gray-800"
+            }`}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between pb-3 border-b border-gray-100 dark:border-stone-800">
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={handleCloseMuteModal}
+                  className="p-1 -ml-1 rounded-xl text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white transition cursor-pointer"
+                  title={openedFromChatOptions ? "Back to Chat Options" : "Close"}
+                  aria-label="Back"
+                >
+                  <ArrowLeft className="w-4 h-4" />
+                </button>
+                <VolumeX className="w-5 h-5 text-red-600 dark:text-red-400" />
+                <h3 className="text-sm font-bold text-gray-900 dark:text-white">
+                  {isChatMuted ? "Unmute Notifications" : "Mute Notifications"}
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={handleCloseMuteModal}
+                className="p-1 rounded-lg text-gray-400 hover:text-gray-700 dark:hover:text-white transition cursor-pointer"
+                aria-label="Close"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {isChatMuted ? (
+              <div className="mt-4 space-y-4">
+                <p className="text-xs text-gray-500 dark:text-gray-400">
+                  This chat is currently muted. Unmute to receive sound and push notifications again.
+                </p>
+                <div className="flex items-center justify-end gap-2">
+                  <button
+                    type="button"
+                    onClick={handleCloseMuteModal}
+                    className="px-4 py-2 rounded-xl text-xs font-semibold text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-white/5 cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleToggleMute("unmute")}
+                    className="px-4 py-2 rounded-xl text-xs font-bold bg-red-600 hover:bg-red-700 text-white shadow-sm cursor-pointer"
+                  >
+                    Unmute
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="mt-4 space-y-3">
+                <p className="text-xs text-gray-500 dark:text-gray-400">
+                  Other participants won't see that you muted this chat.
+                </p>
+                <div className="space-y-1.5">
+                  {[
+                    { label: "8 hours", val: "8 hours" },
+                    { label: "1 week", val: "1 week" },
+                    { label: "Always", val: "Always" },
+                  ].map((opt) => (
+                    <button
+                      key={opt.val}
+                      type="button"
+                      onClick={() => handleToggleMute(opt.val)}
+                      className="w-full text-left px-3.5 py-2.5 rounded-xl border border-gray-200/80 dark:border-stone-800 hover:border-red-500 hover:bg-red-50/50 dark:hover:bg-red-950/30 text-xs font-semibold text-gray-800 dark:text-gray-200 transition cursor-pointer"
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+                <div className="flex items-center justify-between pt-2 border-t border-gray-100 dark:border-stone-800">
+                  <div className="flex items-center gap-3">
+                    <button
+                      type="button"
+                      onClick={() => playWhatsAppChime()}
+                      className="inline-flex items-center gap-1.5 text-xs text-red-600 dark:text-red-400 hover:underline font-semibold cursor-pointer"
+                    >
+                      <Volume2 className="w-3.5 h-3.5" />
+                      <span>Test Tone</span>
+                    </button>
+                    {desktopNotifState !== "granted" && (
+                      <button
+                        type="button"
+                        onClick={requestDesktopNotifications}
+                        className="inline-flex items-center gap-1 text-[11px] text-gray-500 dark:text-stone-400 hover:text-red-600 dark:hover:text-red-400 cursor-pointer"
+                      >
+                        <Bell className="w-3 h-3" />
+                        <span>Enable desktop alerts</span>
+                      </button>
+                    )}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleCloseMuteModal}
+                    className="px-4 py-2 rounded-xl text-xs font-semibold text-gray-500 hover:text-gray-800 dark:hover:text-white cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* =========================================================================
+          WHATSAPP CLEAR CHAT CONFIRMATION MODAL
+          ========================================================================= */}
+      {confirmClearChatModal && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-fadeIn"
+          onClick={handleCloseClearChatModal}
+        >
+          <div
+            className={`w-full max-w-sm rounded-2xl border shadow-2xl p-5 select-none animate-scaleUp ${
+              isDark ? "bg-[#18150f] border-[#3a3020] text-gray-200" : "bg-white border-gray-200 text-gray-800"
+            }`}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between pb-3 border-b border-gray-100 dark:border-stone-800">
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={handleCloseClearChatModal}
+                  className="p-1 -ml-1 rounded-xl text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white transition cursor-pointer"
+                  title={openedFromChatOptions ? "Back to Chat Options" : "Close"}
+                  aria-label="Back"
+                >
+                  <ArrowLeft className="w-4 h-4" />
+                </button>
+                <Trash2 className="w-5 h-5 text-red-600 dark:text-red-400" />
+                <h3 className="text-sm font-bold text-gray-900 dark:text-white">Clear this chat?</h3>
+              </div>
+              <button
+                type="button"
+                onClick={handleCloseClearChatModal}
+                className="p-1 rounded-lg text-gray-400 hover:text-gray-700 dark:hover:text-white transition cursor-pointer"
+                aria-label="Close"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <p className="mt-3 text-xs text-gray-600 dark:text-gray-400 leading-relaxed">
+              This will clear all messages in this chat from your device. Messages will remain visible to other participants.
+            </p>
+
+            <div className="mt-5 flex items-center justify-end gap-2">
+              <button
+                type="button"
+                onClick={handleCloseClearChatModal}
+                className="px-4 py-2 rounded-xl text-xs font-semibold text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-white/5 cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  handleClearChatConfirm();
+                  setConfirmClearChatModal(false);
+                }}
+                className="px-4 py-2 rounded-xl text-xs font-bold bg-red-600 hover:bg-red-700 text-white shadow-sm cursor-pointer"
+              >
+                Clear chat
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* =========================================================================
+          WHATSAPP KEYBOARD SHORTCUTS MODAL
+          ========================================================================= */}
+      {showKeyboardShortcutsModal && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-fadeIn"
+          onClick={handleCloseKeyboardShortcutsModal}
+        >
+          <div
+            className={`w-full max-w-md rounded-2xl border shadow-2xl p-5 select-none animate-scaleUp ${
+              isDark ? "bg-[#18150f] border-[#3a3020] text-gray-200" : "bg-white border-gray-200 text-gray-800"
+            }`}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between pb-3 border-b border-gray-100 dark:border-stone-800">
+              <div className="flex items-center gap-2.5">
+                <button
+                  type="button"
+                  onClick={handleCloseKeyboardShortcutsModal}
+                  className="p-1 -ml-1 rounded-xl text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white transition cursor-pointer"
+                  title={openedFromChatOptions ? "Back to Chat Options" : "Close"}
+                  aria-label="Back"
+                >
+                  <ArrowLeft className="w-4 h-4" />
+                </button>
+                <div className="w-8 h-8 rounded-xl bg-red-600/10 text-red-600 flex items-center justify-center">
+                  <Keyboard className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-gray-900 dark:text-white">Keyboard Shortcuts</h3>
+                  <p className="text-[10px] text-gray-500 dark:text-stone-400">WhatsApp Web desktop controls</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={handleCloseKeyboardShortcutsModal}
+                className="p-1 rounded-xl text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 cursor-pointer"
+                aria-label="Close"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="py-3 space-y-4 max-h-[60vh] overflow-y-auto">
+              <div>
+                <h4 className="text-[11px] font-bold text-red-600 dark:text-red-400 uppercase tracking-wider mb-2">Navigation & Search</h4>
+                <div className="space-y-1.5 text-xs">
+                  <div className="flex items-center justify-between py-1">
+                    <span>Search within chat</span>
+                    <kbd className="px-2 py-0.5 rounded bg-gray-100 dark:bg-stone-800 font-mono text-[11px] border border-gray-300 dark:border-stone-700">Ctrl + F</kbd>
+                  </div>
+                  <div className="flex items-center justify-between py-1">
+                    <span>Keyboard shortcuts helper</span>
+                    <kbd className="px-2 py-0.5 rounded bg-gray-100 dark:bg-stone-800 font-mono text-[11px] border border-gray-300 dark:border-stone-700">Ctrl + /</kbd>
+                  </div>
+                  <div className="flex items-center justify-between py-1">
+                    <span>Close drawers, search & modals</span>
+                    <kbd className="px-2 py-0.5 rounded bg-gray-100 dark:bg-stone-800 font-mono text-[11px] border border-gray-300 dark:border-stone-700">Esc</kbd>
+                  </div>
+                  <div className="flex items-center justify-between py-1">
+                    <span>Browse gallery items</span>
+                    <div className="flex items-center gap-1">
+                      <kbd className="px-1.5 py-0.5 rounded bg-gray-100 dark:bg-stone-800 font-mono text-[11px] border border-gray-300 dark:border-stone-700">←</kbd>
+                      <kbd className="px-1.5 py-0.5 rounded bg-gray-100 dark:bg-stone-800 font-mono text-[11px] border border-gray-300 dark:border-stone-700">→</kbd>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="pt-2 border-t border-gray-100 dark:border-stone-800">
+                <h4 className="text-[11px] font-bold text-red-600 dark:text-red-400 uppercase tracking-wider mb-2">Composing & Sending</h4>
+                <div className="space-y-1.5 text-xs">
+                  <div className="flex items-center justify-between py-1">
+                    <span>Send message</span>
+                    <kbd className="px-2 py-0.5 rounded bg-gray-100 dark:bg-stone-800 font-mono text-[11px] border border-gray-300 dark:border-stone-700">{enterIsSend ? "Enter" : "Ctrl + Enter"}</kbd>
+                  </div>
+                  <div className="flex items-center justify-between py-1">
+                    <span>Insert new line</span>
+                    <kbd className="px-2 py-0.5 rounded bg-gray-100 dark:bg-stone-800 font-mono text-[11px] border border-gray-300 dark:border-stone-700">Shift + Enter</kbd>
+                  </div>
+                  <div className="flex items-center justify-between py-1">
+                    <span>Paste screenshot or copied file</span>
+                    <kbd className="px-2 py-0.5 rounded bg-gray-100 dark:bg-stone-800 font-mono text-[11px] border border-gray-300 dark:border-stone-700">Ctrl + V</kbd>
+                  </div>
+                  <div className="flex items-center justify-between py-1">
+                    <span>Drag & drop files</span>
+                    <span className="text-[11px] text-gray-500 dark:text-stone-400">Drag any file into chat</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="pt-3 border-t border-gray-100 dark:border-stone-800 flex justify-end">
+              <button
+                type="button"
+                onClick={() => setShowKeyboardShortcutsModal(false)}
+                className="px-4 py-2 rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs font-semibold cursor-pointer shadow-sm transition"
+              >
+                Done
               </button>
             </div>
           </div>
@@ -6574,6 +9963,181 @@ export default function TexAppBatchChat({
                 className="px-4 py-2 rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs font-bold transition cursor-pointer shadow-sm"
               >
                 Try Recording Again
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* =========================================================================
+          WHATSAPP CUSTOM CHAT LABELS PICKER MODAL
+          ========================================================================= */}
+      {showLabelPickerModal && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-fadeIn"
+          onClick={handleCloseLabelPickerModal}
+        >
+          <div
+            className={`w-full max-w-sm rounded-3xl border shadow-2xl p-5 select-none animate-scaleUp ${
+              isDark ? "bg-[#18150f] border-[#3a3020] text-gray-200" : "bg-white border-gray-200 text-gray-800"
+            }`}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between pb-3 border-b border-gray-100 dark:border-stone-800">
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={handleCloseLabelPickerModal}
+                  className="p-1 -ml-1 rounded-xl text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white transition cursor-pointer"
+                  title={openedFromChatOptions ? "Back to Chat Options" : "Close"}
+                  aria-label="Back"
+                >
+                  <ArrowLeft className="w-4 h-4" />
+                </button>
+                <Tag className="w-4 h-4 text-red-600 dark:text-red-400" />
+                <h3 className="text-sm font-black text-gray-900 dark:text-white">Chat Label</h3>
+              </div>
+              <button
+                type="button"
+                onClick={handleCloseLabelPickerModal}
+                className="p-1 rounded-lg text-gray-400 hover:text-gray-600 dark:hover:text-white cursor-pointer"
+                aria-label="Close"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <p className="mt-2.5 text-xs text-gray-500 dark:text-gray-400">
+              Assign a category tag to organize your chats effectively.
+            </p>
+
+            <div className="mt-4 space-y-2">
+              {CHAT_LABEL_PRESETS.map((lbl) => {
+                const isSelected = activeChatLabel === lbl.id;
+                return (
+                  <button
+                    key={lbl.id}
+                    type="button"
+                    onClick={() => handleSetChatLabel(lbl.id)}
+                    className={`w-full flex items-center justify-between p-3 rounded-2xl border transition cursor-pointer text-left ${
+                      isSelected
+                        ? "bg-red-50/80 dark:bg-red-950/30 border-red-500/50 font-bold"
+                        : "hover:bg-black/5 dark:hover:bg-white/5 border-gray-200/80 dark:border-stone-800"
+                    }`}
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold border ${lbl.color}`}>
+                        {lbl.name}
+                      </span>
+                    </div>
+                    {isSelected && <Check className="w-4 h-4 text-red-600 dark:text-red-400 stroke-[3]" />}
+                  </button>
+                );
+              })}
+            </div>
+
+            <div className="mt-5 flex items-center justify-between pt-3 border-t border-gray-100 dark:border-stone-800">
+              {activeChatLabel ? (
+                <button
+                  type="button"
+                  onClick={() => handleSetChatLabel(null)}
+                  className="text-xs font-bold text-red-600 dark:text-red-400 hover:underline cursor-pointer"
+                >
+                  Remove Label
+                </button>
+              ) : <div />}
+              <button
+                type="button"
+                onClick={handleCloseLabelPickerModal}
+                className="px-4 py-2 rounded-xl text-xs font-semibold text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-white/5 cursor-pointer"
+              >
+                Done
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* =========================================================================
+          WHATSAPP DISAPPEARING MESSAGES MODAL
+          ========================================================================= */}
+      {showDisappearingModal && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-fadeIn"
+          onClick={handleCloseDisappearingModal}
+        >
+          <div
+            className={`w-full max-w-sm rounded-3xl border shadow-2xl p-5 select-none animate-scaleUp ${
+              isDark ? "bg-[#18150f] border-[#3a3020] text-gray-200" : "bg-white border-gray-200 text-gray-800"
+            }`}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between pb-3 border-b border-gray-100 dark:border-stone-800">
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={handleCloseDisappearingModal}
+                  className="p-1 -ml-1 rounded-xl text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white transition cursor-pointer"
+                  title={openedFromChatOptions ? "Back to Chat Options" : "Close"}
+                  aria-label="Back"
+                >
+                  <ArrowLeft className="w-4 h-4" />
+                </button>
+                <Clock className="w-4 h-4 text-red-600 dark:text-red-400" />
+                <h3 className="text-sm font-black text-gray-900 dark:text-white">Disappearing Messages</h3>
+              </div>
+              <button
+                type="button"
+                onClick={handleCloseDisappearingModal}
+                className="p-1 rounded-lg text-gray-400 hover:text-gray-600 dark:hover:text-white cursor-pointer"
+                aria-label="Close"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <p className="mt-2.5 text-xs text-gray-500 dark:text-gray-400 leading-relaxed">
+              When enabled, messages in this chat will disappear after the selected timer duration.
+            </p>
+
+            <div className="mt-4 space-y-2">
+              {[
+                { id: "24h", label: "24 hours", desc: "Disappear after 1 day" },
+                { id: "7d", label: "7 days", desc: "Disappear after 1 week" },
+                { id: "90d", label: "90 days", desc: "Disappear after 3 months" },
+                { id: "off", label: "Off", desc: "Messages will not disappear" },
+              ].map((opt) => {
+                const isSelected = disappearingTimer === opt.id;
+                return (
+                  <button
+                    key={opt.id}
+                    type="button"
+                    onClick={() => handleSetDisappearingTimer(opt.id)}
+                    className={`w-full flex items-center justify-between p-3 rounded-2xl border transition cursor-pointer text-left ${
+                      isSelected
+                        ? "bg-red-50/80 dark:bg-red-950/30 border-red-500/50"
+                        : "hover:bg-black/5 dark:hover:bg-white/5 border-gray-200/80 dark:border-stone-800"
+                    }`}
+                  >
+                    <div>
+                      <div className={`text-xs font-bold ${isSelected ? "text-red-600 dark:text-red-400" : "text-gray-900 dark:text-white"}`}>
+                        {opt.label}
+                      </div>
+                      <div className="text-[10px] text-gray-400">{opt.desc}</div>
+                    </div>
+                    {isSelected && <Check className="w-4 h-4 text-red-600 dark:text-red-400 stroke-[3]" />}
+                  </button>
+                );
+              })}
+            </div>
+
+            <div className="mt-5 flex justify-end pt-3 border-t border-gray-100 dark:border-stone-800">
+              <button
+                type="button"
+                onClick={() => setShowDisappearingModal(false)}
+                className="px-4 py-2 rounded-xl text-xs font-semibold text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-white/5 cursor-pointer"
+              >
+                Done
               </button>
             </div>
           </div>
