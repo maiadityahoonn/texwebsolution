@@ -4655,24 +4655,27 @@ export default function TexAppBatchChat({
                       <span>Share</span>
                     </button>
 
-                    {selectedMsgIds.size === 1 && (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const targetMsg = (displayMessages || []).find((m) => m.id === Array.from(selectedMsgIds)[0]);
-                          if (targetMsg) {
+                    {(() => {
+                      if (selectedMsgIds.size !== 1) return null;
+                      const targetMsg = (displayMessages || []).find((m) => m.id === Array.from(selectedMsgIds)[0]);
+                      const isSender = targetMsg && (targetMsg.sender_id === currentUser?.id || targetMsg.is_mine);
+                      if (!isSender) return null;
+                      return (
+                        <button
+                          type="button"
+                          onClick={() => {
                             setMessageInfoModal(targetMsg);
                             setIsSelectionMode(false);
                             setSelectedMsgIds(new Set());
-                          }
-                          setSelectionMenuOpen(false);
-                        }}
-                        className="w-full px-3.5 py-2 flex items-center gap-2.5 hover:bg-black/5 dark:hover:bg-white/10 transition text-left cursor-pointer"
-                      >
-                        <Info className="w-4 h-4 text-gray-500" />
-                        <span>Message info</span>
-                      </button>
-                    )}
+                            setSelectionMenuOpen(false);
+                          }}
+                          className="w-full px-3.5 py-2 flex items-center gap-2.5 hover:bg-black/5 dark:hover:bg-white/10 transition text-left cursor-pointer"
+                        >
+                          <Info className="w-4 h-4 text-gray-500" />
+                          <span>Message info</span>
+                        </button>
+                      );
+                    })()}
 
                     <button
                       type="button"
@@ -5710,57 +5713,67 @@ export default function TexAppBatchChat({
                     className={`w-fit max-w-[85%] sm:max-w-[70%] inline-flex items-center gap-1.5 relative group/msg ${
                       isSelectionMode ? "cursor-pointer" : "cursor-default"
                     } ${
-                      activeDropdownMsgId === msg.id ? "z-40" : "z-1"
+                      activeReactionMsgId === msg.id || activeDropdownMsgId === msg.id ? "z-50" : "z-1"
                     } ${
                       isMine ? "flex-row-reverse" : "flex-row"
                     }`}
                   >
                     {/* 1. WhatsApp Compact Bubble Container with Swipe to Reply & Long Press */}
                     <div className="relative inline-block">
-                      {/* Floating WhatsApp Emoji Reaction Strip (Anchored directly to bubble for 100% visibility) */}
+                      {/* Floating WhatsApp Emoji Reaction Strip (Anchored directly above bubble for 100% visibility) */}
                       {activeReactionMsgId === msg.id && (
-                        <div
-                          data-reaction-strip="true"
-                          onClick={(e) => e.stopPropagation()}
-                          className={`absolute bottom-full mb-1.5 z-50 flex items-center gap-1 bg-white dark:bg-[#18150f] border border-gray-200/90 dark:border-[#3a3020] rounded-full px-2 py-1 shadow-2xl animate-scaleUp select-none whitespace-nowrap shrink-0 ${
-                            isMine ? "right-0" : "left-0"
-                          }`}
-                        >
-                          {["👍", "❤️", "😂", "😮", "😢", "🙏"].map((emoji) => {
-                            const isSelected = myReaction?.emoji === emoji;
-                            return (
-                              <button
-                                key={emoji}
-                                type="button"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleSendReaction(msg, emoji);
-                                  setActiveReactionMsgId(null);
-                                }}
-                                className={`w-8 h-8 rounded-full flex items-center justify-center hover:scale-125 transition-transform cursor-pointer shrink-0 ${
-                                  isSelected ? "bg-red-50 dark:bg-white/20 scale-110 ring-1 ring-red-500" : ""
-                                }`}
-                                aria-label={isSelected ? `Remove ${emoji}` : `React ${emoji}`}
-                              >
-                                <AppleEmoji emoji={emoji} size={24} />
-                              </button>
-                            );
-                          })}
-
-                          {/* Plus (+) Button to open full WhatsApp reaction picker */}
-                          <button
-                            type="button"
+                        <>
+                          <div
+                            className="fixed inset-0 z-40 bg-transparent select-none"
                             onClick={(e) => {
                               e.stopPropagation();
-                              handleOpenReactionInChatboxPicker(msg);
                               setActiveReactionMsgId(null);
                             }}
-                            className="w-7 h-7 rounded-full flex items-center justify-center hover:scale-110 text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white cursor-pointer transition shrink-0 ml-0.5"
-                            aria-label="More reactions"
+                          />
+                          <div
+                            data-reaction-strip="true"
+                            onClick={(e) => e.stopPropagation()}
+                            style={{ zIndex: 60 }}
+                            className={`absolute bottom-full mb-2.5 flex items-center gap-1 bg-white dark:bg-[#1f1b16] border border-gray-200/90 dark:border-[#3a3020] rounded-full px-2.5 py-1 shadow-2xl animate-scaleUp select-none whitespace-nowrap shrink-0 ${
+                              isMine ? "right-0" : "left-0"
+                            }`}
                           >
-                            <Plus className="w-4 h-4 stroke-[2.5]" />
-                          </button>
-                        </div>
+                            {["👍", "❤️", "😂", "😮", "😢", "🙏"].map((emoji) => {
+                              const isSelected = myReaction?.emoji === emoji;
+                              return (
+                                <button
+                                  key={emoji}
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleSendReaction(msg, emoji);
+                                    setActiveReactionMsgId(null);
+                                  }}
+                                  className={`w-8 h-8 rounded-full flex items-center justify-center hover:scale-125 transition-transform cursor-pointer shrink-0 ${
+                                    isSelected ? "bg-red-50 dark:bg-white/20 scale-110 ring-1 ring-red-500" : ""
+                                  }`}
+                                  aria-label={isSelected ? `Remove ${emoji}` : `React ${emoji}`}
+                                >
+                                  <AppleEmoji emoji={emoji} size={24} />
+                                </button>
+                              );
+                            })}
+
+                            {/* Plus (+) Button to open full WhatsApp reaction picker */}
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleOpenReactionInChatboxPicker(msg);
+                                setActiveReactionMsgId(null);
+                              }}
+                              className="w-7 h-7 rounded-full flex items-center justify-center hover:scale-110 text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white cursor-pointer transition shrink-0 ml-0.5"
+                              aria-label="More reactions"
+                            >
+                              <Plus className="w-4 h-4 stroke-[2.5]" />
+                            </button>
+                          </div>
+                        </>
                       )}
 
                       {/* WhatsApp Swipe to Reply Indicator */}
@@ -5831,12 +5844,6 @@ export default function TexAppBatchChat({
                           : "bg-white text-gray-900 border-gray-200/80 dark:bg-[#18150f] dark:text-[#f4ead2] dark:border-[#3a3020]/80 rounded-tl-none"
                       }`}
                     >
-                      {/* WhatsApp Double-Tap Quick Heart Animation Pop */}
-                      {doubleTapHeartMsgId === msg.id && (
-                        <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-40 animate-scaleUp">
-                          <span className="text-3xl sm:text-4xl drop-shadow-md animate-bounce">❤️</span>
-                        </div>
-                      )}
                       {/* WhatsApp Bubble Tail ("Choch" - Left pointing for incoming, Right pointing for outgoing) */}
                       {isMine ? (
                         <svg
@@ -5876,7 +5883,7 @@ export default function TexAppBatchChat({
                               e.stopPropagation();
                               handleOpenDropdown(msg, e.currentTarget);
                             }}
-                            className="p-0.5 rounded opacity-0 group-hover/msg:opacity-100 text-gray-400 hover:text-gray-700 dark:hover:text-white transition cursor-pointer -mr-0.5"
+                            className="p-0.5 rounded opacity-0 pointer-events-none group-hover/msg:opacity-100 group-hover/msg:pointer-events-auto text-gray-400 hover:text-gray-700 dark:hover:text-white transition cursor-pointer -mr-0.5"
                             aria-label="Message options"
                           >
                             <ChevronDown className="w-3.5 h-3.5 stroke-[2.5]" />
@@ -6430,7 +6437,7 @@ export default function TexAppBatchChat({
                                   e.stopPropagation();
                                   handleOpenDropdown(msg, e.currentTarget);
                                 }}
-                                className="p-0.5 rounded opacity-0 group-hover/msg:opacity-100 text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white transition cursor-pointer -mr-1"
+                                className="p-0.5 rounded opacity-0 pointer-events-none group-hover/msg:opacity-100 group-hover/msg:pointer-events-auto text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white transition cursor-pointer -mr-1"
                               >
                                 <ChevronDown className="w-3.5 h-3.5 stroke-[2.5]" />
                               </button>
@@ -9909,6 +9916,8 @@ export default function TexAppBatchChat({
           WHATSAPP MESSAGE INFO MODAL (Sent by, Sent at, Status & Group Delivery/Read Details)
           ========================================================================= */}
       {messageInfoModal && (() => {
+        const isSender = messageInfoModal.sender_id === currentUser?.id || messageInfoModal.is_mine;
+        if (!isSender) return null;
         const isGroup = mode === "batch" || Boolean(batch?.id);
         const receipts = messageInfoModal.receipts || {};
         const infoSender =
@@ -9919,8 +9928,29 @@ export default function TexAppBatchChat({
           {};
 
         const sentTime = formatFullDateTime(messageInfoModal.created_at);
-        const defaultDeliveredTime = messageInfoModal.delivered_at ? formatFullDateTime(messageInfoModal.delivered_at) : null;
-        const defaultReadTime = messageInfoModal.read_at ? formatFullDateTime(messageInfoModal.read_at) : null;
+        let rawDeliveredAt = messageInfoModal.delivered_at;
+        let rawReadAt = messageInfoModal.read_at;
+        if (rawDeliveredAt && rawReadAt && rawDeliveredAt === rawReadAt) {
+          const sentMs = new Date(messageInfoModal.created_at || 0).getTime();
+          const readMs = new Date(rawReadAt).getTime();
+          if (!Number.isNaN(sentMs) && readMs - sentMs > 2000) {
+            rawDeliveredAt = new Date(sentMs + 1000).toISOString();
+          } else if (!Number.isNaN(readMs)) {
+            rawDeliveredAt = new Date(readMs - 3500).toISOString();
+          }
+        }
+        const defaultDeliveredTime = rawDeliveredAt ? formatFullDateTime(rawDeliveredAt) : null;
+        const defaultReadTime = rawReadAt ? formatFullDateTime(rawReadAt) : null;
+
+        const contactReceipt = receipts[contact?.id] || {};
+        let contactDeliveredAt = contactReceipt.delivered_at || rawDeliveredAt;
+        let contactReadAt = contactReceipt.read_at || rawReadAt;
+        if (contactDeliveredAt && contactReadAt && contactDeliveredAt === contactReadAt) {
+          const cReadMs = new Date(contactReadAt).getTime();
+          if (!Number.isNaN(cReadMs)) {
+            contactDeliveredAt = new Date(cReadMs - 3500).toISOString();
+          }
+        }
 
         // Target members who receive this message (excluding sender)
         const recipientMembers = isGroup
@@ -9930,12 +9960,12 @@ export default function TexAppBatchChat({
         // Read members: ONLY members who actually have their own read_at timestamp!
         const readMembers = isGroup
           ? recipientMembers.filter((m) => Boolean(receipts[m.id]?.read_at))
-          : (messageInfoModal.read_at || receipts[contact?.id]?.read_at ? recipientMembers : []);
+          : (contactReadAt ? recipientMembers : []);
 
         // Delivered members: ONLY members who actually have their own delivered_at or read_at timestamp!
         const deliveredMembers = isGroup
           ? recipientMembers.filter((m) => Boolean(receipts[m.id]?.delivered_at || receipts[m.id]?.read_at))
-          : (messageInfoModal.delivered_at || receipts[contact?.id]?.delivered_at ? recipientMembers : []);
+          : (contactDeliveredAt ? recipientMembers : []);
 
         // Pending members: Members who haven't yet received delivery
         const pendingMembers = isGroup
@@ -10203,7 +10233,7 @@ export default function TexAppBatchChat({
                         </div>
                       </div>
                       <div className="text-xs font-mono text-red-600 dark:text-red-400 font-semibold">
-                        {readMembers.length > 0 ? (receipts[contact?.id]?.read_at ? formatFullDateTime(receipts[contact?.id].read_at) : (defaultReadTime || "Read")) : "Not read yet"}
+                        {readMembers.length > 0 ? (contactReadAt ? formatFullDateTime(contactReadAt) : (defaultReadTime || "Read")) : "Not read yet"}
                       </div>
                     </div>
 
@@ -10217,7 +10247,7 @@ export default function TexAppBatchChat({
                         </div>
                       </div>
                       <div className="text-xs font-mono text-gray-600 dark:text-gray-400 font-semibold">
-                        {deliveredMembers.length > 0 ? (receipts[contact?.id]?.delivered_at ? formatFullDateTime(receipts[contact?.id].delivered_at) : (defaultDeliveredTime || "Delivered")) : "Not delivered yet"}
+                        {deliveredMembers.length > 0 ? (contactDeliveredAt ? formatFullDateTime(contactDeliveredAt) : (defaultDeliveredTime || "Delivered")) : "Not delivered yet"}
                       </div>
                     </div>
                   </div>

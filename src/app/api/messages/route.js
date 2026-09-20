@@ -174,6 +174,8 @@ export async function POST(request) {
     const hasAttachment = Boolean(body.attachment_url || body.attachment_name || body.attachment_type);
     if (!message && !hasAttachment) return NextResponse.json({ error: "Message is required." }, { status: 400 });
 
+    const isReceiverOnline = Boolean(body.is_receiver_online);
+    const now = new Date().toISOString();
     const { data, error } = await admin
       .from("messages")
       .insert([{
@@ -184,6 +186,7 @@ export async function POST(request) {
         attachment_name: cleanText(body.attachment_name, 200) || null,
         attachment_type: cleanText(body.attachment_type, 80) || null,
         reply_to_id: body.reply_to_id || null,
+        delivered_at: isReceiverOnline ? now : (body.delivered_at || null),
       }])
       .select("*")
       .single();
@@ -210,12 +213,22 @@ export async function POST(request) {
     const senderId = cleanText(body.sender_id, 80);
     if (!senderId) return NextResponse.json({ error: "Sender id is required." }, { status: 400 });
     const now = new Date().toISOString();
+
+    // 1. Mark unread messages as read (PRESERVE existing delivered_at so delivered and read are never the same!)
     const { error } = await admin
       .from("messages")
-      .update({ is_read: true, read_at: now, delivered_at: now })
+      .update({ is_read: true, read_at: now })
       .eq("sender_id", senderId)
       .eq("receiver_id", requester.user.id)
       .eq("is_read", false);
+
+    // 2. Only if delivered_at was null (offline receiver who just opened chat), set delivered_at to 3 seconds prior so timestamps never collide
+    await admin
+      .from("messages")
+      .update({ delivered_at: new Date(Date.now() - 3000).toISOString() })
+      .eq("sender_id", senderId)
+      .eq("receiver_id", requester.user.id)
+      .is("delivered_at", null);
 
     if (error) return NextResponse.json({ error: error.message || "Failed to mark messages read." }, { status: 400 });
     return NextResponse.json({ success: true, read_at: now });

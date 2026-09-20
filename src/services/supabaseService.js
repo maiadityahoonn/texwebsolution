@@ -1118,6 +1118,7 @@ async function sendRealtimeMessageViaRls(messageData, fallbackReason = "") {
       attachment_name: messageData.attachment_name || null,
       attachment_type: messageData.attachment_type || null,
       reply_to_id: messageData.reply_to_id || null,
+      delivered_at: messageData.is_receiver_online ? new Date().toISOString() : (messageData.delivered_at || null),
     }])
     .select('*')
     .single();
