@@ -1696,6 +1696,12 @@ export default function TexAppBatchChat({
     setMediaPickerTab("emoji");
     setShowEmojiPicker(true);
     setShowAttachmentTray(false);
+    setTimeout(() => {
+      const el = document.getElementById(`msg-${msg.id}`);
+      if (el && chatScrollRef.current) {
+        el.scrollIntoView({ behavior: "smooth", block: "center" });
+      }
+    }, 120);
   };
 
   // WhatsApp Message Selection, Delete & Forward States
@@ -1820,7 +1826,7 @@ export default function TexAppBatchChat({
       Boolean(msg.is_deleted);
 
     const menuWidth = 268;
-    const menuHeight = isDeletedForAll ? 95 : 345;
+    const menuHeight = isDeletedForAll ? 95 : 420;
 
     const spaceBelow = containerRect.bottom - triggerRect.bottom;
     const spaceAbove = triggerRect.top - containerRect.top;
@@ -1870,12 +1876,48 @@ export default function TexAppBatchChat({
   };
 
   // =========================================================================
-  // MOBILE TOUCH GESTURES (WhatsApp Swipe to Reply & Long-Press Quick Reactions)
+  // MOBILE TOUCH & DESKTOP GESTURES (WhatsApp Swipe to Reply, Double Press React & Hold Model List)
   // =========================================================================
   const [swipeState, setSwipeState] = useState({ msgId: null, offset: 0 });
   const touchCoordsRef = useRef({ x: 0, y: 0, time: 0 });
   const longPressTimerRef = useRef(null);
+  const didLongPressRef = useRef(false);
   const isDraggingSwipeRef = useRef(false);
+
+  // Desktop mouse press-and-hold timer (hold press opens model list)
+  const mousePressTimerRef = useRef(null);
+  const mouseDownCoordsRef = useRef({ x: 0, y: 0 });
+
+  const handleMessageMouseDown = (e, msg, bubbleElem) => {
+    if (isSelectionMode) return;
+    if (e.button !== 0) return; // Only left-click
+    mouseDownCoordsRef.current = { x: e.clientX, y: e.clientY };
+    if (mousePressTimerRef.current) clearTimeout(mousePressTimerRef.current);
+    mousePressTimerRef.current = setTimeout(() => {
+      const selection = window.getSelection();
+      if (selection && selection.toString().trim().length > 0) return;
+      if (bubbleElem) {
+        handleOpenDropdown(msg, bubbleElem);
+      }
+    }, 420);
+  };
+
+  const handleMessageMouseMove = (e) => {
+    if (!mousePressTimerRef.current) return;
+    const diffX = Math.abs(e.clientX - mouseDownCoordsRef.current.x);
+    const diffY = Math.abs(e.clientY - mouseDownCoordsRef.current.y);
+    if (diffX > 8 || diffY > 8) {
+      clearTimeout(mousePressTimerRef.current);
+      mousePressTimerRef.current = null;
+    }
+  };
+
+  const handleMessageMouseUp = () => {
+    if (mousePressTimerRef.current) {
+      clearTimeout(mousePressTimerRef.current);
+      mousePressTimerRef.current = null;
+    }
+  };
 
   const handleMessageTouchStart = (e, msg, bubbleElem) => {
     if (isSelectionMode) return;
@@ -1883,10 +1925,12 @@ export default function TexAppBatchChat({
     const touch = e.touches[0];
     touchCoordsRef.current = { x: touch.clientX, y: touch.clientY, time: Date.now() };
     isDraggingSwipeRef.current = false;
+    didLongPressRef.current = false;
 
     // 420ms long-press hold for WhatsApp quick reactions & context menu
     if (longPressTimerRef.current) clearTimeout(longPressTimerRef.current);
     longPressTimerRef.current = setTimeout(() => {
+      didLongPressRef.current = true;
       try {
         if (typeof window !== "undefined" && navigator.vibrate) {
           navigator.vibrate(30);
@@ -1932,6 +1976,13 @@ export default function TexAppBatchChat({
     if (longPressTimerRef.current) {
       clearTimeout(longPressTimerRef.current);
       longPressTimerRef.current = null;
+    }
+
+    if (didLongPressRef.current) {
+      didLongPressRef.current = false;
+      setSwipeState({ msgId: null, offset: 0 });
+      isDraggingSwipeRef.current = false;
+      return;
     }
 
     if (swipeState.msgId === msg.id && swipeState.offset >= 45) {
@@ -3885,54 +3936,32 @@ export default function TexAppBatchChat({
     const myReaction = msgReactions.find((r) => r.sender_id === currentUser?.id);
 
     return (
-      <div
-        data-dropdown-menu="true"
-        onClick={(e) => e.stopPropagation()}
-        onContextMenu={(e) => e.stopPropagation()}
-        style={{
-          position: "fixed",
-          top: `${dropdownMenuState.top}px`,
-          left: `${dropdownMenuState.left}px`,
-          zIndex: 9999,
-        }}
-        className={`w-[268px] rounded-2xl bg-white dark:bg-[#18150f] border border-gray-200/90 dark:border-[#3a3020] shadow-2xl animate-scaleUp select-none text-left overflow-hidden divide-y divide-gray-100 dark:divide-[#3a3020]/70 ${dropdownMenuState.originClass}`}
-      >
-        {isDeletedForAll ? (
-          <div className="p-1 space-y-0.5">
-            {/* Select */}
-            <button
-              type="button"
-              onClick={() => {
-                setSelectedMsgIds(new Set([msg.id]));
-                setIsSelectionMode(true);
-                closeDropdown();
-              }}
-              className="w-full flex items-center gap-3 px-3 py-2 rounded-xl hover:text-red-600 dark:hover:text-red-400 transition text-left cursor-pointer text-xs sm:text-sm font-semibold text-gray-800 dark:text-gray-100"
-            >
-              <CheckSquare className="w-4 h-4 text-gray-500 dark:text-gray-400 shrink-0" />
-              <span>Select</span>
-            </button>
+      <>
+        {/* WhatsApp-style backdrop overlay to dismiss on outside tap and focus on target message */}
+        <div
+          className="fixed inset-0 z-[9990] bg-black/20 dark:bg-black/45 backdrop-blur-[0.5px] transition-opacity animate-fadeIn select-none"
+          onClick={closeDropdown}
+          onContextMenu={(e) => {
+            e.preventDefault();
+            closeDropdown();
+          }}
+        />
 
-            {/* Delete */}
-            <button
-              type="button"
-              onClick={() => {
-                setSelectedMsgIds(new Set());
-                setIsSelectionMode(false);
-                setDeleteTargetMessages([msg]);
-                setDeleteModalOpen(true);
-                closeDropdown();
-              }}
-              className="w-full flex items-center gap-3 px-3 py-2 rounded-xl hover:bg-red-50 dark:hover:bg-red-950/40 text-red-600 dark:text-red-400 transition text-left cursor-pointer text-xs sm:text-sm font-semibold"
-            >
-              <Trash2 className="w-4 h-4 shrink-0" />
-              <span>Delete</span>
-            </button>
-          </div>
-        ) : (
-          <>
-            {/* 1. Quick Reactions Strip (WhatsApp Context Menu Header with Apple Emoji) */}
-            <div className="px-2.5 py-2 flex items-center justify-between gap-0.5 bg-gray-50/70 dark:bg-slate-800/40">
+        <div
+          data-dropdown-menu="true"
+          onClick={(e) => e.stopPropagation()}
+          onContextMenu={(e) => e.stopPropagation()}
+          style={{
+            position: "fixed",
+            top: `${dropdownMenuState.top}px`,
+            left: `${dropdownMenuState.left}px`,
+            zIndex: 9999,
+          }}
+          className={`w-[268px] flex flex-col gap-2 select-none text-left animate-scaleUp ${dropdownMenuState.originClass}`}
+        >
+          {/* 1. Floating WhatsApp Reaction Pill (Matches user sample screenshots exactly) */}
+          {!isDeletedForAll && (
+            <div className="w-full flex items-center justify-between px-3 py-1.5 rounded-full bg-white dark:bg-[#18150f] border border-gray-200/90 dark:border-[#3a3020] shadow-xl backdrop-blur-md">
               {["👍", "❤️", "😂", "😮", "😢", "🙏"].map((emoji) => {
                 const isSelected = myReaction?.emoji === emoji;
                 return (
@@ -3944,12 +3973,12 @@ export default function TexAppBatchChat({
                       handleSendReaction(msg, emoji);
                       closeDropdown();
                     }}
-                    className={`w-7.5 h-7.5 rounded-full flex items-center justify-center hover:scale-125 transition-transform cursor-pointer shrink-0 ${
-                      isSelected ? "bg-black/10 dark:bg-white/20 scale-110 ring-1 ring-red-500" : ""
+                    className={`w-7.5 h-7.5 rounded-full flex items-center justify-center hover:scale-125 active:scale-95 transition-transform cursor-pointer shrink-0 ${
+                      isSelected ? "bg-red-50 dark:bg-red-950/50 scale-110 ring-1 ring-red-500" : ""
                     }`}
                     aria-label={`React ${emoji}`}
                   >
-                    <AppleEmoji emoji={emoji} size={21} />
+                    <AppleEmoji emoji={emoji} size={22} />
                   </button>
                 );
               })}
@@ -3959,202 +3988,235 @@ export default function TexAppBatchChat({
                   e.stopPropagation();
                   handleOpenReactionInChatboxPicker(msg);
                 }}
-                className="w-7 h-7 rounded-full flex items-center justify-center hover:scale-110 text-gray-500 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white cursor-pointer transition shrink-0 ml-0.5"
+                className="w-6.5 h-6.5 rounded-full flex items-center justify-center bg-gray-100 dark:bg-[#252017] hover:bg-gray-200 dark:hover:bg-[#332b20] text-gray-600 dark:text-gray-300 hover:scale-110 cursor-pointer transition shrink-0 ml-0.5 shadow-2xs"
                 aria-label="More reactions"
               >
-                <Plus className="w-4 h-4 stroke-[2.5]" />
+                <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
               </button>
             </div>
+          )}
 
-            {/* 2. Menu Actions List */}
-            <div className="p-1 space-y-0.5">
-              {/* Retry failed local sends */}
-              {msg.send_failed && onRetryMessage && (
-                <button
-                  type="button"
-                  onClick={() => handleRetryFailedMessage(msg)}
-                  className="w-full flex items-center gap-3 px-3 py-2 rounded-xl hover:bg-red-50 dark:hover:bg-red-950/40 transition text-left cursor-pointer text-xs sm:text-sm font-semibold text-red-600 dark:text-red-400"
-                >
-                  <RotateCcw className="w-4 h-4 shrink-0" />
-                  <span>Retry send</span>
-                </button>
-              )}
-
-              {/* Message info (Only for sender of message, exactly like WhatsApp) */}
-              {isMine && (
+          {/* 2. WhatsApp Model List (Action Menu Card) */}
+          <div className="w-full rounded-2xl bg-white dark:bg-[#18150f] border border-gray-200/90 dark:border-[#3a3020] shadow-2xl overflow-hidden divide-y divide-gray-100 dark:divide-[#3a3020]/70">
+            {isDeletedForAll ? (
+              <div className="p-1 space-y-0.5">
+                {/* Select */}
                 <button
                   type="button"
                   onClick={() => {
-                    setMessageInfoModal(msg);
+                    setSelectedMsgIds(new Set([msg.id]));
+                    setIsSelectionMode(true);
                     closeDropdown();
                   }}
                   className="w-full flex items-center gap-3 px-3 py-2 rounded-xl hover:text-red-600 dark:hover:text-red-400 transition text-left cursor-pointer text-xs sm:text-sm font-semibold text-gray-800 dark:text-gray-100"
                 >
-                  <Info className="w-4 h-4 text-gray-500 dark:text-gray-400 shrink-0" />
-                  <span>Message info</span>
+                  <CheckSquare className="w-4 h-4 text-gray-500 dark:text-gray-400 shrink-0" />
+                  <span>Select</span>
                 </button>
-              )}
 
-              {/* View votes (For Polls) */}
-              {msg.attachment_type === "poll" && (
+                {/* Delete */}
                 <button
                   type="button"
                   onClick={() => {
-                    setPollDetailsModal(msg);
+                    setSelectedMsgIds(new Set());
+                    setIsSelectionMode(false);
+                    setDeleteTargetMessages([msg]);
+                    setDeleteModalOpen(true);
                     closeDropdown();
                   }}
-                  className="w-full flex items-center gap-3 px-3 py-2 rounded-xl hover:text-red-600 dark:hover:text-red-400 transition text-left cursor-pointer text-xs sm:text-sm font-semibold text-gray-800 dark:text-gray-100"
+                  className="w-full flex items-center gap-3 px-3 py-2 rounded-xl hover:bg-red-50 dark:hover:bg-red-950/40 text-red-600 dark:text-red-400 transition text-left cursor-pointer text-xs sm:text-sm font-semibold"
                 >
-                  <BarChart2 className="w-4 h-4 text-red-600 dark:text-red-400 shrink-0" />
-                  <span>View votes</span>
+                  <Trash2 className="w-4 h-4 shrink-0" />
+                  <span>Delete</span>
                 </button>
-              )}
-
-              {/* Reply */}
-              <button
-                type="button"
-                onClick={() => {
-                  setReplyingTo(msg);
-                  closeDropdown();
-                  getActiveComposerElement()?.focus();
-                }}
-                className="w-full flex items-center gap-3 px-3 py-2 rounded-xl hover:text-red-600 dark:hover:text-red-400 transition text-left cursor-pointer text-xs sm:text-sm font-semibold text-gray-800 dark:text-gray-100"
-              >
-                <Reply className="w-4 h-4 text-gray-500 dark:text-gray-400 shrink-0" />
-                <span>Reply</span>
-              </button>
-
-              {/* Copy */}
-              <button
-                type="button"
-                onClick={() => {
-                  handleCopyMessage(msg);
-                  closeDropdown();
-                }}
-                className="w-full flex items-center gap-3 px-3 py-2 rounded-xl hover:text-red-600 dark:hover:text-red-400 transition text-left cursor-pointer text-xs sm:text-sm font-semibold text-gray-800 dark:text-gray-100"
-              >
-                {copiedId === msg.id ? (
-                  <Check className="w-4 h-4 text-red-600 shrink-0" />
-                ) : (
-                  <Copy className="w-4 h-4 text-gray-500 dark:text-gray-400 shrink-0" />
+              </div>
+            ) : (
+              <div className="p-1 space-y-0.5">
+                {/* Retry failed local sends */}
+                {msg.send_failed && onRetryMessage && (
+                  <button
+                    type="button"
+                    onClick={() => handleRetryFailedMessage(msg)}
+                    className="w-full flex items-center gap-3 px-3 py-2 rounded-xl hover:bg-red-50 dark:hover:bg-red-950/40 transition text-left cursor-pointer text-xs sm:text-sm font-semibold text-red-600 dark:text-red-400"
+                  >
+                    <RotateCcw className="w-4 h-4 shrink-0" />
+                    <span>Retry send</span>
+                  </button>
                 )}
-                <span>Copy</span>
-              </button>
 
-              {/* Edit */}
-              {canEditMessage(msg) && onEditMessage && (
+                {/* Message info (Only for sender of message, exactly like WhatsApp) */}
+                {isMine && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMessageInfoModal(msg);
+                      closeDropdown();
+                    }}
+                    className="w-full flex items-center gap-3 px-3 py-2 rounded-xl hover:text-red-600 dark:hover:text-red-400 transition text-left cursor-pointer text-xs sm:text-sm font-semibold text-gray-800 dark:text-gray-100"
+                  >
+                    <Info className="w-4 h-4 text-gray-500 dark:text-gray-400 shrink-0" />
+                    <span>Message info</span>
+                  </button>
+                )}
+
+                {/* View votes (For Polls) */}
+                {msg.attachment_type === "poll" && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setPollDetailsModal(msg);
+                      closeDropdown();
+                    }}
+                    className="w-full flex items-center gap-3 px-3 py-2 rounded-xl hover:text-red-600 dark:hover:text-red-400 transition text-left cursor-pointer text-xs sm:text-sm font-semibold text-gray-800 dark:text-gray-100"
+                  >
+                    <BarChart2 className="w-4 h-4 text-red-600 dark:text-red-400 shrink-0" />
+                    <span>View votes</span>
+                  </button>
+                )}
+
+                {/* Reply */}
                 <button
                   type="button"
                   onClick={() => {
-                    handleStartEdit(msg);
+                    setReplyingTo(msg);
+                    closeDropdown();
+                    getActiveComposerElement()?.focus();
+                  }}
+                  className="w-full flex items-center gap-3 px-3 py-2 rounded-xl hover:text-red-600 dark:hover:text-red-400 transition text-left cursor-pointer text-xs sm:text-sm font-semibold text-gray-800 dark:text-gray-100"
+                >
+                  <Reply className="w-4 h-4 text-gray-500 dark:text-gray-400 shrink-0" />
+                  <span>Reply</span>
+                </button>
+
+                {/* Copy */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    handleCopyMessage(msg);
                     closeDropdown();
                   }}
                   className="w-full flex items-center gap-3 px-3 py-2 rounded-xl hover:text-red-600 dark:hover:text-red-400 transition text-left cursor-pointer text-xs sm:text-sm font-semibold text-gray-800 dark:text-gray-100"
                 >
-                  <Pencil className="w-4 h-4 text-gray-500 dark:text-gray-400 shrink-0" />
-                  <span>Edit message</span>
+                  {copiedId === msg.id ? (
+                    <Check className="w-4 h-4 text-red-600 shrink-0" />
+                  ) : (
+                    <Copy className="w-4 h-4 text-gray-500 dark:text-gray-400 shrink-0" />
+                  )}
+                  <span>Copy</span>
                 </button>
-              )}
 
-              {/* Forward */}
-              <button
-                type="button"
-                onClick={() => {
-                  if (msg.send_failed || isMessageHiddenFromSharedTabs(msg)) {
-                    showToast("This message cannot be forwarded.");
-                    closeDropdown();
-                    return;
-                  }
-                  setForwardTargetMessages([msg]);
-                  setSelectedForwardTargets(new Set());
-                  setForwardModalOpen(true);
-                  closeDropdown();
-                }}
-                className="w-full flex items-center gap-3 px-3 py-2 rounded-xl hover:text-red-600 dark:hover:text-red-400 transition text-left cursor-pointer text-xs sm:text-sm font-semibold text-gray-800 dark:text-gray-100"
-              >
-                <Forward className="w-4 h-4 text-gray-500 dark:text-gray-400 shrink-0" />
-                <span>Forward</span>
-              </button>
+                {/* Edit */}
+                {canEditMessage(msg) && onEditMessage && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      handleStartEdit(msg);
+                      closeDropdown();
+                    }}
+                    className="w-full flex items-center gap-3 px-3 py-2 rounded-xl hover:text-red-600 dark:hover:text-red-400 transition text-left cursor-pointer text-xs sm:text-sm font-semibold text-gray-800 dark:text-gray-100"
+                  >
+                    <Pencil className="w-4 h-4 text-gray-500 dark:text-gray-400 shrink-0" />
+                    <span>Edit message</span>
+                  </button>
+                )}
 
-              {/* Pin / Unpin */}
-              {onPinMessage && canPinMessage(msg) && (
+                {/* Forward */}
                 <button
                   type="button"
                   onClick={() => {
-                    onPinMessage(msg.id, !msg.is_pinned);
-                    closeDropdown();
-                  }}
-                  className="w-full flex items-center gap-3 px-3 py-2 rounded-xl hover:text-amber-500 transition text-left cursor-pointer text-xs sm:text-sm font-semibold text-amber-600 dark:text-amber-400"
-                >
-                  <Pin className="w-4 h-4 shrink-0" />
-                  <span>{msg.is_pinned ? "Unpin message" : "Pin message"}</span>
-                </button>
-              )}
-
-              {/* Star / Unstar */}
-              <button
-                type="button"
-                onClick={() => {
-                  handleToggleStar(msg.id);
-                  closeDropdown();
-                }}
-                className="w-full flex items-center gap-3 px-3 py-2 rounded-xl hover:text-amber-500 transition text-left cursor-pointer text-xs sm:text-sm font-semibold text-gray-800 dark:text-gray-100"
-              >
-                <Star className={`w-4 h-4 shrink-0 ${isStarred ? "fill-amber-400 text-amber-400" : "text-gray-500 dark:text-gray-400"}`} />
-                <span>{isStarred ? "Unstar" : "Star"}</span>
-              </button>
-            </div>
-
-            {/* 3. Selection & Deletion Actions */}
-            <div className="p-1 space-y-0.5">
-              {/* Select */}
-              <button
-                type="button"
-                onClick={() => {
-                  setSelectedMsgIds(new Set([msg.id]));
-                  setIsSelectionMode(true);
-                  closeDropdown();
-                }}
-                className="w-full flex items-center gap-3 px-3 py-2 rounded-xl hover:text-red-500 transition text-left cursor-pointer text-xs sm:text-sm font-semibold text-red-600 dark:text-red-400"
-              >
-                <CheckSquare className="w-4 h-4 shrink-0" />
-                <span>Select</span>
-              </button>
-
-              {/* Save as (Download Attachment) */}
-              {Boolean(msg.attachment_url) && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    handleDownloadAttachment(msg);
+                    if (msg.send_failed || isMessageHiddenFromSharedTabs(msg)) {
+                      showToast("This message cannot be forwarded.");
+                      closeDropdown();
+                      return;
+                    }
+                    setForwardTargetMessages([msg]);
+                    setSelectedForwardTargets(new Set());
+                    setForwardModalOpen(true);
                     closeDropdown();
                   }}
                   className="w-full flex items-center gap-3 px-3 py-2 rounded-xl hover:text-red-600 dark:hover:text-red-400 transition text-left cursor-pointer text-xs sm:text-sm font-semibold text-gray-800 dark:text-gray-100"
                 >
-                  <Download className="w-4 h-4 text-gray-500 dark:text-gray-400 shrink-0" />
-                  <span>Save as</span>
+                  <Forward className="w-4 h-4 text-gray-500 dark:text-gray-400 shrink-0" />
+                  <span>Forward</span>
                 </button>
-              )}
 
-              {/* Delete */}
-              <button
-                type="button"
-                onClick={() => {
-                  setSelectedMsgIds(new Set());
-                  setIsSelectionMode(false);
-                  setDeleteTargetMessages([msg]);
-                  setDeleteModalOpen(true);
-                  closeDropdown();
-                }}
-                className="w-full flex items-center gap-3 px-3 py-2 rounded-xl hover:bg-red-50 dark:hover:bg-red-950/40 text-red-600 dark:text-red-400 transition text-left cursor-pointer text-xs sm:text-sm font-semibold"
-              >
-                <Trash2 className="w-4 h-4 shrink-0" />
-                <span>Delete</span>
-              </button>
-            </div>
-          </>
-        )}
-      </div>
+                {/* Pin / Unpin */}
+                {onPinMessage && canPinMessage(msg) && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onPinMessage(msg.id, !msg.is_pinned);
+                      closeDropdown();
+                    }}
+                    className="w-full flex items-center gap-3 px-3 py-2 rounded-xl hover:text-amber-500 transition text-left cursor-pointer text-xs sm:text-sm font-semibold text-amber-600 dark:text-amber-400"
+                  >
+                    <Pin className="w-4 h-4 shrink-0" />
+                    <span>{msg.is_pinned ? "Unpin message" : "Pin message"}</span>
+                  </button>
+                )}
+
+                {/* Star / Unstar */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    handleToggleStar(msg.id);
+                    closeDropdown();
+                  }}
+                  className="w-full flex items-center gap-3 px-3 py-2 rounded-xl hover:text-amber-500 transition text-left cursor-pointer text-xs sm:text-sm font-semibold text-gray-800 dark:text-gray-100"
+                >
+                  <Star className={`w-4 h-4 shrink-0 ${isStarred ? "fill-amber-400 text-amber-400" : "text-gray-500 dark:text-gray-400"}`} />
+                  <span>{isStarred ? "Unstar" : "Star"}</span>
+                </button>
+
+                {/* Select */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelectedMsgIds(new Set([msg.id]));
+                    setIsSelectionMode(true);
+                    closeDropdown();
+                  }}
+                  className="w-full flex items-center gap-3 px-3 py-2 rounded-xl hover:text-red-500 transition text-left cursor-pointer text-xs sm:text-sm font-semibold text-red-600 dark:text-red-400"
+                >
+                  <CheckSquare className="w-4 h-4 shrink-0" />
+                  <span>Select</span>
+                </button>
+
+                {/* Save as (Download Attachment) */}
+                {Boolean(msg.attachment_url) && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      handleDownloadAttachment(msg);
+                      closeDropdown();
+                    }}
+                    className="w-full flex items-center gap-3 px-3 py-2 rounded-xl hover:text-red-600 dark:hover:text-red-400 transition text-left cursor-pointer text-xs sm:text-sm font-semibold text-gray-800 dark:text-gray-100"
+                  >
+                    <Download className="w-4 h-4 text-gray-500 dark:text-gray-400 shrink-0" />
+                    <span>Save as</span>
+                  </button>
+                )}
+
+                {/* Delete */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelectedMsgIds(new Set());
+                    setIsSelectionMode(false);
+                    setDeleteTargetMessages([msg]);
+                    setDeleteModalOpen(true);
+                    closeDropdown();
+                  }}
+                  className="w-full flex items-center gap-3 px-3 py-2 rounded-xl hover:bg-red-50 dark:hover:bg-red-950/40 text-red-600 dark:text-red-400 transition text-left cursor-pointer text-xs sm:text-sm font-semibold"
+                >
+                  <Trash2 className="w-4 h-4 shrink-0" />
+                  <span>Delete</span>
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      </>
     );
   };
 
@@ -5142,8 +5204,9 @@ export default function TexAppBatchChat({
           WebkitOverflowScrolling: "touch",
           scrollbarWidth: "thin",
           scrollbarColor: isDark ? "rgba(255, 255, 255, 0.35) transparent" : "rgba(148, 163, 184, 0.55) transparent",
+          paddingBottom: showEmojiPicker ? "400px" : undefined,
         }}
-        className="texapp-message-scroll flex-1 min-h-0 p-3 sm:p-4 space-y-1 sm:space-y-1.5 relative z-10"
+        className="texapp-message-scroll flex-1 min-h-0 p-3 sm:p-4 space-y-1 sm:space-y-1.5 relative z-10 transition-[padding] duration-200"
       >
 
         {filteredMessages.length === 0 ? (
@@ -5368,11 +5431,14 @@ export default function TexAppBatchChat({
                           const chevronBtn = e.currentTarget.querySelector('[data-dropdown-trigger="true"]') || e.currentTarget;
                           handleOpenDropdown(msg, chevronBtn);
                         }}
+                        onMouseDown={(e) => handleMessageMouseDown(e, msg, e.currentTarget)}
+                        onMouseMove={handleMessageMouseMove}
+                        onMouseUp={handleMessageMouseUp}
                         onDoubleClick={(e) => {
                           e.stopPropagation();
-                          setReplyingTo(msg);
-                          const el = getActiveComposerElement();
-                          if (el) el.focus();
+                          handleSendReaction(msg, "❤️");
+                          setDoubleTapHeartMsgId(msg.id);
+                          setTimeout(() => setDoubleTapHeartMsgId(null), 850);
                         }}
                       className={`rounded-2xl ${
                         isDocAttachment && !msg.message && !replyMsg && !msg.is_pinned
@@ -5392,6 +5458,8 @@ export default function TexAppBatchChat({
                         activeDropdownMsgId === msg.id ? "z-40" : ""
                       } ${
                         isMsgSelected ? "ring-2 ring-red-500 ring-offset-2 dark:ring-offset-[#100f0b]" : ""
+                      } ${
+                        reactionTargetMessage?.id === msg.id ? "ring-2 ring-red-500 ring-offset-2 dark:ring-offset-[#100f0b] shadow-xl scale-[1.01] z-30" : ""
                       } ${
                         isMine
                           ? "bg-red-50 text-gray-900 border-red-200/80 dark:bg-[#3a1715] dark:text-[#f4ead2] dark:border-[#5b241f] rounded-tr-none"
@@ -6187,7 +6255,7 @@ export default function TexAppBatchChat({
         <>
           {/* Mobile Backdrop to tap out and close sheet */}
           <div
-            className="fixed inset-0 z-40 bg-black/25 sm:hidden backdrop-blur-2xs transition-opacity"
+            className="fixed inset-0 z-40 bg-black/15 sm:hidden transition-opacity"
             onClick={() => {
               setShowEmojiPicker(false);
               setReactionTargetMessage(null);
@@ -6200,28 +6268,11 @@ export default function TexAppBatchChat({
           >
             {/* Mobile Top Drag Handle Bar */}
             <div className="pt-2 pb-0.5 flex justify-center sm:hidden shrink-0">
-              <div className="w-10 h-1 rounded-full bg-gray-300 dark:bg-stone-700" />
+              <div className="w-10 h-1 rounded-full bg-gray-300 dark:bg-stone-600" />
             </div>
 
-            {/* Reaction Banner if opened from '+' button to react to a message */}
-            {reactionTargetMessage && (
-              <div className="px-3.5 py-2 bg-red-50 dark:bg-red-950/60 border-b border-red-200 dark:border-red-800/60 flex items-center justify-between text-xs text-red-800 dark:text-red-200 shrink-0">
-                <span className="font-semibold truncate">
-                  React to {reactionTargetMessage.sender?.full_name || "message"}
-                </span>
-                <button
-                  type="button"
-                  onClick={() => setReactionTargetMessage(null)}
-                  className="p-0.5 rounded-full text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-white cursor-pointer transition"
-                  title="Cancel reaction"
-                >
-                  <X className="w-3.5 h-3.5" />
-                </button>
-              </div>
-            )}
-
-            {/* WhatsApp Mobile Top Action Strip: [ 🔍 Search | [ 😃 | GIF | 🏷️ ] | ⌫ Backspace ] */}
-            <div className="pt-1.5 pb-2 px-3 sm:px-4 flex items-center justify-between border-b border-gray-100 dark:border-[#3a3020]/60 shrink-0">
+            {/* WhatsApp Mobile Top Action Strip: [ 🔍 Search | [ 😃 | GIF | 🏷️ ] | ⌫ Backspace / ✕ Close ] */}
+            <div className="pt-1 pb-2 px-3 sm:px-4 flex items-center justify-between border-b border-gray-100 dark:border-[#3a3020]/60 shrink-0">
               {/* Left: Search Toggle Icon Button */}
               <button
                 type="button"
@@ -6290,20 +6341,35 @@ export default function TexAppBatchChat({
                 </button>
               </div>
 
-              {/* Right: Backspace / Delete Button */}
-              <button
-                type="button"
-                onClick={handleComposerBackspace}
-                className="p-2 rounded-full text-gray-500 hover:text-red-600 dark:text-stone-400 dark:hover:text-red-400 transition cursor-pointer active:scale-90"
-                aria-label="Delete last character"
-                title="Backspace"
-              >
-                <svg viewBox="0 0 24 24" className="w-5 h-5 stroke-[1.9]" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M21 4H8l-7 8 7 8h13a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2z" />
-                  <line x1="18" y1="9" x2="12" y2="15" />
-                  <line x1="12" y1="9" x2="18" y2="15" />
-                </svg>
-              </button>
+              {/* Right: Backspace or Close Button */}
+              {reactionTargetMessage ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowEmojiPicker(false);
+                    setReactionTargetMessage(null);
+                  }}
+                  className="p-2 rounded-full text-gray-500 hover:text-red-600 dark:text-stone-400 dark:hover:text-red-400 transition cursor-pointer"
+                  aria-label="Close"
+                  title="Close"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={handleComposerBackspace}
+                  className="p-2 rounded-full text-gray-500 hover:text-red-600 dark:text-stone-400 dark:hover:text-red-400 transition cursor-pointer active:scale-90"
+                  aria-label="Delete last character"
+                  title="Backspace"
+                >
+                  <svg viewBox="0 0 24 24" className="w-5 h-5 stroke-[1.9]" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M21 4H8l-7 8 7 8h13a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2z" />
+                    <line x1="18" y1="9" x2="12" y2="15" />
+                    <line x1="12" y1="9" x2="18" y2="15" />
+                  </svg>
+                </button>
+              )}
             </div>
 
             {/* Main Content Area */}

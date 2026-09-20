@@ -1212,9 +1212,19 @@ export async function markDirectMessagesDelivered(senderId) {
 // ==========================================
 // 6B. BATCH OPERATING WORKSPACE
 // ==========================================
+let cachedAuthToken = { token: "", timestamp: 0 };
+
 async function getAuthToken() {
+  const now = Date.now();
+  if (cachedAuthToken.token && now - cachedAuthToken.timestamp < 300000) {
+    return cachedAuthToken.token;
+  }
   const { data: sessionData } = await supabase.auth.getSession();
-  return sessionData?.session?.access_token || "";
+  const token = sessionData?.session?.access_token || "";
+  if (token) {
+    cachedAuthToken = { token, timestamp: now };
+  }
+  return token;
 }
 
 function emptyBatchWorkspaceData(extra = {}) {

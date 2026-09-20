@@ -142,8 +142,6 @@ export async function GET(request) {
     return NextResponse.json({ error: "You cannot access this batch workspace." }, { status: 403 });
   }
 
-  const scope = searchParams.get("scope");
-
   if (scope === "chat") {
     let messages = await admin
       .from("batch_messages")

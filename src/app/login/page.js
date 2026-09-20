@@ -376,8 +376,7 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
       return;
     }
     setChatChannelTab("direct");
-    setSelectedContactId(userId);
-    setChatMobilePane("chat");
+    openContactChat(userId);
     selectSection("chat");
   }
 
@@ -3900,16 +3899,72 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
     }
   }, [userProfile]);
 
+  function openContactChat(contactId) {
+    if (!contactId) return;
+    chatBackSuppressAutoOpenRef.current = false;
+
+    // Instant 0ms synchronous cache hydration from memory or localStorage
+    let cached = directMessagesCacheRef.current[contactId];
+    if ((!cached || !cached.length) && typeof window !== "undefined" && sessionUser?.id) {
+      try {
+        const raw = localStorage.getItem(`texweb_dm_${sessionUser.id}_${contactId}`);
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (Array.isArray(parsed) && parsed.length) {
+            cached = parsed;
+            directMessagesCacheRef.current[contactId] = parsed;
+          }
+        }
+      } catch {}
+    }
+
+    if (cached && cached.length) {
+      setMessages(cached);
+    } else {
+      setMessages([]);
+    }
+
+    setSelectedContactId(contactId);
+    setChatMobilePane("chat");
+    loadMessages(contactId, { preserveCurrent: Boolean(cached && cached.length) });
+    markDirectChatRead(contactId);
+    markChatAsReadLocally(contactId);
+  }
+
   async function loadMessages(contactId, options = {}) {
     if (!sessionUser || !contactId) {
       setMessages([]);
       return;
     }
 
-    // Instant 0ms render from memory cache
-    const cached = directMessagesCacheRef.current[contactId];
+    // Instant 0ms render from memory cache or localStorage
+    let cached = directMessagesCacheRef.current[contactId];
+    if ((!cached || !cached.length) && typeof window !== "undefined" && sessionUser?.id) {
+      try {
+        const raw = localStorage.getItem(`texweb_dm_${sessionUser.id}_${contactId}`);
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (Array.isArray(parsed) && parsed.length) {
+            cached = parsed;
+            directMessagesCacheRef.current[contactId] = parsed;
+          }
+        }
+      } catch {}
+    }
+
     if (cached && cached.length) {
       setMessages(cached);
+      const latestCached = cached[cached.length - 1];
+      setDirectChatMeta((prev) => ({
+        ...prev,
+        [contactId]: {
+          ...(prev[contactId] || {}),
+          unreadCount: options.preserveUnread ? (prev[contactId]?.unreadCount || 0) : 0,
+          lastMessageTime: latestCached?.created_at || prev[contactId]?.lastMessageTime || 0,
+          lastMessagePreview: latestCached ? chatPreview(latestCached) : prev[contactId]?.lastMessagePreview || "",
+          lastMessageSenderId: latestCached?.sender_id || prev[contactId]?.lastMessageSenderId || "",
+        },
+      }));
     } else if (!options.preserveCurrent) {
       setMessages([]);
     }
@@ -3924,6 +3979,11 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
       if (Array.isArray(data)) {
         directMessagesCacheRef.current[contactId] = data;
         setMessages(data);
+        if (typeof window !== "undefined" && sessionUser?.id && data.length) {
+          try {
+            localStorage.setItem(`texweb_dm_${sessionUser.id}_${contactId}`, JSON.stringify(data.slice(-150)));
+          } catch {}
+        }
       }
       const latest = (data || [])[data?.length - 1];
       setDirectChatMeta((prev) => ({
@@ -3947,9 +4007,74 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
   }, [selectedContactId]);
 
   useEffect(() => {
-    if (!selectedContactId || !messages) return;
+    if (!sessionUser?.id || !selectedContactId || !messages) return;
     directMessagesCacheRef.current[selectedContactId] = messages;
-  }, [selectedContactId, messages]);
+    if (messages.length > 0 && typeof window !== "undefined") {
+      try {
+        localStorage.setItem(`texweb_dm_${sessionUser.id}_${selectedContactId}`, JSON.stringify(messages.slice(-150)));
+      } catch {}
+    }
+  }, [sessionUser?.id, selectedContactId, messages]);
+
+  // Instant 0ms local cache hydration & background pre-warming for direct chats
+  useEffect(() => {
+    if (typeof window === "undefined" || !sessionUser?.id || !chatContacts?.length) return;
+
+    // 1. Immediately hydrate memory cache for all contacts from localStorage
+    chatContacts.forEach((contact) => {
+      if (!contact?.id) return;
+      if (!directMessagesCacheRef.current[contact.id]) {
+        try {
+          const raw = localStorage.getItem(`texweb_dm_${sessionUser.id}_${contact.id}`);
+          if (raw) {
+            const parsed = JSON.parse(raw);
+            if (Array.isArray(parsed) && parsed.length) {
+              directMessagesCacheRef.current[contact.id] = parsed;
+              const latestCached = parsed[parsed.length - 1];
+              setDirectChatMeta((prev) => {
+                if (prev[contact.id]?.lastMessageTime) return prev;
+                return {
+                  ...prev,
+                  [contact.id]: {
+                    ...(prev[contact.id] || {}),
+                    unreadCount: prev[contact.id]?.unreadCount || 0,
+                    lastMessageTime: latestCached?.created_at || 0,
+                    lastMessagePreview: latestCached ? chatPreview(latestCached) : "",
+                    lastMessageSenderId: latestCached?.sender_id || "",
+                  },
+                };
+              });
+            }
+          }
+        } catch {}
+      }
+    });
+
+    // 2. Silently pre-fetch top contacts in background so fresh messages are instantly ready
+    const timer = setTimeout(() => {
+      const topContacts = chatContacts.slice(0, 6);
+      topContacts.forEach((contact) => {
+        if (!contact?.id || contact.id === sessionUser.id) return;
+        if (!directMessagesInFlightRef.current[contact.id]) {
+          directMessagesInFlightRef.current[contact.id] = getMessages(sessionUser.id, contact.id)
+            .then((data) => {
+              if (Array.isArray(data) && data.length) {
+                directMessagesCacheRef.current[contact.id] = data;
+                try {
+                  localStorage.setItem(`texweb_dm_${sessionUser.id}_${contact.id}`, JSON.stringify(data.slice(-150)));
+                } catch {}
+              }
+            })
+            .catch(() => {})
+            .finally(() => {
+              delete directMessagesInFlightRef.current[contact.id];
+            });
+        }
+      });
+    }, 1200);
+
+    return () => clearTimeout(timer);
+  }, [chatContacts, sessionUser?.id]);
 
   useEffect(() => {
     if (typeof window === "undefined") return undefined;
@@ -7356,7 +7481,7 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
                   <div className={`${chatMobilePane === "chat" ? "fixed inset-0 z-50 xl:relative xl:inset-auto xl:z-auto flex" : "hidden"} xl:flex h-full min-h-0 rounded-none sm:rounded-2xl xl:rounded-3xl overflow-hidden border-0 sm:border border-gray-200/80 dark:border-slate-800/80 flex-col relative shadow-none`}>
                     {selectedContactId && canAccessDirectChat ? (
                       (() => {
-                        const activeContact = chatContacts.find((c) => c.id === selectedContactId);
+                        const activeContact = chatContacts.find((c) => c.id === selectedContactId) || profiles.find((p) => p.id === selectedContactId);
                         if (!activeContact) {
                           return (
                             <div className="h-full flex items-center justify-center p-6 text-center text-gray-400 text-xs">
@@ -7564,13 +7689,9 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
                             setToast("Direct chat is limited to HR, Mentor, and Admin for this role.");
                             return;
                           }
-                          chatBackSuppressAutoOpenRef.current = false;
                           setActiveSection("chat");
-                          setSelectedContactId(member.id);
-                          setChatMobilePane("chat");
                           setSelectedBatchId("");
-                          loadMessages(member.id);
-                          markDirectChatRead(member.id);
+                          openContactChat(member.id);
                         } : null}
                         onUpdateBatchInfo={(updatedBatch) => {
                           setBatches((prev) => (prev || []).map((b) => (b.id === updatedBatch.id ? { ...b, ...updatedBatch } : b)));
@@ -8101,22 +8222,12 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
                                   if (e.key === "Enter" || e.key === " ") {
                                     if (e.target === e.currentTarget) {
                                       e.preventDefault();
-                                      chatBackSuppressAutoOpenRef.current = false;
-                                      setSelectedContactId(contact.id);
-                                      setChatMobilePane("chat");
-                                      loadMessages(contact.id);
-                                      markDirectChatRead(contact.id);
-                                      markChatAsReadLocally(contact.id);
+                                      openContactChat(contact.id);
                                     }
                                   }
                                 }}
                                 onClick={() => {
-                                  chatBackSuppressAutoOpenRef.current = false;
-                                  setSelectedContactId(contact.id);
-                                  setChatMobilePane("chat");
-                                  loadMessages(contact.id);
-                                  markDirectChatRead(contact.id);
-                                  markChatAsReadLocally(contact.id);
+                                  openContactChat(contact.id);
                                 }}
                                 className={`w-full flex items-center justify-between gap-3 p-3 rounded-2xl border transition-all cursor-pointer text-left group select-none ${
                                   isSelected
@@ -8516,13 +8627,9 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
                                 setToast("Direct chat is limited to HR, Mentor, and Admin for this role.");
                                 return;
                               }
-                              chatBackSuppressAutoOpenRef.current = false;
                               setActiveSection("chat");
-                              setSelectedContactId(member.id);
-                              setChatMobilePane("chat");
                               setSelectedBatchId("");
-                              loadMessages(member.id);
-                              markDirectChatRead(member.id);
+                              openContactChat(member.id);
                             } : null}
                             onUpdateBatchInfo={(updatedBatch) => {
                               setBatches((prev) => (prev || []).map((b) => (b.id === updatedBatch.id ? { ...b, ...updatedBatch } : b)));
@@ -8616,13 +8723,18 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
                                   return (
                                     <button
                                       key={contact.id}
+                                      onKeyDown={(e) => {
+                                        if (e.key === "Enter" || e.key === " ") {
+                                          if (e.target === e.currentTarget) {
+                                            e.preventDefault();
+                                            openContactChat(contact.id);
+                                            selectSection("chat");
+                                          }
+                                        }
+                                      }}
                                       onClick={() => {
-                                        chatBackSuppressAutoOpenRef.current = false;
-                                        setSelectedContactId(contact.id);
-                                        setChatMobilePane("chat");
+                                        openContactChat(contact.id);
                                         selectSection("chat");
-                                        loadMessages(contact.id);
-                                        markDirectChatRead(contact.id);
                                       }}
                                       className="w-full flex items-center justify-between gap-2 p-2.5 rounded-2xl border border-gray-200/80 dark:border-slate-800 hover:border-emerald-500 hover:bg-emerald-50/20 dark:hover:bg-slate-800/60 text-left transition cursor-pointer group"
                                     >

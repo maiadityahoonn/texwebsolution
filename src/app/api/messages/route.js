@@ -12,9 +12,18 @@ function getAdminClient() {
   return createClient(url, serviceKey, { auth: { autoRefreshToken: false, persistSession: false } });
 }
 
+const requesterCache = new Map();
+
 async function getRequester(admin, request) {
   const token = getBearerToken(request);
   if (!token) return { error: NextResponse.json({ error: "Missing authorization token." }, { status: 401 }) };
+
+  const now = Date.now();
+  const cached = requesterCache.get(token);
+  if (cached && now - cached.timestamp < 45000) {
+    return cached.data;
+  }
+
   const { data: { user }, error } = await admin.auth.getUser(token);
   if (error || !user) return { error: NextResponse.json({ error: "Invalid authorization token." }, { status: 401 }) };
   const { data: profile } = await admin
@@ -22,7 +31,14 @@ async function getRequester(admin, request) {
     .select("id, full_name, role, domain, batch_id, assigned_mentor_id, assigned_tl_id")
     .eq("id", user.id)
     .maybeSingle();
-  return { user, profile };
+
+  const data = { user, profile };
+  requesterCache.set(token, { data, timestamp: now });
+  if (requesterCache.size > 500) {
+    const oldestKey = requesterCache.keys().next().value;
+    requesterCache.delete(oldestKey);
+  }
+  return data;
 }
 
 async function canDirectMessage(admin, senderProfile, receiverProfile) {
