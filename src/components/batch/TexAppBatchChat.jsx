@@ -2441,6 +2441,13 @@ export default function TexAppBatchChat({
   }, [messages.length, contact?.id, batch?.id]);
 
   useEffect(() => {
+    const timer = setTimeout(() => {
+      scrollToBottom("smooth");
+    }, 60);
+    return () => clearTimeout(timer);
+  }, [showEmojiPicker]);
+
+  useEffect(() => {
     const timer = window.setInterval(() => setEditClock(Date.now()), 30000);
     return () => window.clearInterval(timer);
   }, []);
@@ -5204,9 +5211,8 @@ export default function TexAppBatchChat({
           WebkitOverflowScrolling: "touch",
           scrollbarWidth: "thin",
           scrollbarColor: isDark ? "rgba(255, 255, 255, 0.35) transparent" : "rgba(148, 163, 184, 0.55) transparent",
-          paddingBottom: showEmojiPicker && !reactionTargetMessage ? "390px" : undefined,
         }}
-        className="texapp-message-scroll flex-1 min-h-0 p-3 sm:p-4 space-y-1 sm:space-y-1.5 relative z-10 transition-[padding] duration-200"
+        className="texapp-message-scroll flex-1 min-h-0 p-3 sm:p-4 space-y-1 sm:space-y-1.5 relative z-10"
       >
 
         {filteredMessages.length === 0 ? (
