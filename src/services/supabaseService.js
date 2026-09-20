@@ -1114,15 +1114,48 @@ async function getAuthToken() {
   return sessionData?.session?.access_token || "";
 }
 
+function emptyBatchWorkspaceData(extra = {}) {
+  return { messages: [], announcements: [], resources: [], escalations: [], history: [], ...extra };
+}
+
+async function getBatchWorkspaceViaRls(batchId, fallbackReason = "") {
+  try {
+    const { data: messages, error: messagesError } = await supabase
+      .from("batch_messages")
+      .select("*, sender:profiles!batch_messages_sender_id_fkey(id, full_name, role, email)")
+      .eq("batch_id", batchId)
+      .order("created_at", { ascending: true })
+      .limit(200);
+
+    if (messagesError) {
+      const { data: plainMessages, error: plainError } = await supabase
+        .from("batch_messages")
+        .select("*")
+        .eq("batch_id", batchId)
+        .order("created_at", { ascending: true })
+        .limit(200);
+      if (plainError) throw plainError;
+      return emptyBatchWorkspaceData({ messages: plainMessages || [], fallback: true, fallbackReason });
+    }
+
+    return emptyBatchWorkspaceData({ messages: messages || [], fallback: true, fallbackReason });
+  } catch (err) {
+    return emptyBatchWorkspaceData({ error: err.message || fallbackReason || "Batch workspace load failed" });
+  }
+}
+
 export async function getBatchWorkspace(batchId) {
   try {
     const token = await getAuthToken();
-    if (!token || !batchId) return { messages: [], announcements: [], resources: [], escalations: [], history: [], error: !token ? "Missing auth session." : "Batch id is required." };
+    if (!token || !batchId) return emptyBatchWorkspaceData({ error: !token ? "Missing auth session." : "Batch id is required." });
     const response = await fetch(`/api/batch-workspace?batch_id=${encodeURIComponent(batchId)}`, {
       cache: "no-store",
       headers: { Authorization: `Bearer ${token}` },
     });
     const result = await response.json().catch(() => ({}));
+    if (!response.ok && /admin key is not configured/i.test(result.error || "")) {
+      return getBatchWorkspaceViaRls(batchId, result.error);
+    }
     if (!response.ok) throw new Error(result.error || "Batch workspace load failed");
     return {
       messages: result.messages || [],
@@ -1133,7 +1166,7 @@ export async function getBatchWorkspace(batchId) {
     };
   } catch (err) {
     console.warn("Error loading batch workspace:", err.message);
-    return { messages: [], announcements: [], resources: [], escalations: [], history: [], error: err.message || "Batch workspace load failed" };
+    return emptyBatchWorkspaceData({ error: err.message || "Batch workspace load failed" });
   }
 }
 
@@ -1168,6 +1201,31 @@ export async function createBatchWorkspaceItem(itemData) {
       body: JSON.stringify(itemData),
     });
     const result = await response.json().catch(() => ({}));
+    if (!response.ok && itemData?.type === "message" && /admin key is not configured/i.test(result.error || "")) {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const userId = sessionData?.session?.user?.id;
+      if (!userId) throw new Error("Missing auth session");
+      const rawMessage = typeof itemData.message === "string" ? itemData.message : "";
+      const hasAttachment = Boolean(itemData.attachment_url || itemData.attachment_name || itemData.attachment_type || (itemData.reference_id && itemData.reference_type !== "none"));
+      if (!rawMessage.trim() && !hasAttachment) throw new Error("Message is required.");
+      const { data, error } = await supabase
+        .from("batch_messages")
+        .insert([{
+          batch_id: itemData.batch_id,
+          sender_id: userId,
+          message: rawMessage,
+          reply_to_id: itemData.reply_to_id || null,
+          attachment_url: itemData.attachment_url || null,
+          attachment_name: itemData.attachment_name || null,
+          attachment_type: itemData.attachment_type || null,
+          reference_type: itemData.reference_type || "none",
+          reference_id: itemData.reference_id || null,
+        }])
+        .select("*, sender:profiles!batch_messages_sender_id_fkey(id, full_name, role, email)")
+        .single();
+      if (error) throw error;
+      return { message: data, fallback: true };
+    }
     if (!response.ok) throw new Error(result.error || "Batch workspace action failed");
     return result;
   } catch (err) {

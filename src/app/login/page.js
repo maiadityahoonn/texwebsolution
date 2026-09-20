@@ -2191,6 +2191,9 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
       if (data?.error) {
         setBatchWorkspaceLoadError(data.error);
         setToast(`Batch chat load failed: ${data.error}`);
+      } else if (data?.fallback && !silent) {
+        setBatchWorkspaceLoadError("");
+        setToast("");
       } else if (!silent) {
         setBatchWorkspaceLoadError("");
       }
