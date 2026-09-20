@@ -941,6 +941,7 @@ export async function getMessages(userId, otherUserId) {
     const token = await getAuthToken();
     if (token && typeof fetch === "function") {
       const response = await fetch(`/api/messages?contact_id=${encodeURIComponent(otherUserId)}`, {
+        cache: "no-store",
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -1007,6 +1008,7 @@ export async function sendRealtimeMessage(messageData) {
     if (!token) return null;
     const response = await fetch("/api/messages", {
       method: "POST",
+      cache: "no-store",
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${token}`,
@@ -1031,6 +1033,7 @@ export async function updateRealtimeMessage(messageId, updates = {}) {
     if (!token) return null;
     const response = await fetch("/api/messages", {
       method: "POST",
+      cache: "no-store",
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${token}`,
@@ -1057,6 +1060,7 @@ export async function markDirectMessagesRead(senderId, receiverId) {
     if (!token) return false;
     const response = await fetch("/api/messages", {
       method: "POST",
+      cache: "no-store",
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${token}`,
@@ -1083,6 +1087,7 @@ export async function markDirectMessagesDelivered(senderId) {
     if (!token) return false;
     const response = await fetch("/api/messages", {
       method: "POST",
+      cache: "no-store",
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${token}`,
@@ -1114,6 +1119,7 @@ export async function getBatchWorkspace(batchId) {
     const token = await getAuthToken();
     if (!token || !batchId) return { messages: [], announcements: [], resources: [], escalations: [], history: [] };
     const response = await fetch(`/api/batch-workspace?batch_id=${encodeURIComponent(batchId)}`, {
+      cache: "no-store",
       headers: { Authorization: `Bearer ${token}` },
     });
     const result = await response.json().catch(() => ({}));
@@ -1136,6 +1142,7 @@ export async function getVisibleBatchEscalations() {
     const token = await getAuthToken();
     if (!token) return [];
     const response = await fetch("/api/batch-workspace?scope=escalations", {
+      cache: "no-store",
       headers: { Authorization: `Bearer ${token}` },
     });
     const result = await response.json().catch(() => ({}));
@@ -1153,6 +1160,7 @@ export async function createBatchWorkspaceItem(itemData) {
     if (!token) throw new Error("Missing auth session");
     const response = await fetch("/api/batch-workspace", {
       method: "POST",
+      cache: "no-store",
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${token}`,
@@ -1174,6 +1182,7 @@ export async function updateBatchEscalation(escalationData) {
     if (!token) throw new Error("Missing auth session");
     const response = await fetch("/api/batch-workspace", {
       method: "PATCH",
+      cache: "no-store",
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${token}`,

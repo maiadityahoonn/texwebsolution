@@ -2426,6 +2426,7 @@ export default function TexAppBatchChat({
     if (mode === "batch" && batch?.id) {
       getChatAuthHeaders().then((authHeaders) => fetch("/api/batch-workspace", {
         method: "POST",
+        cache: "no-store",
         headers: { "Content-Type": "application/json", ...authHeaders },
         body: JSON.stringify({
           type: "mark_delivered",
@@ -2438,6 +2439,7 @@ export default function TexAppBatchChat({
     } else if (contact?.id) {
       getChatAuthHeaders().then((authHeaders) => fetch("/api/messages", {
         method: "POST",
+        cache: "no-store",
         headers: { "Content-Type": "application/json", ...authHeaders },
         body: JSON.stringify({
           type: "mark_delivered",
@@ -2456,7 +2458,7 @@ export default function TexAppBatchChat({
       try {
         if (mode === "batch" && batch?.id) {
           const authHeaders = await getChatAuthHeaders();
-          const res = await fetch(`/api/batch-workspace?batch_id=${batch.id}`, { headers: authHeaders });
+          const res = await fetch(`/api/batch-workspace?batch_id=${batch.id}`, { cache: "no-store", headers: authHeaders });
           if (res.ok) {
             const data = await res.json();
             const updatedMsg = (data.messages || []).find((m) => m.id === messageInfoId);
@@ -2466,7 +2468,7 @@ export default function TexAppBatchChat({
           }
         } else if (contact?.id) {
           const authHeaders = await getChatAuthHeaders();
-          const res = await fetch(`/api/messages?contact_id=${contact.id}`, { headers: authHeaders });
+          const res = await fetch(`/api/messages?contact_id=${contact.id}`, { cache: "no-store", headers: authHeaders });
           if (res.ok) {
             const data = await res.json();
             const updatedMsg = (data.messages || []).find((m) => m.id === messageInfoId);
@@ -3789,6 +3791,7 @@ export default function TexAppBatchChat({
 
       const res = await fetch("/api/batch-workspace", {
         method: "POST",
+        cache: "no-store",
         headers: {
           "Content-Type": "application/json",
           ...(token ? { Authorization: `Bearer ${token}` } : {}),

@@ -414,6 +414,8 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
   const [batchWorkspaceBatchId, setBatchWorkspaceBatchId] = useState("");
   const [loadingBatchWorkspaceId, setLoadingBatchWorkspaceId] = useState("");
   const batchWorkspaceCacheRef = useRef({});
+  const batchWorkspaceInFlightRef = useRef({});
+  const directMessagesInFlightRef = useRef({});
   const batchWorkspaceRequestRef = useRef("");
   const [accessibleEscalations, setAccessibleEscalations] = useState([]);
   const [batchMessageText, setBatchMessageText] = useState("");
@@ -2174,7 +2176,12 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
     batchWorkspaceRequestRef.current = requestId;
     if (!silent) setLoadingBatchWorkspaceId(batchId);
 
-    const data = await getBatchWorkspace(batchId);
+    if (!batchWorkspaceInFlightRef.current[batchId]) {
+      batchWorkspaceInFlightRef.current[batchId] = getBatchWorkspace(batchId).finally(() => {
+        delete batchWorkspaceInFlightRef.current[batchId];
+      });
+    }
+    const data = await batchWorkspaceInFlightRef.current[batchId];
     batchWorkspaceCacheRef.current[batchId] = data;
     if (batchWorkspaceRequestRef.current === requestId || selectedBatch?.id === batchId) {
       setBatchWorkspaceData(data);
@@ -2191,6 +2198,23 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
     return data;
   }
   const loadBatchWorkspaceData = refreshBatchWorkspace;
+
+  function mergeBatchWorkspaceMessage(batchId, message) {
+    if (!batchId || !message?.id) return;
+    const mergeMessages = (list = []) => {
+      const exists = list.some((item) => item.id === message.id);
+      return exists
+        ? list.map((item) => (item.id === message.id ? { ...item, ...message } : item))
+        : [...list, message];
+    };
+    setBatchWorkspaceData((prev) => ({ ...prev, messages: mergeMessages(prev.messages) }));
+    const cached = batchWorkspaceCacheRef.current[batchId] || emptyBatchWorkspaceData();
+    batchWorkspaceCacheRef.current[batchId] = {
+      ...cached,
+      messages: mergeMessages(cached.messages),
+    };
+    setBatchWorkspaceBatchId(batchId);
+  }
 
   async function refreshAccessibleEscalations() {
     const escalations = await getVisibleBatchEscalations();
@@ -3455,7 +3479,12 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
       return;
     }
     try {
-      const data = await getMessages(sessionUser.id, contactId);
+      if (!directMessagesInFlightRef.current[contactId]) {
+        directMessagesInFlightRef.current[contactId] = getMessages(sessionUser.id, contactId).finally(() => {
+          delete directMessagesInFlightRef.current[contactId];
+        });
+      }
+      const data = await directMessagesInFlightRef.current[contactId];
       setMessages(data || []);
       const latest = (data || [])[data?.length - 1];
       setDirectChatMeta((prev) => ({
@@ -4691,7 +4720,7 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
       setToast("Batch message could not be sent.");
       return;
     }
-    setBatchWorkspaceData((prev) => ({ ...prev, messages: [...(prev.messages || []), result.message] }));
+    mergeBatchWorkspaceMessage(selectedBatch.id, result.message);
     rememberBatchChatActivity(result.message);
     setBatchMessageText("");
     setToast("Batch message sent.");
@@ -7075,10 +7104,7 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
                             ...payload,
                           });
                           if (result?.message) {
-                            setBatchWorkspaceData((prev) => ({
-                              ...prev,
-                              messages: [...(prev.messages || []), result.message],
-                            }));
+                            mergeBatchWorkspaceMessage(selectedBatch.id, result.message);
                             rememberBatchChatActivity(result.message);
                             return true;
                           }
@@ -8085,10 +8111,7 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
                                 ...payload,
                               });
                             if (result?.message) {
-                              setBatchWorkspaceData((prev) => ({
-                                ...prev,
-                                messages: [...(prev.messages || []), result.message],
-                              }));
+                              mergeBatchWorkspaceMessage(selectedBatch.id, result.message);
                               rememberBatchChatActivity(result.message);
                               return true;
                             }
