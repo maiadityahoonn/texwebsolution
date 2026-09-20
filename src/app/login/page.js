@@ -5994,7 +5994,7 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
             } ${activeSection === "chat"
               ? (chatMobilePane === "chat"
                 ? "h-[100dvh] max-h-[100dvh] overflow-hidden pt-0 md:pt-3 px-0 sm:px-3 lg:px-4 pb-0 md:pb-2 flex flex-col"
-                : "min-h-screen xl:min-h-0 xl:h-[100dvh] xl:max-h-[100dvh] xl:overflow-hidden pt-[4.5rem] md:pt-3 sm:pt-[4.5rem] px-2 sm:px-3 lg:px-4 pb-28 md:pb-4 flex flex-col")
+                : "h-[100dvh] max-h-[100dvh] overflow-y-auto overflow-x-hidden overscroll-contain xl:overflow-hidden pt-[4.5rem] md:pt-3 sm:pt-[4.5rem] px-2 sm:px-3 lg:px-4 pb-28 md:pb-4 flex flex-col")
               : "min-h-screen pt-[4.5rem] md:pt-3 sm:pt-[4.5rem] px-2 sm:px-3 lg:px-4 pb-28 md:pb-12"}`}>
             <div
               className={`transition-colors min-w-0 max-w-full ${activeSection === "chat"
@@ -7207,7 +7207,7 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
                   </div>
 
                   {/* Right Column: Channels & Contacts List matching Batch Overview Chat Tab */}
-                  <div className={`${chatMobilePane === "chat" ? "hidden" : "flex"} xl:flex rounded-2xl xl:rounded-3xl border border-gray-200/80 dark:border-slate-800/80 p-3 sm:p-4 space-y-3 bg-white/60 dark:bg-slate-900/30 shadow-2xs flex-col xl:h-full xl:min-h-0`}>
+                  <div className={`${chatMobilePane === "chat" ? "hidden" : "flex"} xl:flex rounded-2xl xl:rounded-3xl border-0 xl:border xl:border-gray-200/80 xl:dark:border-slate-800/80 p-3 sm:p-4 space-y-3 bg-white/60 dark:bg-slate-900/30 shadow-none xl:shadow-2xs flex-col xl:h-full xl:min-h-0`}>
                     <div className="hidden xl:flex items-center justify-between pb-2 border-b border-gray-100 dark:border-slate-800/80 shrink-0">
                       <span className="text-xs font-bold text-gray-900 dark:text-white">
                         Channels & Contacts
@@ -7402,7 +7402,7 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
                   )}
 
                   {/* Channel List - Fluid Natural Scrolling on Mobile, Internal Panel Scrolling on Desktop */}
-                  <div className="space-y-2 text-xs overflow-y-visible xl:overflow-y-auto pr-0 xl:pr-1 flex-initial xl:flex-1">
+                  <div className="space-y-2 text-xs overflow-y-visible xl:overflow-y-auto pr-0 xl:pr-1 pb-24 xl:pb-0 flex-initial xl:flex-1">
                       {/* WhatsApp Top Archived Row (When not on archived filter) */}
                       {chatFilterChip !== "archived" && archivedChatIds.length > 0 && (
                         <button
