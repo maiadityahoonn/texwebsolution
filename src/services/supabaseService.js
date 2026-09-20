@@ -1117,7 +1117,7 @@ async function getAuthToken() {
 export async function getBatchWorkspace(batchId) {
   try {
     const token = await getAuthToken();
-    if (!token || !batchId) return { messages: [], announcements: [], resources: [], escalations: [], history: [] };
+    if (!token || !batchId) return { messages: [], announcements: [], resources: [], escalations: [], history: [], error: !token ? "Missing auth session." : "Batch id is required." };
     const response = await fetch(`/api/batch-workspace?batch_id=${encodeURIComponent(batchId)}`, {
       cache: "no-store",
       headers: { Authorization: `Bearer ${token}` },
@@ -1133,7 +1133,7 @@ export async function getBatchWorkspace(batchId) {
     };
   } catch (err) {
     console.warn("Error loading batch workspace:", err.message);
-    return { messages: [], announcements: [], resources: [], escalations: [], history: [] };
+    return { messages: [], announcements: [], resources: [], escalations: [], history: [], error: err.message || "Batch workspace load failed" };
   }
 }
 

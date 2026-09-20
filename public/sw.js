@@ -1,5 +1,5 @@
 // TexWeb Solution PWA Service Worker
-const CACHE_NAME = 'texweb-cache-v2';
+const CACHE_NAME = 'texweb-cache-v3';
 const OFFLINE_URL = '/';
 
 const PRECACHE_ASSETS = [

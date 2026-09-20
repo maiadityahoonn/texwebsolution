@@ -149,12 +149,31 @@ export async function GET(request) {
     admin.from("batch_escalations").select(ESCALATION_SELECT).eq("batch_id", batch.id).order("created_at", { ascending: false }).limit(100),
     admin.from("batch_assignment_history").select("*, old_user:profiles!batch_assignment_history_old_user_id_fkey(id, full_name, role), new_user:profiles!batch_assignment_history_new_user_id_fkey(id, full_name, role), member:profiles!batch_assignment_history_member_id_fkey(id, full_name, role), changer:profiles!batch_assignment_history_changed_by_fkey(id, full_name, role)").eq("batch_id", batch.id).order("created_at", { ascending: false }).limit(100),
   ]);
+
+  let messageRows = messages.data || [];
+  if (messages.error) {
+    const fallbackMessages = await admin
+      .from("batch_messages")
+      .select("*")
+      .eq("batch_id", batch.id)
+      .order("created_at", { ascending: true })
+      .limit(200);
+    if (fallbackMessages.error) {
+      return NextResponse.json({ error: fallbackMessages.error.message || messages.error.message || "Unable to load batch messages." }, { status: 400 });
+    }
+    messageRows = fallbackMessages.data || [];
+  }
+
+  const loadError = announcements.error || resources.error || escalations.error || history.error;
+  if (loadError) {
+    return NextResponse.json({ error: loadError.message || "Unable to load batch workspace data." }, { status: 400 });
+  }
   const visibleEscalations = (escalations.data || []).filter(
     (item) => item.created_by === requester.user.id || item.assigned_to === requester.user.id
   );
 
   // Fetch individual per-user delivery & read receipts for messages
-  const rawMessages = messages.data || [];
+  const rawMessages = messageRows;
   const msgIds = rawMessages.map((m) => m.id);
   const receiptsByMsgId = {};
 

@@ -413,6 +413,7 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
   const [batchWorkspaceData, setBatchWorkspaceData] = useState(() => emptyBatchWorkspaceData());
   const [batchWorkspaceBatchId, setBatchWorkspaceBatchId] = useState("");
   const [loadingBatchWorkspaceId, setLoadingBatchWorkspaceId] = useState("");
+  const [batchWorkspaceLoadError, setBatchWorkspaceLoadError] = useState("");
   const batchWorkspaceCacheRef = useRef({});
   const batchWorkspaceInFlightRef = useRef({});
   const directMessagesInFlightRef = useRef({});
@@ -2175,6 +2176,7 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
     const requestId = `${batchId}:${Date.now()}:${Math.random()}`;
     batchWorkspaceRequestRef.current = requestId;
     if (!silent) setLoadingBatchWorkspaceId(batchId);
+    if (!silent) setBatchWorkspaceLoadError("");
 
     if (!batchWorkspaceInFlightRef.current[batchId]) {
       batchWorkspaceInFlightRef.current[batchId] = getBatchWorkspace(batchId).finally(() => {
@@ -2186,6 +2188,12 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
     if (batchWorkspaceRequestRef.current === requestId || selectedBatch?.id === batchId) {
       setBatchWorkspaceData(data);
       setBatchWorkspaceBatchId(batchId);
+      if (data?.error) {
+        setBatchWorkspaceLoadError(data.error);
+        setToast(`Batch chat load failed: ${data.error}`);
+      } else if (!silent) {
+        setBatchWorkspaceLoadError("");
+      }
       setBatchChatMeta((prev) => ({
         ...prev,
         [batchId]: {
@@ -7216,6 +7224,20 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
                           <span>Loading batch chat...</span>
                         </div>
                       )}
+                      {batchWorkspaceLoadError && !isSelectedBatchWorkspaceLoading && (
+                        <div className="absolute top-3 left-3 right-3 z-20 rounded-2xl border border-red-200 bg-red-50/95 px-3 py-2 text-[11px] font-bold text-red-700 shadow-sm dark:border-red-500/30 dark:bg-red-950/80 dark:text-red-200">
+                          <div className="flex items-start justify-between gap-2">
+                            <span>Batch chat load failed: {batchWorkspaceLoadError}</span>
+                            <button
+                              type="button"
+                              onClick={() => selectedBatch?.id && loadBatchWorkspaceData(selectedBatch.id)}
+                              className="shrink-0 rounded-lg bg-red-600 px-2 py-1 text-[10px] font-black text-white"
+                            >
+                              Retry
+                            </button>
+                          </div>
+                        </div>
+                      )}
                       </>
                     ) : (
                       <div className="h-full flex flex-col items-center justify-center p-8 text-center bg-gray-50/40 dark:bg-transparent">
@@ -8221,6 +8243,20 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
                             <div className="absolute top-3 left-1/2 -translate-x-1/2 z-20 px-3 py-1.5 rounded-full bg-white/90 dark:bg-[#18150f]/90 border border-gray-200 dark:border-[#3a3020] text-[11px] font-bold text-gray-600 dark:text-[#f4ead2] shadow-sm flex items-center gap-2">
                               <RefreshCw className="w-3.5 h-3.5 animate-spin text-red-500" />
                               <span>Loading batch chat...</span>
+                            </div>
+                          )}
+                          {batchWorkspaceLoadError && !isSelectedBatchWorkspaceLoading && (
+                            <div className="absolute top-3 left-3 right-3 z-20 rounded-2xl border border-red-200 bg-red-50/95 px-3 py-2 text-[11px] font-bold text-red-700 shadow-sm dark:border-red-500/30 dark:bg-red-950/80 dark:text-red-200">
+                              <div className="flex items-start justify-between gap-2">
+                                <span>Batch chat load failed: {batchWorkspaceLoadError}</span>
+                                <button
+                                  type="button"
+                                  onClick={() => selectedBatch?.id && loadBatchWorkspaceData(selectedBatch.id)}
+                                  className="shrink-0 rounded-lg bg-red-600 px-2 py-1 text-[10px] font-black text-white"
+                                >
+                                  Retry
+                                </button>
+                              </div>
                             </div>
                           )}
                           </div>
