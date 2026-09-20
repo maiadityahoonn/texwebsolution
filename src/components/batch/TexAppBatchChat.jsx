@@ -5204,7 +5204,7 @@ export default function TexAppBatchChat({
           WebkitOverflowScrolling: "touch",
           scrollbarWidth: "thin",
           scrollbarColor: isDark ? "rgba(255, 255, 255, 0.35) transparent" : "rgba(148, 163, 184, 0.55) transparent",
-          paddingBottom: showEmojiPicker ? "400px" : undefined,
+          paddingBottom: showEmojiPicker && !reactionTargetMessage ? "390px" : undefined,
         }}
         className="texapp-message-scroll flex-1 min-h-0 p-3 sm:p-4 space-y-1 sm:space-y-1.5 relative z-10 transition-[padding] duration-200"
       >
@@ -6248,190 +6248,7 @@ export default function TexAppBatchChat({
         </div>
       )}
 
-      {/* =========================================================================
-          7. EMOJI, GIF & STICKER PICKER (WhatsApp Mobile Native Bottom Sheet & Desktop Dock)
-          ========================================================================= */}
-      {showEmojiPicker && (
-        <>
-          {/* Mobile Backdrop to tap out and close sheet */}
-          <div
-            className="fixed inset-0 z-40 bg-black/15 sm:hidden transition-opacity"
-            onClick={() => {
-              setShowEmojiPicker(false);
-              setReactionTargetMessage(null);
-            }}
-          />
 
-          <div
-            data-emoji-mart-popover="true"
-            className="fixed sm:absolute inset-x-0 bottom-0 sm:bottom-20 sm:left-4 sm:right-auto z-40 w-full sm:w-[460px] h-[390px] sm:h-[440px] max-h-[55vh] sm:max-h-[calc(100vh-7rem)] rounded-t-3xl sm:rounded-2xl overflow-hidden shadow-2xl border-t sm:border border-gray-200 dark:border-[#3a3020] bg-white dark:bg-[#18150f] flex flex-col animate-in slide-in-from-bottom duration-200 select-none"
-          >
-            {/* Mobile Top Drag Handle Bar */}
-            <div className="pt-2 pb-0.5 flex justify-center sm:hidden shrink-0">
-              <div className="w-10 h-1 rounded-full bg-gray-300 dark:bg-stone-600" />
-            </div>
-
-            {/* WhatsApp Mobile Top Action Strip: [ 🔍 Search | [ 😃 | GIF | 🏷️ ] | ⌫ Backspace / ✕ Close ] */}
-            <div className="pt-1 pb-2 px-3 sm:px-4 flex items-center justify-between border-b border-gray-100 dark:border-[#3a3020]/60 shrink-0">
-              {/* Left: Search Toggle Icon Button */}
-              <button
-                type="button"
-                onClick={() => setShowPickerSearch((prev) => !prev)}
-                className={`p-2 rounded-full transition cursor-pointer ${
-                  showPickerSearch
-                    ? "text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/40"
-                    : "text-gray-500 hover:text-gray-900 dark:text-stone-400 dark:hover:text-white"
-                }`}
-                aria-label="Search emojis"
-                title="Search"
-              >
-                <Search className="w-5 h-5" />
-              </button>
-
-              {/* Center: Segmented Capsule Pill [ 😃 | GIF | 🏷️ ] */}
-              <div className="inline-flex items-center p-0.5 rounded-full border border-gray-200 dark:border-[#3a3020] bg-gray-100/80 dark:bg-[#100f0b]">
-                {/* Emoji Icon Button */}
-                <button
-                  type="button"
-                  onClick={() => setMediaPickerTab("emoji")}
-                  className={`px-3.5 py-1 rounded-full flex items-center justify-center transition cursor-pointer ${
-                    mediaPickerTab === "emoji"
-                      ? "bg-white dark:bg-[#272118] text-red-600 dark:text-red-400 shadow-xs font-bold"
-                      : "text-gray-500 hover:text-gray-900 dark:text-stone-400 dark:hover:text-white"
-                  }`}
-                  aria-label="Emojis"
-                  title="Emojis"
-                >
-                  <TexAppStickerSmileyIcon className="w-5 h-5 stroke-[2]" />
-                </button>
-
-                {/* GIF Button */}
-                <button
-                  type="button"
-                  onClick={() => setMediaPickerTab("gif")}
-                  className={`px-3.5 py-1 rounded-full flex items-center justify-center transition cursor-pointer ${
-                    mediaPickerTab === "gif"
-                      ? "bg-white dark:bg-[#272118] text-red-600 dark:text-red-400 shadow-xs font-bold"
-                      : "text-gray-500 hover:text-gray-900 dark:text-stone-400 dark:hover:text-white"
-                  }`}
-                  aria-label="GIFs"
-                  title="GIFs"
-                >
-                  <span className="text-xs font-black tracking-wider uppercase font-sans">
-                    GIF
-                  </span>
-                </button>
-
-                {/* Stickers Button */}
-                <button
-                  type="button"
-                  onClick={() => setMediaPickerTab("stickers")}
-                  className={`px-3.5 py-1 rounded-full flex items-center justify-center transition cursor-pointer ${
-                    mediaPickerTab === "stickers"
-                      ? "bg-white dark:bg-[#272118] text-red-600 dark:text-red-400 shadow-xs font-bold"
-                      : "text-gray-500 hover:text-gray-900 dark:text-stone-400 dark:hover:text-white"
-                  }`}
-                  aria-label="Stickers"
-                  title="Stickers"
-                >
-                  <svg viewBox="0 0 24 24" className="w-5 h-5 stroke-[1.9]" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M15 3H6a3 3 0 0 0-3 3v12a3 3 0 0 0 3 3h8l7-7V6a3 3 0 0 0-3-3z" />
-                    <path d="M14 21v-4a3 3 0 0 1 3-3h4" />
-                  </svg>
-                </button>
-              </div>
-
-              {/* Right: Backspace or Close Button */}
-              {reactionTargetMessage ? (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowEmojiPicker(false);
-                    setReactionTargetMessage(null);
-                  }}
-                  className="p-2 rounded-full text-gray-500 hover:text-red-600 dark:text-stone-400 dark:hover:text-red-400 transition cursor-pointer"
-                  aria-label="Close"
-                  title="Close"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  onClick={handleComposerBackspace}
-                  className="p-2 rounded-full text-gray-500 hover:text-red-600 dark:text-stone-400 dark:hover:text-red-400 transition cursor-pointer active:scale-90"
-                  aria-label="Delete last character"
-                  title="Backspace"
-                >
-                  <svg viewBox="0 0 24 24" className="w-5 h-5 stroke-[1.9]" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M21 4H8l-7 8 7 8h13a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2z" />
-                    <line x1="18" y1="9" x2="12" y2="15" />
-                    <line x1="12" y1="9" x2="18" y2="15" />
-                  </svg>
-                </button>
-              )}
-            </div>
-
-            {/* Main Content Area */}
-            <div className="flex-1 w-full h-full overflow-hidden flex flex-col">
-              {mediaPickerTab === "emoji" ? (
-                <EmojiMartPicker
-                  isDark={isDark}
-                  onEmojiSelect={(emoji) => {
-                    if (reactionTargetMessage) {
-                      handleSendReaction(reactionTargetMessage, emoji);
-                      setReactionTargetMessage(null);
-                      setShowEmojiPicker(false);
-                    } else {
-                      handleInsertEmoji(emoji);
-                    }
-                  }}
-                  perLine={9}
-                  navPosition="bottom"
-                  searchPosition={showPickerSearch ? "top" : "none"}
-                  previewPosition="none"
-                />
-              ) : mediaPickerTab === "gif" ? (
-                <GiphyPicker
-                  isDark={isDark}
-                  onSelectGif={(gif) => {
-                    handleSendAttachment({
-                      message: "",
-                      attachment_url: gif.url,
-                      attachment_name: "GIF",
-                      attachment_type: "image",
-                      reference_type: "none",
-                    });
-                    setShowEmojiPicker(false);
-                    setReactionTargetMessage(null);
-                  }}
-                  onClose={() => {
-                    setShowEmojiPicker(false);
-                    setReactionTargetMessage(null);
-                  }}
-                />
-              ) : (
-                /* WhatsApp Curated Stickers Grid */
-                <div className="flex-1 overflow-y-auto p-3 grid grid-cols-4 gap-2.5">
-                  {WHATSAPP_STICKER_PACK.map((stk) => (
-                    <button
-                      key={stk.id}
-                      type="button"
-                      onClick={() => {
-                        handleInsertEmoji(stk.emoji);
-                      }}
-                      className="p-3 rounded-2xl border border-gray-200/80 dark:border-[#3a3020] bg-gray-50/70 dark:bg-[#100f0b] hover:border-red-500 flex flex-col items-center justify-center gap-1 hover:scale-105 transition active:scale-95 cursor-pointer shadow-2xs"
-                    >
-                      <span className="text-3xl">{stk.emoji}</span>
-                      <span className="text-[10px] font-bold text-gray-500 dark:text-stone-400">{stk.text}</span>
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-        </>
-      )}
 
       {/* WhatsApp Floating Scroll to Bottom Button */}
       {showScrollBottomBtn && (
@@ -6509,6 +6326,35 @@ export default function TexAppBatchChat({
               }}
               className="p-1 rounded-lg text-gray-400 hover:text-gray-600 dark:hover:text-white transition cursor-pointer"
               aria-label="Cancel edit"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        )}
+
+        {/* Reacting-to Preview Banner */}
+        {reactionTargetMessage && (
+          <div className={`mb-2 p-2.5 rounded-2xl flex items-center justify-between gap-2.5 text-xs border-l-4 border-red-500 shadow-2xs ${
+            isDark ? "bg-[#241f18] text-[#f4ead2]" : "bg-white text-gray-800"
+          }`}>
+            <div className="min-w-0 flex-1">
+              <span className="font-bold text-[11px] text-red-600 block">
+                Reacting to {reactionTargetMessage.sender_id === currentUser?.id ? "Your message" : (reactionTargetMessage.sender?.full_name || "Message")}:
+              </span>
+              <p className="truncate text-[11px] opacity-80">
+                {reactionTargetMessage.message || reactionTargetMessage.attachment_name || "Attachment"}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                setReactionTargetMessage(null);
+                setShowEmojiPicker(false);
+              }}
+              className="p-1 rounded-lg text-gray-400 hover:text-red-600 dark:hover:text-white transition cursor-pointer"
+              aria-label="Cancel reaction"
             >
               <X className="w-3.5 h-3.5" />
             </button>
@@ -6879,21 +6725,32 @@ export default function TexAppBatchChat({
                 <button
                   type="button"
                   data-emoji-trigger="true"
-                  onClick={() => {
-                    setReactionTargetMessage(null);
-                    setMediaPickerTab("emoji");
-                    setShowEmojiPicker(!showEmojiPicker);
-                    setShowAttachmentTray(false);
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    if (showEmojiPicker) {
+                      setShowEmojiPicker(false);
+                      setReactionTargetMessage(null);
+                    } else {
+                      setReactionTargetMessage(null);
+                      setMediaPickerTab("emoji");
+                      setShowEmojiPicker(true);
+                      setShowAttachmentTray(false);
+                    }
                   }}
                   className={`w-10 h-10 sm:w-8 sm:h-8 rounded-full flex items-center justify-center transition-colors cursor-pointer shrink-0 ${
                     showEmojiPicker
                       ? "text-red-600 bg-red-50 dark:bg-red-500/10"
                       : "text-gray-500 hover:text-gray-800 dark:text-slate-400 dark:hover:text-white"
                   }`}
-                  aria-label="Add emoji or sticker"
-                  title="Emoji & Stickers"
+                  aria-label={showEmojiPicker ? "Close emoji picker" : "Add emoji or sticker"}
+                  title={showEmojiPicker ? "Close" : "Emoji & Stickers"}
                 >
-                  <TexAppStickerSmileyIcon className="w-5 h-5 sm:w-5 sm:h-5 stroke-[2]" />
+                  {showEmojiPicker ? (
+                    <X className="w-5 h-5 stroke-[2.5]" />
+                  ) : (
+                    <TexAppStickerSmileyIcon className="w-5 h-5 sm:w-5 sm:h-5 stroke-[2]" />
+                  )}
                 </button>
 
                 {/* Message Text Input (WhatsApp Style ContentEditable with Apple Emojis) */}
@@ -6988,6 +6845,205 @@ export default function TexAppBatchChat({
         </form>
         )}
       </div>
+
+      {/* =========================================================================
+          EMOJI, GIF & STICKER PICKER TRAY (Positioned directly BELOW message input bar)
+          ========================================================================= */}
+      {showEmojiPicker && (
+        <div
+          data-emoji-mart-popover="true"
+          className="w-full h-[330px] sm:h-[360px] border-t border-gray-200/90 dark:border-[#3a3020] bg-white dark:bg-[#18150f] shrink-0 flex flex-col z-20 select-none animate-in slide-in-from-bottom duration-150"
+        >
+          {/* Top Action Strip: [ 🔍 Search | [ 😃 | GIF | 🏷️ ] | ✕ Close ] */}
+          <div className="pt-2 pb-2 px-3 sm:px-4 flex items-center justify-between border-b border-gray-100 dark:border-[#3a3020]/60 shrink-0">
+            {/* Search Toggle */}
+            <button
+              type="button"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                setShowPickerSearch((prev) => !prev);
+              }}
+              className={`p-2 rounded-full transition cursor-pointer ${
+                showPickerSearch
+                  ? "text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/40"
+                  : "text-gray-500 hover:text-gray-900 dark:text-stone-400 dark:hover:text-white"
+              }`}
+              aria-label="Search emojis"
+              title="Search"
+            >
+              <Search className="w-5 h-5" />
+            </button>
+
+            {/* Segmented Capsule Pill [ 😃 | GIF | 🏷️ ] */}
+            <div className="inline-flex items-center p-0.5 rounded-full border border-gray-200 dark:border-[#3a3020] bg-gray-100/80 dark:bg-[#100f0b]">
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setMediaPickerTab("emoji");
+                }}
+                className={`px-3.5 py-1 rounded-full flex items-center justify-center transition cursor-pointer ${
+                  mediaPickerTab === "emoji"
+                    ? "bg-white dark:bg-[#272118] text-red-600 dark:text-red-400 shadow-xs font-bold"
+                    : "text-gray-500 hover:text-gray-900 dark:text-stone-400 dark:hover:text-white"
+                }`}
+                aria-label="Emojis"
+                title="Emojis"
+              >
+                <TexAppStickerSmileyIcon className="w-5 h-5 stroke-[2]" />
+              </button>
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setMediaPickerTab("gif");
+                }}
+                className={`px-3.5 py-1 rounded-full flex items-center justify-center transition cursor-pointer ${
+                  mediaPickerTab === "gif"
+                    ? "bg-white dark:bg-[#272118] text-red-600 dark:text-red-400 shadow-xs font-bold"
+                    : "text-gray-500 hover:text-gray-900 dark:text-stone-400 dark:hover:text-white"
+                }`}
+                aria-label="GIFs"
+                title="GIFs"
+              >
+                <span className="text-xs font-black tracking-wider uppercase font-sans">GIF</span>
+              </button>
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setMediaPickerTab("stickers");
+                }}
+                className={`px-3.5 py-1 rounded-full flex items-center justify-center transition cursor-pointer ${
+                  mediaPickerTab === "stickers"
+                    ? "bg-white dark:bg-[#272118] text-red-600 dark:text-red-400 shadow-xs font-bold"
+                    : "text-gray-500 hover:text-gray-900 dark:text-stone-400 dark:hover:text-white"
+                }`}
+                aria-label="Stickers"
+                title="Stickers"
+              >
+                <svg viewBox="0 0 24 24" className="w-5 h-5 stroke-[1.9]" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M15 3H6a3 3 0 0 0-3 3v12a3 3 0 0 0 3 3h8l7-7V6a3 3 0 0 0-3-3z" />
+                  <path d="M14 21v-4a3 3 0 0 1 3-3h4" />
+                </svg>
+              </button>
+            </div>
+
+            {/* Cross (✕) Close Button - Closes the picker */}
+            <button
+              type="button"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                setShowEmojiPicker(false);
+                setReactionTargetMessage(null);
+              }}
+              className="p-1.5 rounded-full text-gray-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40 dark:text-stone-400 dark:hover:text-red-400 transition cursor-pointer active:scale-90"
+              aria-label="Close emoji picker"
+              title="Close"
+            >
+              <X className="w-5 h-5 stroke-[2.5]" />
+            </button>
+          </div>
+
+          {/* Frequently used emojis / reactions row */}
+          {mediaPickerTab === "emoji" && (
+            <div className="px-3 py-1.5 border-b border-gray-100 dark:border-[#3a3020]/40 bg-gray-50/70 dark:bg-[#14120e] shrink-0">
+              <div className="text-[11px] font-bold text-gray-500 dark:text-stone-400 mb-1 px-1">Frequently used</div>
+              <div className="flex items-center justify-between gap-1 overflow-x-auto no-scrollbar py-0.5">
+                {["👍", "😃", "❤️", "😂", "🙏", "🔥", "😇", "😢", "😘", "👏"].map((emoji) => (
+                  <button
+                    key={emoji}
+                    type="button"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      if (reactionTargetMessage) {
+                        handleSendReaction(reactionTargetMessage, emoji);
+                        setReactionTargetMessage(null);
+                        setShowEmojiPicker(false);
+                      } else {
+                        handleInsertEmoji(emoji);
+                      }
+                    }}
+                    className="w-8.5 h-8.5 rounded-full flex items-center justify-center hover:scale-125 active:scale-95 transition-transform cursor-pointer shrink-0"
+                    aria-label={`Emoji ${emoji}`}
+                  >
+                    <AppleEmoji emoji={emoji} size={24} />
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Picker Body */}
+          <div className="flex-1 w-full h-full overflow-hidden flex flex-col">
+            {mediaPickerTab === "emoji" ? (
+              <EmojiMartPicker
+                isDark={isDark}
+                onEmojiSelect={(emoji) => {
+                  if (reactionTargetMessage) {
+                    handleSendReaction(reactionTargetMessage, emoji);
+                    setReactionTargetMessage(null);
+                    setShowEmojiPicker(false);
+                  } else {
+                    handleInsertEmoji(emoji);
+                  }
+                }}
+                perLine={9}
+                navPosition="bottom"
+                searchPosition={showPickerSearch ? "top" : "none"}
+                previewPosition="none"
+              />
+            ) : mediaPickerTab === "gif" ? (
+              <GiphyPicker
+                isDark={isDark}
+                onSelectGif={(gif) => {
+                  handleSendAttachment({
+                    message: "",
+                    attachment_url: gif.url,
+                    attachment_name: "GIF",
+                    attachment_type: "image",
+                    reference_type: "none",
+                  });
+                  setShowEmojiPicker(false);
+                  setReactionTargetMessage(null);
+                }}
+                onClose={() => {
+                  setShowEmojiPicker(false);
+                  setReactionTargetMessage(null);
+                }}
+              />
+            ) : (
+              <div className="flex-1 overflow-y-auto p-3 grid grid-cols-4 gap-2.5">
+                {WHATSAPP_STICKER_PACK.map((stk) => (
+                  <button
+                    key={stk.id}
+                    type="button"
+                    onClick={() => {
+                      if (reactionTargetMessage) {
+                        handleSendReaction(reactionTargetMessage, stk.emoji);
+                        setReactionTargetMessage(null);
+                        setShowEmojiPicker(false);
+                      } else {
+                        handleInsertEmoji(stk.emoji);
+                      }
+                    }}
+                    className="p-3 rounded-2xl border border-gray-200/80 dark:border-[#3a3020] bg-gray-50/70 dark:bg-[#100f0b] hover:border-red-500 flex flex-col items-center justify-center gap-1 hover:scale-105 transition active:scale-95 cursor-pointer shadow-2xs"
+                  >
+                    <span className="text-3xl">{stk.emoji}</span>
+                    <span className="text-[10px] font-bold text-gray-500 dark:text-stone-400">{stk.text}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* =========================================================================
           REALTIME CAMERA MODAL (Live Viewfinder, Snap, Retake, Send, Cancel)
