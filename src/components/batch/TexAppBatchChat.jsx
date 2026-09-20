@@ -1228,7 +1228,16 @@ export default function TexAppBatchChat({
     const handleViewportChange = () => {
       lockScroll();
       if (chatContainerRef.current) {
+        // If keyboard is open (visualViewport height is significantly smaller than window.innerHeight)
+        const isKeyboardOpen = window.innerHeight - vv.height > 120;
+        if (isKeyboardOpen) {
+          setShowEmojiPicker(false);
+          setShowAttachmentTray(false);
+        }
         chatContainerRef.current.style.height = `${vv.height}px`;
+        if (chatScrollRef.current) {
+          chatScrollRef.current.scrollTop = chatScrollRef.current.scrollHeight;
+        }
       }
     };
 
@@ -6293,7 +6302,7 @@ export default function TexAppBatchChat({
       {/* =========================================================================
           8. BOTTOM INPUT BAR (WhatsApp Web Style Pill + Send Button)
           ========================================================================= */}
-      <div className={`px-3 sm:px-4 py-2.5 sm:py-2.5 border-t shrink-0 z-20 relative transition-colors ${
+      <div className={`px-3 sm:px-4 pt-2 pb-2.5 sm:py-2.5 border-t shrink-0 z-20 relative transition-colors ${
         isDark ? "bg-transparent border-slate-800" : "bg-transparent border-gray-200/80"
       }`}>
         {/* Replying-to Preview Banner */}
@@ -6737,7 +6746,10 @@ export default function TexAppBatchChat({
                     if (showEmojiPicker) {
                       setShowEmojiPicker(false);
                       setReactionTargetMessage(null);
+                      mobileTextareaRef.current?.focus();
                     } else {
+                      mobileTextareaRef.current?.blur();
+                      textareaRef.current?.blur();
                       setReactionTargetMessage(null);
                       setMediaPickerTab("emoji");
                       setShowEmojiPicker(true);
@@ -6768,9 +6780,17 @@ export default function TexAppBatchChat({
                   onChange={handleTextChange}
                   onPaste={handleContentEditablePaste}
                   onFocus={() => {
+                    setShowEmojiPicker(false);
+                    setShowAttachmentTray(false);
+                    setReactionTargetMessage(null);
                     if (typeof window !== "undefined") {
                       window.scrollTo(0, 0);
-                      setTimeout(() => window.scrollTo(0, 0), 50);
+                      setTimeout(() => {
+                        window.scrollTo(0, 0);
+                        if (chatScrollRef.current) {
+                          chatScrollRef.current.scrollTop = chatScrollRef.current.scrollHeight;
+                        }
+                      }, 100);
                     }
                   }}
                   onInput={(e) => {
@@ -6797,6 +6817,9 @@ export default function TexAppBatchChat({
                   role="textbox"
                   data-placeholder="Type a message"
                   onFocus={() => {
+                    setShowEmojiPicker(false);
+                    setShowAttachmentTray(false);
+                    setReactionTargetMessage(null);
                     if (typeof window !== "undefined") {
                       window.scrollTo(0, 0);
                       setTimeout(() => window.scrollTo(0, 0), 50);
