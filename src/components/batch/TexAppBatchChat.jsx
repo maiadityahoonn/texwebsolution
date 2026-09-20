@@ -1727,6 +1727,9 @@ export default function TexAppBatchChat({
   const [selectionMenuOpen, setSelectionMenuOpen] = useState(false);
   const [doubleTapHeartMsgId, setDoubleTapHeartMsgId] = useState(null);
 
+  const lastSelectionToggleRef = useRef({ msgId: null, time: 0 });
+  const ignoreBackdropClickUntilRef = useRef(0);
+
   const handleEnterSelectionMode = useCallback((msg) => {
     try {
       if (typeof window !== "undefined" && navigator.vibrate) {
@@ -1738,10 +1741,12 @@ export default function TexAppBatchChat({
     setActiveDropdownMsgId(null);
     setActiveReactionMsgId(null);
     setSelectionMenuOpen(false);
+    lastSelectionToggleRef.current = { msgId: msg.id, time: Date.now() };
   }, []);
 
   const handleTriggerEmojiStrip = useCallback((msg) => {
     if (isSelectionMode) return;
+    ignoreBackdropClickUntilRef.current = Date.now() + 450;
     setActiveReactionMsgId((prev) => (prev === msg.id ? null : msg.id));
     setActiveDropdownMsgId(null);
   }, [isSelectionMode]);
@@ -1761,6 +1766,16 @@ export default function TexAppBatchChat({
       return next;
     });
   }, []);
+
+  const handleMessageSelectionToggle = useCallback((msgId) => {
+    const now = Date.now();
+    // Guard against duplicate synthetic click / touchEnd collisions within 350ms
+    if (lastSelectionToggleRef.current.msgId === msgId && now - lastSelectionToggleRef.current.time < 350) {
+      return;
+    }
+    lastSelectionToggleRef.current = { msgId, time: now };
+    toggleSelectMessage(msgId);
+  }, [toggleSelectMessage]);
 
   // Starred messages (persisted in localStorage)
   const [starredMsgIds, setStarredMsgIds] = useState(() => {
@@ -1993,14 +2008,16 @@ export default function TexAppBatchChat({
   };
 
   const handleMessageTouchStart = (e, msg, bubbleElem) => {
-    if (isSelectionMode) return;
     if (e.touches.length !== 1) return;
     const touch = e.touches[0];
     touchCoordsRef.current = { x: touch.clientX, y: touch.clientY, time: Date.now() };
     isDraggingSwipeRef.current = false;
     didLongPressRef.current = false;
 
-    // 400ms long-press hold enters selection mode (WhatsApp style)
+    // In selection mode, DO NOT start long-press timer; simple tap will toggle selection immediately
+    if (isSelectionMode) return;
+
+    // 400ms long-press hold enters selection mode ONLY for the FIRST message (WhatsApp style)
     if (longPressTimerRef.current) clearTimeout(longPressTimerRef.current);
     longPressTimerRef.current = setTimeout(() => {
       didLongPressRef.current = true;
@@ -2032,8 +2049,8 @@ export default function TexAppBatchChat({
       return;
     }
 
-    // Horizontal right-swipe gesture (Swipe to reply) - ONLY when predominantly horizontal
-    if (diffX > 18 && diffX > Math.abs(diffY) * 1.5) {
+    // Horizontal right-swipe gesture (Swipe to reply) - ONLY when predominantly horizontal and NOT in selection mode
+    if (!isSelectionMode && diffX > 18 && diffX > Math.abs(diffY) * 1.5) {
       isDraggingSwipeRef.current = true;
       const clampedOffset = Math.min(65, Math.max(0, diffX));
       setSwipeState((prev) => {
@@ -2056,7 +2073,7 @@ export default function TexAppBatchChat({
       return;
     }
 
-    if (swipeState.msgId === msg.id && swipeState.offset >= 45) {
+    if (!isSelectionMode && swipeState.msgId === msg.id && swipeState.offset >= 45) {
       try {
         if (typeof window !== "undefined" && navigator.vibrate) {
           navigator.vibrate(25);
@@ -2066,7 +2083,7 @@ export default function TexAppBatchChat({
       const el = getActiveComposerElement();
       if (el) el.focus();
     } else if (!isDraggingSwipeRef.current && (!swipeState.offset || swipeState.offset < 10)) {
-      handleMessageTap(msg);
+      handleMessageTap(msg, touchCoordsRef.current);
     }
 
     setSwipeState({ msgId: null, offset: 0 });
@@ -2074,11 +2091,11 @@ export default function TexAppBatchChat({
   };
 
   const handleRowTouchStart = (e, msg) => {
-    if (isSelectionMode) return;
     if (e.touches.length !== 1) return;
     const touch = e.touches[0];
     touchCoordsRef.current = { x: touch.clientX, y: touch.clientY, time: Date.now() };
     didLongPressRef.current = false;
+    if (isSelectionMode) return;
     if (longPressTimerRef.current) clearTimeout(longPressTimerRef.current);
     longPressTimerRef.current = setTimeout(() => {
       didLongPressRef.current = true;
@@ -2113,29 +2130,44 @@ export default function TexAppBatchChat({
       didLongPressRef.current = false;
       return;
     }
-    handleMessageTap(msg);
+    handleMessageTap(msg, touchCoordsRef.current);
   };
 
   // WhatsApp Double-Tap Quick React Strip & Selection Tap
-  const lastTapRef = useRef({ time: 0, msgId: null });
+  const lastTapRef = useRef({ time: 0, msgId: null, x: 0, y: 0 });
 
-  const handleMessageTap = (msg) => {
+  const handleMessageTap = (msg, touchCoord = null) => {
     if (isSelectionMode) {
-      toggleSelectMessage(msg.id);
+      handleMessageSelectionToggle(msg.id);
       return true;
     }
     const now = Date.now();
-    if (lastTapRef.current.msgId === msg.id && now - lastTapRef.current.time < 350) {
-      lastTapRef.current = { time: 0, msgId: null };
+    const prevTap = lastTapRef.current;
+    const isSameMsg = prevTap.msgId === msg.id;
+    const isWithinTime = now - prevTap.time > 40 && now - prevTap.time < 450;
+    let isWithinPos = true;
+    if (touchCoord && prevTap.x && prevTap.y) {
+      const dist = Math.hypot(touchCoord.x - prevTap.x, touchCoord.y - prevTap.y);
+      if (dist > 45) isWithinPos = false;
+    }
+
+    if (isSameMsg && isWithinTime && isWithinPos) {
+      lastTapRef.current = { time: 0, msgId: null, x: 0, y: 0 };
+      ignoreBackdropClickUntilRef.current = Date.now() + 450;
       try {
         if (typeof window !== "undefined" && navigator.vibrate) {
-          navigator.vibrate(30);
+          navigator.vibrate(35);
         }
       } catch {}
       handleTriggerEmojiStrip(msg);
       return true;
     }
-    lastTapRef.current = { time: now, msgId: msg.id };
+    lastTapRef.current = {
+      time: now,
+      msgId: msg.id,
+      x: touchCoord?.x || 0,
+      y: touchCoord?.y || 0,
+    };
     return false;
   };
 
@@ -5640,12 +5672,13 @@ export default function TexAppBatchChat({
                   onClick={(e) => {
                     if (isSelectionMode) {
                       e.stopPropagation();
-                      toggleSelectMessage(msg.id);
+                      handleMessageSelectionToggle(msg.id);
                     }
                   }}
                   onDoubleClick={(e) => {
                     e.stopPropagation();
                     if (!isSelectionMode) {
+                      ignoreBackdropClickUntilRef.current = Date.now() + 450;
                       handleTriggerEmojiStrip(msg);
                     }
                   }}
@@ -5706,8 +5739,8 @@ export default function TexAppBatchChat({
                       if (isSelectionMode) {
                         e.stopPropagation();
                         const selection = window.getSelection();
-                        if (selection && selection.toString().length > 0) return;
-                        toggleSelectMessage(msg.id);
+                        if (selection && selection.toString().trim().length > 0) return;
+                        handleMessageSelectionToggle(msg.id);
                       }
                     }}
                     className={`w-fit max-w-[85%] sm:max-w-[70%] inline-flex items-center gap-1.5 relative group/msg ${
@@ -5727,12 +5760,19 @@ export default function TexAppBatchChat({
                             className="fixed inset-0 z-40 bg-transparent select-none"
                             onClick={(e) => {
                               e.stopPropagation();
+                              if (Date.now() < ignoreBackdropClickUntilRef.current) return;
+                              setActiveReactionMsgId(null);
+                            }}
+                            onTouchStart={(e) => {
+                              e.stopPropagation();
+                              if (Date.now() < ignoreBackdropClickUntilRef.current) return;
                               setActiveReactionMsgId(null);
                             }}
                           />
                           <div
                             data-reaction-strip="true"
                             onClick={(e) => e.stopPropagation()}
+                            onTouchStart={(e) => e.stopPropagation()}
                             style={{ zIndex: 60 }}
                             className={`absolute bottom-full mb-2.5 flex items-center gap-1 bg-white dark:bg-[#1f1b16] border border-gray-200/90 dark:border-[#3a3020] rounded-full px-2.5 py-1 shadow-2xl animate-scaleUp select-none whitespace-nowrap shrink-0 ${
                               isMine ? "right-0" : "left-0"
@@ -5802,6 +5842,12 @@ export default function TexAppBatchChat({
                               : "transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275)",
                           touchAction: "pan-y",
                         }}
+                        onClick={(e) => {
+                          if (isSelectionMode) {
+                            e.stopPropagation();
+                            handleMessageSelectionToggle(msg.id);
+                          }
+                        }}
                         onTouchStart={(e) => handleMessageTouchStart(e, msg, e.currentTarget)}
                         onTouchMove={(e) => handleMessageTouchMove(e, msg)}
                         onTouchEnd={(e) => handleMessageTouchEnd(e, msg)}
@@ -5817,6 +5863,7 @@ export default function TexAppBatchChat({
                         onDoubleClick={(e) => {
                           e.stopPropagation();
                           if (!isSelectionMode) {
+                            ignoreBackdropClickUntilRef.current = Date.now() + 450;
                             handleTriggerEmojiStrip(msg);
                           }
                         }}
@@ -5934,7 +5981,7 @@ export default function TexAppBatchChat({
                               onClick={(e) => {
                                 if (isSelectionMode) {
                                   e.stopPropagation();
-                                  toggleSelectMessage(msg.id);
+                                  handleMessageSelectionToggle(msg.id);
                                   return;
                                 }
                                 handleOpenMediaGallery(msg.attachment_url);
@@ -5942,6 +5989,7 @@ export default function TexAppBatchChat({
                               onDoubleClick={(e) => {
                                 e.stopPropagation();
                                 if (!isSelectionMode) {
+                                  ignoreBackdropClickUntilRef.current = Date.now() + 450;
                                   handleTriggerEmojiStrip(msg);
                                 }
                               }}
