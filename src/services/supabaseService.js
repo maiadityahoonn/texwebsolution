@@ -973,7 +973,7 @@ export async function getDirectMessageSummary(userId) {
       .select('id, sender_id, receiver_id, message, attachment_name, attachment_type, is_read, is_deleted, created_at')
       .or(`sender_id.eq.${userId},receiver_id.eq.${userId}`)
       .order('created_at', { ascending: false })
-      .limit(500);
+      .limit(150);
 
     if (error) throw error;
     return data || [];
@@ -992,7 +992,7 @@ export async function getBatchMessageSummary(batchIds = []) {
       .select('id, batch_id, sender_id, message, attachment_name, attachment_type, is_deleted, created_at')
       .in('batch_id', ids)
       .order('created_at', { ascending: false })
-      .limit(Math.min(Math.max(ids.length * 40, 100), 1000));
+      .limit(Math.min(Math.max(ids.length * 15, 50), 250));
 
     if (error) throw error;
     return data || [];

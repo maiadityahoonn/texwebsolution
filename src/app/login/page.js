@@ -394,9 +394,25 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
   const [tasks, setTasks] = useState([]);
   const [meetings, setMeetings] = useState([]);
   const [certificates, setCertificates] = useState([]);
-  const [profiles, setProfiles] = useState([]);
-  const [batches, setBatches] = useState([]);
   const [dailyUpdates, setDailyUpdates] = useState([]);
+  const [profiles, setProfiles] = useState(() => {
+    if (typeof window === "undefined") return [];
+    try {
+      const raw = localStorage.getItem("texweb_cached_profiles");
+      return raw ? JSON.parse(raw) : [];
+    } catch {
+      return [];
+    }
+  });
+  const [batches, setBatches] = useState(() => {
+    if (typeof window === "undefined") return [];
+    try {
+      const raw = localStorage.getItem("texweb_cached_batches");
+      return raw ? JSON.parse(raw) : [];
+    } catch {
+      return [];
+    }
+  });
   const [attendance, setAttendance] = useState([]);
   const [cmsContent, setCmsContent] = useState([]);
   const [cmsVersions, setCmsVersions] = useState([]);
@@ -486,9 +502,25 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
   const [chatMobilePane, setChatMobilePane] = useState("channels");
   const [chatSearchQuery, setChatSearchQuery] = useState("");
   const [chatText, setChatText] = useState("");
-  const [batchChatMeta, setBatchChatMeta] = useState({});
-  const [directChatMeta, setDirectChatMeta] = useState({});
   const [onlineUserIds, setOnlineUserIds] = useState([]);
+  const [batchChatMeta, setBatchChatMeta] = useState(() => {
+    if (typeof window === "undefined") return {};
+    try {
+      const raw = localStorage.getItem("texweb_cached_batch_meta");
+      return raw ? JSON.parse(raw) : {};
+    } catch {
+      return {};
+    }
+  });
+  const [directChatMeta, setDirectChatMeta] = useState(() => {
+    if (typeof window === "undefined") return {};
+    try {
+      const raw = localStorage.getItem("texweb_cached_direct_meta");
+      return raw ? JSON.parse(raw) : {};
+    } catch {
+      return {};
+    }
+  });
   const [workspaceOnlineUserIds, setWorkspaceOnlineUserIds] = useState([]);
   const [typingUsers, setTypingUsers] = useState([]);
   const typingChannelRef = useRef(null);
@@ -1552,8 +1584,11 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
   }, [chatContacts, selectedContactId]);
 
   useEffect(() => {
-    if (!sessionUser?.id || availableChatBatchIds.length === 0) {
+    if (!sessionUser?.id) {
       setBatchChatMeta({});
+      return undefined;
+    }
+    if (availableChatBatchIds.length === 0) {
       return undefined;
     }
     let cancelled = false;
@@ -1573,11 +1608,16 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
         };
       });
       setBatchChatMeta((prev) => {
-        const merged = { ...nextMeta };
+        const merged = { ...prev, ...nextMeta };
         Object.keys(prev || {}).forEach((batchId) => {
           if (!merged[batchId]) merged[batchId] = prev[batchId];
           else merged[batchId] = { ...merged[batchId], unreadCount: prev[batchId]?.unreadCount || 0 };
         });
+        try {
+          if (typeof window !== "undefined") {
+            localStorage.setItem("texweb_cached_batch_meta", JSON.stringify(merged));
+          }
+        } catch {}
         return merged;
       });
     }
@@ -1588,8 +1628,11 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
   }, [sessionUser?.id, availableChatBatchIds]);
 
   useEffect(() => {
-    if (!sessionUser?.id || !canAccessDirectChat) {
+    if (!sessionUser?.id) {
       setDirectChatMeta({});
+      return undefined;
+    }
+    if (!canAccessDirectChat) {
       return undefined;
     }
     let cancelled = false;
@@ -1609,7 +1652,15 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
           lastMessageSenderId: itemTime > chatTimestamp(existing.lastMessageTime) ? item.sender_id : existing.lastMessageSenderId,
         };
       });
-      setDirectChatMeta(nextMeta);
+      setDirectChatMeta((prev) => {
+        const merged = { ...prev, ...nextMeta };
+        try {
+          if (typeof window !== "undefined") {
+            localStorage.setItem("texweb_cached_direct_meta", JSON.stringify(merged));
+          }
+        } catch {}
+        return merged;
+      });
     }
     loadDirectChatSummary();
     return () => {
@@ -2163,7 +2214,20 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
 
   async function refreshBatchWorkspace(batchId = selectedBatch?.id, options = {}) {
     if (!batchId) return;
-    const cached = batchWorkspaceCacheRef.current[batchId];
+    let cached = batchWorkspaceCacheRef.current[batchId];
+    if (!cached && typeof window !== "undefined") {
+      try {
+        const raw = localStorage.getItem(`texweb_cached_batch_ws_${batchId}`);
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (parsed && (Array.isArray(parsed.messages) || Array.isArray(parsed.announcements))) {
+            cached = parsed;
+            batchWorkspaceCacheRef.current[batchId] = parsed;
+          }
+        }
+      } catch {}
+    }
+
     const silent = Boolean(options.silent);
     if (cached) {
       setBatchWorkspaceData(cached);
@@ -2198,6 +2262,16 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
       : data;
 
     batchWorkspaceCacheRef.current[batchId] = mergedData;
+    if (typeof window !== "undefined" && mergedData && Array.isArray(mergedData.messages)) {
+      try {
+        localStorage.setItem(`texweb_cached_batch_ws_${batchId}`, JSON.stringify({
+          ...mergedData,
+          messages: (mergedData.messages || []).slice(-100),
+          announcements: (mergedData.announcements || []).slice(-20),
+          resources: (mergedData.resources || []).slice(-20),
+        }));
+      } catch {}
+    }
     if (batchWorkspaceRequestRef.current === requestId || selectedBatch?.id === batchId) {
       setBatchWorkspaceData(mergedData);
       setBatchWorkspaceBatchId(batchId);
@@ -2241,6 +2315,14 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
       messages: mergeMessages(cached.messages),
     };
     batchWorkspaceCacheRef.current[batchId] = nextCached;
+    if (typeof window !== "undefined" && nextCached) {
+      try {
+        localStorage.setItem(`texweb_cached_batch_ws_${batchId}`, JSON.stringify({
+          ...nextCached,
+          messages: (nextCached.messages || []).slice(-100),
+        }));
+      } catch {}
+    }
     if (isActiveBatchWorkspace(batchId)) {
       setBatchWorkspaceData((prev) => ({ ...prev, messages: mergeMessages(prev.messages) }));
       setBatchWorkspaceBatchId(batchId);
@@ -3047,12 +3129,38 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
       const shouldLoadCrmSummary = ["sales", "sales_executive", "telecaller"].includes(domain) || role === "super_admin";
       const shouldLoadCertificates = role === "hr" || role === "super_admin";
       const shouldLoadGovernance = role === "super_admin";
+      // Priority 1: Fetch batches and profiles immediately for near-instant contact/batch list rendering
+      const fetchBatchesPromise = shouldLoadBatches ? getBatches(user.id, role) : Promise.resolve([]);
+      const fetchProfilesPromise = shouldLoadPeople ? getProfiles() : Promise.resolve([]);
+
+      fetchBatchesPromise.then((bData) => {
+        if (bData && Array.isArray(bData) && bData.length > 0) {
+          setBatches(bData);
+          try {
+            if (typeof window !== "undefined") {
+              localStorage.setItem("texweb_cached_batches", JSON.stringify(bData.slice(0, 100)));
+            }
+          } catch {}
+        }
+      }).catch(() => {});
+
+      fetchProfilesPromise.then((pData) => {
+        if (pData && Array.isArray(pData) && pData.length > 0) {
+          setProfiles(pData);
+          try {
+            if (typeof window !== "undefined") {
+              localStorage.setItem("texweb_cached_profiles", JSON.stringify(pData.slice(0, 200)));
+            }
+          } catch {}
+        }
+      }).catch(() => {});
+
       const [leadsData, certsData, profilesData, notificationsData, batchesData, cmsData, cmsVersionsData, auditData, queueData] = await Promise.all([
         shouldLoadCrmSummary ? getCloudLeads() : Promise.resolve([]),
         shouldLoadCertificates ? getCertificates() : Promise.resolve([]),
-        shouldLoadPeople ? getProfiles() : Promise.resolve([]),
+        fetchProfilesPromise,
         getNotifications(user.id),
-        shouldLoadBatches ? getBatches(user.id, role) : Promise.resolve([]),
+        fetchBatchesPromise,
         shouldLoadGovernance ? getCmsContent() : Promise.resolve([]),
         shouldLoadGovernance ? getCmsVersions() : Promise.resolve([]),
         shouldLoadGovernance ? getAuditLogs() : Promise.resolve([]),
@@ -3081,6 +3189,12 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
       setSubmissions(submissionsData || []);
       setNotifications(notificationsData || []);
       setBatches(batchesData || []);
+      try {
+        if (typeof window !== "undefined") {
+          if (batchesData?.length) localStorage.setItem("texweb_cached_batches", JSON.stringify(batchesData.slice(0, 100)));
+          if (profilesData?.length) localStorage.setItem("texweb_cached_profiles", JSON.stringify(profilesData.slice(0, 200)));
+        }
+      } catch {}
       setDailyUpdates(updatesData || []);
       setTaskReviews(reviewsData || []);
       setAttendance(attendanceData || []);
@@ -4002,7 +4116,9 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
   }
 
   useEffect(() => {
-    loadMessages(selectedContactId);
+    if (selectedContactId) {
+      loadMessages(selectedContactId, { preserveCurrent: true });
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedContactId]);
 

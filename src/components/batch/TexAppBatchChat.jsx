@@ -1761,112 +1761,6 @@ export default function TexAppBatchChat({
     });
   }, []);
 
-  const handleSelectAllMessages = useCallback(() => {
-    const allIds = new Set(
-      (displayMessages || [])
-        .filter((m) => !m.is_deleted && m.message !== "This message was deleted")
-        .map((m) => m.id)
-    );
-    setSelectedMsgIds(allIds);
-    setSelectionMenuOpen(false);
-  }, [displayMessages]);
-
-  const handleToggleStarSelected = useCallback(() => {
-    if (selectedMsgIds.size === 0) return;
-    const allStarred = Array.from(selectedMsgIds).every((id) => starredMsgIds.has(id));
-    setStarredMsgIds((prev) => {
-      const next = new Set(prev);
-      selectedMsgIds.forEach((id) => {
-        if (allStarred) {
-          next.delete(id);
-        } else {
-          next.add(id);
-        }
-      });
-      try {
-        localStorage.setItem(
-          `texweb_starred_msgs_${currentUser?.id || "anon"}`,
-          JSON.stringify(Array.from(next))
-        );
-      } catch (e) {
-        console.warn("Storage save error:", e);
-      }
-      return next;
-    });
-    showToast(allStarred ? "Messages unstarred" : "Messages starred");
-    setIsSelectionMode(false);
-    setSelectedMsgIds(new Set());
-    setSelectionMenuOpen(false);
-  }, [selectedMsgIds, starredMsgIds, currentUser?.id]);
-
-  const handleShareSelected = useCallback(async () => {
-    if (selectedMsgIds.size === 0) return;
-    const selectedMsgs = (displayMessages || []).filter((m) => selectedMsgIds.has(m.id));
-    const shareText = selectedMsgs
-      .map((m) => {
-        const sender = m.sender_id === currentUser?.id ? "You" : (m.sender?.full_name || "User");
-        return `[${sender}]: ${m.message || m.attachment_name || "Media"}`;
-      })
-      .join("\n\n");
-
-    if (typeof navigator !== "undefined" && navigator.share) {
-      try {
-        await navigator.share({
-          title: "TexWeb Chat Message",
-          text: shareText,
-        });
-        setIsSelectionMode(false);
-        setSelectedMsgIds(new Set());
-        setSelectionMenuOpen(false);
-        return;
-      } catch (err) {
-        if (err.name !== "AbortError") {
-          console.warn("Share failed:", err);
-        }
-      }
-    }
-    try {
-      await navigator.clipboard.writeText(shareText);
-      showToast("Message text copied to clipboard for sharing");
-    } catch {
-      showToast("Unable to copy to clipboard");
-    }
-    setIsSelectionMode(false);
-    setSelectedMsgIds(new Set());
-    setSelectionMenuOpen(false);
-  }, [selectedMsgIds, displayMessages, currentUser?.id]);
-
-  const handlePinSelected = useCallback(() => {
-    if (selectedMsgIds.size !== 1) return;
-    const targetId = Array.from(selectedMsgIds)[0];
-    const targetMsg = (displayMessages || []).find((m) => m.id === targetId);
-    if (!targetMsg || !canPinMessage(targetMsg)) {
-      showToast("You cannot pin this message");
-      return;
-    }
-    if (onPinMessage) {
-      onPinMessage(targetMsg.id, !targetMsg.is_pinned);
-      showToast(targetMsg.is_pinned ? "Message unpinned" : "Message pinned");
-    }
-    setIsSelectionMode(false);
-    setSelectedMsgIds(new Set());
-    setSelectionMenuOpen(false);
-  }, [selectedMsgIds, displayMessages, onPinMessage]);
-
-  const handleReplySelected = useCallback(() => {
-    if (selectedMsgIds.size !== 1) return;
-    const targetId = Array.from(selectedMsgIds)[0];
-    const targetMsg = (displayMessages || []).find((m) => m.id === targetId);
-    if (targetMsg) {
-      setReplyingTo(targetMsg);
-      const el = getActiveComposerElement();
-      if (el) el.focus();
-    }
-    setIsSelectionMode(false);
-    setSelectedMsgIds(new Set());
-    setSelectionMenuOpen(false);
-  }, [selectedMsgIds, displayMessages]);
-
   // Starred messages (persisted in localStorage)
   const [starredMsgIds, setStarredMsgIds] = useState(() => {
     try {
@@ -1900,6 +1794,34 @@ export default function TexAppBatchChat({
     });
     closeDropdown();
   };
+
+  const handleToggleStarSelected = useCallback(() => {
+    if (selectedMsgIds.size === 0) return;
+    const allStarred = Array.from(selectedMsgIds).every((id) => starredMsgIds.has(id));
+    setStarredMsgIds((prev) => {
+      const next = new Set(prev);
+      selectedMsgIds.forEach((id) => {
+        if (allStarred) {
+          next.delete(id);
+        } else {
+          next.add(id);
+        }
+      });
+      try {
+        localStorage.setItem(
+          `texweb_starred_msgs_${currentUser?.id || "anon"}`,
+          JSON.stringify(Array.from(next))
+        );
+      } catch (e) {
+        console.warn("Storage save error:", e);
+      }
+      return next;
+    });
+    showToast(allStarred ? "Messages unstarred" : "Messages starred");
+    setIsSelectionMode(false);
+    setSelectedMsgIds(new Set());
+    setSelectionMenuOpen(false);
+  }, [selectedMsgIds, starredMsgIds, currentUser?.id]);
 
   const canEditMessage = (msg) => {
     if (!msg || msg.sender_id !== currentUser?.id || msg.attachment_url || msg.is_deleted) return false;
@@ -2811,6 +2733,84 @@ export default function TexAppBatchChat({
 
     return { displayMessages: regular, reactionsByParentId: reactions };
   }, [messages, deletedForMeIds]);
+
+  const handleSelectAllMessages = useCallback(() => {
+    const allIds = new Set(
+      (displayMessages || [])
+        .filter((m) => !m.is_deleted && m.message !== "This message was deleted")
+        .map((m) => m.id)
+    );
+    setSelectedMsgIds(allIds);
+    setSelectionMenuOpen(false);
+  }, [displayMessages]);
+
+  const handleShareSelected = useCallback(async () => {
+    if (selectedMsgIds.size === 0) return;
+    const selectedMsgs = (displayMessages || []).filter((m) => selectedMsgIds.has(m.id));
+    const shareText = selectedMsgs
+      .map((m) => {
+        const sender = m.sender_id === currentUser?.id ? "You" : (m.sender?.full_name || "User");
+        return `[${sender}]: ${m.message || m.attachment_name || "Media"}`;
+      })
+      .join("\n\n");
+
+    if (typeof navigator !== "undefined" && navigator.share) {
+      try {
+        await navigator.share({
+          title: "TexWeb Chat Message",
+          text: shareText,
+        });
+        setIsSelectionMode(false);
+        setSelectedMsgIds(new Set());
+        setSelectionMenuOpen(false);
+        return;
+      } catch (err) {
+        if (err.name !== "AbortError") {
+          console.warn("Share failed:", err);
+        }
+      }
+    }
+    try {
+      await navigator.clipboard.writeText(shareText);
+      showToast("Message text copied to clipboard for sharing");
+    } catch {
+      showToast("Unable to copy to clipboard");
+    }
+    setIsSelectionMode(false);
+    setSelectedMsgIds(new Set());
+    setSelectionMenuOpen(false);
+  }, [selectedMsgIds, displayMessages, currentUser?.id]);
+
+  const handlePinSelected = useCallback(() => {
+    if (selectedMsgIds.size !== 1) return;
+    const targetId = Array.from(selectedMsgIds)[0];
+    const targetMsg = (displayMessages || []).find((m) => m.id === targetId);
+    if (!targetMsg || !canPinMessage(targetMsg)) {
+      showToast("You cannot pin this message");
+      return;
+    }
+    if (onPinMessage) {
+      onPinMessage(targetMsg.id, !targetMsg.is_pinned);
+      showToast(targetMsg.is_pinned ? "Message unpinned" : "Message pinned");
+    }
+    setIsSelectionMode(false);
+    setSelectedMsgIds(new Set());
+    setSelectionMenuOpen(false);
+  }, [selectedMsgIds, displayMessages, onPinMessage]);
+
+  const handleReplySelected = useCallback(() => {
+    if (selectedMsgIds.size !== 1) return;
+    const targetId = Array.from(selectedMsgIds)[0];
+    const targetMsg = (displayMessages || []).find((m) => m.id === targetId);
+    if (targetMsg) {
+      setReplyingTo(targetMsg);
+      const el = getActiveComposerElement();
+      if (el) el.focus();
+    }
+    setIsSelectionMode(false);
+    setSelectedMsgIds(new Set());
+    setSelectionMenuOpen(false);
+  }, [selectedMsgIds, displayMessages]);
 
   // Filter messages based on disappearing messages timer & search query
   const filteredMessages = useMemo(() => {
