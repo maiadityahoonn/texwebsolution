@@ -1002,6 +1002,81 @@ export async function getBatchMessageSummary(batchIds = []) {
   }
 }
 
+async function canDirectMessageViaRls(senderId, receiverId) {
+  if (!senderId || !receiverId) return false;
+  if (senderId === receiverId) return true;
+  const { data: profiles, error } = await supabase
+    .from('profiles')
+    .select('id, role, batch_id, assigned_mentor_id, assigned_tl_id')
+    .in('id', [senderId, receiverId]);
+  if (error) throw error;
+  const senderProfile = (profiles || []).find((profile) => profile.id === senderId);
+  const receiverProfile = (profiles || []).find((profile) => profile.id === receiverId);
+  if (!senderProfile || !receiverProfile) return false;
+
+  const senderRole = senderProfile.role || "";
+  const receiverRole = receiverProfile.role || "";
+  const elevatedRoles = new Set(["super_admin", "admin", "hr"]);
+  if (elevatedRoles.has(senderRole)) return true;
+
+  if (senderRole === "mentor") {
+    if (elevatedRoles.has(receiverRole)) return true;
+    if (!["team_leader", "intern"].includes(receiverRole)) return false;
+    const { data: batches, error: batchesError } = await supabase
+      .from('batches')
+      .select('id')
+      .eq('mentor_id', senderId);
+    if (batchesError) throw batchesError;
+    const batchIds = new Set((batches || []).map((batch) => batch.id));
+    return Boolean(receiverProfile.batch_id && batchIds.has(receiverProfile.batch_id));
+  }
+
+  if (senderRole === "team_leader" || senderRole === "intern") {
+    if (elevatedRoles.has(receiverRole)) return true;
+    if (receiverRole !== "mentor") return false;
+    if (senderProfile.assigned_mentor_id && senderProfile.assigned_mentor_id === receiverId) return true;
+    if (!senderProfile.batch_id) return false;
+    const { data: batch, error: batchError } = await supabase
+      .from('batches')
+      .select('mentor_id')
+      .eq('id', senderProfile.batch_id)
+      .maybeSingle();
+    if (batchError) throw batchError;
+    return batch?.mentor_id === receiverId;
+  }
+
+  return false;
+}
+
+async function sendRealtimeMessageViaRls(messageData, fallbackReason = "") {
+  const { data: sessionData } = await supabase.auth.getSession();
+  const userId = sessionData?.session?.user?.id;
+  if (!userId) throw new Error("Missing auth session");
+  const receiverId = messageData.receiver_id;
+  const allowed = await canDirectMessageViaRls(userId, receiverId);
+  if (!allowed) throw new Error("Direct chat is not permitted for this contact.");
+
+  const rawMessage = typeof messageData.message === "string" ? messageData.message : "";
+  const hasAttachment = Boolean(messageData.attachment_url || messageData.attachment_name || messageData.attachment_type);
+  if (!rawMessage.trim() && !hasAttachment) throw new Error("Message is required.");
+
+  const { data, error } = await supabase
+    .from('messages')
+    .insert([{
+      sender_id: userId,
+      receiver_id: receiverId,
+      message: rawMessage,
+      attachment_url: messageData.attachment_url || null,
+      attachment_name: messageData.attachment_name || null,
+      attachment_type: messageData.attachment_type || null,
+      reply_to_id: messageData.reply_to_id || null,
+    }])
+    .select('*')
+    .single();
+  if (error) throw error;
+  return { ...data, fallback: true, fallbackReason };
+}
+
 export async function sendRealtimeMessage(messageData) {
   try {
     const token = await getAuthToken();
@@ -1019,6 +1094,9 @@ export async function sendRealtimeMessage(messageData) {
       }),
     });
     const result = await response.json().catch(() => ({}));
+    if (!response.ok && /admin key is not configured/i.test(result.error || "")) {
+      return await sendRealtimeMessageViaRls(messageData, result.error);
+    }
     if (!response.ok) throw new Error(result.error || "Message send failed");
     return result.message || null;
   } catch (err) {
@@ -1045,6 +1123,31 @@ export async function updateRealtimeMessage(messageId, updates = {}) {
       }),
     });
     const result = await response.json().catch(() => ({}));
+    if (!response.ok && /admin key is not configured/i.test(result.error || "")) {
+      if (Object.prototype.hasOwnProperty.call(updates, "message")) {
+        const { data, error } = await supabase.rpc("texweb_edit_direct_message", {
+          p_message_id: messageId,
+          p_message: updates.message || "",
+        });
+        if (error) throw error;
+        return Array.isArray(data) ? data[0] || null : data || null;
+      }
+      if (Object.prototype.hasOwnProperty.call(updates, "is_pinned")) {
+        const { data, error } = await supabase.rpc("texweb_pin_direct_message", {
+          p_message_id: messageId,
+          p_is_pinned: Boolean(updates.is_pinned),
+        });
+        if (error) throw error;
+        return Array.isArray(data) ? data[0] || null : data || null;
+      }
+      if (updates.is_deleted) {
+        const { data, error } = await supabase.rpc("texweb_delete_direct_messages_for_everyone", {
+          p_message_ids: [messageId],
+        });
+        if (error) throw error;
+        return Array.isArray(data) ? data[0] || null : data || null;
+      }
+    }
     if (!response.ok) throw new Error(result.error || "Message update failed");
     return result.message || null;
   } catch (err) {
@@ -1201,6 +1304,35 @@ export async function createBatchWorkspaceItem(itemData) {
       body: JSON.stringify(itemData),
     });
     const result = await response.json().catch(() => ({}));
+    if (!response.ok && /admin key is not configured/i.test(result.error || "")) {
+      if (itemData?.type === "edit_message") {
+        const { data, error } = await supabase.rpc("texweb_edit_batch_message", {
+          p_batch_id: itemData.batch_id,
+          p_message_id: itemData.message_id,
+          p_message: itemData.message || "",
+        });
+        if (error) throw error;
+        return { message: Array.isArray(data) ? data[0] || null : data || null, fallback: true };
+      }
+      if (itemData?.type === "pin_message") {
+        const { data, error } = await supabase.rpc("texweb_pin_batch_message", {
+          p_batch_id: itemData.batch_id,
+          p_message_id: itemData.message_id,
+          p_is_pinned: Boolean(itemData.is_pinned),
+        });
+        if (error) throw error;
+        return { message: Array.isArray(data) ? data[0] || null : data || null, fallback: true };
+      }
+      if (itemData?.type === "delete_message" && itemData.delete_type === "for_everyone") {
+        const messageIds = Array.isArray(itemData.message_ids) ? itemData.message_ids : [itemData.message_id].filter(Boolean);
+        const { data, error } = await supabase.rpc("texweb_delete_batch_messages_for_everyone", {
+          p_batch_id: itemData.batch_id,
+          p_message_ids: messageIds,
+        });
+        if (error) throw error;
+        return { messages: data || [], fallback: true };
+      }
+    }
     if (!response.ok && itemData?.type === "message" && /admin key is not configured/i.test(result.error || "")) {
       const { data: sessionData } = await supabase.auth.getSession();
       const userId = sessionData?.session?.user?.id;

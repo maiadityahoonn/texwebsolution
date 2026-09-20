@@ -2210,21 +2210,233 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
   }
   const loadBatchWorkspaceData = refreshBatchWorkspace;
 
-  function mergeBatchWorkspaceMessage(batchId, message) {
+  function isActiveBatchWorkspace(batchId) {
+    return Boolean(batchId && (batchWorkspaceBatchId === batchId || selectedBatch?.id === batchId));
+  }
+
+  function mergeBatchWorkspaceMessage(batchId, message, options = {}) {
     if (!batchId || !message?.id) return;
+    const replaceId = options.replaceId || "";
     const mergeMessages = (list = []) => {
-      const exists = list.some((item) => item.id === message.id);
-      return exists
-        ? list.map((item) => (item.id === message.id ? { ...item, ...message } : item))
-        : [...list, message];
+      const withoutTemp = replaceId ? list.filter((item) => item.id !== replaceId) : list;
+      const exists = withoutTemp.some((item) => item.id === message.id);
+      const next = exists
+        ? withoutTemp.map((item) => (item.id === message.id ? { ...item, ...message } : item))
+        : [...withoutTemp, message];
+      return next.sort((a, b) => new Date(a.created_at || 0).getTime() - new Date(b.created_at || 0).getTime());
     };
-    setBatchWorkspaceData((prev) => ({ ...prev, messages: mergeMessages(prev.messages) }));
     const cached = batchWorkspaceCacheRef.current[batchId] || emptyBatchWorkspaceData();
-    batchWorkspaceCacheRef.current[batchId] = {
+    const nextCached = {
       ...cached,
       messages: mergeMessages(cached.messages),
     };
-    setBatchWorkspaceBatchId(batchId);
+    batchWorkspaceCacheRef.current[batchId] = nextCached;
+    if (isActiveBatchWorkspace(batchId)) {
+      setBatchWorkspaceData((prev) => ({ ...prev, messages: mergeMessages(prev.messages) }));
+      setBatchWorkspaceBatchId(batchId);
+    }
+  }
+
+  function markBatchWorkspaceMessageFailed(batchId, messageId) {
+    if (!batchId || !messageId) return;
+    const markFailed = (list = []) => list.map((item) => (
+      item.id === messageId ? { ...item, pending: false, send_failed: true } : item
+    ));
+    const cached = batchWorkspaceCacheRef.current[batchId] || emptyBatchWorkspaceData();
+    batchWorkspaceCacheRef.current[batchId] = {
+      ...cached,
+      messages: markFailed(cached.messages),
+    };
+    if (isActiveBatchWorkspace(batchId)) {
+      setBatchWorkspaceData((prev) => ({ ...prev, messages: markFailed(prev.messages) }));
+    }
+  }
+
+  function updateBatchWorkspaceMessages(batchId, updater) {
+    if (!batchId || typeof updater !== "function") return;
+    const cached = batchWorkspaceCacheRef.current[batchId] || emptyBatchWorkspaceData();
+    batchWorkspaceCacheRef.current[batchId] = {
+      ...cached,
+      messages: updater(cached.messages || []),
+    };
+    if (isActiveBatchWorkspace(batchId)) {
+      setBatchWorkspaceData((prev) => ({ ...prev, messages: updater(prev.messages || []) }));
+    }
+  }
+
+  function mapBatchWorkspaceMessage(batchId, messageId, mapper) {
+    updateBatchWorkspaceMessages(batchId, (list) => list.map((item) => (
+      item.id === messageId ? mapper(item) : item
+    )));
+  }
+
+  async function pinBatchMessageOptimistic(batchId, messageId, isPinned) {
+    if (!batchId || !messageId) return;
+    mapBatchWorkspaceMessage(batchId, messageId, (item) => ({ ...item, is_pinned: isPinned, pending_action: "pin" }));
+    const result = await createBatchWorkspaceItem({
+      type: "pin_message",
+      batch_id: batchId,
+      message_id: messageId,
+      is_pinned: isPinned,
+    });
+    if (result?.message) {
+      mapBatchWorkspaceMessage(batchId, messageId, (item) => ({ ...item, ...result.message, pending_action: null }));
+      setToast(isPinned ? "Message pinned to batch notice." : "Message unpinned.");
+      return;
+    }
+    mapBatchWorkspaceMessage(batchId, messageId, (item) => ({ ...item, is_pinned: !isPinned, pending_action: null }));
+    setToast("Pin update failed.");
+  }
+
+  async function editBatchMessageOptimistic(batchId, messageId, text) {
+    if (!batchId || !messageId) return false;
+    let previousMessage = "";
+    mapBatchWorkspaceMessage(batchId, messageId, (item) => {
+      previousMessage = item.message || "";
+      return { ...item, message: text, edited_at: new Date().toISOString(), pending_action: "edit" };
+    });
+    const result = await createBatchWorkspaceItem({
+      type: "edit_message",
+      batch_id: batchId,
+      message_id: messageId,
+      message: text,
+    });
+    if (result?.message) {
+      mapBatchWorkspaceMessage(batchId, messageId, (item) => ({ ...item, ...result.message, pending_action: null }));
+      return true;
+    }
+    mapBatchWorkspaceMessage(batchId, messageId, (item) => ({ ...item, message: previousMessage, pending_action: null }));
+    setToast("Message could not be edited.");
+    return false;
+  }
+
+  async function deleteBatchMessagesOptimistic(batchId, messageIds = [], deleteType = "for_me") {
+    if (!batchId || !messageIds.length) return;
+    const deletedAt = new Date().toISOString();
+    if (deleteType === "for_everyone") {
+      markBatchChatPreviewDeleted(batchId, deletedAt);
+      updateBatchWorkspaceMessages(batchId, (list) => list.map((item) => (
+        messageIds.includes(item.id)
+          ? { ...item, is_deleted: true, deleted_at: deletedAt, deleted_by: sessionUser.id, is_pinned: false, pending_action: "delete" }
+          : item
+      )));
+      const result = await createBatchWorkspaceItem({
+        type: "delete_message",
+        batch_id: batchId,
+        message_ids: messageIds,
+        delete_type: "for_everyone",
+      });
+      if (result === null) {
+        setToast("Delete for everyone failed. Refreshing chat...");
+        refreshBatchWorkspace(batchId, { silent: true });
+        return;
+      }
+    } else {
+      updateBatchWorkspaceMessages(batchId, (list) => list.filter((item) => !messageIds.includes(item.id)));
+    }
+    setToast(deleteType === "for_everyone" ? "Deleted for everyone." : "Deleted for you.");
+  }
+
+  async function sendBatchMessageOptimistic(batchId, payload = {}, options = {}) {
+    if (!batchId || !sessionUser?.id) return false;
+    const tempId = options.replaceId || `local-batch-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    const tempMessage = {
+      id: tempId,
+      batch_id: batchId,
+      sender_id: sessionUser.id,
+      sender: userProfile,
+      message: payload.message || "",
+      reply_to_id: payload.reply_to_id || null,
+      attachment_url: payload.attachment_url || null,
+      attachment_name: payload.attachment_name || null,
+      attachment_type: payload.attachment_type || null,
+      reference_type: payload.reference_type || "none",
+      reference_id: payload.reference_id || null,
+      created_at: new Date().toISOString(),
+      pending: true,
+      send_failed: false,
+    };
+    mergeBatchWorkspaceMessage(batchId, tempMessage);
+    rememberBatchChatActivity(tempMessage);
+
+    const result = await createBatchWorkspaceItem({
+      type: "message",
+      batch_id: batchId,
+      ...payload,
+    });
+    if (result?.message) {
+      mergeBatchWorkspaceMessage(batchId, { ...tempMessage, ...result.message, pending: false }, { replaceId: tempId });
+      rememberBatchChatActivity(result.message);
+      return true;
+    }
+    markBatchWorkspaceMessageFailed(batchId, tempId);
+    setToast("Batch message could not be sent. Check network and retry.");
+    return false;
+  }
+
+  async function retryDirectMessageOptimistic(contactId, failedMessage) {
+    if (!contactId || !failedMessage?.id || !sessionUser?.id) return false;
+    const retryPayload = {
+      sender_id: sessionUser.id,
+      receiver_id: contactId,
+      message: failedMessage.message || "",
+      attachment_url: failedMessage.attachment_url || null,
+      attachment_name: failedMessage.attachment_name || null,
+      attachment_type: failedMessage.attachment_type || null,
+      reply_to_id: failedMessage.reply_to_id || null,
+    };
+    setMessages((prev) => (prev || []).map((item) => (
+      item.id === failedMessage.id ? { ...item, pending: true, send_failed: false } : item
+    )));
+    const saved = await sendRealtimeMessage(retryPayload);
+    if (!saved) {
+      setMessages((prev) => (prev || []).map((item) => (
+        item.id === failedMessage.id ? { ...item, pending: false, send_failed: true } : item
+      )));
+      setToast("Message still could not be sent. Check network and retry.");
+      return false;
+    }
+    const newMsg = { ...failedMessage, ...saved, sender: saved.sender || userProfile, pending: false, send_failed: false };
+    setMessages((prev) => {
+      const list = prev || [];
+      const next = list.map((item) => (item.id === failedMessage.id ? newMsg : item));
+      return next.sort((a, b) => new Date(a.created_at || 0).getTime() - new Date(b.created_at || 0).getTime());
+    });
+    rememberDirectChatActivity(newMsg);
+    directChatChannelRef.current?.send({
+      type: "broadcast",
+      event: "message",
+      payload: { message: newMsg },
+    });
+    return true;
+  }
+
+  async function forwardMessagesToTargets(targets = [], msgsToForward = []) {
+    const jobs = [];
+    for (const target of targets) {
+      for (const message of msgsToForward) {
+        const payload = {
+          message: message.message || "",
+          attachment_url: message.attachment_url || null,
+          attachment_name: message.attachment_name || null,
+          attachment_type: message.attachment_type || null,
+        };
+        if (target.type === "direct") {
+          jobs.push(sendRealtimeMessage({
+            sender_id: sessionUser.id,
+            receiver_id: target.id,
+            ...payload,
+          }));
+        } else {
+          jobs.push(sendBatchMessageOptimistic(target.id, payload));
+        }
+      }
+    }
+    if (!jobs.length) return;
+    setToast(`Forwarding to ${targets.length} chat(s)...`);
+    const results = await Promise.allSettled(jobs);
+    const failed = results.filter((result) => result.status === "rejected" || result.value === false || result.value === null).length;
+    setToast(failed ? `Forwarded with ${failed} failed item(s).` : `Forwarded to ${targets.length} chat(s).`);
   }
 
   async function refreshAccessibleEscalations() {
@@ -2966,8 +3178,8 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
         .on("postgres_changes", { event: "*", schema: "public", table: "attendance" }, () => loadDashboardData())
         .on("postgres_changes", { event: "*", schema: "public", table: "daily_updates" }, () => loadDashboardData())
         .on("postgres_changes", { event: "*", schema: "public", table: "batch_messages" }, (payload) => {
-          const item = payload.new || payload.old;
-          rememberBatchChatActivity(item);
+          const item = payload.new;
+          if (item) rememberBatchChatActivity(item);
           refreshBatchWorkspace(undefined, { silent: true });
         })
         .on("postgres_changes", { event: "*", schema: "public", table: "batch_announcements" }, () => refreshBatchWorkspace(undefined, { silent: true }))
@@ -2983,10 +3195,10 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
           if (payload.new?.title) setToast(payload.new.title);
         })
         .on("postgres_changes", { event: "*", schema: "public", table: "messages" }, (payload) => {
-          const item = payload.new || payload.old;
+          const item = payload.new;
           if (item?.sender_id === sessionUser.id || item?.receiver_id === sessionUser.id) {
             rememberDirectChatActivity(item);
-            if (payload.new) upsertOpenDirectMessage(payload.new);
+            upsertOpenDirectMessage(item);
             if (item?.receiver_id === sessionUser.id) setToast("New message received");
           }
         })
@@ -3008,8 +3220,8 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
       .on("postgres_changes", { event: "*", schema: "public", table: "task_reviews" }, () => loadDashboardData())
       .on("postgres_changes", { event: "*", schema: "public", table: "attendance" }, () => loadDashboardData())
       .on("postgres_changes", { event: "*", schema: "public", table: "batch_messages" }, (payload) => {
-        const item = payload.new || payload.old;
-        rememberBatchChatActivity(item);
+        const item = payload.new;
+        if (item) rememberBatchChatActivity(item);
         refreshBatchWorkspace(undefined, { silent: true });
       })
       .on("postgres_changes", { event: "*", schema: "public", table: "batch_announcements" }, () => refreshBatchWorkspace(undefined, { silent: true }))
@@ -3025,10 +3237,10 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
         if (payload.new?.title) setToast(payload.new.title);
       })
       .on("postgres_changes", { event: "*", schema: "public", table: "messages" }, (payload) => {
-        const item = payload.new || payload.old;
+        const item = payload.new;
         if (item?.sender_id === sessionUser.id || item?.receiver_id === sessionUser.id) {
           rememberDirectChatActivity(item);
-          if (payload.new) upsertOpenDirectMessage(payload.new);
+          upsertOpenDirectMessage(item);
           if (item?.receiver_id === sessionUser.id) setToast("New message received");
         }
       })
@@ -3219,6 +3431,36 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
     });
   }
 
+  function markBatchChatPreviewDeleted(batchId, deletedAt) {
+    if (!batchId) return;
+    setBatchChatMeta((prev) => {
+      const existing = prev[batchId] || {};
+      return {
+        ...prev,
+        [batchId]: {
+          ...existing,
+          lastMessageTime: deletedAt || existing.lastMessageTime || new Date().toISOString(),
+          lastMessagePreview: "Message deleted",
+        },
+      };
+    });
+  }
+
+  function markDirectChatPreviewDeleted(contactId, deletedAt) {
+    if (!contactId) return;
+    setDirectChatMeta((prev) => {
+      const existing = prev[contactId] || {};
+      return {
+        ...prev,
+        [contactId]: {
+          ...existing,
+          lastMessageTime: deletedAt || existing.lastMessageTime || new Date().toISOString(),
+          lastMessagePreview: "Message deleted",
+        },
+      };
+    });
+  }
+
   function upsertOpenDirectMessage(item) {
     if (!item?.id || !item?.sender_id || !item?.receiver_id || !sessionUser?.id || !selectedContactId) return;
     const otherId = item.sender_id === sessionUser.id ? item.receiver_id : item.sender_id;
@@ -3286,12 +3528,12 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
 
   async function markDirectChatDelivered(contactId) {
     if (!contactId || !sessionUser?.id) return false;
-    const result = await markDirectMessagesDelivered(contactId);
-    if (!result) return false;
-    const deliveredAt = result?.delivered_at || new Date().toISOString();
+    const deliveredAt = new Date().toISOString();
     applyDirectDeliveryReceipt({ senderId: contactId, receiverId: sessionUser.id, deliveredAt });
     sendDirectDeliveryReceiptBroadcast(contactId, deliveredAt);
     setTimeout(() => sendDirectDeliveryReceiptBroadcast(contactId, deliveredAt), 250);
+    const result = await markDirectMessagesDelivered(contactId);
+    if (!result) return false;
     return true;
   }
 
@@ -4712,29 +4954,30 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
       receiver_id: selectedContactId,
       message: chatText.trim(),
     };
-    const saved = await sendRealtimeMessage(msg);
-    const newMsg = saved || { ...msg, id: Date.now(), created_at: new Date().toISOString() };
-    setMessages([...(messages || []), newMsg]);
-    rememberDirectChatActivity(newMsg);
+    const tempId = `local-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    const tempMsg = { ...msg, id: tempId, created_at: new Date().toISOString(), sender: userProfile, pending: true };
+    setMessages((prev) => [...(prev || []), tempMsg]);
+    rememberDirectChatActivity(tempMsg);
     setChatText("");
+    const saved = await sendRealtimeMessage(msg);
+    if (!saved) {
+      setMessages((prev) => (prev || []).map((item) => (
+        item.id === tempId ? { ...item, pending: false, send_failed: true } : item
+      )));
+      setToast("Message could not be sent. Check network and try again.");
+      return;
+    }
+    const newMsg = { ...tempMsg, ...saved, pending: false };
+    setMessages((prev) => (prev || []).map((item) => (item.id === tempId ? newMsg : item)));
+    rememberDirectChatActivity(newMsg);
   }
 
   async function handleSendBatchMessage(e) {
     e.preventDefault();
     if (!selectedBatch?.id || !batchMessageText.trim()) return;
-    const result = await createBatchWorkspaceItem({
-      type: "message",
-      batch_id: selectedBatch.id,
-      message: batchMessageText.trim(),
-    });
-    if (!result?.message) {
-      setToast("Batch message could not be sent.");
-      return;
-    }
-    mergeBatchWorkspaceMessage(selectedBatch.id, result.message);
-    rememberBatchChatActivity(result.message);
+    const text = batchMessageText.trim();
     setBatchMessageText("");
-    setToast("Batch message sent.");
+    await sendBatchMessageOptimistic(selectedBatch.id, { message: text });
   }
 
   async function handleCreateBatchAnnouncement(e) {
@@ -6952,17 +7195,21 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
                                 id: tempId,
                                 created_at: new Date().toISOString(),
                                 sender: userProfile,
+                                pending: true,
                               };
                               setMessages((prev) => [...(prev || []), tempMsg]);
                               rememberDirectChatActivity(tempMsg);
 
                               const saved = await sendRealtimeMessage(msg);
                               if (!saved) {
-                                setToast("Message saved after refresh. Reopen chat if it does not appear.");
-                                return true;
+                                setMessages((prev) => (prev || []).map((item) => (
+                                  item.id === tempId ? { ...item, pending: false, send_failed: true } : item
+                                )));
+                                setToast("Message could not be sent. Check network and try again.");
+                                return false;
                               }
 
-                              const newMsg = { ...tempMsg, ...saved, sender: saved.sender || userProfile };
+                              const newMsg = { ...tempMsg, ...saved, sender: saved.sender || userProfile, pending: false };
                               setMessages((prev) => {
                                 const list = prev || [];
                                 const replaced = list.some((item) => item.id === tempId);
@@ -6990,33 +7237,64 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
                                 setToast("Edit time window has expired.");
                                 return false;
                               }
+                              setMessages((prev) => (prev || []).map((m) => (
+                                m.id === messageId ? { ...m, message: text, edited_at: new Date().toISOString(), pending_action: "edit" } : m
+                              )));
                               const saved = await updateRealtimeMessage(messageId, {
                                 message: text,
                                 original_message: target.original_message || target.message,
                                 edited_at: new Date().toISOString(),
                               });
                               if (!saved) {
+                                setMessages((prev) => (prev || []).map((m) => (
+                                  m.id === messageId ? { ...m, message: target.message, pending_action: null } : m
+                                )));
                                 setToast("Message could not be edited.");
                                 return false;
                               }
-                              setMessages((prev) => (prev || []).map((m) => (m.id === messageId ? { ...m, ...saved } : m)));
+                              setMessages((prev) => (prev || []).map((m) => (m.id === messageId ? { ...m, ...saved, pending_action: null } : m)));
                               return true;
                             }}
                             onPinMessage={async (messageId, isPinned) => {
+                              setMessages((prev) => (prev || []).map((m) => (m.id === messageId ? { ...m, is_pinned: isPinned, pending_action: "pin" } : m)));
                               const saved = await updateRealtimeMessage(messageId, { is_pinned: isPinned });
                               if (saved) {
-                                setMessages((prev) => (prev || []).map((m) => (m.id === messageId ? { ...m, is_pinned: isPinned } : m)));
+                                setMessages((prev) => (prev || []).map((m) => (m.id === messageId ? { ...m, is_pinned: isPinned, pending_action: null } : m)));
                                 setToast(isPinned ? "Message pinned." : "Message unpinned.");
+                              } else {
+                                setMessages((prev) => (prev || []).map((m) => (m.id === messageId ? { ...m, is_pinned: !isPinned, pending_action: null } : m)));
+                                setToast("Pin update failed.");
                               }
                             }}
                             onDeleteMessage={async ({ messageIds, deleteType }) => {
                               if (deleteType === "for_everyone") {
+                                const deletedAt = new Date().toISOString();
+                                markDirectChatPreviewDeleted(activeContact.id, deletedAt);
+                                setMessages((prev) =>
+                                  (prev || []).map((m) =>
+                                    messageIds.includes(m.id)
+                                      ? {
+                                        ...m,
+                                        is_deleted: true,
+                                        deleted_at: deletedAt,
+                                        deleted_by: sessionUser.id,
+                                        is_pinned: false,
+                                        pending_action: "delete",
+                                      }
+                                      : m
+                                  )
+                                );
                                 for (const mId of messageIds) {
-                                  await updateRealtimeMessage(mId, {
+                                  const saved = await updateRealtimeMessage(mId, {
                                     is_deleted: true,
-                                    deleted_at: new Date().toISOString(),
+                                    deleted_at: deletedAt,
                                     deleted_by: sessionUser.id,
                                   });
+                                  if (!saved) {
+                                    setToast("Delete failed. Refreshing chat...");
+                                    loadMessages(activeContact.id);
+                                    return;
+                                  }
                                 }
                                 setMessages((prev) =>
                                   (prev || []).map((m) =>
@@ -7024,9 +7302,10 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
                                       ? {
                                         ...m,
                                         is_deleted: true,
-                                        deleted_at: new Date().toISOString(),
+                                        deleted_at: deletedAt,
                                         deleted_by: sessionUser.id,
                                         is_pinned: false,
+                                        pending_action: null,
                                       }
                                       : m
                                   )
@@ -7037,30 +7316,10 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
                               setToast(deleteType === "for_everyone" ? "Deleted for everyone." : "Deleted for you.");
                             }}
                             onForwardMessage={async ({ targets, messages: msgsToForward }) => {
-                              for (const target of targets) {
-                                for (const m of msgsToForward) {
-                                  if (target.type === "direct") {
-                                    await sendRealtimeMessage({
-                                      sender_id: sessionUser.id,
-                                      receiver_id: target.id,
-                                      message: m.message || "",
-                                      attachment_url: m.attachment_url || null,
-                                      attachment_name: m.attachment_name || null,
-                                      attachment_type: m.attachment_type || null,
-                                    });
-                                  } else {
-                                    await createBatchWorkspaceItem({
-                                      type: "message",
-                                      batch_id: target.id,
-                                      message: m.message || "",
-                                      attachment_url: m.attachment_url || null,
-                                      attachment_name: m.attachment_name || null,
-                                      attachment_type: m.attachment_type || null,
-                                    });
-                                  }
-                                }
-                              }
-                              setToast(`Forwarded to ${targets.length} chat(s).`);
+                              await forwardMessagesToTargets(targets, msgsToForward);
+                            }}
+                            onRetryMessage={async (message) => {
+                              await retryDirectMessageOptimistic(activeContact.id, message);
                             }}
                             isDark={isDark}
                             localDate={localDate}
@@ -7109,112 +7368,34 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
                         typingUsers={typingUsers}
                         onTyping={publishTyping}
                         onSendMessage={async (payload) => {
-                          const result = await createBatchWorkspaceItem({
-                            type: "message",
-                            batch_id: selectedBatch.id,
-                            ...payload,
-                          });
-                          if (result?.message) {
-                            mergeBatchWorkspaceMessage(selectedBatch.id, result.message);
-                            rememberBatchChatActivity(result.message);
-                            return true;
-                          }
-                          setToast("Batch message could not be sent.");
-                          return false;
+                          return sendBatchMessageOptimistic(selectedBatch.id, payload);
                         }}
                         onPinMessage={async (messageId, isPinned) => {
-                          const result = await createBatchWorkspaceItem({
-                            type: "pin_message",
-                            batch_id: selectedBatch.id,
-                            message_id: messageId,
-                            is_pinned: isPinned,
-                          });
-                          if (result?.message) {
-                            setBatchWorkspaceData((prev) => ({
-                              ...prev,
-                              messages: (prev.messages || []).map((m) =>
-                                m.id === messageId ? { ...m, is_pinned: isPinned } : m
-                              ),
-                            }));
-                            setToast(isPinned ? "Message pinned to batch notice." : "Message unpinned.");
-                          }
+                          await pinBatchMessageOptimistic(selectedBatch.id, messageId, isPinned);
                         }}
                         onMarkRead={() => createBatchWorkspaceItem({
                           type: "read_messages",
                           batch_id: selectedBatch.id,
                         })}
                         onEditMessage={async (messageId, text) => {
-                          const result = await createBatchWorkspaceItem({
-                            type: "edit_message",
-                            batch_id: selectedBatch.id,
-                            message_id: messageId,
-                            message: text,
-                          });
-                          if (result?.message) {
-                            setBatchWorkspaceData((prev) => ({
-                              ...prev,
-                              messages: (prev.messages || []).map((m) => (m.id === messageId ? result.message : m)),
-                            }));
-                            return true;
-                          }
-                          setToast("Message could not be edited.");
-                          return false;
+                          return editBatchMessageOptimistic(selectedBatch.id, messageId, text);
                         }}
                         onDeleteMessage={async ({ messageIds, deleteType }) => {
-                          if (deleteType === "for_everyone") {
-                            await createBatchWorkspaceItem({
-                              type: "delete_message",
-                              batch_id: selectedBatch.id,
-                              message_ids: messageIds,
-                              delete_type: "for_everyone",
-                            });
-                            setBatchWorkspaceData((prev) => ({
-                              ...prev,
-                              messages: (prev.messages || []).map((m) =>
-                                messageIds.includes(m.id)
-                                  ? {
-                                    ...m,
-                                    is_deleted: true,
-                                    deleted_at: new Date().toISOString(),
-                                    deleted_by: sessionUser.id,
-                                    is_pinned: false,
-                                  }
-                                  : m
-                              ),
-                            }));
-                          } else {
-                            setBatchWorkspaceData((prev) => ({
-                              ...prev,
-                              messages: (prev.messages || []).filter((m) => !messageIds.includes(m.id)),
-                            }));
-                          }
-                          setToast(deleteType === "for_everyone" ? "Deleted for everyone." : "Deleted for you.");
+                          await deleteBatchMessagesOptimistic(selectedBatch.id, messageIds, deleteType);
                         }}
                         onForwardMessage={async ({ targets, messages: msgsToForward }) => {
-                          for (const target of targets) {
-                            for (const m of msgsToForward) {
-                              if (target.type === "direct") {
-                                await sendRealtimeMessage({
-                                  sender_id: sessionUser.id,
-                                  receiver_id: target.id,
-                                  message: m.message || "",
-                                  attachment_url: m.attachment_url || null,
-                                  attachment_name: m.attachment_name || null,
-                                  attachment_type: m.attachment_type || null,
-                                });
-                              } else {
-                                await createBatchWorkspaceItem({
-                                  type: "message",
-                                  batch_id: target.id,
-                                  message: m.message || "",
-                                  attachment_url: m.attachment_url || null,
-                                  attachment_name: m.attachment_name || null,
-                                  attachment_type: m.attachment_type || null,
-                                });
-                              }
-                            }
-                          }
-                          setToast(`Forwarded to ${targets.length} chat(s).`);
+                          await forwardMessagesToTargets(targets, msgsToForward);
+                        }}
+                        onRetryMessage={async (message) => {
+                          await sendBatchMessageOptimistic(selectedBatch.id, {
+                            message: message.message || "",
+                            reply_to_id: message.reply_to_id || null,
+                            attachment_url: message.attachment_url || null,
+                            attachment_name: message.attachment_name || null,
+                            attachment_type: message.attachment_type || null,
+                            reference_type: message.reference_type || "none",
+                            reference_id: message.reference_id || null,
+                          }, { replaceId: message.id });
                         }}
                         onOpenTaskDetails={(task) => setTaskDetailsModal(task)}
                         isDark={isDark}
@@ -8130,112 +8311,34 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
                             typingUsers={typingUsers}
                             onTyping={publishTyping}
                             onSendMessage={async (payload) => {
-                              const result = await createBatchWorkspaceItem({
-                                type: "message",
-                                batch_id: selectedBatch.id,
-                                ...payload,
-                              });
-                            if (result?.message) {
-                              mergeBatchWorkspaceMessage(selectedBatch.id, result.message);
-                              rememberBatchChatActivity(result.message);
-                              return true;
-                            }
-                              setToast("Batch message could not be sent.");
-                              return false;
+                              return sendBatchMessageOptimistic(selectedBatch.id, payload);
                             }}
                             onPinMessage={async (messageId, isPinned) => {
-                              const result = await createBatchWorkspaceItem({
-                                type: "pin_message",
-                                batch_id: selectedBatch.id,
-                                message_id: messageId,
-                                is_pinned: isPinned,
-                              });
-                              if (result?.message) {
-                                setBatchWorkspaceData((prev) => ({
-                                  ...prev,
-                                  messages: (prev.messages || []).map((m) =>
-                                    m.id === messageId ? { ...m, is_pinned: isPinned } : m
-                                  ),
-                                }));
-                                setToast(isPinned ? "Message pinned to batch notice." : "Message unpinned.");
-                              }
+                              await pinBatchMessageOptimistic(selectedBatch.id, messageId, isPinned);
                             }}
                             onMarkRead={() => createBatchWorkspaceItem({
                               type: "read_messages",
                               batch_id: selectedBatch.id,
                             })}
                             onEditMessage={async (messageId, text) => {
-                              const result = await createBatchWorkspaceItem({
-                                type: "edit_message",
-                                batch_id: selectedBatch.id,
-                                message_id: messageId,
-                                message: text,
-                              });
-                              if (result?.message) {
-                                setBatchWorkspaceData((prev) => ({
-                                  ...prev,
-                                  messages: (prev.messages || []).map((m) => (m.id === messageId ? result.message : m)),
-                                }));
-                                return true;
-                              }
-                              setToast("Message could not be edited.");
-                              return false;
+                              return editBatchMessageOptimistic(selectedBatch.id, messageId, text);
                             }}
                             onDeleteMessage={async ({ messageIds, deleteType }) => {
-                              if (deleteType === "for_everyone") {
-                                await createBatchWorkspaceItem({
-                                  type: "delete_message",
-                                  batch_id: selectedBatch.id,
-                                  message_ids: messageIds,
-                                  delete_type: "for_everyone",
-                                });
-                                setBatchWorkspaceData((prev) => ({
-                                  ...prev,
-                                  messages: (prev.messages || []).map((m) =>
-                                    messageIds.includes(m.id)
-                                      ? {
-                                        ...m,
-                                        is_deleted: true,
-                                        deleted_at: new Date().toISOString(),
-                                        deleted_by: sessionUser.id,
-                                        is_pinned: false,
-                                      }
-                                      : m
-                                  ),
-                                }));
-                              } else {
-                                setBatchWorkspaceData((prev) => ({
-                                  ...prev,
-                                  messages: (prev.messages || []).filter((m) => !messageIds.includes(m.id)),
-                                }));
-                              }
-                              setToast(deleteType === "for_everyone" ? "Deleted for everyone." : "Deleted for you.");
+                              await deleteBatchMessagesOptimistic(selectedBatch.id, messageIds, deleteType);
                             }}
                             onForwardMessage={async ({ targets, messages: msgsToForward }) => {
-                              for (const target of targets) {
-                                for (const m of msgsToForward) {
-                                  if (target.type === "direct") {
-                                    await sendRealtimeMessage({
-                                      sender_id: sessionUser.id,
-                                      receiver_id: target.id,
-                                      message: m.message || "",
-                                      attachment_url: m.attachment_url || null,
-                                      attachment_name: m.attachment_name || null,
-                                      attachment_type: m.attachment_type || null,
-                                    });
-                                  } else {
-                                    await createBatchWorkspaceItem({
-                                      type: "message",
-                                      batch_id: target.id,
-                                      message: m.message || "",
-                                      attachment_url: m.attachment_url || null,
-                                      attachment_name: m.attachment_name || null,
-                                      attachment_type: m.attachment_type || null,
-                                    });
-                                  }
-                                }
-                              }
-                              setToast(`Forwarded to ${targets.length} chat(s).`);
+                              await forwardMessagesToTargets(targets, msgsToForward);
+                            }}
+                            onRetryMessage={async (message) => {
+                              await sendBatchMessageOptimistic(selectedBatch.id, {
+                                message: message.message || "",
+                                reply_to_id: message.reply_to_id || null,
+                                attachment_url: message.attachment_url || null,
+                                attachment_name: message.attachment_name || null,
+                                attachment_type: message.attachment_type || null,
+                                reference_type: message.reference_type || "none",
+                                reference_id: message.reference_id || null,
+                              }, { replaceId: message.id });
                             }}
                             onOpenTaskDetails={(task) => setTaskDetailsModal(task)}
                             isDark={isDark}

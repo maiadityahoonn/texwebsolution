@@ -43,6 +43,7 @@ import {
   Play,
   Pause,
   Loader2,
+  AlertTriangle,
   AlertCircle,
   Clock,
   MessageSquare,
@@ -389,6 +390,24 @@ const WHATSAPP_STICKER_PACK = [
   { id: "stk_flex", emoji: "💪", text: "Strong" },
 ];
 function MessageStatusTick({ msg, onMedia = false }) {
+  if (msg.send_failed) {
+    return (
+      <AlertTriangle
+        className={`w-3.5 h-3.5 stroke-[2.3] shrink-0 ${onMedia ? "text-white/90" : "text-red-500"}`}
+        title="Not sent"
+      />
+    );
+  }
+
+  if (msg.pending) {
+    return (
+      <Clock
+        className={`w-3.5 h-3.5 stroke-[2.2] shrink-0 ${onMedia ? "text-white/85" : "text-gray-400 dark:text-gray-400"}`}
+        title="Sending"
+      />
+    );
+  }
+
   // 1. Read check: either msg.read_at or msg.is_read or any individual receipt has read_at
   const receipts = msg.receipts || {};
   const hasMemberRead = Object.values(receipts).some((r) => Boolean(r?.read_at));
@@ -614,6 +633,7 @@ export default function TexAppBatchChat({
   onDeleteMessage = null,
   onForwardMessage = null,
   onEditMessage = null,
+  onRetryMessage = null,
   onMarkDelivered = null,
   onMarkRead = null,
   onTyping = null,
@@ -1687,6 +1707,7 @@ export default function TexAppBatchChat({
   const [forwardTargetMessages, setForwardTargetMessages] = useState([]);
   const [forwardSearch, setForwardSearch] = useState("");
   const [selectedForwardTargets, setSelectedForwardTargets] = useState(new Set());
+  const [isForwarding, setIsForwarding] = useState(false);
 
   // Starred messages (persisted in localStorage)
   const [starredMsgIds, setStarredMsgIds] = useState(() => {
@@ -2077,29 +2098,38 @@ export default function TexAppBatchChat({
   // Deleted for everyone (optimistic state)
   const [deletedForAllIds, setDeletedForAllIds] = useState(new Set());
 
+  const isMessageHiddenFromSharedTabs = useCallback((msg) => {
+    if (!msg?.id) return true;
+    return (
+      deletedForMeIds.has(msg.id) ||
+      deletedForAllIds.has(msg.id) ||
+      Boolean(msg.is_deleted)
+    );
+  }, [deletedForMeIds, deletedForAllIds]);
+
   // Media, Docs, and Links lists for current chat (excluding deleted messages)
   const chatMediaList = useMemo(() => {
     return (messages || []).filter(
       (m) =>
         m.attachment_url &&
         (m.attachment_type === "image" || m.attachment_type === "video") &&
-        !deletedForMeIds.has(m.id)
+        !isMessageHiddenFromSharedTabs(m)
     );
-  }, [messages, deletedForMeIds]);
+  }, [messages, isMessageHiddenFromSharedTabs]);
 
   const chatDocsList = useMemo(() => {
     return (messages || []).filter(
       (m) =>
         m.attachment_url &&
         (m.attachment_type === "pdf" || m.attachment_type === "document") &&
-        !deletedForMeIds.has(m.id)
+        !isMessageHiddenFromSharedTabs(m)
     );
-  }, [messages, deletedForMeIds]);
+  }, [messages, isMessageHiddenFromSharedTabs]);
 
   const chatLinksList = useMemo(() => {
     const list = [];
     (messages || []).forEach((m) => {
-      if (m.message && !deletedForMeIds.has(m.id)) {
+      if (m.message && !isMessageHiddenFromSharedTabs(m)) {
         const u = extractFirstUrl(m.message);
         if (u) {
           list.push({ msg: m, url: u, domain: getHostname(u) });
@@ -2107,11 +2137,11 @@ export default function TexAppBatchChat({
       }
     });
     return list;
-  }, [messages, deletedForMeIds]);
+  }, [messages, isMessageHiddenFromSharedTabs]);
 
   const starredMessagesList = useMemo(() => {
-    return (messages || []).filter((m) => starredMsgIds.has(m.id) && !deletedForMeIds.has(m.id));
-  }, [messages, starredMsgIds, deletedForMeIds]);
+    return (messages || []).filter((m) => starredMsgIds.has(m.id) && !isMessageHiddenFromSharedTabs(m));
+  }, [messages, starredMsgIds, isMessageHiddenFromSharedTabs]);
 
   const [enterIsSend, setEnterIsSend] = useState(() => {
     try {
@@ -2142,7 +2172,7 @@ export default function TexAppBatchChat({
     const selectedDateStr = e.target.value;
     if (!selectedDateStr) return;
     const targetMsg = (messages || []).find((m) => {
-      if (!m.created_at || deletedForMeIds.has(m.id)) return false;
+      if (!m.created_at || isMessageHiddenFromSharedTabs(m)) return false;
       const d = new Date(m.created_at);
       if (isNaN(d.getTime())) return false;
       const dateIso = d.toISOString().slice(0, 10);
@@ -2204,7 +2234,7 @@ export default function TexAppBatchChat({
     lines.push(`=======================================================\n`);
 
     messages.forEach((m) => {
-      if (deletedForMeIds.has(m.id)) return;
+      if (isMessageHiddenFromSharedTabs(m)) return;
       const dateStr = formatFullDateTime(m.created_at);
       const senderName =
         m.sender?.full_name ||
@@ -2240,9 +2270,9 @@ export default function TexAppBatchChat({
     if (!searchQuery || !searchQuery.trim()) return [];
     const q = searchQuery.toLowerCase();
     return (messages || [])
-      .filter((m) => !deletedForMeIds.has(m.id) && m.message && m.message.toLowerCase().includes(q))
+      .filter((m) => !isMessageHiddenFromSharedTabs(m) && m.message && m.message.toLowerCase().includes(q))
       .map((m) => m.id);
-  }, [messages, searchQuery, deletedForMeIds]);
+  }, [messages, searchQuery, isMessageHiddenFromSharedTabs]);
 
   const handleNextSearchMatch = () => {
     if (searchMatchingIds.length === 0) return;
@@ -2565,8 +2595,8 @@ export default function TexAppBatchChat({
 
   // Pinned messages
   const pinnedMessages = useMemo(() => {
-    return messages.filter((m) => m.is_pinned);
-  }, [messages]);
+    return messages.filter((m) => m.is_pinned && !isMessageHiddenFromSharedTabs(m));
+  }, [messages, isMessageHiddenFromSharedTabs]);
 
   // Filtered mention members
   const mentionSuggestions = useMemo(() => {
@@ -3129,6 +3159,12 @@ export default function TexAppBatchChat({
     setComposerText(msg.message || "");
   };
 
+  const handleRetryFailedMessage = async (msg) => {
+    if (!msg?.send_failed || !onRetryMessage) return;
+    closeDropdown();
+    await onRetryMessage(msg);
+  };
+
   const handleStartRecording = async (mode = "audio") => {
     if (recordingMode || isUploadingVoice) return;
 
@@ -3539,7 +3575,7 @@ export default function TexAppBatchChat({
 
   // Copy selected messages (Safe with fallback and error handling)
   const handleCopySelected = async () => {
-    const selectedMsgs = (messages || []).filter((m) => selectedMsgIds.has(m.id));
+    const selectedMsgs = (messages || []).filter((m) => selectedMsgIds.has(m.id) && !isMessageHiddenFromSharedTabs(m) && !m.send_failed);
     const textToCopy = selectedMsgs.map((m) => m.message || "").join("\n");
     if (textToCopy) {
       try {
@@ -3572,7 +3608,13 @@ export default function TexAppBatchChat({
 
   // Open Forward modal for selected messages
   const handleOpenForwardSelected = () => {
-    const selectedMsgs = (messages || []).filter((m) => selectedMsgIds.has(m.id));
+    const selectedMsgs = (messages || []).filter((m) => selectedMsgIds.has(m.id) && !isMessageHiddenFromSharedTabs(m) && !m.send_failed);
+    if (!selectedMsgs.length) {
+      showToast("No sendable messages selected.");
+      setIsSelectionMode(false);
+      setSelectedMsgIds(new Set());
+      return;
+    }
     setForwardTargetMessages(selectedMsgs);
     setSelectedForwardTargets(new Set());
     setForwardModalOpen(true);
@@ -3625,31 +3667,38 @@ export default function TexAppBatchChat({
 
   // Execute Forward to selected contacts / batches
   const handleExecuteForward = async () => {
-    if (selectedForwardTargets.size === 0 || forwardTargetMessages.length === 0) return;
+    if (isForwarding || selectedForwardTargets.size === 0 || forwardTargetMessages.length === 0) return;
     const targetArray = Array.from(selectedForwardTargets).map((jsonStr) => JSON.parse(jsonStr));
+    const messagesToForward = forwardTargetMessages;
 
-    if (onForwardMessage) {
-      await onForwardMessage({
-        targets: targetArray,
-        messages: forwardTargetMessages,
-      });
-    } else if (onSendMessage) {
-      // Fallback: send into current chat
-      for (const m of forwardTargetMessages) {
-        await onSendMessage({
-          message: m.message,
-          attachment_url: m.attachment_url,
-          attachment_name: m.attachment_name,
-          attachment_type: m.attachment_type,
-        });
-      }
-    }
-
+    setIsForwarding(true);
     setForwardModalOpen(false);
     setForwardTargetMessages([]);
     setSelectedForwardTargets(new Set());
+    setForwardSearch("");
     setIsSelectionMode(false);
     setSelectedMsgIds(new Set());
+
+    try {
+      if (onForwardMessage) {
+        await onForwardMessage({
+          targets: targetArray,
+          messages: messagesToForward,
+        });
+      } else if (onSendMessage) {
+        // Fallback: send into current chat
+        for (const m of messagesToForward) {
+          await onSendMessage({
+            message: m.message,
+            attachment_url: m.attachment_url,
+            attachment_name: m.attachment_name,
+            attachment_type: m.attachment_type,
+          });
+        }
+      }
+    } finally {
+      setIsForwarding(false);
+    }
   };
 
   // Effective batch members: ensures the current logged-in user is ALWAYS included and sorted to the top (like WhatsApp "You")
@@ -3924,6 +3973,18 @@ export default function TexAppBatchChat({
 
             {/* 2. Menu Actions List */}
             <div className="p-1 space-y-0.5">
+              {/* Retry failed local sends */}
+              {msg.send_failed && onRetryMessage && (
+                <button
+                  type="button"
+                  onClick={() => handleRetryFailedMessage(msg)}
+                  className="w-full flex items-center gap-3 px-3 py-2 rounded-xl hover:bg-red-50 dark:hover:bg-red-950/40 transition text-left cursor-pointer text-xs sm:text-sm font-semibold text-red-600 dark:text-red-400"
+                >
+                  <RotateCcw className="w-4 h-4 shrink-0" />
+                  <span>Retry send</span>
+                </button>
+              )}
+
               {/* Message info (Only for sender of message, exactly like WhatsApp) */}
               {isMine && (
                 <button
@@ -4004,6 +4065,11 @@ export default function TexAppBatchChat({
               <button
                 type="button"
                 onClick={() => {
+                  if (msg.send_failed || isMessageHiddenFromSharedTabs(msg)) {
+                    showToast("This message cannot be forwarded.");
+                    closeDropdown();
+                    return;
+                  }
                   setForwardTargetMessages([msg]);
                   setSelectedForwardTargets(new Set());
                   setForwardModalOpen(true);
@@ -5867,7 +5933,7 @@ export default function TexAppBatchChat({
                               : "text-[11.5px] sm:text-[12px] leading-snug"
                           } break-words`}
                         >
-                          <span className="whitespace-pre-wrap font-normal text-gray-900 dark:text-[#f4ead2]">
+                          <span className="whitespace-pre-wrap font-normal text-[14.5px] sm:text-sm leading-relaxed text-gray-900 dark:text-[#f4ead2]">
                             <RenderWithAppleEmojis text={msg.message} />
                           </span>
 
@@ -6052,6 +6118,10 @@ export default function TexAppBatchChat({
                         type="button"
                         onClick={(e) => {
                           e.stopPropagation();
+                          if (msg.send_failed || isMessageHiddenFromSharedTabs(msg)) {
+                            showToast("This message cannot be forwarded.");
+                            return;
+                          }
                           setForwardTargetMessages([msg]);
                           setSelectedForwardTargets(new Set());
                           setForwardModalOpen(true);
@@ -6332,7 +6402,7 @@ export default function TexAppBatchChat({
       {/* =========================================================================
           8. BOTTOM INPUT BAR (WhatsApp Web Style Pill + Send Button)
           ========================================================================= */}
-      <div className={`px-3 sm:px-4 py-2 sm:py-2.5 border-t shrink-0 z-20 relative transition-colors ${
+      <div className={`px-3 sm:px-4 py-2.5 sm:py-2.5 border-t shrink-0 z-20 relative transition-colors ${
         isDark ? "bg-transparent border-slate-800" : "bg-transparent border-gray-200/80"
       }`}>
         {/* Replying-to Preview Banner */}
@@ -6451,7 +6521,7 @@ export default function TexAppBatchChat({
         ) : (
         <form onSubmit={handleSend} className="w-full flex items-center">
           <div
-            className={`w-full flex items-center rounded-full px-2 sm:px-2.5 py-1 min-h-[48px] shadow-sm border transition-colors gap-1 sm:gap-2 ${
+            className={`w-full flex items-center rounded-full px-2.5 sm:px-2.5 py-1.5 sm:py-1 min-h-[56px] sm:min-h-[48px] shadow-sm border transition-colors gap-1.5 sm:gap-2 ${
               recordingMode === "audio"
                 ? isDark
                   ? "bg-[#271515] border-red-900/60"
@@ -6619,7 +6689,7 @@ export default function TexAppBatchChat({
                       setShowAttachmentTray((prev) => !prev);
                       setShowEmojiPicker(false);
                     }}
-                    className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors cursor-pointer shrink-0 ${
+                    className={`w-10 h-10 sm:w-8 sm:h-8 rounded-full flex items-center justify-center transition-colors cursor-pointer shrink-0 ${
                       showAttachmentTray
                         ? "text-red-600 bg-red-50 dark:bg-red-500/10"
                         : "text-gray-500 hover:text-gray-800 dark:text-slate-400 dark:hover:text-white"
@@ -6627,7 +6697,7 @@ export default function TexAppBatchChat({
                     aria-label="Attach media or files"
                     title="Attach"
                   >
-                    <TexAppPaperclipIcon className="w-5 h-5 stroke-[2]" />
+                    <TexAppPaperclipIcon className="w-5 h-5 sm:w-5 sm:h-5 stroke-[2]" />
                   </button>
 
                   {/* WhatsApp Speed-Dial Attachment Tray (Cleanly anchored right above clip icon) */}
@@ -6747,7 +6817,7 @@ export default function TexAppBatchChat({
                     setShowEmojiPicker(!showEmojiPicker);
                     setShowAttachmentTray(false);
                   }}
-                  className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors cursor-pointer shrink-0 ${
+                  className={`w-10 h-10 sm:w-8 sm:h-8 rounded-full flex items-center justify-center transition-colors cursor-pointer shrink-0 ${
                     showEmojiPicker
                       ? "text-red-600 bg-red-50 dark:bg-red-500/10"
                       : "text-gray-500 hover:text-gray-800 dark:text-slate-400 dark:hover:text-white"
@@ -6755,7 +6825,7 @@ export default function TexAppBatchChat({
                   aria-label="Add emoji or sticker"
                   title="Emoji & Stickers"
                 >
-                  <TexAppStickerSmileyIcon className="w-5 h-5 stroke-[2]" />
+                  <TexAppStickerSmileyIcon className="w-5 h-5 sm:w-5 sm:h-5 stroke-[2]" />
                 </button>
 
                 {/* Message Text Input (WhatsApp Style ContentEditable with Apple Emojis) */}
@@ -6788,7 +6858,7 @@ export default function TexAppBatchChat({
                       }
                     }
                   }}
-                  className="chat-composer-input sm:hidden flex-1 resize-none !bg-transparent !border-none outline-none focus:outline-none focus:ring-0 !shadow-none text-sm text-gray-900 dark:text-[#f4ead2] px-2 py-1.5 max-h-28 min-h-[28px] overflow-y-auto leading-relaxed placeholder:text-gray-400 dark:placeholder:text-slate-500"
+                  className="chat-composer-input sm:hidden flex-1 resize-none !bg-transparent !border-none outline-none focus:outline-none focus:ring-0 !shadow-none text-base text-gray-900 dark:text-[#f4ead2] px-2 py-2 max-h-28 min-h-[34px] overflow-y-auto leading-relaxed placeholder:text-gray-400 dark:placeholder:text-slate-500"
                 />
                 <div
                   ref={textareaRef}
@@ -6824,24 +6894,24 @@ export default function TexAppBatchChat({
                 {inputText.trim() || uploadingFile || editingMessage ? (
                   <button
                     type="submit"
-                    className="w-9 h-9 sm:w-10 sm:h-10 rounded-full flex items-center justify-center bg-red-600 hover:bg-red-700 text-white shadow-sm transition-all transform active:scale-95 cursor-pointer shrink-0"
+                    className="w-11 h-11 sm:w-10 sm:h-10 rounded-full flex items-center justify-center bg-red-600 hover:bg-red-700 text-white shadow-sm transition-all transform active:scale-95 cursor-pointer shrink-0"
                     aria-label={editingMessage ? "Update message" : "Send message"}
                   >
                     {editingMessage ? (
                       <Check className="w-5 h-5 stroke-[2.5]" />
                     ) : (
-                      <TexAppSendIcon className="w-4 h-4 sm:w-4.5 sm:h-4.5 text-white" />
+                      <TexAppSendIcon className="w-5 h-5 sm:w-4.5 sm:h-4.5 text-white" />
                     )}
                   </button>
                 ) : (
                   <button
                     type="button"
                     onClick={() => handleStartRecording("audio")}
-                    className="w-9 h-9 sm:w-10 sm:h-10 rounded-full flex items-center justify-center bg-red-600 hover:bg-red-700 text-white shadow-sm transition-all transform active:scale-95 cursor-pointer shrink-0"
+                    className="w-11 h-11 sm:w-10 sm:h-10 rounded-full flex items-center justify-center bg-red-600 hover:bg-red-700 text-white shadow-sm transition-all transform active:scale-95 cursor-pointer shrink-0"
                     aria-label="Record voice message"
                     title="Record voice message"
                   >
-                    <Mic className="w-5 h-5 text-white stroke-[2.2]" />
+                    <Mic className="w-[22px] h-[22px] sm:w-5 sm:h-5 text-white stroke-[2.2]" />
                   </button>
                 )}
               </>
@@ -9024,12 +9094,16 @@ export default function TexAppBatchChat({
               </span>
               <button
                 type="button"
-                disabled={selectedForwardTargets.size === 0}
+                disabled={selectedForwardTargets.size === 0 || isForwarding}
                 onClick={handleExecuteForward}
                 className="px-5 py-2 rounded-xl text-xs font-bold bg-red-600 hover:bg-red-700 disabled:opacity-40 text-white transition flex items-center gap-1.5 cursor-pointer shadow-sm"
               >
-                <Forward className="w-3.5 h-3.5" />
-                <span>Forward</span>
+                {isForwarding ? (
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                ) : (
+                  <Forward className="w-3.5 h-3.5" />
+                )}
+                <span>{isForwarding ? "Forwarding" : "Forward"}</span>
               </button>
             </div>
           </div>
