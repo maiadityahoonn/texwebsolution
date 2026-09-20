@@ -6858,7 +6858,7 @@ export default function TexAppBatchChat({
       {showEmojiPicker && (
         <div
           data-emoji-mart-popover="true"
-          className="w-full h-[330px] sm:h-[360px] border-t border-gray-200/90 dark:border-[#3a3020] bg-white dark:bg-[#18150f] shrink-0 flex flex-col z-20 select-none animate-in slide-in-from-bottom duration-150"
+          className="w-full h-[340px] sm:h-[370px] border-t border-gray-200/90 dark:border-[#3a3020] bg-white dark:bg-[#18150f] shrink-0 flex flex-col z-20 select-none animate-in slide-in-from-bottom duration-150 pb-[max(8px,env(safe-area-inset-bottom,0px))]"
         >
           {/* Top Action Strip: [ 🔍 Search | [ 😃 | GIF | 🏷️ ] | ✕ Close ] */}
           <div className="pt-2 pb-2 px-3 sm:px-4 flex items-center justify-between border-b border-gray-100 dark:border-[#3a3020]/60 shrink-0">
@@ -6957,7 +6957,7 @@ export default function TexAppBatchChat({
           </div>
 
           {/* Picker Body */}
-          <div className="flex-1 w-full h-full overflow-hidden flex flex-col">
+          <div className="flex-1 min-h-0 w-full overflow-hidden flex flex-col">
             {mediaPickerTab === "emoji" ? (
               <EmojiMartPicker
                 isDark={isDark}

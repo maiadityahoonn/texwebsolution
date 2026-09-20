@@ -155,7 +155,10 @@ export default function EmojiMartPicker({
             box-shadow: none !important;
             display: flex !important;
             flex-direction: column !important;
+            flex: 1 1 0% !important;
+            min-height: 0 !important;
             box-sizing: border-box !important;
+            overflow: hidden !important;
           }
           #root {
             width: 100% !important;
@@ -164,13 +167,23 @@ export default function EmojiMartPicker({
             background-color: ${isDark ? "#18150f" : "#ffffff"} !important;
             border: none !important;
             box-sizing: border-box !important;
+            display: flex !important;
+            flex-direction: column !important;
+            flex: 1 1 0% !important;
+            min-height: 0 !important;
+            overflow: hidden !important;
           }
           #nav {
+            flex-shrink: 0 !important;
             width: 100% !important;
-            padding: ${navPosition === "bottom" ? "4px 8px 6px" : "8px 14px 0"} !important;
+            min-height: 46px !important;
+            padding: ${navPosition === "bottom" ? "4px 8px max(8px, env(safe-area-inset-bottom, 0px))" : "8px 14px 0"} !important;
             border-top: ${navPosition === "bottom" ? (isDark ? "1px solid rgba(255, 255, 255, 0.08)" : "1px solid rgba(0, 0, 0, 0.06)") : "none"} !important;
             border-bottom: ${navPosition === "bottom" ? "none" : (isDark ? "1px solid rgba(255, 255, 255, 0.08)" : "1px solid rgba(0, 0, 0, 0.06)")} !important;
             box-sizing: border-box !important;
+            background-color: ${isDark ? "#18150f" : "#ffffff"} !important;
+            z-index: 10 !important;
+            position: relative !important;
           }
           #nav > div {
             width: 100% !important;
@@ -186,7 +199,7 @@ export default function EmojiMartPicker({
             display: flex !important;
             align-items: center !important;
             justify-content: center !important;
-            padding: 8px 0 10px !important;
+            padding: 6px 0 8px !important;
             color: ${isDark ? "#9d9178" : "#6b7280"} !important;
             opacity: 0.8 !important;
             transition: opacity 0.15s, color 0.15s !important;
@@ -218,6 +231,11 @@ export default function EmojiMartPicker({
             background-color: ${isDark ? "#f87171" : "#dc2626"} !important;
             border-radius: 9999px !important;
             margin: 0 auto !important;
+          }
+          #nav svg {
+            width: 20px !important;
+            height: 20px !important;
+            display: block !important;
           }
           #nav svg {
             width: 20px !important;
@@ -312,12 +330,15 @@ export default function EmojiMartPicker({
             flex-shrink: 0 !important;
           }
           .scroll {
+            flex: 1 1 0% !important;
+            min-height: 0 !important;
             width: 100% !important;
             max-width: 100% !important;
             box-sizing: border-box !important;
             padding-left: 8px !important;
             padding-right: 8px !important;
-            padding-bottom: 30px !important;
+            padding-bottom: 16px !important;
+            overflow-y: auto !important;
             overflow-x: hidden !important;
             scrollbar-width: thin !important;
             scrollbar-color: ${isDark ? "rgba(255, 255, 255, 0.16) transparent" : "rgba(0, 0, 0, 0.16) transparent"} !important;
@@ -388,7 +409,7 @@ export default function EmojiMartPicker({
   return (
     <div
       ref={containerRef}
-      className={`emoji-mart-wrapper w-full h-full flex-1 overflow-hidden ${className}`}
+      className={`emoji-mart-wrapper w-full flex-1 min-h-0 overflow-hidden flex flex-col ${className}`}
       style={style}
     />
   );
