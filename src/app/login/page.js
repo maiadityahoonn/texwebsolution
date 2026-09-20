@@ -275,6 +275,49 @@ function subscribeToThemeChanges(onStoreChange) {
   };
 }
 
+function safeSetLocalStorage(key, value, isChatData = false) {
+  if (typeof window === "undefined" || !key) return;
+  try {
+    localStorage.setItem(key, value);
+
+    // Track LRU for chat message caches to keep storage strictly under ~1MB
+    if (isChatData) {
+      try {
+        const rawLru = localStorage.getItem("texweb_chat_lru_keys");
+        let lruList = rawLru ? JSON.parse(rawLru) : [];
+        if (!Array.isArray(lruList)) lruList = [];
+        lruList = [key, ...lruList.filter((k) => k !== key)];
+        // Keep at most 20 most recent chats in local cache
+        const MAX_CACHED_CHATS = 20;
+        if (lruList.length > MAX_CACHED_CHATS) {
+          const evictedKeys = lruList.slice(MAX_CACHED_CHATS);
+          evictedKeys.forEach((k) => {
+            try { localStorage.removeItem(k); } catch {}
+          });
+          lruList = lruList.slice(0, MAX_CACHED_CHATS);
+        }
+        localStorage.setItem("texweb_chat_lru_keys", JSON.stringify(lruList));
+      } catch {}
+    }
+  } catch (err) {
+    console.warn("Storage quota limit reached, performing emergency LRU eviction:", err?.message || err);
+    try {
+      const keysToRemove = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const k = localStorage.key(i);
+        if (k && (k.startsWith("texweb_cached_batch_ws_") || k.startsWith("texweb_dm_"))) {
+          keysToRemove.push(k);
+        }
+      }
+      // Evict oldest chat caches to free space
+      keysToRemove.slice(0, Math.max(Math.ceil(keysToRemove.length / 2), 1)).forEach((k) => {
+        try { localStorage.removeItem(k); } catch {}
+      });
+      localStorage.setItem(key, value);
+    } catch {}
+  }
+}
+
 export default function LoginPage({ defaultSection = "overview" } = {}) {
   const router = useRouter();
   const pathname = usePathname();
@@ -1613,11 +1656,7 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
           if (!merged[batchId]) merged[batchId] = prev[batchId];
           else merged[batchId] = { ...merged[batchId], unreadCount: prev[batchId]?.unreadCount || 0 };
         });
-        try {
-          if (typeof window !== "undefined") {
-            localStorage.setItem("texweb_cached_batch_meta", JSON.stringify(merged));
-          }
-        } catch {}
+        safeSetLocalStorage("texweb_cached_batch_meta", JSON.stringify(merged));
         return merged;
       });
     }
@@ -1654,11 +1693,7 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
       });
       setDirectChatMeta((prev) => {
         const merged = { ...prev, ...nextMeta };
-        try {
-          if (typeof window !== "undefined") {
-            localStorage.setItem("texweb_cached_direct_meta", JSON.stringify(merged));
-          }
-        } catch {}
+        safeSetLocalStorage("texweb_cached_direct_meta", JSON.stringify(merged));
         return merged;
       });
     }
@@ -2263,14 +2298,16 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
 
     batchWorkspaceCacheRef.current[batchId] = mergedData;
     if (typeof window !== "undefined" && mergedData && Array.isArray(mergedData.messages)) {
-      try {
-        localStorage.setItem(`texweb_cached_batch_ws_${batchId}`, JSON.stringify({
+      safeSetLocalStorage(
+        `texweb_cached_batch_ws_${batchId}`,
+        JSON.stringify({
           ...mergedData,
           messages: (mergedData.messages || []).slice(-100),
           announcements: (mergedData.announcements || []).slice(-20),
           resources: (mergedData.resources || []).slice(-20),
-        }));
-      } catch {}
+        }),
+        true
+      );
     }
     if (batchWorkspaceRequestRef.current === requestId || selectedBatch?.id === batchId) {
       setBatchWorkspaceData(mergedData);
@@ -2316,12 +2353,14 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
     };
     batchWorkspaceCacheRef.current[batchId] = nextCached;
     if (typeof window !== "undefined" && nextCached) {
-      try {
-        localStorage.setItem(`texweb_cached_batch_ws_${batchId}`, JSON.stringify({
+      safeSetLocalStorage(
+        `texweb_cached_batch_ws_${batchId}`,
+        JSON.stringify({
           ...nextCached,
           messages: (nextCached.messages || []).slice(-100),
-        }));
-      } catch {}
+        }),
+        true
+      );
     }
     if (isActiveBatchWorkspace(batchId)) {
       setBatchWorkspaceData((prev) => ({ ...prev, messages: mergeMessages(prev.messages) }));
@@ -3136,22 +3175,14 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
       fetchBatchesPromise.then((bData) => {
         if (bData && Array.isArray(bData) && bData.length > 0) {
           setBatches(bData);
-          try {
-            if (typeof window !== "undefined") {
-              localStorage.setItem("texweb_cached_batches", JSON.stringify(bData.slice(0, 100)));
-            }
-          } catch {}
+          safeSetLocalStorage("texweb_cached_batches", JSON.stringify(bData.slice(0, 100)));
         }
       }).catch(() => {});
 
       fetchProfilesPromise.then((pData) => {
         if (pData && Array.isArray(pData) && pData.length > 0) {
           setProfiles(pData);
-          try {
-            if (typeof window !== "undefined") {
-              localStorage.setItem("texweb_cached_profiles", JSON.stringify(pData.slice(0, 200)));
-            }
-          } catch {}
+          safeSetLocalStorage("texweb_cached_profiles", JSON.stringify(pData.slice(0, 200)));
         }
       }).catch(() => {});
 
@@ -3189,12 +3220,8 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
       setSubmissions(submissionsData || []);
       setNotifications(notificationsData || []);
       setBatches(batchesData || []);
-      try {
-        if (typeof window !== "undefined") {
-          if (batchesData?.length) localStorage.setItem("texweb_cached_batches", JSON.stringify(batchesData.slice(0, 100)));
-          if (profilesData?.length) localStorage.setItem("texweb_cached_profiles", JSON.stringify(profilesData.slice(0, 200)));
-        }
-      } catch {}
+      if (batchesData?.length) safeSetLocalStorage("texweb_cached_batches", JSON.stringify(batchesData.slice(0, 100)));
+      if (profilesData?.length) safeSetLocalStorage("texweb_cached_profiles", JSON.stringify(profilesData.slice(0, 200)));
       setDailyUpdates(updatesData || []);
       setTaskReviews(reviewsData || []);
       setAttendance(attendanceData || []);
@@ -4094,9 +4121,7 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
         directMessagesCacheRef.current[contactId] = data;
         setMessages(data);
         if (typeof window !== "undefined" && sessionUser?.id && data.length) {
-          try {
-            localStorage.setItem(`texweb_dm_${sessionUser.id}_${contactId}`, JSON.stringify(data.slice(-150)));
-          } catch {}
+          safeSetLocalStorage(`texweb_dm_${sessionUser.id}_${contactId}`, JSON.stringify(data.slice(-150)), true);
         }
       }
       const latest = (data || [])[data?.length - 1];
@@ -4126,9 +4151,7 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
     if (!sessionUser?.id || !selectedContactId || !messages) return;
     directMessagesCacheRef.current[selectedContactId] = messages;
     if (messages.length > 0 && typeof window !== "undefined") {
-      try {
-        localStorage.setItem(`texweb_dm_${sessionUser.id}_${selectedContactId}`, JSON.stringify(messages.slice(-150)));
-      } catch {}
+      safeSetLocalStorage(`texweb_dm_${sessionUser.id}_${selectedContactId}`, JSON.stringify(messages.slice(-150)), true);
     }
   }, [sessionUser?.id, selectedContactId, messages]);
 
@@ -4176,9 +4199,7 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
             .then((data) => {
               if (Array.isArray(data) && data.length) {
                 directMessagesCacheRef.current[contact.id] = data;
-                try {
-                  localStorage.setItem(`texweb_dm_${sessionUser.id}_${contact.id}`, JSON.stringify(data.slice(-150)));
-                } catch {}
+                safeSetLocalStorage(`texweb_dm_${sessionUser.id}_${contact.id}`, JSON.stringify(data.slice(-150)), true);
               }
             })
             .catch(() => {})
