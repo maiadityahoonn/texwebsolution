@@ -417,6 +417,7 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
   const batchWorkspaceCacheRef = useRef({});
   const batchWorkspaceInFlightRef = useRef({});
   const directMessagesInFlightRef = useRef({});
+  const directMessagesCacheRef = useRef({});
   const batchWorkspaceRequestRef = useRef("");
   const [accessibleEscalations, setAccessibleEscalations] = useState([]);
   const [batchMessageText, setBatchMessageText] = useState("");
@@ -2165,7 +2166,7 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
     if (!batchId) return;
     const cached = batchWorkspaceCacheRef.current[batchId];
     const silent = Boolean(options.silent);
-    if (cached && !silent) {
+    if (cached) {
       setBatchWorkspaceData(cached);
       setBatchWorkspaceBatchId(batchId);
     } else if (!silent) {
@@ -2175,25 +2176,35 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
 
     const requestId = `${batchId}:${Date.now()}:${Math.random()}`;
     batchWorkspaceRequestRef.current = requestId;
-    if (!silent) setLoadingBatchWorkspaceId(batchId);
+    if (!silent && !cached) setLoadingBatchWorkspaceId(batchId);
     if (!silent) setBatchWorkspaceLoadError("");
 
-    if (!batchWorkspaceInFlightRef.current[batchId]) {
-      batchWorkspaceInFlightRef.current[batchId] = getBatchWorkspace(batchId).finally(() => {
-        delete batchWorkspaceInFlightRef.current[batchId];
+    const isChatOnly = Boolean(options.scope === "chat" || (activeSection === "chat" && !options.fullScope));
+    const fetchScope = isChatOnly ? "chat" : undefined;
+    const cacheKey = `${batchId}:${fetchScope || "full"}`;
+
+    if (!batchWorkspaceInFlightRef.current[cacheKey]) {
+      batchWorkspaceInFlightRef.current[cacheKey] = getBatchWorkspace(batchId, { scope: fetchScope }).finally(() => {
+        delete batchWorkspaceInFlightRef.current[cacheKey];
       });
     }
-    const data = await batchWorkspaceInFlightRef.current[batchId];
-    batchWorkspaceCacheRef.current[batchId] = data;
+    const data = await batchWorkspaceInFlightRef.current[cacheKey];
+    
+    // Merge messages with cached data if chat-only scope
+    const mergedData = fetchScope === "chat" && cached
+      ? {
+          ...cached,
+          messages: data.messages || [],
+        }
+      : data;
+
+    batchWorkspaceCacheRef.current[batchId] = mergedData;
     if (batchWorkspaceRequestRef.current === requestId || selectedBatch?.id === batchId) {
-      setBatchWorkspaceData(data);
+      setBatchWorkspaceData(mergedData);
       setBatchWorkspaceBatchId(batchId);
       if (data?.error) {
         setBatchWorkspaceLoadError(data.error);
         setToast(`Batch chat load failed: ${data.error}`);
-      } else if (data?.fallback && !silent) {
-        setBatchWorkspaceLoadError("");
-        setToast("");
       } else if (!silent) {
         setBatchWorkspaceLoadError("");
       }
@@ -2206,7 +2217,7 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
       }));
       setLoadingBatchWorkspaceId((current) => (current === batchId ? "" : current));
     }
-    return data;
+    return mergedData;
   }
   const loadBatchWorkspaceData = refreshBatchWorkspace;
 
@@ -2396,7 +2407,20 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
       setToast("Message still could not be sent. Check network and retry.");
       return false;
     }
-    const newMsg = { ...failedMessage, ...saved, sender: saved.sender || userProfile, pending: false, send_failed: false };
+    const existing = (messages || []).find((item) => item.id === failedMessage.id || item.id === saved.id);
+    const deliveredAt = saved.delivered_at || existing?.delivered_at || failedMessage.delivered_at || null;
+    const readAt = saved.read_at || existing?.read_at || failedMessage.read_at || null;
+    const isRead = Boolean(saved.is_read || existing?.is_read || failedMessage.is_read);
+    const newMsg = {
+      ...failedMessage,
+      ...saved,
+      delivered_at: deliveredAt,
+      read_at: readAt,
+      is_read: isRead,
+      sender: saved.sender || userProfile,
+      pending: false,
+      send_failed: false,
+    };
     setMessages((prev) => {
       const list = prev || [];
       const next = list.map((item) => (item.id === failedMessage.id ? newMsg : item));
@@ -3199,8 +3223,31 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
           if (item?.sender_id === sessionUser.id || item?.receiver_id === sessionUser.id) {
             rememberDirectChatActivity(item);
             upsertOpenDirectMessage(item);
-            if (item?.receiver_id === sessionUser.id) setToast("New message received");
+            if (item?.receiver_id === sessionUser.id) {
+              setToast("New message received");
+              if (!item.delivered_at && !item.is_read) {
+                markDirectChatDelivered(item.sender_id);
+              }
+            }
           }
+        })
+        .on("broadcast", { event: "delivery_receipt" }, ({ payload }) => {
+          if (!payload?.sender_id || !payload?.receiver_id || payload.receiver_id === sessionUser.id) return;
+          applyDirectDeliveryReceipt({
+            senderId: payload.sender_id,
+            receiverId: payload.receiver_id,
+            deliveredAt: payload.delivered_at,
+            messageId: payload.message_id,
+          });
+        })
+        .on("broadcast", { event: "read_receipt" }, ({ payload }) => {
+          if (!payload?.sender_id || !payload?.reader_id || payload.reader_id === sessionUser.id) return;
+          applyDirectReadReceipt({
+            senderId: payload.sender_id,
+            readerId: payload.reader_id,
+            readAt: payload.read_at,
+            messageId: payload.message_id,
+          });
         })
         .subscribe();
 
@@ -3241,8 +3288,31 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
         if (item?.sender_id === sessionUser.id || item?.receiver_id === sessionUser.id) {
           rememberDirectChatActivity(item);
           upsertOpenDirectMessage(item);
-          if (item?.receiver_id === sessionUser.id) setToast("New message received");
+          if (item?.receiver_id === sessionUser.id) {
+            setToast("New message received");
+            if (!item.delivered_at && !item.is_read) {
+              markDirectChatDelivered(item.sender_id);
+            }
+          }
         }
+      })
+      .on("broadcast", { event: "delivery_receipt" }, ({ payload }) => {
+        if (!payload?.sender_id || !payload?.receiver_id || payload.receiver_id === sessionUser.id) return;
+        applyDirectDeliveryReceipt({
+          senderId: payload.sender_id,
+          receiverId: payload.receiver_id,
+          deliveredAt: payload.delivered_at,
+          messageId: payload.message_id,
+        });
+      })
+      .on("broadcast", { event: "read_receipt" }, ({ payload }) => {
+        if (!payload?.sender_id || !payload?.reader_id || payload.reader_id === sessionUser.id) return;
+        applyDirectReadReceipt({
+          senderId: payload.sender_id,
+          readerId: payload.reader_id,
+          readAt: payload.read_at,
+          messageId: payload.message_id,
+        });
       })
       .subscribe();
 
@@ -3469,60 +3539,124 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
       const list = prev || [];
       const existingIndex = list.findIndex((message) => message.id === item.id);
       const next = existingIndex >= 0
-        ? list.map((message) => (message.id === item.id ? { ...message, ...item } : message))
+        ? list.map((message) => (message.id === item.id ? {
+            ...message,
+            ...item,
+            delivered_at: item.delivered_at || message.delivered_at || null,
+            read_at: item.read_at || message.read_at || null,
+            is_read: Boolean(item.is_read || message.is_read),
+          } : message))
         : [...list, item];
       return next.sort((a, b) => new Date(a.created_at || 0).getTime() - new Date(b.created_at || 0).getTime());
     });
   }
 
-  function applyDirectReadReceipt({ senderId, readerId, readAt }) {
+  function applyDirectReadReceipt({ senderId, readerId, readAt, messageId }) {
     if (!senderId || !readerId) return;
     const timestamp = readAt || new Date().toISOString();
+    const otherUserId = senderId === sessionUser.id ? readerId : senderId;
     setMessages((prev) =>
-      (prev || []).map((message) =>
-        message.sender_id === senderId && message.receiver_id === readerId
-          ? {
+      (prev || []).map((message) => {
+        const matchesSenderReceiver =
+          (message.sender_id === senderId && message.receiver_id === readerId) ||
+          (message.sender_id === sessionUser.id && message.receiver_id === otherUserId);
+        const matchesId = messageId ? message.id === messageId : false;
+
+        if (matchesId || matchesSenderReceiver) {
+          const existingReceipts = message.receipts || {};
+          const peerReceipt = existingReceipts[otherUserId] || {};
+          return {
             ...message,
             is_read: true,
             read_at: message.read_at || timestamp,
             delivered_at: message.delivered_at || timestamp,
-          }
-          : message
-      )
+            receipts: {
+              ...existingReceipts,
+              [otherUserId]: {
+                ...peerReceipt,
+                read_at: peerReceipt.read_at || timestamp,
+                delivered_at: peerReceipt.delivered_at || timestamp,
+              },
+            },
+          };
+        }
+        return message;
+      })
     );
   }
 
-  function applyDirectDeliveryReceipt({ senderId, receiverId, deliveredAt }) {
+  function applyDirectDeliveryReceipt({ senderId, receiverId, deliveredAt, messageId }) {
     if (!senderId || !receiverId) return;
     const timestamp = deliveredAt || new Date().toISOString();
+    const otherUserId = senderId === sessionUser.id ? receiverId : senderId;
     setMessages((prev) =>
-      (prev || []).map((message) =>
-        message.sender_id === senderId && message.receiver_id === receiverId
-          ? {
+      (prev || []).map((message) => {
+        const matchesSenderReceiver =
+          (message.sender_id === senderId && message.receiver_id === receiverId) ||
+          (message.sender_id === sessionUser.id && message.receiver_id === otherUserId);
+        const matchesId = messageId ? message.id === messageId : false;
+
+        if (matchesId || matchesSenderReceiver) {
+          const existingReceipts = message.receipts || {};
+          const peerReceipt = existingReceipts[otherUserId] || {};
+          return {
             ...message,
             delivered_at: message.delivered_at || timestamp,
-          }
-          : message
-      )
+            receipts: {
+              ...existingReceipts,
+              [otherUserId]: {
+                ...peerReceipt,
+                delivered_at: peerReceipt.delivered_at || timestamp,
+              },
+            },
+          };
+        }
+        return message;
+      })
     );
   }
 
-  function sendDirectDeliveryReceiptBroadcast(contactId, deliveredAt) {
+  function sendDirectDeliveryReceiptBroadcast(contactId, deliveredAt, messageId = null) {
     if (!sessionUser?.id || !contactId) return;
     const roomId = directChatRoomId(sessionUser.id, contactId);
-    if (directChatChannelRoomRef.current !== roomId) {
-      directDeliveryReceiptPendingRef.current = { roomId, contactId, deliveredAt };
-      return;
+    const timestamp = deliveredAt || new Date().toISOString();
+    const payload = {
+      sender_id: contactId,
+      receiver_id: sessionUser.id,
+      delivered_at: timestamp,
+      message_id: messageId || null,
+    };
+
+    if (directChatChannelRoomRef.current === roomId && directChatChannelRef.current) {
+      directChatChannelRef.current.send({
+        type: "broadcast",
+        event: "delivery_receipt",
+        payload,
+      });
     }
-    directChatChannelRef.current?.send({
-      type: "broadcast",
-      event: "delivery_receipt",
-      payload: {
-        sender_id: contactId,
-        receiver_id: sessionUser.id,
-        delivered_at: deliveredAt || new Date().toISOString(),
-      },
+
+    const directChannel = supabase.channel(`direct-chat-${roomId}`);
+    directChannel.subscribe((status) => {
+      if (status === "SUBSCRIBED") {
+        directChannel.send({
+          type: "broadcast",
+          event: "delivery_receipt",
+          payload,
+        });
+      }
     });
+
+    const contactWorkspaceChannel = supabase.channel(`workspace-${contactId}`);
+    contactWorkspaceChannel.subscribe((status) => {
+      if (status === "SUBSCRIBED") {
+        contactWorkspaceChannel.send({
+          type: "broadcast",
+          event: "delivery_receipt",
+          payload,
+        });
+      }
+    });
+
     directDeliveryReceiptPendingRef.current = null;
   }
 
@@ -3537,22 +3671,46 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
     return true;
   }
 
-  function sendDirectReadReceiptBroadcast(contactId, readAt) {
+  function sendDirectReadReceiptBroadcast(contactId, readAt, messageId = null) {
     if (!sessionUser?.id || !contactId) return;
     const roomId = directChatRoomId(sessionUser.id, contactId);
-    if (directChatChannelRoomRef.current !== roomId) {
-      directReadReceiptPendingRef.current = { roomId, contactId, readAt };
-      return;
+    const payload = {
+      sender_id: contactId,
+      reader_id: sessionUser.id,
+      read_at: readAt || new Date().toISOString(),
+      message_id: messageId || null,
+    };
+
+    if (directChatChannelRoomRef.current === roomId && directChatChannelRef.current) {
+      directChatChannelRef.current.send({
+        type: "broadcast",
+        event: "read_receipt",
+        payload,
+      });
     }
-    directChatChannelRef.current?.send({
-      type: "broadcast",
-      event: "read_receipt",
-      payload: {
-        sender_id: contactId,
-        reader_id: sessionUser.id,
-        read_at: readAt || new Date().toISOString(),
-      },
+
+    const directChannel = supabase.channel(`direct-chat-${roomId}`);
+    directChannel.subscribe((status) => {
+      if (status === "SUBSCRIBED") {
+        directChannel.send({
+          type: "broadcast",
+          event: "read_receipt",
+          payload,
+        });
+      }
     });
+
+    const contactWorkspaceChannel = supabase.channel(`workspace-${contactId}`);
+    contactWorkspaceChannel.subscribe((status) => {
+      if (status === "SUBSCRIBED") {
+        contactWorkspaceChannel.send({
+          type: "broadcast",
+          event: "read_receipt",
+          payload,
+        });
+      }
+    });
+
     directReadReceiptPendingRef.current = null;
   }
 
@@ -3582,6 +3740,20 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
         if (!item?.id || item.sender_id === sessionUser.id) return;
         rememberDirectChatActivity(item);
         upsertOpenDirectMessage(item);
+
+        // Instantly acknowledge delivery via realtime broadcast
+        const deliveredAt = new Date().toISOString();
+        channel.send({
+          type: "broadcast",
+          event: "delivery_receipt",
+          payload: {
+            sender_id: item.sender_id,
+            receiver_id: sessionUser.id,
+            message_id: item.id,
+            delivered_at: deliveredAt,
+          },
+        });
+        markDirectMessagesDelivered(item.sender_id);
       })
       .on("broadcast", { event: "read_receipt" }, ({ payload }) => {
         if (!payload?.sender_id || !payload?.reader_id || payload.reader_id === sessionUser.id) return;
@@ -3589,6 +3761,7 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
           senderId: payload.sender_id,
           readerId: payload.reader_id,
           readAt: payload.read_at,
+          messageId: payload.message_id,
         });
       })
       .on("broadcast", { event: "delivery_receipt" }, ({ payload }) => {
@@ -3597,6 +3770,7 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
           senderId: payload.sender_id,
           receiverId: payload.receiver_id,
           deliveredAt: payload.delivered_at,
+          messageId: payload.message_id,
         });
       })
       .subscribe((status) => {
@@ -3731,6 +3905,15 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
       setMessages([]);
       return;
     }
+
+    // Instant 0ms render from memory cache
+    const cached = directMessagesCacheRef.current[contactId];
+    if (cached && cached.length) {
+      setMessages(cached);
+    } else if (!options.preserveCurrent) {
+      setMessages([]);
+    }
+
     try {
       if (!directMessagesInFlightRef.current[contactId]) {
         directMessagesInFlightRef.current[contactId] = getMessages(sessionUser.id, contactId).finally(() => {
@@ -3738,7 +3921,10 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
         });
       }
       const data = await directMessagesInFlightRef.current[contactId];
-      setMessages(data || []);
+      if (Array.isArray(data)) {
+        directMessagesCacheRef.current[contactId] = data;
+        setMessages(data);
+      }
       const latest = (data || [])[data?.length - 1];
       setDirectChatMeta((prev) => ({
         ...prev,
@@ -3759,6 +3945,11 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
     loadMessages(selectedContactId);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedContactId]);
+
+  useEffect(() => {
+    if (!selectedContactId || !messages) return;
+    directMessagesCacheRef.current[selectedContactId] = messages;
+  }, [selectedContactId, messages]);
 
   useEffect(() => {
     if (typeof window === "undefined") return undefined;
@@ -4967,9 +5158,25 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
       setToast("Message could not be sent. Check network and try again.");
       return;
     }
-    const newMsg = { ...tempMsg, ...saved, pending: false };
+    const existing = (messages || []).find((item) => item.id === tempId || item.id === saved.id);
+    const deliveredAt = saved.delivered_at || existing?.delivered_at || tempMsg.delivered_at || null;
+    const readAt = saved.read_at || existing?.read_at || tempMsg.read_at || null;
+    const isRead = Boolean(saved.is_read || existing?.is_read || tempMsg.is_read);
+    const newMsg = {
+      ...tempMsg,
+      ...saved,
+      delivered_at: deliveredAt,
+      read_at: readAt,
+      is_read: isRead,
+      pending: false,
+    };
     setMessages((prev) => (prev || []).map((item) => (item.id === tempId ? newMsg : item)));
     rememberDirectChatActivity(newMsg);
+    directChatChannelRef.current?.send({
+      type: "broadcast",
+      event: "message",
+      payload: { message: newMsg },
+    });
   }
 
   async function handleSendBatchMessage(e) {
@@ -7209,7 +7416,21 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
                                 return false;
                               }
 
-                              const newMsg = { ...tempMsg, ...saved, sender: saved.sender || userProfile, pending: false };
+                              const existing = (messages || []).find((item) => item.id === tempId || item.id === saved.id);
+                              const deliveredAt = saved.delivered_at || existing?.delivered_at || tempMsg.delivered_at || null;
+                              const readAt = saved.read_at || existing?.read_at || tempMsg.read_at || null;
+                              const isRead = Boolean(saved.is_read || existing?.is_read || tempMsg.is_read);
+
+                              const newMsg = {
+                                ...tempMsg,
+                                ...saved,
+                                delivered_at: deliveredAt,
+                                read_at: readAt,
+                                is_read: isRead,
+                                sender: saved.sender || userProfile,
+                                pending: false,
+                              };
+
                               setMessages((prev) => {
                                 const list = prev || [];
                                 const replaced = list.some((item) => item.id === tempId);
@@ -7227,7 +7448,7 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
                               return true;
                             }}
                             availableChats={{ contacts: canAccessDirectChat ? chatContacts : [], batches: batches }}
-                            onMarkDelivered={() => markDirectChatDelivered(activeContact.id)}
+                            onMarkDelivered={(contactId) => markDirectChatDelivered(contactId || activeContact.id)}
                             onMarkRead={() => markDirectChatRead(activeContact.id)}
                             onEditMessage={async (messageId, text) => {
                               const target = messages.find((m) => m.id === messageId);

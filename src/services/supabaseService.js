@@ -1247,11 +1247,12 @@ async function getBatchWorkspaceViaRls(batchId, fallbackReason = "") {
   }
 }
 
-export async function getBatchWorkspace(batchId) {
+export async function getBatchWorkspace(batchId, options = {}) {
   try {
     const token = await getAuthToken();
     if (!token || !batchId) return emptyBatchWorkspaceData({ error: !token ? "Missing auth session." : "Batch id is required." });
-    const response = await fetch(`/api/batch-workspace?batch_id=${encodeURIComponent(batchId)}`, {
+    const scopeParam = options.scope ? `&scope=${encodeURIComponent(options.scope)}` : "";
+    const response = await fetch(`/api/batch-workspace?batch_id=${encodeURIComponent(batchId)}${scopeParam}`, {
       cache: "no-store",
       headers: { Authorization: `Bearer ${token}` },
     });

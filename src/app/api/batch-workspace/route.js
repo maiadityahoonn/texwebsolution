@@ -142,6 +142,65 @@ export async function GET(request) {
     return NextResponse.json({ error: "You cannot access this batch workspace." }, { status: 403 });
   }
 
+  const scope = searchParams.get("scope");
+
+  if (scope === "chat") {
+    let messages = await admin
+      .from("batch_messages")
+      .select("*, sender:profiles!batch_messages_sender_id_fkey(id, full_name, role, email)")
+      .eq("batch_id", batch.id)
+      .order("created_at", { ascending: true })
+      .limit(200);
+
+    let messageRows = messages.data || [];
+    if (messages.error) {
+      const fallbackMessages = await admin
+        .from("batch_messages")
+        .select("*")
+        .eq("batch_id", batch.id)
+        .order("created_at", { ascending: true })
+        .limit(200);
+      messageRows = fallbackMessages.data || [];
+    }
+
+    const rawMessages = messageRows;
+    const msgIds = rawMessages.map((m) => m.id);
+    const receiptsByMsgId = {};
+
+    if (msgIds.length > 0) {
+      try {
+        const { data: receiptsData, error: rErr } = await admin
+          .from("batch_message_receipts")
+          .select("message_id, user_id, delivered_at, read_at")
+          .in("message_id", msgIds);
+        if (!rErr && receiptsData) {
+          receiptsData.forEach((r) => {
+            if (!receiptsByMsgId[r.message_id]) receiptsByMsgId[r.message_id] = {};
+            receiptsByMsgId[r.message_id][r.user_id] = {
+              delivered_at: r.delivered_at,
+              read_at: r.read_at,
+            };
+          });
+        }
+      } catch (err) {
+        console.warn("batch_message_receipts query error (gracefully handled):", err?.message);
+      }
+    }
+
+    const enrichedMessages = rawMessages.map((m) => ({
+      ...m,
+      receipts: receiptsByMsgId[m.id] || {},
+    }));
+
+    return NextResponse.json({
+      messages: enrichedMessages,
+      announcements: [],
+      resources: [],
+      escalations: [],
+      history: [],
+    });
+  }
+
   const [messages, announcements, resources, escalations, history] = await Promise.all([
     admin.from("batch_messages").select("*, sender:profiles!batch_messages_sender_id_fkey(id, full_name, role, email)").eq("batch_id", batch.id).order("created_at", { ascending: true }).limit(200),
     admin.from("batch_announcements").select("*, creator:profiles!batch_announcements_created_by_fkey(id, full_name, role)").eq("batch_id", batch.id).order("pinned", { ascending: false }).order("created_at", { ascending: false }).limit(100),

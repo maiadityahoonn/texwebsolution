@@ -70,27 +70,51 @@ export async function GET(request) {
   const searchParams = new URL(request.url).searchParams;
   const contactId = cleanText(searchParams.get("contact_id"), 80);
   if (!contactId) return NextResponse.json({ error: "Contact id is required." }, { status: 400 });
-  const { data: contactProfile } = await admin
-    .from("profiles")
-    .select("id, full_name, role, domain, batch_id, assigned_mentor_id, assigned_tl_id")
-    .eq("id", contactId)
-    .maybeSingle();
-  if (!contactProfile) return NextResponse.json({ error: "Contact profile not found." }, { status: 404 });
-  const allowed = await canDirectMessage(admin, requester.profile, contactProfile);
-  if (!allowed) {
-    return NextResponse.json({ error: "You cannot access this direct conversation." }, { status: 403 });
-  }
 
   const conversationFilter = `and(sender_id.eq.${requester.user.id},receiver_id.eq.${contactId}),and(sender_id.eq.${contactId},receiver_id.eq.${requester.user.id})`;
-  let result = await admin
+  const isElevated = ["super_admin", "admin", "hr"].includes(requester.profile?.role);
+
+  const messagesPromise = admin
     .from("messages")
     .select("*, sender:profiles!messages_sender_id_fkey(id, full_name, role, email, avatar_url)")
     .or(conversationFilter)
     .order("created_at", { ascending: true })
     .limit(300);
 
-  if (result.error) {
-    result = await admin
+  if (isElevated) {
+    let result = await messagesPromise;
+    if (result.error) {
+      result = await admin
+        .from("messages")
+        .select("*")
+        .or(conversationFilter)
+        .order("created_at", { ascending: true })
+        .limit(300);
+    }
+    if (result.error) return NextResponse.json({ error: result.error.message || "Failed to load messages." }, { status: 400 });
+    return NextResponse.json({ messages: result.data || [] });
+  }
+
+  // Non-elevated: query contact profile and messages in parallel
+  const [profileResult, messagesResult] = await Promise.all([
+    admin
+      .from("profiles")
+      .select("id, full_name, role, domain, batch_id, assigned_mentor_id, assigned_tl_id")
+      .eq("id", contactId)
+      .maybeSingle(),
+    messagesPromise,
+  ]);
+
+  const contactProfile = profileResult.data;
+  if (!contactProfile) return NextResponse.json({ error: "Contact profile not found." }, { status: 404 });
+  const allowed = await canDirectMessage(admin, requester.profile, contactProfile);
+  if (!allowed) {
+    return NextResponse.json({ error: "You cannot access this direct conversation." }, { status: 403 });
+  }
+
+  let finalResult = messagesResult;
+  if (finalResult.error) {
+    finalResult = await admin
       .from("messages")
       .select("*")
       .or(conversationFilter)
@@ -98,8 +122,8 @@ export async function GET(request) {
       .limit(300);
   }
 
-  if (result.error) return NextResponse.json({ error: result.error.message || "Failed to load messages." }, { status: 400 });
-  return NextResponse.json({ messages: result.data || [] });
+  if (finalResult.error) return NextResponse.json({ error: finalResult.error.message || "Failed to load messages." }, { status: 400 });
+  return NextResponse.json({ messages: finalResult.data || [] });
 }
 
 export async function POST(request) {

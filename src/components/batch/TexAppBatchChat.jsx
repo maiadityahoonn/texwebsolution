@@ -1878,12 +1878,13 @@ export default function TexAppBatchChat({
   const isDraggingSwipeRef = useRef(false);
 
   const handleMessageTouchStart = (e, msg, bubbleElem) => {
+    if (isSelectionMode) return;
     if (e.touches.length !== 1) return;
     const touch = e.touches[0];
     touchCoordsRef.current = { x: touch.clientX, y: touch.clientY, time: Date.now() };
     isDraggingSwipeRef.current = false;
 
-    // 420ms long-press hold for WhatsApp selection & floating emoji reaction menu
+    // 420ms long-press hold for WhatsApp quick reactions & context menu
     if (longPressTimerRef.current) clearTimeout(longPressTimerRef.current);
     longPressTimerRef.current = setTimeout(() => {
       try {
@@ -1894,12 +1895,6 @@ export default function TexAppBatchChat({
       if (bubbleElem) {
         handleOpenDropdown(msg, bubbleElem);
       }
-      setSelectedMsgIds((prev) => {
-        const next = new Set(prev);
-        next.add(msg.id);
-        return next;
-      });
-      setIsSelectionMode(true);
     }, 420);
   };
 
@@ -5319,12 +5314,17 @@ export default function TexAppBatchChat({
 
                   {/* Strictly scoped wrapper: hover ONLY triggers when cursor is on the message or smiley */}
                   <div
-                    onClick={() => {
+                    onClick={(e) => {
                       if (isSelectionMode) {
+                        e.stopPropagation();
+                        const selection = window.getSelection();
+                        if (selection && selection.toString().length > 0) return;
                         toggleSelectMessage(msg.id);
                       }
                     }}
-                    className={`w-fit max-w-[85%] sm:max-w-[70%] inline-flex items-center gap-1.5 relative group/msg cursor-pointer ${
+                    className={`w-fit max-w-[85%] sm:max-w-[70%] inline-flex items-center gap-1.5 relative group/msg ${
+                      isSelectionMode ? "cursor-pointer" : "cursor-default"
+                    } ${
                       activeDropdownMsgId === msg.id ? "z-40" : "z-1"
                     } ${
                       isMine ? "flex-row-reverse" : "flex-row"
@@ -5386,7 +5386,9 @@ export default function TexAppBatchChat({
                           : isAudioAttachment
                           ? (showSenderHeader ? "p-1" : "p-0.5")
                           : (showSenderHeader ? "pt-0.5 px-2 pb-1 sm:px-2.5 sm:pb-1" : "px-2 py-1 sm:px-2.5 sm:py-1")
-                      } shadow-2xs relative transition-all duration-200 border cursor-pointer ${
+                      } shadow-2xs relative transition-all duration-200 border ${
+                        isSelectionMode ? "cursor-pointer" : "cursor-default select-text"
+                      } ${
                         activeDropdownMsgId === msg.id ? "z-40" : ""
                       } ${
                         isMsgSelected ? "ring-2 ring-red-500 ring-offset-2 dark:ring-offset-[#100f0b]" : ""
