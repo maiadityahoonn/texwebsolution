@@ -8094,32 +8094,14 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
                                         } catch { return false; }
                                       })() : false;
 
-                                      const isBatchTyping = selectedBatchId === b.id && typingUsers.length > 0;
-
                                       return (
-                                        <>
-                                          <div className="font-bold text-xs sm:text-sm text-gray-900 dark:text-white mb-0.5 flex items-center gap-1.5 flex-wrap leading-tight">
-                                            <span className="font-bold break-words">{b.name}</span>
-                                            {isPinned && (
-                                              <Pin className="w-3 h-3 fill-red-600 text-red-600 dark:text-red-400 rotate-45 shrink-0" title="Pinned chat" />
-                                            )}
-                                            {isBatchMuted && <VolumeX className="w-3.5 h-3.5 text-gray-400 dark:text-gray-500 shrink-0" title="Muted" />}
-                                          </div>
-                                          <div className="text-[11px] text-gray-500 dark:text-slate-400 truncate mb-1">
-                                            {isBatchTyping ? (
-                                              <span className="text-red-600 dark:text-red-400 font-bold flex items-center gap-1.5">
-                                                <span className="inline-block w-1.5 h-1.5 rounded-full bg-red-600 animate-ping" />
-                                                <span>{typingUsers.map((u) => u.name?.split(" ")[0] || "Someone").join(", ")} typing...</span>
-                                              </span>
-                                            ) : batchDraft ? (
-                                              <span className="text-red-600 dark:text-red-400 font-semibold truncate inline-block max-w-full">
-                                                <span className="font-bold">Draft:</span> {batchDraft}
-                                              </span>
-                                            ) : (
-                                              latestPreview || domainLabel(b.domain)
-                                            )}
-                                          </div>
-                                        </>
+                                        <div className="font-bold text-xs sm:text-sm text-gray-900 dark:text-white mb-1.5 flex items-center gap-1.5 flex-wrap leading-tight">
+                                          <span className="font-bold break-words">{b.name}</span>
+                                          {isPinned && (
+                                            <Pin className="w-3 h-3 fill-red-600 text-red-600 dark:text-red-400 rotate-45 shrink-0" title="Pinned chat" />
+                                          )}
+                                          {isBatchMuted && <VolumeX className="w-3.5 h-3.5 text-gray-400 dark:text-gray-500 shrink-0" title="Muted" />}
+                                        </div>
                                       );
                                     })()}
                                     <div className="flex items-center gap-1.5 flex-wrap">
@@ -8199,13 +8181,11 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
                             const profile = getChannelProfile(contact);
                             const isSelf = profile.id === sessionUser?.id || profile.id === userProfile?.id || (profile.email && profile.email === userProfile?.email);
                             const isSelected = selectedContactId === contact.id;
-                            const meta = directChatMeta[contact.id] || {};
-                            const unreadBadge = meta.unreadCount || 0;
+                            const unreadBadge = directChatMeta[contact.id]?.unreadCount || 0;
                             const isOnline = workspaceOnlineSet.has(contact.id);
                             const avatarUrl = getProfileAvatarUrl(profile);
                             const subtitle = contactSubtitle(profile);
                             const roleLabel = channelRoleLabel(profile.role);
-                            const contactDraft = typeof window !== "undefined" ? localStorage.getItem(`texweb_draft_${contact.id}`) : null;
                             const isContactMuted = typeof window !== "undefined" ? (() => {
                               try {
                                 const map = JSON.parse(localStorage.getItem("texweb_muted_chats") || "{}");
@@ -8250,7 +8230,7 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
                                     {(() => {
                                       const isPinned = pinnedChatIds.includes(contact.id);
                                       return (
-                                        <div className={`font-bold text-xs sm:text-sm flex items-center gap-1.5 flex-wrap leading-tight mb-0.5 ${isSelected ? "text-red-700 dark:text-red-300" : "text-gray-900 dark:text-white"}`}>
+                                        <div className={`font-bold text-xs sm:text-sm flex items-center gap-1.5 flex-wrap leading-tight mb-1.5 ${isSelected ? "text-red-700 dark:text-red-300" : "text-gray-900 dark:text-white"}`}>
                                           {isSelf ? (
                                             <>
                                               <span className="text-red-600 dark:text-red-400 font-black">You</span>
@@ -8264,25 +8244,6 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
                                               {isPinned && <Pin className="w-3 h-3 fill-red-600 text-red-600 dark:text-red-400 rotate-45 shrink-0" title="Pinned contact" />}
                                               {isContactMuted && <VolumeX className="w-3.5 h-3.5 text-gray-400 dark:text-gray-500 shrink-0" title="Muted" />}
                                             </>
-                                          )}
-                                        </div>
-                                      );
-                                    })()}
-                                    {(() => {
-                                      const isContactTyping = typingUsers.some((u) => u.id === contact.id);
-                                      return (
-                                        <div className="text-[11px] text-gray-500 dark:text-slate-400 truncate mb-1">
-                                          {isContactTyping ? (
-                                            <span className="text-red-600 dark:text-red-400 font-bold flex items-center gap-1.5">
-                                              <span className="inline-block w-1.5 h-1.5 rounded-full bg-red-600 animate-ping" />
-                                              <span>typing...</span>
-                                            </span>
-                                          ) : contactDraft ? (
-                                            <span className="text-red-600 dark:text-red-400 font-semibold truncate inline-block max-w-full">
-                                              <span className="font-bold">Draft:</span> {contactDraft}
-                                            </span>
-                                          ) : (
-                                            meta.lastMessagePreview || subtitle || profile.email
                                           )}
                                         </div>
                                       );
