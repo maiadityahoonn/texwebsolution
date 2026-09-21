@@ -1054,9 +1054,11 @@ export default function TexAppBatchChat({
   const [isUploadingVoice, setIsUploadingVoice] = useState(false);
   const [chatToast, setChatToast] = useState(null);
   const [showMicHelpModal, setShowMicHelpModal] = useState(false);
+  const [permissionGuideTab, setPermissionGuideTab] = useState("all");
   const [mediaPermissionState, setMediaPermissionState] = useState({
     microphone: "prompt",
     camera: "prompt",
+    geolocation: "prompt",
   });
   const recordingTimerRef = useRef(null);
   const mediaStreamRef = useRef(null);
@@ -1160,6 +1162,31 @@ export default function TexAppBatchChat({
     }
   };
 
+  // Direct permission tester/requester for PWA & Browser
+  const handleRequestPermissionDirectly = async (type) => {
+    try {
+      if (type === "microphone") {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        stream.getTracks().forEach((t) => t.stop());
+        showToast("Microphone access granted!");
+      } else if (type === "camera") {
+        const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+        stream.getTracks().forEach((t) => t.stop());
+        showToast("Camera access granted!");
+      } else if (type === "geolocation") {
+        await new Promise((resolve, reject) => {
+          navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 10000 });
+        });
+        showToast("Location access granted!");
+      }
+      await refreshMediaPermissionState();
+    } catch (err) {
+      console.warn("Direct permission request failed:", type, err);
+      showToast(describeMediaError(err, type));
+      await refreshMediaPermissionState();
+    }
+  };
+
   // Share Live Location
   const handleShareCurrentLocation = () => {
     if (!navigator?.geolocation) {
@@ -1167,26 +1194,46 @@ export default function TexAppBatchChat({
       return;
     }
     showToast("Locating your position...");
+
+    const sendLocationMessage = async (pos) => {
+      const { latitude, longitude } = pos.coords;
+      const mapsUrl = `https://www.google.com/maps?q=${latitude},${longitude}`;
+      const locationMessage = `📍 Live Location: ${latitude.toFixed(5)}, ${longitude.toFixed(5)}\n${mapsUrl}`;
+      if (onSendMessage) {
+        await onSendMessage({
+          message: locationMessage,
+          attachment_url: mapsUrl,
+          attachment_name: `Location (${latitude.toFixed(4)}, ${longitude.toFixed(4)})`,
+          attachment_type: "location",
+        });
+        showToast("Location shared successfully!");
+      }
+    };
+
     navigator.geolocation.getCurrentPosition(
-      async (pos) => {
-        const { latitude, longitude } = pos.coords;
-        const mapsUrl = `https://www.google.com/maps?q=${latitude},${longitude}`;
-        const locationMessage = `📍 Live Location: ${latitude.toFixed(5)}, ${longitude.toFixed(5)}\n${mapsUrl}`;
-        if (onSendMessage) {
-          await onSendMessage({
-            message: locationMessage,
-            attachment_url: mapsUrl,
-            attachment_name: `Location (${latitude.toFixed(4)}, ${longitude.toFixed(4)})`,
-            attachment_type: "location",
-          });
-          showToast("Location shared successfully!");
-        }
-      },
+      sendLocationMessage,
       (err) => {
-        console.warn("Geolocation error:", err);
-        showToast("Could not access your location. Please check location permissions.");
+        console.warn("Geolocation high accuracy failed, attempting low accuracy fallback:", err);
+        navigator.geolocation.getCurrentPosition(
+          sendLocationMessage,
+          (fallbackErr) => {
+            console.warn("Geolocation fallback error:", fallbackErr);
+            if (fallbackErr?.code === 1) {
+              showToast("Location permission is blocked. Check permission guide.");
+              setPermissionGuideTab("location");
+              setShowMicHelpModal(true);
+            } else if (fallbackErr?.code === 2) {
+              showToast("Location unavailable. Please make sure device location/GPS is turned on.");
+            } else if (fallbackErr?.code === 3) {
+              showToast("Location request timed out. Please try again.");
+            } else {
+              showToast("Could not access your location. Please check location permissions.");
+            }
+          },
+          { enableHighAccuracy: false, timeout: 15000, maximumAge: 60000 }
+        );
       },
-      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+      { enableHighAccuracy: true, timeout: 8000, maximumAge: 0 }
     );
   };
 
@@ -1324,12 +1371,12 @@ export default function TexAppBatchChat({
   const refreshMediaPermissionState = async () => {
     if (!navigator?.permissions?.query) return;
     await Promise.all(
-      ["microphone", "camera"].map(async (name) => {
+      ["microphone", "camera", "geolocation"].map(async (name) => {
         try {
           const status = await navigator.permissions.query({ name });
           setMediaPermissionState((prev) => ({ ...prev, [name]: status.state }));
         } catch {
-          // Some browsers do not expose camera/microphone through Permissions API.
+          // Some browsers do not expose camera/microphone/geolocation through Permissions API.
         }
       })
     );
@@ -1369,6 +1416,7 @@ export default function TexAppBatchChat({
 
     watchPermission("microphone");
     watchPermission("camera");
+    watchPermission("geolocation");
     return () => {
       cancelled = true;
       cleanups.forEach((cleanup) => cleanup());
@@ -7134,6 +7182,22 @@ export default function TexAppBatchChat({
                           </div>
                           <span className="text-sm font-medium">Text formatting</span>
                         </button>
+
+                        {/* 7. Device & PWA Permissions Guide */}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setShowAttachmentTray(false);
+                            setPermissionGuideTab("all");
+                            setShowMicHelpModal(true);
+                          }}
+                          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold hover:bg-gray-100/80 dark:hover:bg-white/5 text-gray-800 dark:text-gray-200 text-left transition cursor-pointer"
+                        >
+                          <div className="w-8 h-8 rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
+                            <ShieldAlert className="w-4 h-4" />
+                          </div>
+                          <span className="text-sm font-medium">Permissions Guide</span>
+                        </button>
                       </div>
                     </>
                   )}
@@ -7485,24 +7549,37 @@ export default function TexAppBatchChat({
               {cameraError ? (
                 <div className="p-6 text-center text-rose-400 space-y-3">
                   <p className="text-sm">{cameraError}</p>
-                  <button
-                    type="button"
-                    onClick={handleRetryCamera}
-                    className="px-4 py-2 rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs font-bold transition cursor-pointer inline-flex items-center gap-2"
-                  >
-                    <Camera className="w-3.5 h-3.5" />
-                    <span>Try Camera Again</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      handleCloseCamera();
-                      fileInputRef.current?.click();
-                    }}
-                    className="px-4 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-semibold transition cursor-pointer"
-                  >
-                    Select from gallery instead
-                  </button>
+                  <div className="flex flex-wrap items-center justify-center gap-2">
+                    <button
+                      type="button"
+                      onClick={handleRetryCamera}
+                      className="px-4 py-2 rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs font-bold transition cursor-pointer inline-flex items-center gap-2"
+                    >
+                      <Camera className="w-3.5 h-3.5" />
+                      <span>Try Camera Again</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setPermissionGuideTab("camera");
+                        setShowMicHelpModal(true);
+                      }}
+                      className="px-3 py-2 rounded-xl bg-white/15 hover:bg-white/25 text-white text-xs font-semibold transition cursor-pointer inline-flex items-center gap-1.5"
+                    >
+                      <ShieldAlert className="w-3.5 h-3.5 text-amber-400" />
+                      <span>Permission Guide</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        handleCloseCamera();
+                        fileInputRef.current?.click();
+                      }}
+                      className="px-3 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-semibold transition cursor-pointer"
+                    >
+                      Select from gallery
+                    </button>
+                  </div>
                 </div>
               ) : capturedPhoto ? (
                 /* Captured Photo Snapshot */
@@ -10496,19 +10573,19 @@ export default function TexAppBatchChat({
         );
       })()}
 
-      {/* Microphone Permission & Device Guide Modal */}
+      {/* Device & PWA Permissions Guide Modal (Camera, Mic, Location) */}
       {showMicHelpModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/75 backdrop-blur-sm animate-fadeIn">
-          <div className="w-full max-w-md rounded-3xl bg-white dark:bg-[#18150f] border border-gray-200/80 dark:border-[#3a3020] shadow-2xl overflow-hidden flex flex-col">
+          <div className="w-full max-w-lg rounded-3xl bg-white dark:bg-[#18150f] border border-gray-200/80 dark:border-[#3a3020] shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
             {/* Header */}
             <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 dark:border-white/10">
               <div className="flex items-center gap-2.5">
                 <div className="w-9 h-9 rounded-full bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-400 flex items-center justify-center shrink-0">
-                  <Mic className="w-5 h-5" />
+                  <ShieldAlert className="w-5 h-5" />
                 </div>
                 <div>
-                  <h3 className="text-sm font-bold text-gray-900 dark:text-white">Microphone Access Guide</h3>
-                  <p className="text-[11px] text-gray-500 dark:text-gray-400">Voice recording permissions</p>
+                  <h3 className="text-sm font-bold text-gray-900 dark:text-white">PWA & Device Permissions</h3>
+                  <p className="text-[11px] text-gray-500 dark:text-gray-400">Camera, Microphone & Location access guide</p>
                 </div>
               </div>
               <button
@@ -10520,75 +10597,277 @@ export default function TexAppBatchChat({
               </button>
             </div>
 
-            {/* Content Steps */}
-            <div className="p-5 space-y-3.5 text-xs text-gray-700 dark:text-gray-300">
-              {/* Step 1: Browser permission */}
-              <div className="p-3.5 rounded-2xl bg-red-50/80 dark:bg-red-950/40 border border-red-200/80 dark:border-red-800/50 space-y-2">
-                <div className="flex items-center gap-2 font-bold text-red-700 dark:text-red-400 text-xs">
-                  <Mic className="w-3.5 h-3.5" />
-                  <span>1. Browser permission allow karein</span>
+            {/* Navigation Tabs */}
+            <div className="flex items-center gap-1 px-4 pt-3 pb-2 border-b border-gray-100 dark:border-white/10 overflow-x-auto bg-gray-50/50 dark:bg-white/2">
+              {[
+                { id: "all", label: "Overview", icon: ShieldAlert },
+                { id: "camera", label: "Camera", icon: Camera },
+                { id: "microphone", label: "Microphone", icon: Mic },
+                { id: "location", label: "Location", icon: MapPin },
+              ].map((tab) => {
+                const TabIcon = tab.icon;
+                const active = permissionGuideTab === tab.id;
+                return (
+                  <button
+                    key={tab.id}
+                    type="button"
+                    onClick={() => setPermissionGuideTab(tab.id)}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer shrink-0 ${
+                      active
+                        ? "bg-red-600 text-white shadow-xs"
+                        : "text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-white/5"
+                    }`}
+                  >
+                    <TabIcon className="w-3.5 h-3.5" />
+                    <span>{tab.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Scrollable Content */}
+            <div className="p-5 overflow-y-auto space-y-4 text-xs text-gray-700 dark:text-gray-300 flex-1">
+              {/* TAB 1: OVERVIEW */}
+              {permissionGuideTab === "all" && (
+                <div className="space-y-3">
+                  <p className="text-[11.5px] leading-relaxed text-gray-600 dark:text-gray-400">
+                    TexWeb Solution PWA app chat me Camera, Voice notes aur Location share karne ke liye browser permissions allow hona zaroori hai. Niche har permission ka live status check karein ya direct allow karein:
+                  </p>
+
+                  {/* Permissions Cards */}
+                  <div className="space-y-2.5">
+                    {/* Camera */}
+                    <div className="p-3.5 rounded-2xl border border-gray-200/80 dark:border-white/10 bg-gray-50/60 dark:bg-white/5 flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <div className="w-8 h-8 rounded-full bg-rose-500/15 text-rose-600 dark:text-rose-400 flex items-center justify-center shrink-0">
+                          <Camera className="w-4 h-4" />
+                        </div>
+                        <div>
+                          <div className="font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                            <span>Camera Access</span>
+                            <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold uppercase ${
+                              mediaPermissionState.camera === "granted"
+                                ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
+                                : mediaPermissionState.camera === "denied"
+                                ? "bg-red-500/15 text-red-600 dark:text-red-400"
+                                : "bg-amber-500/15 text-amber-600 dark:text-amber-400"
+                            }`}>
+                              {mediaPermissionState.camera || "prompt"}
+                            </span>
+                          </div>
+                          <div className="text-[10.5px] text-gray-500 dark:text-gray-400">For photo snapshots in chat</div>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => handleRequestPermissionDirectly("camera")}
+                        className="px-3 py-1.5 rounded-xl bg-red-600 hover:bg-red-700 text-white font-bold text-xs transition shrink-0 cursor-pointer shadow-xs"
+                      >
+                        {mediaPermissionState.camera === "granted" ? "Test Camera" : "Allow Camera"}
+                      </button>
+                    </div>
+
+                    {/* Microphone */}
+                    <div className="p-3.5 rounded-2xl border border-gray-200/80 dark:border-white/10 bg-gray-50/60 dark:bg-white/5 flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <div className="w-8 h-8 rounded-full bg-red-500/15 text-red-600 dark:text-red-400 flex items-center justify-center shrink-0">
+                          <Mic className="w-4 h-4" />
+                        </div>
+                        <div>
+                          <div className="font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                            <span>Microphone Access</span>
+                            <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold uppercase ${
+                              mediaPermissionState.microphone === "granted"
+                                ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
+                                : mediaPermissionState.microphone === "denied"
+                                ? "bg-red-500/15 text-red-600 dark:text-red-400"
+                                : "bg-amber-500/15 text-amber-600 dark:text-amber-400"
+                            }`}>
+                              {mediaPermissionState.microphone || "prompt"}
+                            </span>
+                          </div>
+                          <div className="text-[10.5px] text-gray-500 dark:text-gray-400">For voice recording & audio messages</div>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => handleRequestPermissionDirectly("microphone")}
+                        className="px-3 py-1.5 rounded-xl bg-red-600 hover:bg-red-700 text-white font-bold text-xs transition shrink-0 cursor-pointer shadow-xs"
+                      >
+                        {mediaPermissionState.microphone === "granted" ? "Test Mic" : "Allow Mic"}
+                      </button>
+                    </div>
+
+                    {/* Geolocation */}
+                    <div className="p-3.5 rounded-2xl border border-gray-200/80 dark:border-white/10 bg-gray-50/60 dark:bg-white/5 flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <div className="w-8 h-8 rounded-full bg-amber-500/15 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0">
+                          <MapPin className="w-4 h-4" />
+                        </div>
+                        <div>
+                          <div className="font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                            <span>Location Access</span>
+                            <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold uppercase ${
+                              mediaPermissionState.geolocation === "granted"
+                                ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
+                                : mediaPermissionState.geolocation === "denied"
+                                ? "bg-red-500/15 text-red-600 dark:text-red-400"
+                                : "bg-amber-500/15 text-amber-600 dark:text-amber-400"
+                            }`}>
+                              {mediaPermissionState.geolocation || "prompt"}
+                            </span>
+                          </div>
+                          <div className="text-[10.5px] text-gray-500 dark:text-gray-400">For sharing live location with contacts</div>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => handleRequestPermissionDirectly("geolocation")}
+                        className="px-3 py-1.5 rounded-xl bg-red-600 hover:bg-red-700 text-white font-bold text-xs transition shrink-0 cursor-pointer shadow-xs"
+                      >
+                        {mediaPermissionState.geolocation === "granted" ? "Test Location" : "Allow Location"}
+                      </button>
+                    </div>
+                  </div>
                 </div>
-                <p className="text-[11.5px] leading-relaxed text-red-900 dark:text-red-200">
-                  Browser URL bar me Microphone toggle <strong>ON</strong> karein, phir yahin se <strong>Try Recording Again</strong> tap karein. Page reload zaroori nahi hai.
-                </p>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowMicHelpModal(false);
-                    handleStartRecording("audio");
-                  }}
-                  className="w-full py-2 px-3 rounded-xl bg-red-600 hover:bg-red-700 text-white font-bold text-xs transition cursor-pointer shadow-sm flex items-center justify-center gap-2"
-                >
-                  <Mic className="w-3.5 h-3.5" />
-                  <span>Try Recording Again</span>
-                </button>
-              </div>
+              )}
 
-              {/* Step 2: Windows OS Privacy */}
-              <div className="p-3 rounded-2xl bg-gray-50 dark:bg-white/5 border border-gray-200/80 dark:border-white/10 space-y-1.5">
-                <span className="font-bold text-gray-900 dark:text-white block">
-                  2. Windows Privacy Settings
-                </span>
-                <p className="text-[11px] leading-relaxed text-gray-600 dark:text-gray-400">
-                  Agar reload ke baad bhi na chale, to Windows Settings me check karein:
-                </p>
-                <ul className="list-disc list-inside space-y-1 text-[11px] text-gray-600 dark:text-gray-400 pl-1">
-                  <li><strong>Settings</strong> (Win + I) &rarr; <strong>Privacy & security</strong> &rarr; <strong>Microphone</strong></li>
-                  <li>Ensure <strong>&quot;Microphone access&quot;</strong> ON hai.</li>
-                  <li>Ensure <strong>&quot;Let desktop apps access your microphone&quot;</strong> (Google Chrome) ON hai.</li>
-                </ul>
-              </div>
+              {/* TAB 2: CAMERA */}
+              {permissionGuideTab === "camera" && (
+                <div className="space-y-3">
+                  <div className="p-3.5 rounded-2xl bg-rose-50/80 dark:bg-rose-950/30 border border-rose-200/80 dark:border-rose-900/40 space-y-2">
+                    <div className="flex items-center gap-2 font-bold text-rose-700 dark:text-rose-400">
+                      <Camera className="w-4 h-4" />
+                      <span>Camera Access Enable Karein</span>
+                    </div>
+                    <p className="text-[11.5px] leading-relaxed text-rose-950 dark:text-rose-200">
+                      Niche button tap karein, aur browser popup me <strong>&quot;Allow&quot; / &quot;While using the app&quot;</strong> select karein.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => handleRequestPermissionDirectly("camera")}
+                      className="w-full py-2 px-3 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs transition cursor-pointer shadow-xs flex items-center justify-center gap-2"
+                    >
+                      <Camera className="w-3.5 h-3.5" />
+                      <span>Request Camera Permission</span>
+                    </button>
+                  </div>
 
-              {/* Step 3: Check device */}
-              <div className="p-3 rounded-2xl bg-gray-50 dark:bg-white/5 border border-gray-200/80 dark:border-white/10 space-y-1">
-                <span className="font-bold text-gray-900 dark:text-white block">
-                  3. Active Microphone Device
-                </span>
-                <p className="text-[11px] text-gray-600 dark:text-gray-400">
-                  Ensure laptop mic ya headset/earphones connected aur unmuted hain.
-                </p>
-              </div>
+                  <div className="p-3.5 rounded-2xl bg-gray-50 dark:bg-white/5 border border-gray-200/80 dark:border-white/10 space-y-2">
+                    <div className="font-bold text-gray-900 dark:text-white">Android PWA / Chrome me Blocked hai?</div>
+                    <ul className="list-disc list-inside space-y-1 text-[11px] text-gray-600 dark:text-gray-400 pl-1">
+                      <li>Chrome address bar me <strong>Lock / Tune icon (🔒/⚙️)</strong> tap karein.</li>
+                      <li><strong>Permissions</strong> &rarr; <strong>Camera</strong> ko <strong>Allow</strong> karein.</li>
+                      <li>Ya phone Settings &rarr; Apps &rarr; TexWeb &rarr; Permissions &rarr; Camera Allow karein.</li>
+                    </ul>
+                  </div>
+
+                  <div className="p-3.5 rounded-2xl bg-gray-50 dark:bg-white/5 border border-gray-200/80 dark:border-white/10 space-y-2">
+                    <div className="font-bold text-gray-900 dark:text-white">Windows / Desktop me:</div>
+                    <ul className="list-disc list-inside space-y-1 text-[11px] text-gray-600 dark:text-gray-400 pl-1">
+                      <li>Windows Settings (Win + I) &rarr; Privacy & security &rarr; Camera.</li>
+                      <li>Ensure &quot;Camera access&quot; aur browser access ON hai.</li>
+                    </ul>
+                  </div>
+                </div>
+              )}
+
+              {/* TAB 3: MICROPHONE */}
+              {permissionGuideTab === "microphone" && (
+                <div className="space-y-3">
+                  <div className="p-3.5 rounded-2xl bg-red-50/80 dark:bg-red-950/40 border border-red-200/80 dark:border-red-800/50 space-y-2">
+                    <div className="flex items-center gap-2 font-bold text-red-700 dark:text-red-400">
+                      <Mic className="w-4 h-4" />
+                      <span>Microphone Access Enable Karein</span>
+                    </div>
+                    <p className="text-[11.5px] leading-relaxed text-red-950 dark:text-red-200">
+                      Browser URL bar me Microphone toggle <strong>ON</strong> karein, phir yahin se <strong>Try Recording Again</strong> tap karein.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowMicHelpModal(false);
+                        handleStartRecording("audio");
+                      }}
+                      className="w-full py-2 px-3 rounded-xl bg-red-600 hover:bg-red-700 text-white font-bold text-xs transition cursor-pointer shadow-xs flex items-center justify-center gap-2"
+                    >
+                      <Mic className="w-3.5 h-3.5" />
+                      <span>Try Recording Again</span>
+                    </button>
+                  </div>
+
+                  <div className="p-3.5 rounded-2xl bg-gray-50 dark:bg-white/5 border border-gray-200/80 dark:border-white/10 space-y-2">
+                    <div className="font-bold text-gray-900 dark:text-white">Windows Privacy Settings</div>
+                    <ul className="list-disc list-inside space-y-1 text-[11px] text-gray-600 dark:text-gray-400 pl-1">
+                      <li><strong>Settings</strong> (Win + I) &rarr; <strong>Privacy & security</strong> &rarr; <strong>Microphone</strong>.</li>
+                      <li>Ensure <strong>&quot;Microphone access&quot;</strong> ON hai.</li>
+                      <li>Ensure desktop browser (Google Chrome / Edge) access ON hai.</li>
+                    </ul>
+                  </div>
+
+                  <div className="p-3.5 rounded-2xl bg-gray-50 dark:bg-white/5 border border-gray-200/80 dark:border-white/10 space-y-1">
+                    <div className="font-bold text-gray-900 dark:text-white">Active Microphone Device</div>
+                    <p className="text-[11px] text-gray-600 dark:text-gray-400">
+                      Check karein ki laptop mic ya headset/earphones properly plugged in aur unmuted hain.
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {/* TAB 4: LOCATION */}
+              {permissionGuideTab === "location" && (
+                <div className="space-y-3">
+                  <div className="p-3.5 rounded-2xl bg-amber-50/80 dark:bg-amber-950/30 border border-amber-200/80 dark:border-amber-900/40 space-y-2">
+                    <div className="flex items-center gap-2 font-bold text-amber-700 dark:text-amber-400">
+                      <MapPin className="w-4 h-4" />
+                      <span>Location Access Enable Karein</span>
+                    </div>
+                    <p className="text-[11.5px] leading-relaxed text-amber-950 dark:text-amber-200">
+                      Live GPS location share karne ke liye device GPS aur browser permission dono ON hone chahiye. Niche button se directly test karein:
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => handleRequestPermissionDirectly("geolocation")}
+                      className="w-full py-2 px-3 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs transition cursor-pointer shadow-xs flex items-center justify-center gap-2"
+                    >
+                      <MapPin className="w-3.5 h-3.5" />
+                      <span>Request Location Access</span>
+                    </button>
+                  </div>
+
+                  <div className="p-3.5 rounded-2xl bg-gray-50 dark:bg-white/5 border border-gray-200/80 dark:border-white/10 space-y-2">
+                    <div className="font-bold text-gray-900 dark:text-white">Android Mobile PWA me:</div>
+                    <ul className="list-disc list-inside space-y-1 text-[11px] text-gray-600 dark:text-gray-400 pl-1">
+                      <li>Device ke Quick Settings me <strong>Location (GPS)</strong> ON karein.</li>
+                      <li>Phone Settings &rarr; Apps &rarr; TexWeb Solution &rarr; Permissions &rarr; <strong>Location &rarr; Allow</strong>.</li>
+                    </ul>
+                  </div>
+
+                  <div className="p-3.5 rounded-2xl bg-gray-50 dark:bg-white/5 border border-gray-200/80 dark:border-white/10 space-y-2">
+                    <div className="font-bold text-gray-900 dark:text-white">Desktop / Laptop me:</div>
+                    <ul className="list-disc list-inside space-y-1 text-[11px] text-gray-600 dark:text-gray-400 pl-1">
+                      <li>Browser URL bar me Lock icon (🔒) tap karein &rarr; Site settings &rarr; Location &rarr; Allow.</li>
+                      <li>Windows Settings (Win + I) &rarr; Privacy & security &rarr; Location ON karein.</li>
+                    </ul>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Footer Buttons */}
-            <div className="px-5 py-3 border-t border-gray-100 dark:border-white/10 flex items-center justify-end gap-2 bg-gray-50/50 dark:bg-white/2">
-              <button
-                type="button"
-                onClick={() => setShowMicHelpModal(false)}
-                className="px-4 py-2 rounded-xl border border-gray-200 dark:border-white/10 text-xs font-semibold text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-white/5 transition cursor-pointer"
-              >
-                Close
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setShowMicHelpModal(false);
-                  handleStartRecording("audio");
-                }}
-                className="px-4 py-2 rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs font-bold transition cursor-pointer shadow-sm"
-              >
-                Try Recording Again
-              </button>
+            <div className="px-5 py-3 border-t border-gray-100 dark:border-white/10 flex items-center justify-between gap-2 bg-gray-50/50 dark:bg-white/2">
+              <span className="text-[11px] text-gray-500 dark:text-gray-400">
+                PWA Secure Context (HTTPS)
+              </span>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowMicHelpModal(false)}
+                  className="px-4 py-2 rounded-xl border border-gray-200 dark:border-white/10 text-xs font-semibold text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-white/5 transition cursor-pointer"
+                >
+                  Close
+                </button>
+              </div>
             </div>
           </div>
         </div>
