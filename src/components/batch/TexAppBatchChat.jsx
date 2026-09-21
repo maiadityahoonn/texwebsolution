@@ -39,6 +39,11 @@ import {
   Square,
   Camera,
   RotateCcw,
+  RotateCw,
+  Crop,
+  FlipHorizontal,
+  Zap,
+  ZapOff,
   BarChart2,
   GripVertical,
   Play,
@@ -78,6 +83,7 @@ const GiphyPicker = dynamic(() => import("./GiphyPicker"), { ssr: false });
 import { AppleEmoji, RenderWithAppleEmojis, getAppleEmojiUrl, getPlainTextFromEditor } from "./AppleEmoji";
 import { uploadBatchFile } from "@/services/supabaseService";
 import { supabase } from "@/lib/supabase";
+import TexAppLocationShareModal from "./TexAppLocationShareModal";
 
 function formatBytes(bytes, decimals = 1) {
   if (!bytes || bytes === 0) return "";
@@ -371,6 +377,100 @@ function TexAppSendIcon({ className = "w-5 h-5", ...props }) {
   );
 }
 
+// WhatsApp Live Location Pulse Antenna Icon
+function LivePulseIcon({ className = "w-4 h-4", ...props }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2.2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+      {...props}
+    >
+      <circle cx="12" cy="12" r="2.8" fill="currentColor" />
+      <path d="M7.5 7.5a6.5 6.5 0 0 0 0 9" />
+      <path d="M16.5 7.5a6.5 6.5 0 0 1 0 9" />
+      <path d="M4.5 4.5a11 11 0 0 0 0 15" />
+      <path d="M19.5 4.5a11 11 0 0 1 0 15" />
+    </svg>
+  );
+}
+
+// Parses location metadata from message text and attachments
+function parseLocationMessage(msg) {
+  const isLive =
+    msg.attachment_type === "location_live" ||
+    Boolean(msg.message && (msg.message.includes("Live Location") || msg.message.includes("📍 Live Location")));
+
+  // Extract maps url
+  const urlMatch = msg.message?.match(/https?:\/\/(?:www\.)?google\.com\/maps[^\s]+/);
+  const mapsUrl = urlMatch ? urlMatch[0] : (msg.attachment_url || "https://maps.google.com");
+
+  // Extract coords from maps url or message
+  let lat = null;
+  let lng = null;
+  const qMatch = mapsUrl.match(/q=([-+]?\d+\.\d+),\s*([-+]?\d+\.\d+)/);
+  if (qMatch) {
+    lat = parseFloat(qMatch[1]);
+    lng = parseFloat(qMatch[2]);
+  } else {
+    const textMatch = msg.message?.match(/([-+]?\d+\.\d+),\s*([-+]?\d+\.\d+)/);
+    if (textMatch) {
+      lat = parseFloat(textMatch[1]);
+      lng = parseFloat(textMatch[2]);
+    }
+  }
+
+  // Extract "until 7:55 PM"
+  const untilMatch =
+    msg.message?.match(/until\s+([0-9:AMPMapm\s]+)/i) ||
+    msg.attachment_name?.match(/until\s+([0-9:AMPMapm\s]+)/i);
+  const liveUntil = untilMatch ? untilMatch[1].trim() : null;
+
+  // Extract comment if present
+  let comment = "";
+  const commentMatch = msg.message?.match(/📍 Live Location:\s*([^\n]+)/i);
+  if (commentMatch && !commentMatch[1].includes("http") && !commentMatch[1].includes("Live until")) {
+    comment = commentMatch[1].trim();
+  }
+
+  // Place name
+  let placeName = msg.attachment_name || "";
+  if (!placeName || placeName.startsWith("Live Location") || placeName.startsWith("Location (")) {
+    const firstLineMatch = msg.message?.match(/📍\s*([^\n]+)/);
+    if (firstLineMatch && !firstLineMatch[1].includes("Live Location")) {
+      placeName = firstLineMatch[1].trim();
+    }
+  }
+  if (!placeName) {
+    placeName = isLive ? "Live Location" : "Current Location";
+  }
+
+  // Place address
+  let address = "";
+  if (msg.message) {
+    const lines = msg.message.split("\n").map((l) => l.trim()).filter(Boolean);
+    if (lines.length >= 2 && !lines[1].startsWith("http") && !lines[1].startsWith("Live until")) {
+      address = lines[1];
+    }
+  }
+
+  return {
+    isLive,
+    lat,
+    lng,
+    mapsUrl,
+    liveUntil,
+    comment,
+    placeName,
+    address,
+  };
+}
+
+
 // WhatsApp Dynamic Status Tick: Single Tick (✓) -> Double Gray Tick (✓✓) -> Double Red Tick (✓✓)
 const WHATSAPP_STICKER_PACK = [
   { id: "stk_heart", emoji: "❤️", text: "Love" },
@@ -449,21 +549,41 @@ function MessageStatusTick({ msg, onMedia = false }) {
   );
 }
 
-// WhatsApp-Style Sleek Voice Note Player Bubble
-function VoiceNoteBubble({ msg, isMine, isDark, onOpenDropdown }) {
+// WhatsApp-Style Voice Note Player Bubble (Matches exact native WhatsApp layout, strictly preserving brand theme)
+function VoiceNoteBubble({
+  msg,
+  isMine,
+  isDark,
+  onOpenDropdown,
+  avatarUrl,
+  senderName,
+  senderInitial,
+  senderId,
+}) {
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [playbackRate, setPlaybackRate] = useState(1);
   const audioRef = useRef(null);
 
-  // Pseudo-random deterministic waveform bar heights for realistic voice look
+  // Compute initials for avatar fallback (e.g. "SP" from "Saurabh Pandey")
+  const displayInitials = useMemo(() => {
+    if (senderInitial && senderInitial.length >= 2) return senderInitial;
+    if (!senderName) return (senderInitial || "U").slice(0, 2).toUpperCase();
+    const parts = senderName.trim().split(/\s+/);
+    if (parts.length >= 2) {
+      return (parts[0][0] + parts[1][0]).toUpperCase();
+    }
+    return senderName.slice(0, 2).toUpperCase();
+  }, [senderInitial, senderName]);
+
+  // 32 deterministic waveform bar heights for natural voice audio profile
   const waveformHeights = useMemo(() => {
     const seed = (msg.id || "voice").split("").reduce((acc, c) => acc + c.charCodeAt(0), 0);
     const bars = [];
-    for (let i = 0; i < 26; i++) {
-      const val = 25 + Math.abs(Math.sin(seed + i * 1.6) * 70);
-      bars.push(Math.round(val));
+    for (let i = 0; i < 32; i++) {
+      const val = 18 + Math.abs(Math.sin(seed + i * 0.72) * 50) + Math.abs(Math.cos(seed + i * 1.38) * 32);
+      bars.push(Math.min(100, Math.max(16, Math.round(val))));
     }
     return bars;
   }, [msg.id]);
@@ -511,11 +631,14 @@ function VoiceNoteBubble({ msg, isMine, isDark, onOpenDropdown }) {
   const handleSeek = (e) => {
     e.stopPropagation();
     const audio = audioRef.current;
-    if (!audio || !duration) return;
+    if (!audio) return;
+    const effectiveDuration = duration > 0 ? duration : (msg.duration || 0);
+    if (!effectiveDuration) return;
     const rect = e.currentTarget.getBoundingClientRect();
-    const clickX = e.clientX - rect.left;
+    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+    const clickX = clientX - rect.left;
     const percent = Math.max(0, Math.min(1, clickX / rect.width));
-    audio.currentTime = percent * duration;
+    audio.currentTime = percent * effectiveDuration;
     setCurrentTime(audio.currentTime);
   };
 
@@ -528,92 +651,177 @@ function VoiceNoteBubble({ msg, isMine, isDark, onOpenDropdown }) {
     setPlaybackRate(nextRate);
   };
 
-  const progressPercent = duration > 0 ? Math.min(100, (currentTime / duration) * 100) : 0;
-  const activeBarIndex = Math.floor((progressPercent / 100) * waveformHeights.length);
+  const effectiveDuration = duration > 0 ? duration : (msg.duration || 0);
+  const progressPercent = effectiveDuration > 0 ? Math.min(100, Math.max(0, (currentTime / effectiveDuration) * 100)) : 0;
 
-  return (
-    <div className="w-54 sm:w-62 max-w-[calc(100vw-4rem)] p-1 select-none">
-      <audio ref={audioRef} src={msg.attachment_url} preload="metadata" />
-
-      <div className="flex items-center gap-2">
-        {/* Play / Pause Circular Button */}
-        <button
-          type="button"
-          onClick={togglePlay}
-          className="w-8 h-8 rounded-full bg-red-600 hover:bg-red-700 text-white flex items-center justify-center shrink-0 shadow-xs transition-transform active:scale-95 cursor-pointer"
-          title={isPlaying ? "Pause voice note" : "Play voice note"}
+  // Render Sender/User Avatar with bottom-corner Mic Badge
+  const renderAvatar = (corner) => (
+    <div className="relative shrink-0 select-none self-center">
+      <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-full overflow-hidden shadow-xs relative bg-gray-200 dark:bg-neutral-800">
+        {avatarUrl ? (
+          <img
+            src={avatarUrl}
+            alt={senderName || "User"}
+            className="w-full h-full object-cover rounded-full"
+            onError={(e) => {
+              e.currentTarget.style.display = "none";
+              if (e.currentTarget.nextSibling) {
+                e.currentTarget.nextSibling.style.display = "flex";
+              }
+            }}
+          />
+        ) : null}
+        <div
+          style={{ display: avatarUrl ? "none" : "flex" }}
+          className={`w-full h-full rounded-full bg-gradient-to-tr ${getSenderAvatarGradient(
+            senderId,
+            senderName
+          )} text-white font-bold text-xs sm:text-sm items-center justify-center select-none`}
         >
-          {isPlaying ? (
-            <Pause className="w-3.5 h-3.5 fill-white" />
-          ) : (
-            <Play className="w-3.5 h-3.5 fill-white translate-x-0.5" />
-          )}
-        </button>
-
-        {/* Waveform track & Time display */}
-        <div className="flex-1 min-w-0">
-          {/* Waveform bars scrubber */}
-          <div
-            onClick={handleSeek}
-            className="h-6 flex items-center gap-[2px] cursor-pointer group/wave py-0.5"
-            title="Click to seek"
-          >
-            {waveformHeights.map((h, idx) => {
-              const isPlayed = idx <= activeBarIndex;
-              return (
-                <div
-                  key={idx}
-                  style={{ height: `${h}%` }}
-                  className={`w-[2.5px] rounded-full transition-colors duration-150 ${
-                    isPlayed
-                      ? "bg-red-600 dark:bg-red-500"
-                      : isDark
-                      ? "bg-[#4a3e2e] group-hover/wave:bg-[#5f503c]"
-                      : "bg-gray-300 group-hover/wave:bg-gray-400"
-                  }`}
-                />
-              );
-            })}
-          </div>
-
-          {/* Bottom subline: Duration / elapsed time + Speed toggle + Timestamp */}
-          <div className="flex items-center justify-between text-[10px] text-gray-500 dark:text-gray-400 -mt-0.5">
-            <span className="font-mono tabular-nums text-[10px]">
-              {formatSecs(isPlaying || currentTime > 0 ? currentTime : duration)}
-            </span>
-
-            {/* Speed pill (always accessible when audio has progress or rate is toggled) */}
-            {(isPlaying || currentTime > 0 || playbackRate !== 1) && (
-              <button
-                type="button"
-                onClick={toggleSpeed}
-                className="px-1.5 py-0.5 rounded-full bg-red-100 dark:bg-red-950/60 hover:bg-red-200 dark:hover:bg-red-900/60 text-[9.5px] font-bold text-red-700 dark:text-red-300 cursor-pointer transition-colors"
-                title="Toggle playback speed (1x / 1.5x / 2x)"
-              >
-                {playbackRate}x
-              </button>
-            )}
-
-            <div className="flex items-center gap-1">
-              <Mic className="w-2.5 h-2.5 text-red-500 shrink-0" />
-              <span>{formatMessageTime(msg.created_at)}</span>
-              {isMine && <MessageStatusTick msg={msg} />}
-              {/* Dropdown Chevron */}
-              <button
-                type="button"
-                data-dropdown-trigger="true"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  if (onOpenDropdown) onOpenDropdown(msg, e.currentTarget);
-                }}
-                className="p-0.5 rounded opacity-0 group-hover/msg:opacity-100 text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white transition cursor-pointer -mr-1"
-              >
-                <ChevronDown className="w-3.5 h-3.5 stroke-[2.5]" />
-              </button>
-            </div>
-          </div>
+          {displayInitials}
         </div>
       </div>
+
+      {/* Tiny Mic Badge pinned to Avatar corner: bottom-right for outgoing, bottom-left for incoming */}
+      <div
+        className={`absolute ${
+          corner === "bottom-right" ? "-bottom-0.5 -right-0.5" : "-bottom-0.5 -left-0.5"
+        } w-4 h-4 sm:w-4.5 sm:h-4.5 rounded-full bg-red-600 dark:bg-red-500 text-white flex items-center justify-center shadow-xs ring-2 ${
+          isMine
+            ? "ring-red-50 dark:ring-[#3a1715]"
+            : "ring-white dark:ring-[#18150f]"
+        }`}
+        title="Voice note"
+      >
+        <Mic className="w-2.5 h-2.5 stroke-[2.5]" />
+      </div>
+    </div>
+  );
+
+  // Play / Pause solid glyph button (exact WhatsApp icon style)
+  const renderPlayButton = () => (
+    <button
+      type="button"
+      onClick={togglePlay}
+      className="p-1 sm:p-1.5 shrink-0 flex items-center justify-center text-gray-600 hover:text-red-600 dark:text-gray-300 dark:hover:text-red-400 active:scale-90 transition cursor-pointer"
+      title={isPlaying ? "Pause voice note" : "Play voice note"}
+      aria-label={isPlaying ? "Pause" : "Play"}
+    >
+      {isPlaying ? (
+        <Pause className="w-5 h-5 sm:w-5.5 sm:h-5.5 fill-current" />
+      ) : (
+        <Play className="w-5 h-5 sm:w-5.5 sm:h-5.5 fill-current translate-x-0.5" />
+      )}
+    </button>
+  );
+
+  // Waveform track with smooth circular scrubber dot
+  const renderWaveform = () => (
+    <div
+      onClick={handleSeek}
+      onTouchMove={handleSeek}
+      className="relative flex-1 h-7 sm:h-8 flex items-center cursor-pointer group/wave select-none px-1"
+      title="Click to seek"
+    >
+      {/* Bars track */}
+      <div className="w-full h-full flex items-center justify-between gap-[2px]">
+        {waveformHeights.map((h, idx) => {
+          const barPercent = (idx / (waveformHeights.length - 1)) * 100;
+          const isPlayed = progressPercent > 0 && barPercent <= progressPercent;
+          return (
+            <div
+              key={idx}
+              style={{ height: `${h}%` }}
+              className={`w-[2.2px] sm:w-[2.5px] rounded-full transition-colors duration-75 ${
+                isPlayed
+                  ? "bg-red-600 dark:bg-red-500"
+                  : isMine
+                  ? "bg-red-200/90 dark:bg-[#682a25] group-hover/wave:bg-red-300 dark:group-hover/wave:bg-[#7d322c]"
+                  : "bg-gray-300 dark:bg-[#382f23] group-hover/wave:bg-gray-400 dark:group-hover/wave:bg-[#4d4030]"
+              }`}
+            />
+          );
+        })}
+      </div>
+
+      {/* WhatsApp Circular Scrubber Dot / Thumb (Theme Preserved: Brand Red) */}
+      <div
+        style={{ left: `${progressPercent}%` }}
+        className={`absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-3.5 h-3.5 sm:w-4 sm:h-4 rounded-full bg-red-600 dark:bg-red-500 shadow-sm ring-2 ${
+          isMine ? "ring-red-50 dark:ring-[#3a1715]" : "ring-white dark:ring-[#18150f]"
+        } pointer-events-none transition-all duration-75`}
+      />
+    </div>
+  );
+
+  // Duration + Speed pill + Timestamp + Message Ticks
+  const renderSubline = () => (
+    <div className="flex items-center justify-between text-[11px] text-gray-500 dark:text-gray-400 select-none px-1 -mt-0.5">
+      <div className="flex items-center gap-1.5">
+        <span className="tabular-nums font-medium text-[10.5px]">
+          {formatSecs(isPlaying || currentTime > 0 ? currentTime : effectiveDuration)}
+        </span>
+        {(isPlaying || currentTime > 0 || playbackRate !== 1) && (
+          <button
+            type="button"
+            onClick={toggleSpeed}
+            className="px-1.5 py-0.2 rounded-full bg-red-100 dark:bg-red-950/70 hover:bg-red-200 dark:hover:bg-red-900/80 text-[9px] font-bold text-red-700 dark:text-red-300 cursor-pointer transition-colors"
+            title="Toggle playback speed (1x, 1.5x, 2x)"
+          >
+            {playbackRate}x
+          </button>
+        )}
+      </div>
+
+      <div className="flex items-center gap-1 text-[10px] text-gray-400 dark:text-gray-400">
+        <span>{formatMessageTime(msg.created_at)}</span>
+        {isMine && <MessageStatusTick msg={msg} />}
+        {/* Dropdown Chevron */}
+        <button
+          type="button"
+          data-dropdown-trigger="true"
+          onClick={(e) => {
+            e.stopPropagation();
+            if (onOpenDropdown) onOpenDropdown(msg, e.currentTarget);
+          }}
+          className="p-0.5 rounded opacity-0 group-hover/msg:opacity-100 text-gray-400 hover:text-gray-700 dark:hover:text-white transition cursor-pointer -mr-1"
+          aria-label="Voice note options"
+        >
+          <ChevronDown className="w-3.5 h-3.5 stroke-[2.5]" />
+        </button>
+      </div>
+    </div>
+  );
+
+  return (
+    <div className="w-[260px] sm:w-[290px] max-w-[calc(100vw-3.5rem)] p-1.5 select-none">
+      <audio ref={audioRef} src={msg.attachment_url} preload="metadata" />
+
+      {isMine ? (
+        /* Outgoing Voice Note: Avatar on LEFT (with bottom-right mic badge) -> Play + Waveform on RIGHT */
+        <div className="flex items-center gap-2 sm:gap-2.5">
+          {renderAvatar("bottom-right")}
+          <div className="flex-1 min-w-0 flex flex-col justify-center gap-1">
+            <div className="flex items-center gap-1">
+              {renderPlayButton()}
+              {renderWaveform()}
+            </div>
+            {renderSubline()}
+          </div>
+        </div>
+      ) : (
+        /* Incoming Voice Note: Play + Waveform on LEFT -> Avatar on RIGHT (with bottom-left mic badge) */
+        <div className="flex items-center gap-2 sm:gap-2.5">
+          <div className="flex-1 min-w-0 flex flex-col justify-center gap-1">
+            <div className="flex items-center gap-1">
+              {renderPlayButton()}
+              {renderWaveform()}
+            </div>
+            {renderSubline()}
+          </div>
+          {renderAvatar("bottom-left")}
+        </div>
+      )}
     </div>
   );
 }
@@ -1187,54 +1395,50 @@ export default function TexAppBatchChat({
     }
   };
 
-  // Share Live Location
-  const handleShareCurrentLocation = () => {
-    if (!navigator?.geolocation) {
-      showToast("Geolocation is not supported by your browser.");
-      return;
-    }
-    showToast("Locating your position...");
+  // WhatsApp Style Send Location Modal state & handlers
+  const [showLocationModal, setShowLocationModal] = useState(false);
+  const [stoppedLiveLocationIds, setStoppedLiveLocationIds] = useState(() => new Set());
 
-    const sendLocationMessage = async (pos) => {
-      const { latitude, longitude } = pos.coords;
-      const mapsUrl = `https://www.google.com/maps?q=${latitude},${longitude}`;
-      const locationMessage = `📍 Live Location: ${latitude.toFixed(5)}, ${longitude.toFixed(5)}\n${mapsUrl}`;
-      if (onSendMessage) {
+  const handleSendLocationFromModal = async (locData) => {
+    if (!onSendMessage) return;
+    try {
+      if (locData.type === "location_live") {
+        const mapsUrl = `https://www.google.com/maps?q=${locData.lat},${locData.lng}`;
+        const msgText = locData.comment
+          ? `📍 Live Location: ${locData.comment}\nLive until ${locData.liveUntil}\n${mapsUrl}`
+          : `📍 Live Location\nLive until ${locData.liveUntil}\n${mapsUrl}`;
         await onSendMessage({
-          message: locationMessage,
+          message: msgText,
           attachment_url: mapsUrl,
-          attachment_name: `Location (${latitude.toFixed(4)}, ${longitude.toFixed(4)})`,
+          attachment_name: `Live Location • until ${locData.liveUntil}`,
+          attachment_type: "location_live",
+        });
+        showToast("Live location shared!");
+      } else {
+        const mapsUrl = `https://www.google.com/maps?q=${locData.lat},${locData.lng}`;
+        const placeTitle = locData.placeName || "Current Location";
+        const msgText = `📍 ${placeTitle}\n${locData.address || ""}\n${mapsUrl}`;
+        await onSendMessage({
+          message: msgText,
+          attachment_url: mapsUrl,
+          attachment_name: placeTitle,
           attachment_type: "location",
         });
-        showToast("Location shared successfully!");
+        showToast("Location sent!");
       }
-    };
+    } catch (err) {
+      console.error("Failed to send location:", err);
+      showToast("Failed to send location.");
+    }
+  };
 
-    navigator.geolocation.getCurrentPosition(
-      sendLocationMessage,
-      (err) => {
-        console.warn("Geolocation high accuracy failed, attempting low accuracy fallback:", err);
-        navigator.geolocation.getCurrentPosition(
-          sendLocationMessage,
-          (fallbackErr) => {
-            console.warn("Geolocation fallback error:", fallbackErr);
-            if (fallbackErr?.code === 1) {
-              showToast("Location permission is blocked. Check permission guide.");
-              setPermissionGuideTab("location");
-              setShowMicHelpModal(true);
-            } else if (fallbackErr?.code === 2) {
-              showToast("Location unavailable. Please make sure device location/GPS is turned on.");
-            } else if (fallbackErr?.code === 3) {
-              showToast("Location request timed out. Please try again.");
-            } else {
-              showToast("Could not access your location. Please check location permissions.");
-            }
-          },
-          { enableHighAccuracy: false, timeout: 15000, maximumAge: 60000 }
-        );
-      },
-      { enableHighAccuracy: true, timeout: 8000, maximumAge: 0 }
-    );
+  const handleStopLiveSharing = (msgId) => {
+    setStoppedLiveLocationIds((prev) => {
+      const next = new Set(prev);
+      next.add(msgId);
+      return next;
+    });
+    showToast("Live location sharing stopped.");
   };
 
   useEffect(() => {
@@ -1246,13 +1450,21 @@ export default function TexAppBatchChat({
     };
   }, []);
 
-  // Realtime Camera states (Live Viewfinder, Snap, Retake, Send, Cancel)
+  // Realtime WhatsApp Style Camera states (Live Viewfinder, Flash, Crop, Rotate, Snap, Retake)
   const [showCameraModal, setShowCameraModal] = useState(false);
   const [cameraStream, setCameraStream] = useState(null);
   const [capturedPhoto, setCapturedPhoto] = useState(null);
   const [cameraFacingMode, setCameraFacingMode] = useState("user");
+  const [cameraFlashMode, setCameraFlashMode] = useState("off"); // "off" | "on" | "torch"
+  const [screenFlashActive, setScreenFlashActive] = useState(false);
+  const [isFlippingCamera, setIsFlippingCamera] = useState(false);
   const [cameraError, setCameraError] = useState("");
   const [cameraRetryKey, setCameraRetryKey] = useState(0);
+  const [previewRotation, setPreviewRotation] = useState(0); // 0 | 90 | 180 | 270
+  const [previewFlipped, setPreviewFlipped] = useState(false);
+  const [previewCropMode, setPreviewCropMode] = useState("original"); // "original" | "square" | "4:3" | "16:9"
+  const [cameraCaption, setCameraCaption] = useState("");
+  const [isSendingCapturedPhoto, setIsSendingCapturedPhoto] = useState(false);
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
   const chatContainerRef = useRef(null);
@@ -1332,9 +1544,9 @@ export default function TexAppBatchChat({
       mode === "camera"
         ? {
             video: {
-              facingMode,
-              width: { ideal: 1280 },
-              height: { ideal: 720 },
+              facingMode: { ideal: facingMode },
+              width: { ideal: 1920, min: 1280 },
+              height: { ideal: 1080, min: 720 },
             },
             audio: false,
           }
@@ -1345,7 +1557,24 @@ export default function TexAppBatchChat({
     try {
       return await navigator.mediaDevices.getUserMedia(constraints);
     } catch (primaryErr) {
-      if (mode === "camera") throw primaryErr;
+      if (mode === "camera") {
+        console.warn("Primary camera 1080p failed, trying relaxed resolution constraints:", primaryErr?.name);
+        try {
+          return await navigator.mediaDevices.getUserMedia({
+            video: { facingMode: { ideal: facingMode } },
+            audio: false,
+          });
+        } catch (secondaryErr) {
+          try {
+            return await navigator.mediaDevices.getUserMedia({
+              video: true,
+              audio: false,
+            });
+          } catch {
+            throw secondaryErr;
+          }
+        }
+      }
       console.warn("Primary getUserMedia failed, checking alternative audio devices:", primaryErr?.name, primaryErr?.message);
       try {
         const devices = await navigator.mediaDevices.enumerateDevices();
@@ -1449,6 +1678,11 @@ export default function TexAppBatchChat({
       }
       setCapturedPhoto(null);
       setCameraError("");
+      setCameraFlashMode("off");
+      setPreviewRotation(0);
+      setPreviewFlipped(false);
+      setPreviewCropMode("original");
+      setCameraCaption("");
       return;
     }
 
@@ -1487,6 +1721,16 @@ export default function TexAppBatchChat({
     };
   }, [showCameraModal, cameraFacingMode, cameraRetryKey]);
 
+  // Ensure videoRef ALWAYS reattaches to active stream when retaking photo or switching from snapshot
+  useEffect(() => {
+    if (showCameraModal && !capturedPhoto && videoRef.current && cameraStream) {
+      if (videoRef.current.srcObject !== cameraStream) {
+        videoRef.current.srcObject = cameraStream;
+      }
+      videoRef.current.play().catch(() => {});
+    }
+  }, [showCameraModal, capturedPhoto, cameraStream]);
+
   const handleRetryCamera = async () => {
     setCapturedPhoto(null);
     setCameraError("");
@@ -1494,83 +1738,262 @@ export default function TexAppBatchChat({
     setCameraRetryKey((prev) => prev + 1);
   };
 
-  const handleCapturePhoto = () => {
-    if (!videoRef.current) return;
-    const video = videoRef.current;
-    const canvas = canvasRef.current || document.createElement("canvas");
-    canvas.width = video.videoWidth || 640;
-    canvas.height = video.videoHeight || 480;
-    const ctx = canvas.getContext("2d");
-    if (cameraFacingMode === "user") {
-      ctx.translate(canvas.width, 0);
-      ctx.scale(-1, 1);
+  // WhatsApp Flash Toggle (Off -> Auto/On -> Torch -> Off)
+  const toggleCameraFlash = async () => {
+    const nextMode = cameraFlashMode === "off" ? "on" : cameraFlashMode === "on" ? "torch" : "off";
+    setCameraFlashMode(nextMode);
+
+    const track = cameraStream?.getVideoTracks?.()[0];
+    if (track && typeof track.getCapabilities === "function") {
+      const caps = track.getCapabilities();
+      if (caps.torch) {
+        try {
+          await track.applyConstraints({
+            advanced: [{ torch: nextMode === "torch" }],
+          });
+        } catch (e) {
+          console.warn("Could not set torch constraint:", e);
+        }
+      }
     }
-    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-    const dataUrl = canvas.toDataURL("image/jpeg", 0.92);
-    setCapturedPhoto(dataUrl);
   };
 
+  // Flip Camera between Front ("user") and Rear ("environment")
+  const handleFlipCamera = async () => {
+    if (capturedPhoto || isFlippingCamera) return;
+    setIsFlippingCamera(true);
+    const nextFacingMode = cameraFacingMode === "user" ? "environment" : "user";
+    if (cameraStream) {
+      cameraStream.getTracks().forEach((t) => t.stop());
+      setCameraStream(null);
+    }
+    setCameraFacingMode(nextFacingMode);
+    setTimeout(() => {
+      setIsFlippingCamera(false);
+    }, 450);
+  };
+
+  // Capture Photo with Screen Flash (front camera) or Hardware Torch (rear camera) & Full-Res Sensor Quality
+  const handleCapturePhoto = async () => {
+    if (!videoRef.current) return;
+
+    const needsScreenFlash = (cameraFlashMode === "on" || cameraFlashMode === "torch") && cameraFacingMode === "user";
+    if (needsScreenFlash) {
+      setScreenFlashActive(true);
+      await new Promise((r) => setTimeout(r, 200));
+    }
+
+    const track = cameraStream?.getVideoTracks?.()[0];
+    const isRear = cameraFacingMode === "environment";
+    const needsTorch = isRear && (cameraFlashMode === "on");
+    if (needsTorch && track?.getCapabilities?.()?.torch) {
+      try {
+        await track.applyConstraints({ advanced: [{ torch: true }] });
+        await new Promise((r) => setTimeout(r, 220));
+      } catch {}
+    }
+
+    try {
+      const video = videoRef.current;
+      const canvas = canvasRef.current || document.createElement("canvas");
+      canvas.width = video.videoWidth || 1920;
+      canvas.height = video.videoHeight || 1080;
+      const ctx = canvas.getContext("2d");
+
+      if (cameraFacingMode === "user") {
+        ctx.translate(canvas.width, 0);
+        ctx.scale(-1, 1);
+      }
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+      const dataUrl = canvas.toDataURL("image/jpeg", 0.95);
+
+      setCapturedPhoto(dataUrl);
+      setPreviewRotation(0);
+      setPreviewFlipped(false);
+      setPreviewCropMode("original");
+      setCameraCaption("");
+    } finally {
+      if (needsScreenFlash) {
+        setScreenFlashActive(false);
+      }
+      if (needsTorch && track?.getCapabilities?.()?.torch) {
+        try {
+          await track.applyConstraints({ advanced: [{ torch: false }] });
+        } catch {}
+      }
+    }
+  };
+
+  // Retake Photo seamlessly without black screen
   const handleRetakePhoto = () => {
     setCapturedPhoto(null);
+    setPreviewRotation(0);
+    setPreviewFlipped(false);
+    setPreviewCropMode("original");
+    setCameraCaption("");
     if (videoRef.current && cameraStream) {
-      videoRef.current.srcObject = cameraStream;
+      if (videoRef.current.srcObject !== cameraStream) {
+        videoRef.current.srcObject = cameraStream;
+      }
       videoRef.current.play().catch(() => {});
     }
   };
 
   const handleCloseCamera = () => {
     if (cameraStream) {
+      const track = cameraStream.getVideoTracks?.()[0];
+      if (track?.getCapabilities?.()?.torch) {
+        track.applyConstraints({ advanced: [{ torch: false }] }).catch(() => {});
+      }
       cameraStream.getTracks().forEach((t) => t.stop());
       setCameraStream(null);
     }
     setShowCameraModal(false);
     setCapturedPhoto(null);
     setCameraError("");
+    setCameraFlashMode("off");
+    setPreviewRotation(0);
+    setPreviewFlipped(false);
+    setPreviewCropMode("original");
+    setCameraCaption("");
   };
 
-  const handleFlipCamera = () => {
-    if (capturedPhoto) return;
-    setCameraFacingMode((prev) => (prev === "user" ? "environment" : "user"));
+  // Helper to bake in rotation, flip, and aspect-ratio crop into final image blob
+  const generateFinalPhotoBlob = async (rawPhotoUrl, rotation, flipped, cropMode) => {
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.onload = () => {
+        let srcW = img.width;
+        let srcH = img.height;
+        let cropX = 0;
+        let cropY = 0;
+        let cropW = srcW;
+        let cropH = srcH;
+
+        if (cropMode === "square") {
+          const size = Math.min(srcW, srcH);
+          cropX = (srcW - size) / 2;
+          cropY = (srcH - size) / 2;
+          cropW = size;
+          cropH = size;
+        } else if (cropMode === "4:3") {
+          const targetAspect = 4 / 3;
+          if (srcW / srcH > targetAspect) {
+            cropW = srcH * targetAspect;
+            cropX = (srcW - cropW) / 2;
+          } else {
+            cropH = srcW / targetAspect;
+            cropY = (srcH - cropH) / 2;
+          }
+        } else if (cropMode === "16:9") {
+          const targetAspect = 16 / 9;
+          if (srcW / srcH > targetAspect) {
+            cropW = srcH * targetAspect;
+            cropX = (srcW - cropW) / 2;
+          } else {
+            cropH = srcW / targetAspect;
+            cropY = (srcH - cropH) / 2;
+          }
+        }
+
+        const isRotated90or270 = rotation === 90 || rotation === 270;
+        const canvas = document.createElement("canvas");
+        canvas.width = isRotated90or270 ? cropH : cropW;
+        canvas.height = isRotated90or270 ? cropW : cropH;
+        const ctx = canvas.getContext("2d");
+
+        ctx.translate(canvas.width / 2, canvas.height / 2);
+        ctx.rotate((rotation * Math.PI) / 180);
+        if (flipped) {
+          ctx.scale(-1, 1);
+        }
+
+        ctx.drawImage(
+          img,
+          cropX,
+          cropY,
+          cropW,
+          cropH,
+          -cropW / 2,
+          -cropH / 2,
+          cropW,
+          cropH
+        );
+
+        canvas.toBlob((blob) => resolve(blob), "image/jpeg", 0.95);
+      };
+      img.src = rawPhotoUrl;
+    });
   };
 
+  // WhatsApp Send Photo with Caption & Edits
   const handleSendCapturedPhoto = async () => {
-    if (!capturedPhoto) return;
-    const photoData = capturedPhoto;
-    handleCloseCamera();
+    if (!capturedPhoto || isSendingCapturedPhoto) return;
+    setIsSendingCapturedPhoto(true);
 
     try {
-      const res = await fetch(photoData);
-      const blob = await res.blob();
-      const photoFile = new File([blob], `camera_photo_${Date.now()}.jpg`, { type: "image/jpeg" });
-      const previewUrl = URL.createObjectURL(photoFile);
+      const blob = await generateFinalPhotoBlob(
+        capturedPhoto,
+        previewRotation,
+        previewFlipped,
+        previewCropMode
+      );
+      const photoFile = new File([blob], `IMG_CAM_${Date.now()}.jpg`, { type: "image/jpeg" });
+      const caption = cameraCaption.trim();
+      const currentBatchId = batch?.id || (contact?.id ? `direct-${contact.id}` : "general");
 
-      setPendingMediaItems([
-        {
-          id: `media_${Date.now()}`,
-          file: photoFile,
-          name: photoFile.name,
-          sizeStr: formatBytes(photoFile.size),
-          displayName: `camera_photo_${Date.now()}.jpg`,
-          attachmentType: "image",
-          isMedia: true,
-          isVideo: false,
-          isAudio: false,
-          isImage: true,
-          previewUrl,
-          type: "media",
-        },
-      ]);
-      setActiveMediaIndex(0);
-      setMediaCaption("");
-      setShowMediaPreviewModal(true);
-    } catch {
-      await handleSendAttachment({
-        message: "",
-        attachment_url: photoData,
-        attachment_name: `camera_photo_${Date.now()}.jpg`,
-        attachment_type: "image",
-        reference_type: "none",
-      });
+      handleCloseCamera();
+      showToast("Sending photo...");
+
+      const uploaded = await uploadBatchFile(photoFile, currentBatchId, getChatAuthHeaders);
+      if (uploaded?.file_url) {
+        await handleSendAttachment({
+          message: caption,
+          attachment_url: uploaded.file_url,
+          attachment_name: photoFile.name,
+          attachment_type: "image",
+          attachment_size: formatBytes(photoFile.size),
+          reference_type: "none",
+        });
+        showToast("Photo sent successfully!");
+      } else {
+        throw new Error("Upload response missing URL");
+      }
+    } catch (err) {
+      console.warn("Direct camera send failed, falling back to media preview queue:", err);
+      try {
+        const blob = await generateFinalPhotoBlob(
+          capturedPhoto,
+          previewRotation,
+          previewFlipped,
+          previewCropMode
+        );
+        const photoFile = new File([blob], `IMG_CAM_${Date.now()}.jpg`, { type: "image/jpeg" });
+        const previewUrl = URL.createObjectURL(photoFile);
+        setPendingMediaItems([
+          {
+            id: `media_${Date.now()}`,
+            file: photoFile,
+            name: photoFile.name,
+            sizeStr: formatBytes(photoFile.size),
+            displayName: photoFile.name,
+            attachmentType: "image",
+            isMedia: true,
+            isVideo: false,
+            isAudio: false,
+            isImage: true,
+            previewUrl,
+            type: "media",
+          },
+        ]);
+        setActiveMediaIndex(0);
+        setMediaCaption(cameraCaption.trim());
+        setShowMediaPreviewModal(true);
+      } catch (fallbackErr) {
+        showToast("Could not send photo. Please try again.");
+      }
+    } finally {
+      setIsSendingCapturedPhoto(false);
     }
   };
 
@@ -6113,6 +6536,10 @@ export default function TexAppBatchChat({
                               isMine={isMine}
                               isDark={isDark}
                               onOpenDropdown={handleOpenDropdown}
+                              avatarUrl={isMine ? (currentProfile?.avatar_url || currentUser?.avatar_url || null) : senderAvatarUrl}
+                              senderName={isMine ? (currentProfile?.full_name || currentUser?.full_name || "You") : senderFullName}
+                              senderInitial={isMine ? (currentProfile?.full_name || currentUser?.full_name || "You") : (senderFullName || senderInitial)}
+                              senderId={isMine ? (currentUser?.id || "me") : (msg.sender_id || "sender")}
                             />
                           ) : msg.attachment_type === "video" ? (
                             <div className={`relative overflow-hidden min-w-[150px] max-w-[250px] sm:max-w-[280px] ${
@@ -6233,42 +6660,151 @@ export default function TexAppBatchChat({
                                 </div>
                               );
                             })()
-                          ) : msg.attachment_type === "location" || msg.message?.includes("📍 Live Location") ? (
-                            /* WhatsApp Interactive Google Maps Location Card */
+                          ) : msg.attachment_type === "location" || msg.attachment_type === "location_live" || msg.message?.includes("📍 Live Location") || msg.message?.includes("maps.google.com") ? (
+                            /* WhatsApp Location Card matching Screenshot 3, preserving brand theme */
                             (() => {
-                              const match = msg.message?.match(/https?:\/\/(?:www\.)?google\.com\/maps[^\s]+/);
-                              const mapsUrl = match ? match[0] : (msg.attachment_url || "https://maps.google.com");
-                              const coordsMatch = msg.message?.match(/([-+]?\d+\.\d+),\s*([-+]?\d+\.\d+)/);
-                              const coordsText = coordsMatch ? `${coordsMatch[1]}, ${coordsMatch[2]}` : "Live Pinned Location";
+                              const loc = parseLocationMessage(msg);
+                              const isStopped = stoppedLiveLocationIds.has(msg.id);
+                              const senderAvatar = isMine
+                                ? (currentProfile?.avatar_url || currentUser?.avatar_url || null)
+                                : senderAvatarUrl;
+                              const senderInitialText = isMine
+                                ? (currentProfile?.full_name?.charAt(0) || currentUser?.full_name?.charAt(0) || "Y").toUpperCase()
+                                : senderInitial;
+
+                              const embedUrl = `https://maps.google.com/maps?q=${loc.lat || 23.2599},${loc.lng || 77.4126}&z=15&output=embed`;
 
                               return (
-                                <div className="w-56 sm:w-64 max-w-[calc(100vw-4rem)] rounded-xl overflow-hidden select-none">
-                                  <div className="h-24 bg-gradient-to-br from-red-950 via-stone-900 to-slate-900 relative flex items-center justify-center p-3 text-center overflow-hidden border-b border-black/10">
-                                    <div className="absolute inset-0 opacity-20 bg-[radial-gradient(#fff_1px,transparent_1px)] [background-size:12px_12px]" />
-                                    <div className="relative z-10 flex flex-col items-center">
-                                      <div className="w-8 h-8 rounded-full bg-red-600 text-white flex items-center justify-center shadow-lg shadow-red-600/40 animate-bounce mb-1">
-                                        <MapPin className="w-4 h-4 fill-white" />
-                                      </div>
-                                      <span className="text-[11px] font-bold text-white tracking-wide">Live Location</span>
-                                      <span className="text-[9.5px] text-amber-100/90 font-mono mt-0.5">{coordsText}</span>
+                                <div
+                                  onClick={() => {
+                                    if (loc.mapsUrl) window.open(loc.mapsUrl, "_blank", "noopener,noreferrer");
+                                  }}
+                                  className="w-60 sm:w-72 max-w-[calc(100vw-3.5rem)] rounded-xl overflow-hidden select-none cursor-pointer transition-transform active:scale-[0.99] group/loc"
+                                >
+                                  {/* Upper Map Snippet View */}
+                                  <div className="relative h-32 sm:h-36 w-full bg-[#182229] overflow-hidden border-b border-black/10 dark:border-white/10">
+                                    <iframe
+                                      title="Location Snippet"
+                                      src={embedUrl}
+                                      className="w-full h-full border-0 pointer-events-none opacity-90 filter contrast-105"
+                                    />
+
+                                    {/* Center Marker Overlay */}
+                                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
+                                      {loc.isLive ? (
+                                        /* Live Location: User's circular avatar right on the map with glowing pulse (Screenshot 3 top) */
+                                        <div className="relative flex items-center justify-center">
+                                          {!isStopped && (
+                                            <div className="absolute w-14 h-14 rounded-full bg-red-500/30 animate-ping" />
+                                          )}
+                                          <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-full border-2 border-white shadow-2xl overflow-hidden bg-red-700 flex items-center justify-center text-white font-bold text-xs relative z-10">
+                                            {senderAvatar ? (
+                                              <img src={senderAvatar} alt="" className="w-full h-full object-cover" />
+                                            ) : (
+                                              <span>{senderInitialText}</span>
+                                            )}
+                                          </div>
+                                        </div>
+                                      ) : (
+                                        /* Current / Static Place Location: Red Pin in center (Screenshot 3 bottom) */
+                                        <div className="relative flex flex-col items-center justify-center -translate-y-2">
+                                          <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-red-600 text-white flex items-center justify-center shadow-2xl border-2 border-white animate-bounce">
+                                            <MapPin className="w-5 h-5 sm:w-5.5 sm:h-5.5 fill-white text-red-600" />
+                                          </div>
+                                          <div className="w-2 h-2 rounded-full bg-black/40 blur-[1px] mt-0.5" />
+                                        </div>
+                                      )}
+                                    </div>
+
+                                    {/* Live / Static Badge overlay top-left */}
+                                    <div className="absolute top-2 left-2 z-10 flex items-center gap-1 text-[9px] font-bold text-white bg-black/60 backdrop-blur-xs px-2 py-0.5 rounded-full">
+                                      {loc.isLive ? (
+                                        <>
+                                          <div className={`w-1.5 h-1.5 rounded-full ${!isStopped ? "bg-red-500 animate-ping" : "bg-gray-400"}`} />
+                                          <span>{isStopped ? "LIVE ENDED" : "LIVE"}</span>
+                                        </>
+                                      ) : (
+                                        <>
+                                          <MapPin className="w-2.5 h-2.5 text-red-400" />
+                                          <span>LOCATION</span>
+                                        </>
+                                      )}
                                     </div>
                                   </div>
 
-                                  <div className="p-2 bg-black/5 dark:bg-white/5 flex items-center justify-between gap-2">
-                                    <span className="text-[10.5px] font-medium text-gray-700 dark:text-gray-300 truncate">
-                                      Google Maps
-                                    </span>
-                                    <a
-                                      href={mapsUrl}
-                                      target="_blank"
-                                      rel="noopener noreferrer"
-                                      onClick={(e) => e.stopPropagation()}
-                                      className="px-2.5 py-1 rounded-lg bg-red-600 hover:bg-red-700 text-white text-[10.5px] font-bold flex items-center gap-1 shrink-0 transition shadow-xs cursor-pointer"
-                                    >
-                                      <span>Open</span>
-                                      <ExternalLink className="w-3 h-3" />
-                                    </a>
-                                  </div>
+                                  {/* Lower Details Card */}
+                                  {loc.isLive ? (
+                                    /* LIVE LOCATION DETAILS (Screenshot 3 top card) */
+                                    <div className="divide-y divide-black/5 dark:divide-white/10">
+                                      <div className="p-2.5 flex items-center justify-between gap-2">
+                                        <div className="flex items-center gap-1.5 text-xs font-semibold">
+                                          {!isStopped ? (
+                                            <>
+                                              <LivePulseIcon className="w-4 h-4 text-red-500 animate-pulse shrink-0" />
+                                              <span className="text-gray-900 dark:text-[#f4ead2]">
+                                                Live until {loc.liveUntil || "1 hour"}
+                                              </span>
+                                            </>
+                                          ) : (
+                                            <>
+                                              <LivePulseIcon className="w-4 h-4 text-gray-400 shrink-0" />
+                                              <span className="text-gray-500 dark:text-gray-400">
+                                                Live location ended
+                                              </span>
+                                            </>
+                                          )}
+                                        </div>
+
+                                        <div className="flex items-center gap-1 text-[10px] text-gray-500 dark:text-gray-400 shrink-0">
+                                          <span>{formatMessageTime(msg.created_at)}</span>
+                                          {isMine && <MessageStatusTick msg={msg} />}
+                                        </div>
+                                      </div>
+
+                                      {/* User Comment if typed */}
+                                      {loc.comment && (
+                                        <div className="px-3 py-1.5 text-xs text-gray-800 dark:text-gray-200">
+                                          {loc.comment}
+                                        </div>
+                                      )}
+
+                                      {/* Red "Stop sharing" Action Button (Screenshot 3) */}
+                                      {isMine && !isStopped && (
+                                        <button
+                                          type="button"
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            handleStopLiveSharing(msg.id);
+                                          }}
+                                          className="w-full py-2.5 text-center text-xs sm:text-[13px] font-bold text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 hover:bg-black/5 dark:hover:bg-white/5 transition cursor-pointer"
+                                        >
+                                          Stop sharing
+                                        </button>
+                                      )}
+                                    </div>
+                                  ) : (
+                                    /* STATIC / NEARBY PLACE DETAILS (Screenshot 3 bottom card) */
+                                    <div className="p-2.5">
+                                      <div className="font-bold text-xs sm:text-[13px] text-gray-900 dark:text-[#f4ead2] truncate">
+                                        {loc.placeName}
+                                      </div>
+                                      {loc.address && (
+                                        <div className="text-[11px] text-gray-500 dark:text-gray-400 truncate mt-0.5">
+                                          {loc.address}
+                                        </div>
+                                      )}
+                                      <div className="flex items-center justify-between mt-2 pt-1 border-t border-black/5 dark:border-white/10 text-[10.5px]">
+                                        <span className="font-semibold text-red-600 dark:text-red-400 flex items-center gap-1 group-hover/loc:underline">
+                                          <span>Open in Google Maps</span>
+                                          <ExternalLink className="w-3 h-3" />
+                                        </span>
+                                        <div className="flex items-center gap-1 text-gray-500 dark:text-gray-400">
+                                          <span>{formatMessageTime(msg.created_at)}</span>
+                                          {isMine && <MessageStatusTick msg={msg} />}
+                                        </div>
+                                      </div>
+                                    </div>
+                                  )}
                                 </div>
                               );
                             })()
@@ -7158,11 +7694,11 @@ export default function TexAppBatchChat({
                           type="button"
                           onClick={() => {
                             setShowAttachmentTray(false);
-                            handleShareCurrentLocation();
+                            setShowLocationModal(true);
                           }}
                           className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold hover:bg-gray-100/80 dark:hover:bg-white/5 text-gray-800 dark:text-gray-200 text-left transition cursor-pointer"
                         >
-                          <div className="w-8 h-8 rounded-full bg-amber-500/15 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0">
+                          <div className="w-8 h-8 rounded-full bg-red-500/15 text-red-600 dark:text-red-400 flex items-center justify-center shrink-0">
                             <MapPin className="w-4 h-4" />
                           </div>
                           <span className="text-sm font-medium">Location</span>
@@ -7511,146 +8047,348 @@ export default function TexAppBatchChat({
       )}
 
       {/* =========================================================================
-          REALTIME CAMERA MODAL (Live Viewfinder, Snap, Retake, Send, Cancel)
+          WHATSAPP-STYLE FULLSCREEN CAMERA & PREVIEW MODAL
           ========================================================================= */}
       {showCameraModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-sm animate-fadeIn">
-          <div className="w-full max-w-lg rounded-3xl bg-[#111] border border-white/10 shadow-2xl overflow-hidden flex flex-col">
-            {/* Camera Header */}
-            <div className="flex items-center justify-between px-4 py-3 border-b border-white/10 text-white">
-              <span className="text-sm font-bold flex items-center gap-2">
-                <Camera className="w-4 h-4 text-rose-500" />
-                <span>Take Photo</span>
-              </span>
-              <div className="flex items-center gap-2">
-                {!capturedPhoto && (
-                  <button
-                    type="button"
-                    onClick={handleFlipCamera}
-                    className="p-2 rounded-full hover:bg-white/10 text-gray-300 hover:text-white transition cursor-pointer"
-                    title="Flip camera"
-                  >
-                    <RotateCcw className="w-4 h-4" />
-                  </button>
-                )}
+        <div className="fixed inset-0 z-50 bg-black flex flex-col overflow-hidden select-none animate-fadeIn">
+          {/* Screen Flash Overlay for Selfie Camera */}
+          {screenFlashActive && (
+            <div className="absolute inset-0 z-60 bg-white pointer-events-none opacity-95 transition-opacity" />
+          )}
+
+          {/* Hidden Canvas for High-Res Processing */}
+          <canvas ref={canvasRef} className="hidden" />
+
+          {/* ===================================================================
+              TOP FLOATING TOOLBAR
+              =================================================================== */}
+          <div className="absolute top-0 inset-x-0 z-30 flex items-center justify-between p-3.5 sm:p-5 bg-gradient-to-b from-black/80 via-black/40 to-transparent text-white">
+            {capturedPhoto ? (
+              /* Preview Mode Top Bar: Retake & Editing Tools */
+              <>
                 <button
                   type="button"
-                  onClick={handleCloseCamera}
-                  className="p-2 rounded-full hover:bg-white/10 text-gray-300 hover:text-white transition cursor-pointer"
-                  aria-label="Close camera"
+                  onClick={handleRetakePhoto}
+                  className="p-2.5 rounded-full bg-black/40 hover:bg-black/70 backdrop-blur-md text-white transition active:scale-95 cursor-pointer flex items-center gap-1.5 text-xs font-semibold"
+                  title="Retake photo"
                 >
-                  <X className="w-5 h-5" />
+                  <ArrowLeft className="w-5 h-5" />
+                  <span className="hidden sm:inline">Retake</span>
                 </button>
-              </div>
-            </div>
 
-            {/* Viewfinder or Snapshot Preview */}
-            <div className="relative aspect-4/3 sm:aspect-16/10 bg-black flex items-center justify-center overflow-hidden">
-              {cameraError ? (
-                <div className="p-6 text-center text-rose-400 space-y-3">
-                  <p className="text-sm">{cameraError}</p>
-                  <div className="flex flex-wrap items-center justify-center gap-2">
-                    <button
-                      type="button"
-                      onClick={handleRetryCamera}
-                      className="px-4 py-2 rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs font-bold transition cursor-pointer inline-flex items-center gap-2"
-                    >
-                      <Camera className="w-3.5 h-3.5" />
-                      <span>Try Camera Again</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setPermissionGuideTab("camera");
-                        setShowMicHelpModal(true);
-                      }}
-                      className="px-3 py-2 rounded-xl bg-white/15 hover:bg-white/25 text-white text-xs font-semibold transition cursor-pointer inline-flex items-center gap-1.5"
-                    >
-                      <ShieldAlert className="w-3.5 h-3.5 text-amber-400" />
-                      <span>Permission Guide</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        handleCloseCamera();
-                        fileInputRef.current?.click();
-                      }}
-                      className="px-3 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-semibold transition cursor-pointer"
-                    >
-                      Select from gallery
-                    </button>
-                  </div>
-                </div>
-              ) : capturedPhoto ? (
-                /* Captured Photo Snapshot */
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={capturedPhoto}
-                  alt="Captured"
-                  className="w-full h-full object-contain bg-black"
-                />
-              ) : (
-                /* Live Video Stream */
-                <video
-                  ref={videoRef}
-                  autoPlay
-                  playsInline
-                  muted
-                  className={`w-full h-full object-cover bg-black ${cameraFacingMode === "user" ? "-scale-x-100" : ""}`}
-                />
-              )}
-            </div>
+                <div className="flex items-center gap-2 sm:gap-3">
+                  {/* Crop / Aspect Mode */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const modes = ["original", "square", "4:3", "16:9"];
+                      const next = modes[(modes.indexOf(previewCropMode) + 1) % modes.length];
+                      setPreviewCropMode(next);
+                      showToast(`Crop Aspect: ${next === "original" ? "Original Full" : next}`);
+                    }}
+                    className={`p-2.5 rounded-full backdrop-blur-md transition active:scale-95 cursor-pointer flex items-center gap-1 text-xs font-bold ${
+                      previewCropMode !== "original"
+                        ? "bg-amber-500 text-black"
+                        : "bg-black/40 hover:bg-black/70 text-white"
+                    }`}
+                    title="Crop Aspect Ratio"
+                  >
+                    <Crop className="w-4.5 h-4.5" />
+                    <span className="text-[11px] uppercase hidden sm:inline">{previewCropMode}</span>
+                  </button>
 
-            {/* Action Bar */}
-            <div className="p-4 bg-black/40 border-t border-white/10 flex items-center justify-center gap-3 sm:gap-6">
-              {capturedPhoto ? (
-                <>
-                  {/* Cancel */}
+                  {/* Rotate 90° */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setPreviewRotation((prev) => (prev + 90) % 360);
+                    }}
+                    className="p-2.5 rounded-full bg-black/40 hover:bg-black/70 backdrop-blur-md text-white transition active:scale-95 cursor-pointer"
+                    title="Rotate 90°"
+                  >
+                    <RotateCw className="w-4.5 h-4.5" />
+                  </button>
+
+                  {/* Flip Horizontal */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setPreviewFlipped((prev) => !prev);
+                    }}
+                    className={`p-2.5 rounded-full backdrop-blur-md transition active:scale-95 cursor-pointer ${
+                      previewFlipped
+                        ? "bg-amber-500 text-black"
+                        : "bg-black/40 hover:bg-black/70 text-white"
+                    }`}
+                    title="Mirror Photo"
+                  >
+                    <FlipHorizontal className="w-4.5 h-4.5" />
+                  </button>
+
+                  {/* Close / Cancel */}
                   <button
                     type="button"
                     onClick={handleCloseCamera}
-                    className="px-4 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-semibold flex items-center gap-2 transition cursor-pointer"
+                    className="p-2.5 rounded-full bg-black/40 hover:bg-black/70 backdrop-blur-md text-white transition active:scale-95 cursor-pointer"
+                    title="Close"
                   >
-                    <X className="w-4 h-4" />
-                    <span>Cancel</span>
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+              </>
+            ) : (
+              /* Live Camera Top Bar: Close, Flash, Flip */
+              <>
+                <button
+                  type="button"
+                  onClick={handleCloseCamera}
+                  className="p-2.5 rounded-full bg-black/40 hover:bg-black/70 backdrop-blur-md text-white transition active:scale-95 cursor-pointer"
+                  title="Close camera"
+                >
+                  <X className="w-6 h-6" />
+                </button>
+
+                <div className="flex items-center gap-3">
+                  {/* Flash Toggle Button */}
+                  <button
+                    type="button"
+                    onClick={toggleCameraFlash}
+                    className={`px-3 py-1.5 rounded-full backdrop-blur-md text-xs font-bold flex items-center gap-1.5 transition active:scale-95 cursor-pointer ${
+                      cameraFlashMode === "on"
+                        ? "bg-amber-400 text-black shadow-md"
+                        : cameraFlashMode === "torch"
+                        ? "bg-yellow-300 text-black shadow-md"
+                        : "bg-black/40 hover:bg-black/70 text-white"
+                    }`}
+                    title="Flash Mode"
+                  >
+                    {cameraFlashMode === "off" ? (
+                      <>
+                        <ZapOff className="w-4 h-4 text-gray-300" />
+                        <span>Off</span>
+                      </>
+                    ) : cameraFlashMode === "on" ? (
+                      <>
+                        <Zap className="w-4 h-4 fill-black" />
+                        <span>Auto/On</span>
+                      </>
+                    ) : (
+                      <>
+                        <Zap className="w-4 h-4 fill-black" />
+                        <span>Torch</span>
+                      </>
+                    )}
                   </button>
 
-                  {/* Retake */}
+                  {/* Flip Front/Rear Camera */}
+                  <button
+                    type="button"
+                    onClick={handleFlipCamera}
+                    className={`p-2.5 rounded-full bg-black/40 hover:bg-black/70 backdrop-blur-md text-white transition active:scale-95 cursor-pointer ${
+                      isFlippingCamera ? "rotate-180 duration-300" : ""
+                    }`}
+                    title={cameraFacingMode === "user" ? "Switch to Rear Camera" : "Switch to Front Camera"}
+                  >
+                    <RotateCcw className="w-5 h-5" />
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+
+          {/* ===================================================================
+              CENTER VIEWFINDER / PHOTO PREVIEW (ALWAYS FULL SCREEN)
+              =================================================================== */}
+          <div className="flex-1 relative overflow-hidden bg-black flex items-center justify-center">
+            {/* Live Video Stream - PERMANENTLY MOUNTED TO PREVENT RETAKE BLACK SCREEN */}
+            <video
+              ref={videoRef}
+              autoPlay
+              playsInline
+              muted
+              className={`w-full h-full object-cover transition-transform ${
+                cameraFacingMode === "user" ? "-scale-x-100" : ""
+              } ${capturedPhoto ? "hidden" : "block"}`}
+            />
+
+            {/* Captured Photo Preview */}
+            {capturedPhoto && (
+              <div className="w-full h-full flex items-center justify-center p-2 sm:p-6 overflow-hidden">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={capturedPhoto}
+                  alt="Captured Preview"
+                  className={`max-w-full max-h-full transition-all duration-200 ${
+                    previewCropMode === "square"
+                      ? "aspect-square object-cover"
+                      : previewCropMode === "4:3"
+                      ? "aspect-4/3 object-cover"
+                      : previewCropMode === "16:9"
+                      ? "aspect-16/9 object-cover"
+                      : "object-contain"
+                  }`}
+                  style={{
+                    transform: `rotate(${previewRotation}deg) scaleX(${previewFlipped ? -1 : 1})`,
+                  }}
+                />
+              </div>
+            )}
+
+            {/* Error Overlay */}
+            {cameraError && !capturedPhoto && (
+              <div className="absolute inset-0 z-20 bg-black/90 flex flex-col items-center justify-center p-6 text-center text-rose-400 space-y-4">
+                <div className="w-14 h-14 rounded-full bg-rose-500/20 flex items-center justify-center text-rose-400">
+                  <Camera className="w-7 h-7" />
+                </div>
+                <p className="text-sm sm:text-base max-w-sm">{cameraError}</p>
+                <div className="flex flex-wrap items-center justify-center gap-2.5">
+                  <button
+                    type="button"
+                    onClick={handleRetryCamera}
+                    className="px-5 py-2.5 rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs font-bold transition cursor-pointer inline-flex items-center gap-2 shadow-lg"
+                  >
+                    <Camera className="w-4 h-4" />
+                    <span>Try Camera Again</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setPermissionGuideTab("camera");
+                      setShowMicHelpModal(true);
+                    }}
+                    className="px-4 py-2.5 rounded-xl bg-white/15 hover:bg-white/25 text-white text-xs font-semibold transition cursor-pointer inline-flex items-center gap-1.5"
+                  >
+                    <ShieldAlert className="w-4 h-4 text-amber-400" />
+                    <span>Permission Guide</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      handleCloseCamera();
+                      fileInputRef.current?.click();
+                    }}
+                    className="px-4 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-semibold transition cursor-pointer"
+                  >
+                    Select from gallery
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* ===================================================================
+              BOTTOM BAR: WHATSAPP SHUTTER OR CAPTION / SEND
+              =================================================================== */}
+          <div className="relative z-30 p-4 sm:p-6 bg-gradient-to-t from-black/90 via-black/50 to-transparent">
+            {capturedPhoto ? (
+              /* WhatsApp Photo Preview Bottom Bar: Caption + Green Send Button */
+              <div className="w-full max-w-3xl mx-auto space-y-3">
+                <div className="flex items-center gap-2">
+                  {/* Caption Input Pill */}
+                  <div className="flex-1 bg-[#1f2c34] sm:bg-[#202c33] rounded-3xl px-4 py-2.5 border border-white/10 flex items-center gap-2 text-white shadow-lg">
+                    <Smile className="w-5 h-5 text-gray-400 shrink-0" />
+                    <input
+                      type="text"
+                      value={cameraCaption}
+                      onChange={(e) => setCameraCaption(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault();
+                          handleSendCapturedPhoto();
+                        }
+                      }}
+                      placeholder="Add a caption..."
+                      className="w-full bg-transparent border-none outline-none text-sm text-white placeholder:text-gray-400"
+                    />
+                  </div>
+
+                  {/* WhatsApp Circular Green Send Button */}
+                  <button
+                    type="button"
+                    disabled={isSendingCapturedPhoto}
+                    onClick={handleSendCapturedPhoto}
+                    className="w-12 h-12 rounded-full bg-[#00a884] hover:bg-[#00c59b] active:scale-95 text-white flex items-center justify-center shadow-xl transition cursor-pointer shrink-0 disabled:opacity-50"
+                    aria-label="Send photo"
+                  >
+                    {isSendingCapturedPhoto ? (
+                      <Loader2 className="w-5 h-5 animate-spin text-white" />
+                    ) : (
+                      <TexAppSendIcon className="w-5 h-5 text-white" />
+                    )}
+                  </button>
+                </div>
+
+                {/* Retake & Info */}
+                <div className="flex items-center justify-between text-xs text-gray-300 px-2">
                   <button
                     type="button"
                     onClick={handleRetakePhoto}
-                    className="px-4 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-semibold flex items-center gap-2 transition cursor-pointer"
+                    className="hover:text-white transition flex items-center gap-1.5 cursor-pointer font-medium"
                   >
-                    <RotateCcw className="w-4 h-4" />
-                    <span>Retake</span>
+                    <RotateCcw className="w-3.5 h-3.5" />
+                    <span>Retake photo</span>
                   </button>
+                  <span className="text-[11px] text-gray-400">
+                    {previewCropMode !== "original" ? `Crop: ${previewCropMode}` : "Original"} • {previewRotation}°
+                  </span>
+                </div>
+              </div>
+            ) : (
+              /* Live Camera Bottom Bar: Gallery, WhatsApp Shutter Button, Flip Camera */
+              <div className="w-full max-w-lg mx-auto flex items-center justify-around sm:justify-between px-4 sm:px-12">
+                {/* Gallery Picker Thumbnail */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    handleCloseCamera();
+                    fileInputRef.current?.click();
+                  }}
+                  className="w-12 h-12 rounded-2xl bg-white/10 hover:bg-white/20 border border-white/20 flex flex-col items-center justify-center gap-1 text-white transition active:scale-95 cursor-pointer"
+                  title="Select from gallery"
+                >
+                  <ImageIcon className="w-5 h-5" />
+                  <span className="text-[9px] font-semibold">Gallery</span>
+                </button>
 
-                  {/* Send */}
-                  <button
-                    type="button"
-                    onClick={handleSendCapturedPhoto}
-                    className="px-5 sm:px-6 py-2.5 rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs sm:text-sm font-bold flex items-center justify-center gap-2 shadow-lg hover:scale-105 transition cursor-pointer"
-                  >
-                    <TexAppSendIcon className="w-4 h-4 text-white" />
-                    <span>Send Photo</span>
-                  </button>
-                </>
-              ) : (
-                /* Shutter Button to take photo */
+                {/* WhatsApp Shutter Button */}
                 <button
                   type="button"
                   disabled={Boolean(cameraError)}
                   onClick={handleCapturePhoto}
-                  className="w-16 h-16 rounded-full border-4 border-white flex items-center justify-center bg-white/20 hover:bg-white/40 active:scale-95 transition cursor-pointer group shadow-xl"
+                  className="w-20 h-20 sm:w-22 sm:h-22 rounded-full border-[4px] border-white flex items-center justify-center p-1 bg-white/10 active:scale-90 transition-transform cursor-pointer shadow-2xl disabled:opacity-40"
                   aria-label="Capture photo"
                 >
-                  <div className="w-11 h-11 rounded-full bg-white group-hover:scale-95 transition" />
+                  <div className="w-full h-full rounded-full bg-white active:bg-gray-200 transition-colors shadow-inner" />
                 </button>
-              )}
-            </div>
+
+                {/* Flip Camera Button */}
+                <button
+                  type="button"
+                  onClick={handleFlipCamera}
+                  className={`w-12 h-12 rounded-full bg-white/10 hover:bg-white/20 border border-white/20 flex items-center justify-center text-white transition active:scale-95 cursor-pointer ${
+                    isFlippingCamera ? "rotate-180 duration-300" : ""
+                  }`}
+                  title={cameraFacingMode === "user" ? "Rear Camera" : "Front Camera"}
+                >
+                  <RotateCcw className="w-5 h-5" />
+                </button>
+              </div>
+            )}
           </div>
         </div>
       )}
+
+      {/* =========================================================================
+          WHATSAPP-STYLE SEND LOCATION & LIVE LOCATION MODAL
+          ========================================================================= */}
+      <TexAppLocationShareModal
+        isOpen={showLocationModal}
+        onClose={() => setShowLocationModal(false)}
+        onSendLocation={handleSendLocationFromModal}
+        currentUser={currentUser}
+        currentProfile={currentProfile}
+        isDark={isDark}
+      />
 
       {/* =========================================================================
           CREATE POLL MODAL (Matches WhatsApp Sample from Screenshot 2)
