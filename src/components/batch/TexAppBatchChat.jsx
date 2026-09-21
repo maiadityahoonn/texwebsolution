@@ -8,6 +8,7 @@ import {
   Image as ImageIcon,
   FileText,
   Link as LinkIcon,
+  Link2,
   Pin,
   CheckCheck,
   X,
@@ -103,8 +104,16 @@ function formatSecs(sec) {
 
 function extractFirstUrl(text) {
   if (!text || typeof text !== "string") return null;
-  const match = text.match(/(https?:\/\/[^\s<]+)/i);
-  return match ? match[0] : null;
+  // Match https://..., http://..., or www....
+  const match = text.match(/(?:https?:\/\/|www\.)[^\s<]+/i);
+  if (!match) return null;
+  let url = match[0].trim();
+  // Strip trailing punctuation
+  url = url.replace(/[.,;!?)\"'\]}]+$/, "");
+  if (url.toLowerCase().startsWith("www.")) {
+    url = "https://" + url;
+  }
+  return url;
 }
 
 function getHostname(urlStr) {
@@ -114,6 +123,150 @@ function getHostname(urlStr) {
   } catch {
     return urlStr;
   }
+}
+
+// Global client cache for link previews to prevent redundant network fetches
+const linkPreviewClientCache = new Map();
+
+// WhatsApp-Style Rich Link Preview Card Component for Chat Bubbles (Matches user sample exactly)
+function TexAppChatLinkCard({ url, isMine, isDark, timestampNode }) {
+  const [preview, setPreview] = useState(() => linkPreviewClientCache.get(url) || null);
+  const [loading, setLoading] = useState(() => !linkPreviewClientCache.has(url));
+  const [imgFailed, setImgFailed] = useState(false);
+
+  useEffect(() => {
+    if (!url) return;
+    if (linkPreviewClientCache.has(url)) {
+      setPreview(linkPreviewClientCache.get(url));
+      setLoading(false);
+      return;
+    }
+    let cancelled = false;
+    setLoading(true);
+    setImgFailed(false);
+    fetch(`/api/link-preview?url=${encodeURIComponent(url)}`)
+      .then((res) => res.json())
+      .then((data) => {
+        if (!cancelled && data && !data.error) {
+          linkPreviewClientCache.set(url, data);
+          setPreview(data);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          const fallback = {
+            url,
+            domain: getHostname(url),
+            title: getHostname(url),
+            description: "",
+            image: null,
+            favicon: null,
+          };
+          linkPreviewClientCache.set(url, fallback);
+          setPreview(fallback);
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [url]);
+
+  const domain = preview?.domain || getHostname(url);
+  const title = preview?.title || domain;
+  const desc = preview?.description;
+  const image = preview?.image;
+  const favicon = preview?.favicon;
+
+  const handleOpenLink = (e) => {
+    e.stopPropagation();
+    window.open(url, "_blank", "noopener,noreferrer");
+  };
+
+  return (
+    <div
+      role="link"
+      tabIndex={0}
+      onClick={handleOpenLink}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          handleOpenLink(e);
+        }
+      }}
+      className="w-[270px] sm:w-[310px] max-w-[calc(100vw-3.5rem)] rounded-xl overflow-hidden select-none cursor-pointer group/linkcard transition-all duration-150 active:scale-[0.99] text-left"
+    >
+      {/* 1. Top Banner Image (White background with centered logo/banner image, rounded top corners matching bubble) */}
+      <div className="w-full h-36 sm:h-44 bg-white dark:bg-[#1a1612] overflow-hidden rounded-t-[13px] border-b border-black/5 dark:border-white/10 relative flex items-center justify-center">
+        {loading ? (
+          <div className="w-full h-full bg-stone-100 dark:bg-stone-800/60 animate-pulse flex flex-col items-center justify-center gap-1.5">
+            <Loader2 className="w-5 h-5 animate-spin text-gray-400 dark:text-stone-400" />
+            <span className="text-[10px] text-gray-400 dark:text-stone-400 font-medium">Loading preview...</span>
+          </div>
+        ) : image && !imgFailed ? (
+          <img
+            src={image}
+            alt={title}
+            className="w-full h-full object-contain p-2 sm:p-3 group-hover/linkcard:scale-[1.02] transition-transform duration-300"
+            onError={() => setImgFailed(true)}
+          />
+        ) : favicon ? (
+          <div className="w-full h-full flex flex-col items-center justify-center gap-2 p-3 bg-gradient-to-br from-stone-50 to-stone-100 dark:from-stone-900 dark:to-stone-800">
+            <img
+              src={favicon}
+              alt="Favicon"
+              className="w-10 h-10 object-contain drop-shadow-xs"
+              onError={(e) => {
+                e.currentTarget.style.display = "none";
+              }}
+            />
+            <span className="text-[11px] font-semibold text-gray-700 dark:text-gray-300 truncate max-w-[90%]">
+              {domain}
+            </span>
+          </div>
+        ) : (
+          <div className="w-full h-full flex flex-col items-center justify-center gap-1.5 bg-gradient-to-br from-red-50 to-orange-50 dark:from-[#2e1412] dark:to-[#221710] text-red-600 dark:text-red-400">
+            <Globe className="w-8 h-8 opacity-80" />
+            <span className="text-[11px] font-semibold tracking-wide text-gray-700 dark:text-gray-300 truncate max-w-[85%]">
+              {domain}
+            </span>
+          </div>
+        )}
+      </div>
+
+      {/* 2. Card Content (Theme background preserved: isMine red-50/dark #3a1715, incoming white/dark #18150f) */}
+      <div className="px-3 pt-2.5 pb-1.5 flex flex-col justify-between">
+        {/* Title */}
+        <h4 className="font-bold text-[13.5px] sm:text-[14px] leading-snug tracking-tight text-gray-950 dark:text-[#f4ead2] line-clamp-2">
+          {title}
+        </h4>
+
+        {/* Description */}
+        {desc && (
+          <p className="text-[11.5px] sm:text-[12px] opacity-80 leading-relaxed mt-1 line-clamp-2 sm:line-clamp-3 text-gray-700 dark:text-[#d6cbbe]">
+            {desc}
+          </p>
+        )}
+
+        {/* Domain Row + Docked Timestamp & Checkmarks */}
+        <div className="flex items-center justify-between gap-2 mt-2 pt-0.5">
+          <div className="flex items-center gap-1.5 text-[11px] sm:text-[11.5px] opacity-75 font-normal text-gray-600 dark:text-[#c4b9a3] min-w-0 flex-1 truncate">
+            <Link2 className="w-3.5 h-3.5 shrink-0 rotate-[-45deg] stroke-[2.2]" />
+            <span className="truncate">{domain}</span>
+          </div>
+
+          {timestampNode && (
+            <div className="shrink-0 flex items-center gap-1 pl-1">
+              {timestampNode}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
 }
 
 const WALLPAPER_PRESETS = [
@@ -396,6 +549,49 @@ function LivePulseIcon({ className = "w-4 h-4", ...props }) {
       <path d="M4.5 4.5a11 11 0 0 0 0 15" />
       <path d="M19.5 4.5a11 11 0 0 1 0 15" />
     </svg>
+  );
+}
+
+// WhatsApp Live Pin with Side Signal Waves ((📍)) matching Screenshot 3 top card
+function WhatsAppLivePinIcon({ className = "w-4 h-4", ...props }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+      {...props}
+    >
+      <path d="M4 8a10 10 0 0 0 0 8" />
+      <path d="M20 8a10 10 0 0 1 0 8" />
+      <path d="M7 10a5 5 0 0 0 0 4" />
+      <path d="M17 10a5 5 0 0 1 0 4" />
+      <path
+        d="M12 3C9.8 3 8 4.8 8 7c0 3.2 4 8 4 8s4-4.8 4-8c0-2.2-1.8-4-4-4z"
+        fill="currentColor"
+        stroke="none"
+      />
+      <circle cx="12" cy="7" r="1.5" fill="#111b21" stroke="none" />
+    </svg>
+  );
+}
+
+// WhatsApp Red Drop Pin matching Screenshot 3 bottom card
+function WhatsAppRedDropPin({ className = "w-7 h-9", ...props }) {
+  return (
+    <div className={`relative flex flex-col items-center ${className}`} {...props}>
+      <svg viewBox="0 0 24 32" fill="none" className="w-full h-full drop-shadow-md">
+        <path
+          d="M12 0C5.37 0 0 5.37 0 12c0 9 12 20 12 20s12-11 12-20c0-6.63-5.37-12-12-12z"
+          fill="#ea4335"
+        />
+        <circle cx="12" cy="11" r="4.5" fill="#a50e0e" />
+      </svg>
+      <div className="w-2.5 h-1 rounded-full bg-black/40 blur-[1px] -mt-1" />
+    </div>
   );
 }
 
@@ -880,6 +1076,70 @@ export default function TexAppBatchChat({
 
   const [inputText, setInputText] = useState("");
   const [replyingTo, setReplyingTo] = useState(null); // Message object being quoted
+
+  // WhatsApp Style Link Preview in Composer (Docked above input bar)
+  const [composerUrlPreview, setComposerUrlPreview] = useState(null);
+  const [isLoadingComposerPreview, setIsLoadingComposerPreview] = useState(false);
+  const [dismissedLinkUrl, setDismissedLinkUrl] = useState("");
+
+  useEffect(() => {
+    const rawText = inputText || (typeof mobileTextareaRef.current?.value === "string" ? mobileTextareaRef.current.value : "");
+    const detectedUrl = extractFirstUrl(rawText);
+    if (!detectedUrl || detectedUrl === dismissedLinkUrl) {
+      setComposerUrlPreview(null);
+      setIsLoadingComposerPreview(false);
+      return;
+    }
+
+    if (linkPreviewClientCache.has(detectedUrl)) {
+      setComposerUrlPreview(linkPreviewClientCache.get(detectedUrl));
+      setIsLoadingComposerPreview(false);
+      return;
+    }
+
+    setIsLoadingComposerPreview(true);
+    let cancelled = false;
+    const timer = setTimeout(() => {
+      fetch(`/api/link-preview?url=${encodeURIComponent(detectedUrl)}`)
+        .then((res) => res.json())
+        .then((data) => {
+          if (!cancelled) {
+            const previewObj = data && !data.error ? data : {
+              url: detectedUrl,
+              domain: getHostname(detectedUrl),
+              title: getHostname(detectedUrl),
+              description: "",
+              image: null,
+              favicon: null,
+            };
+            linkPreviewClientCache.set(detectedUrl, previewObj);
+            setComposerUrlPreview(previewObj);
+          }
+        })
+        .catch(() => {
+          if (!cancelled) {
+            const fallback = {
+              url: detectedUrl,
+              domain: getHostname(detectedUrl),
+              title: getHostname(detectedUrl),
+              description: "",
+              image: null,
+              favicon: null,
+            };
+            linkPreviewClientCache.set(detectedUrl, fallback);
+            setComposerUrlPreview(fallback);
+          }
+        })
+        .finally(() => {
+          if (!cancelled) setIsLoadingComposerPreview(false);
+        });
+    }, 150);
+
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [inputText, dismissedLinkUrl]);
   const [searchQuery, setSearchQuery] = useState("");
   const [searchMatchIndex, setSearchMatchIndex] = useState(0);
   const [showSearch, setShowSearch] = useState(false);
@@ -3651,6 +3911,35 @@ export default function TexAppBatchChat({
     chatMediaList?.length,
   ]);
 
+  // Dedicated Mobile Textarea Paste Handler (safely extracts text and stages media without window.getSelection errors)
+  const handleMobileTextareaPaste = (e) => {
+    if (e.clipboardData) {
+      const files = Array.from(e.clipboardData.files || []);
+      if (files.length > 0) {
+        e.preventDefault();
+        const hasMedia = files.some((f) => f.type?.startsWith("image/") || f.type?.startsWith("video/"));
+        stageFiles(files, hasMedia ? "media" : "document");
+        return;
+      }
+    }
+    const text = e.clipboardData?.getData("text/plain");
+    if (text) {
+      e.preventDefault();
+      const ta = e.currentTarget;
+      const start = typeof ta.selectionStart === "number" ? ta.selectionStart : (ta.value || "").length;
+      const end = typeof ta.selectionEnd === "number" ? ta.selectionEnd : start;
+      const current = ta.value || "";
+      const updated = current.slice(0, start) + text + current.slice(end);
+      ta.value = updated;
+      handleInputTextChange(updated);
+      const newPos = start + text.length;
+      try {
+        ta.setSelectionRange(newPos, newPos);
+      } catch {}
+      if (onTyping) onTyping(true);
+    }
+  };
+
   // ContentEditable Paste Handler (converts pasted emojis to Apple emoji images and stages pasted screenshots/files)
   const handleContentEditablePaste = (e) => {
     // 1. Check for pasted files or images (e.g. screenshots from Win+Shift+S or copied files)
@@ -3679,11 +3968,29 @@ export default function TexAppBatchChat({
     const text = e.clipboardData?.getData("text/plain") || "";
     if (!text) return;
 
-    const el = getActiveComposerElement();
+    const el = textareaRef.current || getActiveComposerElement();
     if (!el) return;
 
+    // If el is textarea, update directly
+    if (typeof el.value === "string") {
+      const start = typeof el.selectionStart === "number" ? el.selectionStart : el.value.length;
+      const end = typeof el.selectionEnd === "number" ? el.selectionEnd : start;
+      const current = el.value || "";
+      const updated = current.slice(0, start) + text + current.slice(end);
+      el.value = updated;
+      handleInputTextChange(updated);
+      return;
+    }
+
     const sel = window.getSelection();
-    if (!sel || sel.rangeCount === 0) return;
+    if (!sel || sel.rangeCount === 0 || !el.contains(sel.anchorNode)) {
+      el.focus();
+      const textNode = document.createTextNode(text);
+      el.appendChild(textNode);
+      handleInputTextChange(getPlainTextFromEditor(el));
+      return;
+    }
+
     const range = sel.getRangeAt(0);
     range.deleteContents();
 
@@ -3714,7 +4021,7 @@ export default function TexAppBatchChat({
     sel.removeAllRanges();
     sel.addRange(range);
 
-    setInputText(getPlainTextFromEditor(el));
+    handleInputTextChange(getPlainTextFromEditor(el));
   };
 
   // Send text message
@@ -3759,6 +4066,9 @@ export default function TexAppBatchChat({
     } catch {}
     if (onTyping) onTyping(false);
     setReplyingTo(null);
+    setComposerUrlPreview(null);
+    setIsLoadingComposerPreview(false);
+    setDismissedLinkUrl("");
     setShowEmojiPicker(false);
     setShowAttachmentTray(false);
 
@@ -6150,6 +6460,29 @@ export default function TexAppBatchChat({
             const isAudioAttachment = Boolean(
               msg.attachment_url && msg.attachment_type === "audio"
             );
+            const isLocationAttachment = Boolean(
+              msg.attachment_type === "location" ||
+              msg.attachment_type === "location_live" ||
+              msg.message?.includes("📍 Live Location") ||
+              msg.message?.includes("📍 Current Location") ||
+              msg.message?.includes("maps.google.com")
+            );
+            const detectedUrl = extractFirstUrl(msg.message);
+            const isPureLinkMsg = Boolean(
+              detectedUrl &&
+              !hasMediaAttachment &&
+              !isDocAttachment &&
+              !isAudioAttachment &&
+              !isLocationAttachment &&
+              (msg.message?.trim() === detectedUrl || !msg.message?.replace(detectedUrl, "").trim())
+            );
+            const hasLinkPreview = Boolean(
+              detectedUrl &&
+              !hasMediaAttachment &&
+              !isDocAttachment &&
+              !isAudioAttachment &&
+              !isLocationAttachment
+            );
 
             return (
               <Fragment key={msg.id || index}>
@@ -6375,6 +6708,10 @@ export default function TexAppBatchChat({
                           ? (showSenderHeader ? "p-1 pb-1" : "p-[3px] pb-1")
                           : isAudioAttachment
                           ? (showSenderHeader ? "p-1" : "p-0.5")
+                          : isLocationAttachment
+                          ? (showSenderHeader ? "p-1" : "p-[3px]")
+                          : isPureLinkMsg
+                          ? (showSenderHeader ? "p-1 pb-1" : "p-[3px]")
                           : (showSenderHeader ? "pt-0.5 px-2 pb-1 sm:px-2.5 sm:pb-1" : "px-2 py-1 sm:px-2.5 sm:py-1")
                       } shadow-2xs relative transition-all duration-200 border ${
                         isSelectionMode ? "cursor-pointer select-none" : "cursor-default select-none sm:select-text"
@@ -6661,7 +6998,7 @@ export default function TexAppBatchChat({
                               );
                             })()
                           ) : msg.attachment_type === "location" || msg.attachment_type === "location_live" || msg.message?.includes("📍 Live Location") || msg.message?.includes("maps.google.com") ? (
-                            /* WhatsApp Location Card matching Screenshot 3, preserving brand theme */
+                            /* WhatsApp Location Card matching user's Screenshot 3 exactly */
                             (() => {
                               const loc = parseLocationMessage(msg);
                               const isStopped = stoppedLiveLocationIds.has(msg.id);
@@ -6672,103 +7009,108 @@ export default function TexAppBatchChat({
                                 ? (currentProfile?.full_name?.charAt(0) || currentUser?.full_name?.charAt(0) || "Y").toUpperCase()
                                 : senderInitial;
 
-                              const embedUrl = `https://maps.google.com/maps?q=${loc.lat || 23.2599},${loc.lng || 77.4126}&z=15&output=embed`;
+                              const embedUrl = `https://maps.google.com/maps?q=${loc.lat || 23.2599},${loc.lng || 77.4126}&z=16&output=embed`;
 
                               return (
                                 <div
                                   onClick={() => {
                                     if (loc.mapsUrl) window.open(loc.mapsUrl, "_blank", "noopener,noreferrer");
                                   }}
-                                  className="w-60 sm:w-72 max-w-[calc(100vw-3.5rem)] rounded-xl overflow-hidden select-none cursor-pointer transition-transform active:scale-[0.99] group/loc"
+                                  className="w-[270px] sm:w-[310px] max-w-[calc(100vw-3.5rem)] rounded-xl overflow-hidden select-none cursor-pointer transition-transform active:scale-[0.99] group/loc"
                                 >
-                                  {/* Upper Map Snippet View */}
-                                  <div className="relative h-32 sm:h-36 w-full bg-[#182229] overflow-hidden border-b border-black/10 dark:border-white/10">
-                                    <iframe
-                                      title="Location Snippet"
-                                      src={embedUrl}
-                                      className="w-full h-full border-0 pointer-events-none opacity-90 filter contrast-105"
-                                    />
+                                  {loc.isLive ? (
+                                    /* =================================================================
+                                       TOP CARD: LIVE LOCATION WITH DURATION & AVATAR (Matches user screenshot exactly)
+                                       ================================================================= */
+                                    <div>
+                                      {/* Stylized Vector Road Map View with Sender Circular Avatar (Matches Sample Exactly) */}
+                                      <div className="relative h-36 sm:h-44 w-full overflow-hidden rounded-t-[13px] select-none bg-[#2a3547]">
+                                        <svg
+                                          viewBox="0 0 320 180"
+                                          className="w-full h-full object-cover pointer-events-none"
+                                          preserveAspectRatio="none"
+                                        >
+                                          {/* Dark Map Base Regions: Top Teal/Sage, Bottom Navy/Slate */}
+                                          <rect x="0" y="0" width="320" height="92" fill="#203a3d" />
+                                          <rect x="0" y="92" width="320" height="88" fill="#2a3547" />
 
-                                    {/* Center Marker Overlay */}
-                                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
-                                      {loc.isLive ? (
-                                        /* Live Location: User's circular avatar right on the map with glowing pulse (Screenshot 3 top) */
-                                        <div className="relative flex items-center justify-center">
-                                          {!isStopped && (
-                                            <div className="absolute w-14 h-14 rounded-full bg-red-500/30 animate-ping" />
-                                          )}
-                                          <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-full border-2 border-white shadow-2xl overflow-hidden bg-red-700 flex items-center justify-center text-white font-bold text-xs relative z-10">
+                                          {/* Tan / Warm Taupe Roads matching screenshot exactly */}
+                                          {/* 1. Curved Road Arc sweeping from bottom-left up to horizontal road */}
+                                          <path
+                                            d="M -10 165 C 45 165 118 135 118 64"
+                                            fill="none"
+                                            stroke="#8f8069"
+                                            strokeWidth="24"
+                                            strokeLinecap="round"
+                                          />
+
+                                          {/* 2. Main Horizontal Road */}
+                                          <rect x="0" y="52" width="320" height="24" fill="#8f8069" />
+
+                                          {/* 3. Main Vertical Road */}
+                                          <rect x="202" y="0" width="24" height="180" fill="#8f8069" />
+
+                                          {/* 4. Bottom-right horizontal branch road */}
+                                          <rect x="226" y="120" width="94" height="22" fill="#8f8069" />
+                                        </svg>
+
+                                        {/* Center User Circular Avatar (Matches Sample Exactly: clean round avatar with dark border) */}
+                                        <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
+                                          <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-full overflow-hidden border-2 border-[#121b22] shadow-xl bg-[#2a3547] flex items-center justify-center relative">
                                             {senderAvatar ? (
                                               <img src={senderAvatar} alt="" className="w-full h-full object-cover" />
                                             ) : (
-                                              <span>{senderInitialText}</span>
+                                              <span className="text-white font-bold text-sm sm:text-base">{senderInitialText}</span>
                                             )}
                                           </div>
                                         </div>
-                                      ) : (
-                                        /* Current / Static Place Location: Red Pin in center (Screenshot 3 bottom) */
-                                        <div className="relative flex flex-col items-center justify-center -translate-y-2">
-                                          <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-red-600 text-white flex items-center justify-center shadow-2xl border-2 border-white animate-bounce">
-                                            <MapPin className="w-5 h-5 sm:w-5.5 sm:h-5.5 fill-white text-red-600" />
-                                          </div>
-                                          <div className="w-2 h-2 rounded-full bg-black/40 blur-[1px] mt-0.5" />
-                                        </div>
-                                      )}
-                                    </div>
+                                      </div>
 
-                                    {/* Live / Static Badge overlay top-left */}
-                                    <div className="absolute top-2 left-2 z-10 flex items-center gap-1 text-[9px] font-bold text-white bg-black/60 backdrop-blur-xs px-2 py-0.5 rounded-full">
-                                      {loc.isLive ? (
-                                        <>
-                                          <div className={`w-1.5 h-1.5 rounded-full ${!isStopped ? "bg-red-500 animate-ping" : "bg-gray-400"}`} />
-                                          <span>{isStopped ? "LIVE ENDED" : "LIVE"}</span>
-                                        </>
-                                      ) : (
-                                        <>
-                                          <MapPin className="w-2.5 h-2.5 text-red-400" />
-                                          <span>LOCATION</span>
-                                        </>
-                                      )}
-                                    </div>
-                                  </div>
-
-                                  {/* Lower Details Card */}
-                                  {loc.isLive ? (
-                                    /* LIVE LOCATION DETAILS (Screenshot 3 top card) */
-                                    <div className="divide-y divide-black/5 dark:divide-white/10">
-                                      <div className="p-2.5 flex items-center justify-between gap-2">
-                                        <div className="flex items-center gap-1.5 text-xs font-semibold">
+                                      {/* Subline: Live until 7:55 PM (with live icon) + Timestamp */}
+                                      <div className="px-3 py-2 flex items-center justify-between gap-2 text-xs">
+                                        <div className="flex items-center gap-2 font-medium min-w-0">
                                           {!isStopped ? (
                                             <>
-                                              <LivePulseIcon className="w-4 h-4 text-red-500 animate-pulse shrink-0" />
-                                              <span className="text-gray-900 dark:text-[#f4ead2]">
-                                                Live until {loc.liveUntil || "1 hour"}
+                                              <WhatsAppLivePinIcon className="w-4.5 h-4.5 text-white dark:text-white shrink-0 fill-current" />
+                                              <span className="text-gray-950 dark:text-[#f4ead2] font-medium truncate text-xs sm:text-[12.5px]">
+                                                Live until {(() => {
+                                                  let val = loc.liveUntil || "7:55 PM";
+                                                  if (val.includes("hour") || val.includes("min")) {
+                                                    try {
+                                                      const d = new Date(msg.created_at || Date.now());
+                                                      const hrs = val.includes("8") ? 8 : val.includes("15") ? 0.25 : 1;
+                                                      d.setMinutes(d.getMinutes() + Math.round(hrs * 60));
+                                                      val = d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+                                                    } catch {}
+                                                  }
+                                                  return val;
+                                                })()}
                                               </span>
                                             </>
                                           ) : (
                                             <>
-                                              <LivePulseIcon className="w-4 h-4 text-gray-400 shrink-0" />
-                                              <span className="text-gray-500 dark:text-gray-400">
+                                              <WhatsAppLivePinIcon className="w-4.5 h-4.5 text-gray-400 shrink-0" />
+                                              <span className="text-gray-500 dark:text-gray-400 font-medium text-xs sm:text-[12.5px]">
                                                 Live location ended
                                               </span>
                                             </>
                                           )}
                                         </div>
 
-                                        <div className="flex items-center gap-1 text-[10px] text-gray-500 dark:text-gray-400 shrink-0">
+                                        <div className="flex items-center gap-1 text-[10.5px] text-gray-500 dark:text-gray-400 opacity-85 shrink-0 ml-2">
                                           <span>{formatMessageTime(msg.created_at)}</span>
                                           {isMine && <MessageStatusTick msg={msg} />}
                                         </div>
                                       </div>
 
-                                      {/* User Comment if typed */}
+                                      {/* Optional Comment if present */}
                                       {loc.comment && (
-                                        <div className="px-3 py-1.5 text-xs text-gray-800 dark:text-gray-200">
+                                        <div className="px-3 pb-1 text-xs text-gray-800 dark:text-gray-200">
                                           {loc.comment}
                                         </div>
                                       )}
 
-                                      {/* Red "Stop sharing" Action Button (Screenshot 3) */}
+                                      {/* "Stop sharing" Centered Red Action Button (Matches Sample Exactly) */}
                                       {isMine && !isStopped && (
                                         <button
                                           type="button"
@@ -6776,29 +7118,47 @@ export default function TexAppBatchChat({
                                             e.stopPropagation();
                                             handleStopLiveSharing(msg.id);
                                           }}
-                                          className="w-full py-2.5 text-center text-xs sm:text-[13px] font-bold text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 hover:bg-black/5 dark:hover:bg-white/5 transition cursor-pointer"
+                                          className="w-full py-2.5 sm:py-3 text-center text-xs sm:text-[13.5px] font-medium sm:font-semibold text-[#ea5e5e] hover:text-[#ff453a] dark:text-[#ea5e5e] dark:hover:text-[#ff6b6b] border-t border-black/10 dark:border-white/10 transition cursor-pointer active:bg-black/5 dark:active:bg-white/5"
                                         >
                                           Stop sharing
                                         </button>
                                       )}
                                     </div>
                                   ) : (
-                                    /* STATIC / NEARBY PLACE DETAILS (Screenshot 3 bottom card) */
-                                    <div className="p-2.5">
-                                      <div className="font-bold text-xs sm:text-[13px] text-gray-900 dark:text-[#f4ead2] truncate">
-                                        {loc.placeName}
-                                      </div>
-                                      {loc.address && (
-                                        <div className="text-[11px] text-gray-500 dark:text-gray-400 truncate mt-0.5">
-                                          {loc.address}
+                                    /* =================================================================
+                                       BOTTOM CARD: ACCURATE / PINNED LOCATION (Screenshot 3 Bottom)
+                                       ================================================================= */
+                                    <div>
+                                      {/* Map View with Authentic Red Pin (Screenshot 3 Bottom) */}
+                                      <div className="relative h-28 sm:h-32 w-full bg-[#182229] overflow-hidden rounded-t-[13px]">
+                                        <iframe
+                                          title="Accurate Location Map"
+                                          src={embedUrl}
+                                          className="w-full h-full border-0 pointer-events-none filter contrast-105"
+                                          loading="lazy"
+                                        />
+
+                                        {/* Center Red Drop Pin over map with place name */}
+                                        <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none z-10">
+                                          <WhatsAppRedDropPin className="w-6 h-8 sm:w-7 sm:h-9" />
+                                          {loc.placeName && loc.placeName !== "Current Location" && loc.placeName !== "Pinned Location" && (
+                                            <span className="mt-0.5 px-2 py-0.5 rounded-md bg-white/95 dark:bg-black/85 text-[10.5px] font-bold text-gray-900 dark:text-white shadow-xs max-w-[85%] truncate">
+                                              {loc.placeName}
+                                            </span>
+                                          )}
                                         </div>
-                                      )}
-                                      <div className="flex items-center justify-between mt-2 pt-1 border-t border-black/5 dark:border-white/10 text-[10.5px]">
-                                        <span className="font-semibold text-red-600 dark:text-red-400 flex items-center gap-1 group-hover/loc:underline">
-                                          <span>Open in Google Maps</span>
-                                          <ExternalLink className="w-3 h-3" />
-                                        </span>
-                                        <div className="flex items-center gap-1 text-gray-500 dark:text-gray-400">
+                                      </div>
+
+                                      {/* Subline: Address/Place name on left + Timestamp on right (Screenshot 3 Bottom) */}
+                                      <div className="px-2 py-1.5 flex items-center justify-between gap-1.5">
+                                        <div className="min-w-0 flex-1">
+                                          {loc.placeName && (loc.placeName === "Current Location" || loc.placeName === "Pinned Location" || loc.address) ? (
+                                            <div className="text-[11px] text-gray-600 dark:text-gray-300 font-medium truncate">
+                                              {loc.address || loc.placeName}
+                                            </div>
+                                          ) : null}
+                                        </div>
+                                        <div className="flex items-center gap-1 text-[10px] text-gray-400 dark:text-gray-400 shrink-0 ml-auto">
                                           <span>{formatMessageTime(msg.created_at)}</span>
                                           {isMine && <MessageStatusTick msg={msg} />}
                                         </div>
@@ -7043,64 +7403,105 @@ export default function TexAppBatchChat({
                               ? "px-2.5 pt-1.5 pb-1 text-[11px] sm:text-[12px] leading-snug"
                               : isAudioAttachment
                               ? "px-2.5 pt-1 pb-1 text-[11px] sm:text-[12px] leading-snug"
+                              : isPureLinkMsg
+                              ? "p-0 text-[11.5px] sm:text-[12px] leading-snug"
                               : "text-[11.5px] sm:text-[12px] leading-snug"
                           } break-words`}
                         >
-                          <span className="whitespace-pre-wrap font-normal text-[14.5px] sm:text-sm leading-relaxed text-gray-900 dark:text-[#f4ead2]">
-                            <RenderWithAppleEmojis text={msg.message} />
-                          </span>
-
-                          {/* WhatsApp Auto Link Preview Card */}
-                          {(() => {
-                            const detectedUrl = extractFirstUrl(msg.message);
-                            if (!detectedUrl) return null;
-                            const domain = getHostname(detectedUrl);
-                            return (
-                              <a
-                                href={detectedUrl}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                onClick={(e) => e.stopPropagation()}
-                                className="my-1.5 p-2 rounded-xl bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10 transition border border-black/5 dark:border-white/10 flex items-center gap-2.5 group/link text-left select-none max-w-full block clear-both cursor-pointer"
-                              >
-                                <div className="w-8 h-8 rounded-lg bg-red-100 dark:bg-red-950/60 text-red-600 dark:text-red-400 flex items-center justify-center shrink-0 shadow-2xs">
-                                  <Globe className="w-4 h-4 group-hover/link:scale-110 transition-transform" />
-                                </div>
-                                <div className="min-w-0 flex-1">
-                                  <div className="text-[11px] font-bold text-gray-800 dark:text-gray-200 truncate flex items-center gap-1">
-                                    <span>{domain}</span>
-                                    <ExternalLink className="w-2.5 h-2.5 opacity-60 shrink-0" />
-                                  </div>
-                                  <div className="text-[10px] text-gray-500 dark:text-gray-400 truncate font-mono">
-                                    {detectedUrl}
-                                  </div>
-                                </div>
-                              </a>
-                            );
-                          })()}
-                          {/* WhatsApp Float-right Timestamp + Checkmarks */}
-                          <span className="inline-flex items-center gap-1 text-[9.5px] sm:text-[10px] leading-none text-gray-500 dark:text-gray-400 opacity-85 ml-2.5 float-right translate-y-0.5 select-none shrink-0 font-normal">
-                            {isStarred && (
-                              <Star className={`w-2.5 h-2.5 fill-amber-400 text-amber-400 shrink-0 ${isMine ? "text-amber-500 fill-amber-500" : ""}`} />
-                            )}
-                            <span>{formatMessageTime(msg.created_at)}</span>
-                            {msg.edited_at && <span className="italic">edited</span>}
-                            {isMine && <MessageStatusTick msg={msg} />}
-                            {/* WhatsApp Dropdown Chevron Button */}
-                            {!showSenderHeader && (
-                              <button
-                                type="button"
-                                data-dropdown-trigger="true"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleOpenDropdown(msg, e.currentTarget);
-                                }}
-                                className="p-0.5 rounded opacity-0 pointer-events-none group-hover/msg:opacity-100 group-hover/msg:pointer-events-auto text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white transition cursor-pointer -mr-1"
-                              >
-                                <ChevronDown className="w-3.5 h-3.5 stroke-[2.5]" />
-                              </button>
-                            )}
-                          </span>
+                          {isPureLinkMsg ? (
+                            /* Pure link message - card is the full message bubble content (matches user's screenshot exactly) */
+                            <TexAppChatLinkCard
+                              url={detectedUrl}
+                              isMine={isMine}
+                              isDark={isDark}
+                              timestampNode={
+                                <span className="inline-flex items-center gap-1 text-[9.5px] sm:text-[10px] leading-none text-gray-500 dark:text-gray-400 opacity-85 select-none shrink-0 font-normal">
+                                  {isStarred && (
+                                    <Star className={`w-2.5 h-2.5 fill-amber-400 text-amber-400 shrink-0 ${isMine ? "text-amber-500 fill-amber-500" : ""}`} />
+                                  )}
+                                  <span>{formatMessageTime(msg.created_at)}</span>
+                                  {msg.edited_at && <span className="italic">edited</span>}
+                                  {isMine && <MessageStatusTick msg={msg} />}
+                                  {!showSenderHeader && (
+                                    <button
+                                      type="button"
+                                      data-dropdown-trigger="true"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleOpenDropdown(msg, e.currentTarget);
+                                      }}
+                                      className="p-0.5 rounded opacity-0 pointer-events-none group-hover/msg:opacity-100 group-hover/msg:pointer-events-auto text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white transition cursor-pointer -mr-0.5"
+                                    >
+                                      <ChevronDown className="w-3.5 h-3.5 stroke-[2.5]" />
+                                    </button>
+                                  )}
+                                </span>
+                              }
+                            />
+                          ) : hasLinkPreview ? (
+                            /* Message contains link preview + accompanying caption/text */
+                            <div>
+                              <TexAppChatLinkCard
+                                url={detectedUrl}
+                                isMine={isMine}
+                                isDark={isDark}
+                              />
+                              <div className="pt-1.5 px-1.5 pb-0.5">
+                                <span className="whitespace-pre-wrap font-normal text-[14.5px] sm:text-sm leading-relaxed text-gray-900 dark:text-[#f4ead2]">
+                                  <RenderWithAppleEmojis text={msg.message} />
+                                </span>
+                                <span className="inline-flex items-center gap-1 text-[9.5px] sm:text-[10px] leading-none text-gray-500 dark:text-gray-400 opacity-85 ml-2.5 float-right translate-y-0.5 select-none shrink-0 font-normal">
+                                  {isStarred && (
+                                    <Star className={`w-2.5 h-2.5 fill-amber-400 text-amber-400 shrink-0 ${isMine ? "text-amber-500 fill-amber-500" : ""}`} />
+                                  )}
+                                  <span>{formatMessageTime(msg.created_at)}</span>
+                                  {msg.edited_at && <span className="italic">edited</span>}
+                                  {isMine && <MessageStatusTick msg={msg} />}
+                                  {!showSenderHeader && (
+                                    <button
+                                      type="button"
+                                      data-dropdown-trigger="true"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleOpenDropdown(msg, e.currentTarget);
+                                      }}
+                                      className="p-0.5 rounded opacity-0 pointer-events-none group-hover/msg:opacity-100 group-hover/msg:pointer-events-auto text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white transition cursor-pointer -mr-1"
+                                    >
+                                      <ChevronDown className="w-3.5 h-3.5 stroke-[2.5]" />
+                                    </button>
+                                  )}
+                                </span>
+                              </div>
+                            </div>
+                          ) : (
+                            /* Normal text message without link */
+                            <>
+                              <span className="whitespace-pre-wrap font-normal text-[14.5px] sm:text-sm leading-relaxed text-gray-900 dark:text-[#f4ead2]">
+                                <RenderWithAppleEmojis text={msg.message} />
+                              </span>
+                              <span className="inline-flex items-center gap-1 text-[9.5px] sm:text-[10px] leading-none text-gray-500 dark:text-gray-400 opacity-85 ml-2.5 float-right translate-y-0.5 select-none shrink-0 font-normal">
+                                {isStarred && (
+                                  <Star className={`w-2.5 h-2.5 fill-amber-400 text-amber-400 shrink-0 ${isMine ? "text-amber-500 fill-amber-500" : ""}`} />
+                                )}
+                                <span>{formatMessageTime(msg.created_at)}</span>
+                                {msg.edited_at && <span className="italic">edited</span>}
+                                {isMine && <MessageStatusTick msg={msg} />}
+                                {!showSenderHeader && (
+                                  <button
+                                    type="button"
+                                    data-dropdown-trigger="true"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleOpenDropdown(msg, e.currentTarget);
+                                    }}
+                                    className="p-0.5 rounded opacity-0 pointer-events-none group-hover/msg:opacity-100 group-hover/msg:pointer-events-auto text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white transition cursor-pointer -mr-1"
+                                  >
+                                    <ChevronDown className="w-3.5 h-3.5 stroke-[2.5]" />
+                                  </button>
+                                )}
+                              </span>
+                            </>
+                          )}
                         </div>
                       )}
 
@@ -7199,7 +7600,7 @@ export default function TexAppBatchChat({
                           setForwardModalOpen(true);
                         }}
                         className={`w-6.5 h-6.5 rounded-full bg-white dark:bg-[#18150f] border border-gray-200/90 dark:border-[#3a3020] shadow-2xs flex items-center justify-center text-gray-400 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200 cursor-pointer transition-all duration-150 ${
-                          hasMediaAttachment
+                          hasMediaAttachment || isPureLinkMsg
                             ? "opacity-85 hover:opacity-100 group-hover/msg:opacity-100 pointer-events-auto"
                             : "opacity-0 pointer-events-none group-hover/msg:opacity-100 group-hover/msg:pointer-events-auto"
                         }`}
@@ -7435,6 +7836,97 @@ export default function TexAppBatchChat({
             </button>
           </div>
         ) : (
+          <>
+            {/* WhatsApp Docked Rich Link Preview Card (Directly docked Above Input Bar) */}
+            {(composerUrlPreview || isLoadingComposerPreview) && recordingMode !== "audio" && (
+          <div className={`mb-2 w-full p-2.5 sm:p-3 rounded-2xl border shadow-md flex items-center justify-between gap-3 animate-fadeIn select-none ${
+            isDark
+              ? "bg-[#211b15] border-[#3a3020] text-gray-100"
+              : "bg-white border-gray-200/90 text-gray-900 shadow-sm"
+          }`}>
+            <div className="flex items-center gap-3 min-w-0 flex-1">
+              {/* Left Thumbnail (matches Screenshot 2: IKA LUXURY FASHION image) */}
+              <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-xl bg-black/10 dark:bg-white/10 overflow-hidden shrink-0 flex items-center justify-center border border-black/5 dark:border-white/5 relative">
+                {isLoadingComposerPreview ? (
+                  <div className="w-full h-full animate-pulse bg-gray-200 dark:bg-stone-800 flex items-center justify-center">
+                    <Loader2 className="w-5 h-5 animate-spin text-gray-400" />
+                  </div>
+                ) : composerUrlPreview?.image ? (
+                  <img
+                    src={composerUrlPreview.image}
+                    alt="Preview"
+                    className="w-full h-full object-cover"
+                    onError={(e) => {
+                      e.currentTarget.style.display = "none";
+                      const fb = e.currentTarget.parentElement?.querySelector(".preview-img-fallback");
+                      if (fb) fb.classList.remove("hidden");
+                    }}
+                  />
+                ) : composerUrlPreview?.favicon ? (
+                  <img
+                    src={composerUrlPreview.favicon}
+                    alt="Favicon"
+                    className="w-8 h-8 object-contain"
+                    onError={(e) => {
+                      e.currentTarget.style.display = "none";
+                      const fb = e.currentTarget.parentElement?.querySelector(".preview-img-fallback");
+                      if (fb) fb.classList.remove("hidden");
+                    }}
+                  />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center text-red-500 bg-red-50 dark:bg-red-950/40">
+                    <Globe className="w-6 h-6" />
+                  </div>
+                )}
+                <div className="preview-img-fallback hidden w-full h-full items-center justify-center text-red-500 bg-red-50 dark:bg-red-950/40">
+                  <Globe className="w-6 h-6" />
+                </div>
+              </div>
+
+              {/* Middle Text Details */}
+              <div className="min-w-0 flex-1">
+                {isLoadingComposerPreview ? (
+                  <div className="space-y-2 animate-pulse">
+                    <div className="h-3.5 bg-gray-200 dark:bg-stone-800 rounded-md w-3/4" />
+                    <div className="h-2.5 bg-gray-200 dark:bg-stone-800 rounded-md w-1/2" />
+                    <div className="h-2 bg-gray-200 dark:bg-stone-800 rounded-md w-1/3" />
+                  </div>
+                ) : (
+                  <>
+                    <div className="text-[13px] sm:text-sm font-semibold text-gray-900 dark:text-[#f4ead2] truncate">
+                      {composerUrlPreview?.title || composerUrlPreview?.domain || "Website Link"}
+                    </div>
+                    {composerUrlPreview?.description && (
+                      <div className="text-[11px] sm:text-xs text-gray-500 dark:text-gray-400 truncate leading-snug mt-0.5">
+                        {composerUrlPreview.description}
+                      </div>
+                    )}
+                    <div className="text-[10.5px] sm:text-[11px] text-gray-400 dark:text-gray-500 truncate mt-0.5 font-normal">
+                      {composerUrlPreview?.domain || extractFirstUrl(inputText)}
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
+
+            {/* Close / Dismiss '✕' Button (Top right, matching Screenshot 2) */}
+            <button
+              type="button"
+              onClick={() => {
+                const urlToDismiss = extractFirstUrl(inputText || (typeof mobileTextareaRef.current?.value === "string" ? mobileTextareaRef.current.value : ""));
+                if (urlToDismiss) setDismissedLinkUrl(urlToDismiss);
+                setComposerUrlPreview(null);
+                setIsLoadingComposerPreview(false);
+              }}
+              className="p-1.5 rounded-full text-gray-400 hover:text-gray-700 dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/10 transition cursor-pointer self-start shrink-0 -mr-1"
+              title="Dismiss link preview"
+              aria-label="Dismiss link preview"
+            >
+              <X className="w-4 h-4 stroke-[2.5]" />
+            </button>
+          </div>
+        )}
+
         <form onSubmit={handleSend} className="w-full flex items-center">
           <div
             className={`w-full flex items-center rounded-full px-2.5 sm:px-2.5 py-1.5 sm:py-1 min-h-[56px] sm:min-h-[48px] shadow-sm border transition-colors gap-1.5 sm:gap-2 ${
@@ -7780,8 +8272,11 @@ export default function TexAppBatchChat({
                   value={inputText}
                   rows={1}
                   placeholder="Type a message"
-                  onChange={handleTextChange}
-                  onPaste={handleContentEditablePaste}
+                  onChange={(e) => {
+                    handleInputTextChange(e.target.value);
+                    if (onTyping) onTyping(Boolean(e.target.value.trim()));
+                  }}
+                  onPaste={handleMobileTextareaPaste}
                   onFocus={() => {
                     setShowEmojiPicker(false);
                     setShowAttachmentTray(false);
@@ -7797,6 +8292,7 @@ export default function TexAppBatchChat({
                     }
                   }}
                   onInput={(e) => {
+                    handleInputTextChange(e.currentTarget.value);
                     if (onTyping) onTyping(Boolean(e.currentTarget.value.trim()));
                   }}
                   onKeyDown={(e) => {
@@ -7875,6 +8371,7 @@ export default function TexAppBatchChat({
             )}
           </div>
         </form>
+        </>
         )}
       </div>
 
