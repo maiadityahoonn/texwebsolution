@@ -2760,6 +2760,15 @@ export default function TexAppBatchChat({
   const handleMessageTouchStart = (e, msg, bubbleElem) => {
     if (e.touches.length !== 1) return;
     const touch = e.touches[0];
+
+    // Ignore touches near screen edges to prevent conflict with OS edge swipe-back gesture
+    if (typeof window !== "undefined") {
+      const edgeMargin = 28;
+      if (touch.clientX < edgeMargin || touch.clientX > window.innerWidth - edgeMargin) {
+        return;
+      }
+    }
+
     touchCoordsRef.current = { x: touch.clientX, y: touch.clientY, time: Date.now() };
     isDraggingSwipeRef.current = false;
     didLongPressRef.current = false;
@@ -2767,17 +2776,12 @@ export default function TexAppBatchChat({
     // In selection mode, DO NOT start long-press timer; simple tap will toggle selection immediately
     if (isSelectionMode) return;
 
-    // 400ms long-press hold enters selection mode ONLY for the FIRST message (WhatsApp style)
+    // 600ms long-press hold enters selection mode ONLY for the FIRST message (WhatsApp standard)
     if (longPressTimerRef.current) clearTimeout(longPressTimerRef.current);
     longPressTimerRef.current = setTimeout(() => {
       didLongPressRef.current = true;
-      try {
-        if (typeof window !== "undefined" && navigator.vibrate) {
-          navigator.vibrate(30);
-        }
-      } catch {}
       handleEnterSelectionMode(msg);
-    }, 400);
+    }, 600);
   };
 
   const handleMessageTouchMove = (e, msg) => {
@@ -2786,8 +2790,8 @@ export default function TexAppBatchChat({
     const diffX = touch.clientX - touchCoordsRef.current.x;
     const diffY = touch.clientY - touchCoordsRef.current.y;
 
-    // Movement cancels long-press
-    if (Math.abs(diffX) > 10 || Math.abs(diffY) > 10) {
+    // Any movement cancels long-press
+    if (Math.abs(diffX) > 8 || Math.abs(diffY) > 8) {
       if (longPressTimerRef.current) {
         clearTimeout(longPressTimerRef.current);
         longPressTimerRef.current = null;
@@ -2808,6 +2812,16 @@ export default function TexAppBatchChat({
         return { msgId: msg.id, offset: clampedOffset };
       });
     }
+  };
+
+  const handleMessageTouchCancel = () => {
+    if (longPressTimerRef.current) {
+      clearTimeout(longPressTimerRef.current);
+      longPressTimerRef.current = null;
+    }
+    didLongPressRef.current = false;
+    setSwipeState({ msgId: null, offset: 0 });
+    isDraggingSwipeRef.current = false;
   };
 
   const handleMessageTouchEnd = (e, msg) => {
@@ -2833,54 +2847,21 @@ export default function TexAppBatchChat({
       const el = getActiveComposerElement();
       if (el) el.focus();
     } else if (!isDraggingSwipeRef.current && (!swipeState.offset || swipeState.offset < 10)) {
+      // If finger moved significantly, do not treat as tap
+      const touch = e.changedTouches?.[0];
+      if (touch) {
+        const moveDist = Math.hypot(touch.clientX - touchCoordsRef.current.x, touch.clientY - touchCoordsRef.current.y);
+        if (moveDist > 14) {
+          setSwipeState({ msgId: null, offset: 0 });
+          isDraggingSwipeRef.current = false;
+          return;
+        }
+      }
       handleMessageTap(msg, touchCoordsRef.current);
     }
 
     setSwipeState({ msgId: null, offset: 0 });
     isDraggingSwipeRef.current = false;
-  };
-
-  const handleRowTouchStart = (e, msg) => {
-    if (e.touches.length !== 1) return;
-    const touch = e.touches[0];
-    touchCoordsRef.current = { x: touch.clientX, y: touch.clientY, time: Date.now() };
-    didLongPressRef.current = false;
-    if (isSelectionMode) return;
-    if (longPressTimerRef.current) clearTimeout(longPressTimerRef.current);
-    longPressTimerRef.current = setTimeout(() => {
-      didLongPressRef.current = true;
-      try {
-        if (typeof window !== "undefined" && navigator.vibrate) {
-          navigator.vibrate(30);
-        }
-      } catch {}
-      handleEnterSelectionMode(msg);
-    }, 400);
-  };
-
-  const handleRowTouchMove = (e) => {
-    if (e.touches.length !== 1) return;
-    const touch = e.touches[0];
-    const diffX = touch.clientX - touchCoordsRef.current.x;
-    const diffY = touch.clientY - touchCoordsRef.current.y;
-    if (Math.abs(diffX) > 10 || Math.abs(diffY) > 10) {
-      if (longPressTimerRef.current) {
-        clearTimeout(longPressTimerRef.current);
-        longPressTimerRef.current = null;
-      }
-    }
-  };
-
-  const handleRowTouchEnd = (e, msg) => {
-    if (longPressTimerRef.current) {
-      clearTimeout(longPressTimerRef.current);
-      longPressTimerRef.current = null;
-    }
-    if (didLongPressRef.current) {
-      didLongPressRef.current = false;
-      return;
-    }
-    handleMessageTap(msg, touchCoordsRef.current);
   };
 
   // WhatsApp Double-Tap Quick React Strip & Selection Tap
@@ -3329,6 +3310,11 @@ export default function TexAppBatchChat({
 
   // Monitor internal chat scroll to toggle floating scroll-down arrow
   const handleChatScroll = () => {
+    if (longPressTimerRef.current) {
+      clearTimeout(longPressTimerRef.current);
+      longPressTimerRef.current = null;
+    }
+    didLongPressRef.current = false;
     if (activeDropdownMsgId || dropdownMenuState) {
       closeDropdown();
     }
@@ -6509,18 +6495,6 @@ export default function TexAppBatchChat({
                       handleTriggerEmojiStrip(msg);
                     }
                   }}
-                  onTouchStart={(e) => {
-                    if (e.target.closest?.('[data-message-bubble="true"]')) return;
-                    handleRowTouchStart(e, msg);
-                  }}
-                  onTouchMove={(e) => {
-                    if (e.target.closest?.('[data-message-bubble="true"]')) return;
-                    handleRowTouchMove(e);
-                  }}
-                  onTouchEnd={(e) => {
-                    if (e.target.closest?.('[data-message-bubble="true"]')) return;
-                    handleRowTouchEnd(e, msg);
-                  }}
                   className={`w-full flex items-start gap-1.5 sm:gap-2 transition-all duration-150 ease-out relative px-2.5 sm:px-4 py-1 sm:py-1.5 ${
                     isMine ? "justify-end" : "justify-start"
                   } ${
@@ -6682,7 +6656,7 @@ export default function TexAppBatchChat({
                         onTouchStart={(e) => handleMessageTouchStart(e, msg, e.currentTarget)}
                         onTouchMove={(e) => handleMessageTouchMove(e, msg)}
                         onTouchEnd={(e) => handleMessageTouchEnd(e, msg)}
-                        onTouchCancel={(e) => handleMessageTouchEnd(e, msg)}
+                        onTouchCancel={handleMessageTouchCancel}
                         onContextMenu={(e) => {
                           e.preventDefault();
                           e.stopPropagation();
