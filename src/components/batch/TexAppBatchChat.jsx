@@ -7103,13 +7103,6 @@ export default function TexAppBatchChat({
                                         </div>
                                       </div>
 
-                                      {/* Optional Comment if present */}
-                                      {loc.comment && (
-                                        <div className="px-3 pb-1 text-xs text-gray-800 dark:text-gray-200">
-                                          {loc.comment}
-                                        </div>
-                                      )}
-
                                       {/* "Stop sharing" Centered Red Action Button (Matches Sample Exactly) */}
                                       {isMine && !isStopped && (
                                         <button
@@ -7126,11 +7119,11 @@ export default function TexAppBatchChat({
                                     </div>
                                   ) : (
                                     /* =================================================================
-                                       BOTTOM CARD: ACCURATE / PINNED LOCATION (Screenshot 3 Bottom)
+                                       BOTTOM CARD: ACCURATE / PINNED LOCATION (Matches Sample 1 exactly - NO TEXT, ONLY MAP + TIMESTAMP)
                                        ================================================================= */
                                     <div>
-                                      {/* Map View with Authentic Red Pin (Screenshot 3 Bottom) */}
-                                      <div className="relative h-28 sm:h-32 w-full bg-[#182229] overflow-hidden rounded-t-[13px]">
+                                      {/* Map View with Authentic Red Pin (Matches Sample 1 Exactly) */}
+                                      <div className="relative h-36 sm:h-44 w-full bg-[#182229] overflow-hidden rounded-t-[13px]">
                                         <iframe
                                           title="Accurate Location Map"
                                           src={embedUrl}
@@ -7138,27 +7131,15 @@ export default function TexAppBatchChat({
                                           loading="lazy"
                                         />
 
-                                        {/* Center Red Drop Pin over map with place name */}
-                                        <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none z-10">
+                                        {/* Center Red Drop Pin over map (clean, no text badge matching sample) */}
+                                        <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
                                           <WhatsAppRedDropPin className="w-6 h-8 sm:w-7 sm:h-9" />
-                                          {loc.placeName && loc.placeName !== "Current Location" && loc.placeName !== "Pinned Location" && (
-                                            <span className="mt-0.5 px-2 py-0.5 rounded-md bg-white/95 dark:bg-black/85 text-[10.5px] font-bold text-gray-900 dark:text-white shadow-xs max-w-[85%] truncate">
-                                              {loc.placeName}
-                                            </span>
-                                          )}
                                         </div>
                                       </div>
 
-                                      {/* Subline: Address/Place name on left + Timestamp on right (Screenshot 3 Bottom) */}
-                                      <div className="px-2 py-1.5 flex items-center justify-between gap-1.5">
-                                        <div className="min-w-0 flex-1">
-                                          {loc.placeName && (loc.placeName === "Current Location" || loc.placeName === "Pinned Location" || loc.address) ? (
-                                            <div className="text-[11px] text-gray-600 dark:text-gray-300 font-medium truncate">
-                                              {loc.address || loc.placeName}
-                                            </div>
-                                          ) : null}
-                                        </div>
-                                        <div className="flex items-center gap-1 text-[10px] text-gray-400 dark:text-gray-400 shrink-0 ml-auto">
+                                      {/* Subline: NO TEXT on left, ONLY Timestamp + Checkmarks on right (Matches Sample 1 Exactly) */}
+                                      <div className="px-3 py-1.5 flex items-center justify-end">
+                                        <div className="flex items-center gap-1 text-[10.5px] text-gray-500 dark:text-gray-400 opacity-85 shrink-0 ml-auto">
                                           <span>{formatMessageTime(msg.created_at)}</span>
                                           {isMine && <MessageStatusTick msg={msg} />}
                                         </div>
@@ -7394,7 +7375,7 @@ export default function TexAppBatchChat({
                             <ChevronDown className="w-3.5 h-3.5 stroke-[2.5]" />
                           </button>
                         </div>
-                      ) : (hasMediaAttachment && !msg.message) || (isDocAttachment && !msg.message) || (isAudioAttachment && (!msg.message || msg.message === "Voice message")) ? null : (
+                      ) : (hasMediaAttachment && !msg.message) || (isDocAttachment && !msg.message) || (isAudioAttachment && (!msg.message || msg.message === "Voice message")) || isLocationAttachment ? null : (
                         <div
                           className={`${
                             hasMediaAttachment
