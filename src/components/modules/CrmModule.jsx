@@ -71,6 +71,8 @@ export default function CrmModule({
   proposals = [],
   quotations = [],
   agreements = [],
+  followUps = [],
+  salesMeetings = [],
   initialViewMode = "leads",
   commercialScope = "all",
   isDark = false,
@@ -86,6 +88,10 @@ export default function CrmModule({
   onUpdateQuotation,
   onCreateAgreement,
   onUpdateAgreement,
+  onCreateFollowUp,
+  onUpdateFollowUp,
+  onCreateSalesMeeting,
+  onUpdateSalesMeeting,
   onOpenChatWithLead,
   onOpenChat,
   onRefresh,
@@ -102,6 +108,8 @@ export default function CrmModule({
   const [showAddLeadModal, setShowAddLeadModal] = useState(false);
   const [showMetaImportModal, setShowMetaImportModal] = useState(false);
   const [showCommercialModal, setShowCommercialModal] = useState(false);
+  const [showFollowUpModal, setShowFollowUpModal] = useState(false);
+  const [showSalesMeetingModal, setShowSalesMeetingModal] = useState(false);
   const [commercialType, setCommercialType] = useState("proposal");
   const [editingLead, setEditingLead] = useState(null);
   const [deleteConfirmId, setDeleteConfirmId] = useState(null);
@@ -140,6 +148,27 @@ export default function CrmModule({
     commercial_terms: "40% advance, 30% milestone, 30% final before handover.",
     status: "sent",
     notes: "Prepared by Sales Head for client approval.",
+  });
+  const [followUpForm, setFollowUpForm] = useState({
+    title: "Follow up for proposal approval",
+    lead_id: "",
+    client_id: "",
+    deal_id: "",
+    channel: "whatsapp",
+    due_at: new Date(Date.now() + 86400000).toISOString().slice(0, 16),
+    priority: "medium",
+    notes: "",
+  });
+  const [salesMeetingForm, setSalesMeetingForm] = useState({
+    title: "Client requirement discovery call",
+    lead_id: "",
+    client_id: "",
+    deal_id: "",
+    meeting_type: "discovery",
+    scheduled_at: new Date(Date.now() + 86400000).toISOString().slice(0, 16),
+    duration_minutes: 30,
+    meeting_link: "",
+    agenda: "Requirement discovery, budget, timeline, decision maker, and next action.",
   });
 
   const filteredLeads = useMemo(() => {
@@ -187,6 +216,26 @@ export default function CrmModule({
       );
     });
   }, [agreements, clients, commercialScope, proposals, query, quotations]);
+
+  const filteredFollowUps = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    return followUps.filter((item) => {
+      const lead = leads.find((l) => l.id === item.lead_id);
+      const client = clients.find((c) => c.id === item.client_id);
+      return !q || [item.title, item.channel, item.status, item.notes, lead?.name, client?.name]
+        .some((value) => String(value || "").toLowerCase().includes(q));
+    });
+  }, [clients, followUps, leads, query]);
+
+  const filteredSalesMeetings = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    return salesMeetings.filter((item) => {
+      const lead = leads.find((l) => l.id === item.lead_id);
+      const client = clients.find((c) => c.id === item.client_id);
+      return !q || [item.title, item.meeting_type, item.status, item.agenda, lead?.name, client?.name]
+        .some((value) => String(value || "").toLowerCase().includes(q));
+    });
+  }, [clients, leads, query, salesMeetings]);
 
   function handleAddLeadSubmit(e) {
     e.preventDefault();
@@ -296,6 +345,35 @@ export default function CrmModule({
     setShowCommercialModal(false);
   }
 
+  function handleCreateFollowUpSubmit(e) {
+    e.preventDefault();
+    if (!followUpForm.title || !followUpForm.due_at) return;
+    onCreateFollowUp?.({
+      ...followUpForm,
+      lead_id: followUpForm.lead_id || null,
+      client_id: followUpForm.client_id || null,
+      deal_id: followUpForm.deal_id || null,
+      due_at: new Date(followUpForm.due_at).toISOString(),
+      status: "pending",
+    });
+    setShowFollowUpModal(false);
+  }
+
+  function handleCreateSalesMeetingSubmit(e) {
+    e.preventDefault();
+    if (!salesMeetingForm.title || !salesMeetingForm.scheduled_at) return;
+    onCreateSalesMeeting?.({
+      ...salesMeetingForm,
+      lead_id: salesMeetingForm.lead_id || null,
+      client_id: salesMeetingForm.client_id || null,
+      deal_id: salesMeetingForm.deal_id || null,
+      duration_minutes: Number(salesMeetingForm.duration_minutes) || 30,
+      scheduled_at: new Date(salesMeetingForm.scheduled_at).toISOString(),
+      status: "scheduled",
+    });
+    setShowSalesMeetingModal(false);
+  }
+
   return (
     <div className="space-y-6">
       {/* 1. Header & Actions */}
@@ -345,6 +423,26 @@ export default function CrmModule({
             >
               Commercials
             </button>
+            <button
+              onClick={() => setViewMode("followups")}
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition ${
+                viewMode === "followups"
+                  ? "bg-white dark:bg-slate-900 text-gray-900 dark:text-white shadow-2xs"
+                  : "text-gray-500 dark:text-neutral-400 hover:text-gray-900 dark:hover:text-white"
+              }`}
+            >
+              Follow-ups
+            </button>
+            <button
+              onClick={() => setViewMode("sales_meetings")}
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition ${
+                viewMode === "sales_meetings"
+                  ? "bg-white dark:bg-slate-900 text-gray-900 dark:text-white shadow-2xs"
+                  : "text-gray-500 dark:text-neutral-400 hover:text-gray-900 dark:hover:text-white"
+              }`}
+            >
+              Meetings
+            </button>
           </div>
 
           <button
@@ -370,6 +468,22 @@ export default function CrmModule({
           >
             <FileText className="w-4 h-4" />
             <span>Proposal + Agreement</span>
+          </button>
+
+          <button
+            onClick={() => setShowFollowUpModal(true)}
+            className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100 font-semibold text-xs transition shadow-sm cursor-pointer"
+          >
+            <Phone className="w-4 h-4" />
+            <span>Follow-up</span>
+          </button>
+
+          <button
+            onClick={() => setShowSalesMeetingModal(true)}
+            className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 font-semibold text-xs transition shadow-sm cursor-pointer"
+          >
+            <Calendar className="w-4 h-4" />
+            <span>Meeting</span>
           </button>
 
           <button
@@ -828,6 +942,129 @@ export default function CrmModule({
         </div>
       )}
 
+      {viewMode === "followups" && (
+        <div className="rounded-2xl bg-white dark:bg-[#18150f] border border-gray-100 dark:border-[#3a3020] overflow-hidden shadow-2xs">
+          {filteredFollowUps.length === 0 ? (
+            <div className="p-8 text-center text-sm text-gray-500 dark:text-neutral-400">No sales follow-up found.</div>
+          ) : (
+            <div className="overflow-x-auto table-scroll">
+              <table className="w-full text-left text-xs sm:text-sm border-collapse min-w-[760px]">
+                <thead>
+                  <tr className="border-b border-gray-100 dark:border-[#3a3020] bg-gray-50/70 dark:bg-[#211d14] text-gray-500 dark:text-neutral-400 text-[11px] font-semibold uppercase tracking-wider">
+                    <th className="py-3 px-4">Follow-up</th>
+                    <th className="py-3 px-4">Linked Account</th>
+                    <th className="py-3 px-4">Channel</th>
+                    <th className="py-3 px-4">Due</th>
+                    <th className="py-3 px-4">Status</th>
+                    <th className="py-3 px-4 text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100 dark:divide-[#3a3020]/60">
+                  {filteredFollowUps.map((item) => {
+                    const lead = leads.find((leadItem) => leadItem.id === item.lead_id);
+                    const client = clients.find((clientItem) => clientItem.id === item.client_id);
+                    return (
+                      <tr key={item.id} className="hover:bg-gray-50/60 dark:hover:bg-slate-800/40 transition">
+                        <td className="py-3.5 px-4">
+                          <div className="font-bold text-gray-900 dark:text-white">{item.title}</div>
+                          <div className="text-[11px] text-gray-500 line-clamp-1">{item.notes || "Sales follow-up"}</div>
+                        </td>
+                        <td className="py-3.5 px-4">
+                          <div className="font-semibold text-gray-900 dark:text-white">{client?.name || lead?.name || "Unlinked"}</div>
+                          <div className="text-[11px] text-gray-500">{client ? "Client" : lead ? "Lead" : "General"}</div>
+                        </td>
+                        <td className="py-3.5 px-4 capitalize font-semibold text-gray-700 dark:text-neutral-200">{item.channel}</td>
+                        <td className="py-3.5 px-4 text-gray-500 text-xs">{new Date(item.due_at).toLocaleString("en-IN")}</td>
+                        <td className="py-3.5 px-4">
+                          <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase ${
+                            item.status === "done" ? "bg-emerald-50 text-emerald-600" : item.status === "missed" ? "bg-red-50 text-red-600" : "bg-amber-50 text-amber-600"
+                          }`}>{item.status}</span>
+                        </td>
+                        <td className="py-3.5 px-4 text-right">
+                          {item.status === "pending" && (
+                            <button
+                              onClick={() => onUpdateFollowUp?.(item.id, { status: "done", completed_at: new Date().toISOString() })}
+                              className="px-2.5 py-1 rounded-lg text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white transition"
+                            >
+                              Mark Done
+                            </button>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
+
+      {viewMode === "sales_meetings" && (
+        <div className="rounded-2xl bg-white dark:bg-[#18150f] border border-gray-100 dark:border-[#3a3020] overflow-hidden shadow-2xs">
+          {filteredSalesMeetings.length === 0 ? (
+            <div className="p-8 text-center text-sm text-gray-500 dark:text-neutral-400">No sales meeting scheduled.</div>
+          ) : (
+            <div className="overflow-x-auto table-scroll">
+              <table className="w-full text-left text-xs sm:text-sm border-collapse min-w-[820px]">
+                <thead>
+                  <tr className="border-b border-gray-100 dark:border-[#3a3020] bg-gray-50/70 dark:bg-[#211d14] text-gray-500 dark:text-neutral-400 text-[11px] font-semibold uppercase tracking-wider">
+                    <th className="py-3 px-4">Meeting</th>
+                    <th className="py-3 px-4">Linked Account</th>
+                    <th className="py-3 px-4">Type</th>
+                    <th className="py-3 px-4">Schedule</th>
+                    <th className="py-3 px-4">Status</th>
+                    <th className="py-3 px-4 text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100 dark:divide-[#3a3020]/60">
+                  {filteredSalesMeetings.map((item) => {
+                    const lead = leads.find((leadItem) => leadItem.id === item.lead_id);
+                    const client = clients.find((clientItem) => clientItem.id === item.client_id);
+                    return (
+                      <tr key={item.id} className="hover:bg-gray-50/60 dark:hover:bg-slate-800/40 transition">
+                        <td className="py-3.5 px-4">
+                          <div className="font-bold text-gray-900 dark:text-white">{item.title}</div>
+                          <div className="text-[11px] text-gray-500 line-clamp-1">{item.agenda || item.next_action || "Sales meeting"}</div>
+                        </td>
+                        <td className="py-3.5 px-4">
+                          <div className="font-semibold text-gray-900 dark:text-white">{client?.name || lead?.name || "Unlinked"}</div>
+                          <div className="text-[11px] text-gray-500">{client ? "Client" : lead ? "Lead" : "General"}</div>
+                        </td>
+                        <td className="py-3.5 px-4 capitalize font-semibold text-gray-700 dark:text-neutral-200">{item.meeting_type}</td>
+                        <td className="py-3.5 px-4 text-gray-500 text-xs">{new Date(item.scheduled_at).toLocaleString("en-IN")} · {item.duration_minutes || 30}m</td>
+                        <td className="py-3.5 px-4">
+                          <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase ${
+                            item.status === "completed" ? "bg-emerald-50 text-emerald-600" : item.status === "cancelled" || item.status === "no_show" ? "bg-red-50 text-red-600" : "bg-blue-50 text-blue-600"
+                          }`}>{item.status}</span>
+                        </td>
+                        <td className="py-3.5 px-4 text-right">
+                          <div className="flex justify-end gap-2">
+                            {item.meeting_link && (
+                              <a href={item.meeting_link} target="_blank" rel="noreferrer" className="px-2.5 py-1 rounded-lg text-xs font-bold bg-blue-600 hover:bg-blue-700 text-white transition">
+                                Join
+                              </a>
+                            )}
+                            {item.status === "scheduled" && (
+                              <button
+                                onClick={() => onUpdateSalesMeeting?.(item.id, { status: "completed" })}
+                                className="px-2.5 py-1 rounded-lg text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white transition"
+                              >
+                                Complete
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* 6. Lead Detail Drawer / Modal with Activity Timeline */}
       {selectedLead && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
@@ -1260,6 +1497,121 @@ export default function CrmModule({
               <button type="submit" className="px-4 py-2 rounded-xl text-xs font-bold bg-orange-600 hover:bg-orange-700 text-white transition shadow-sm">
                 Save {commercialType}
               </button>
+            </div>
+          </form>
+        </div>
+      )}
+
+      {showFollowUpModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
+          <form onSubmit={handleCreateFollowUpSubmit} className="w-full max-w-xl rounded-2xl bg-white dark:bg-[#18150f] border border-gray-200 dark:border-[#3a3020] shadow-2xl p-5 space-y-4">
+            <div className="flex items-center justify-between border-b border-gray-100 dark:border-[#3a3020] pb-3">
+              <h3 className="font-bold text-base text-gray-900 dark:text-white">Create Sales Follow-up</h3>
+              <button type="button" onClick={() => setShowFollowUpModal(false)} className="p-1 rounded-lg text-gray-400"><X className="w-4 h-4" /></button>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+              <div className="sm:col-span-2">
+                <label className="block font-medium mb-1">Title *</label>
+                <input required value={followUpForm.title} onChange={(e) => setFollowUpForm({ ...followUpForm, title: e.target.value })} className="w-full px-3 py-2 rounded-xl bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700" />
+              </div>
+              <div>
+                <label className="block font-medium mb-1">Lead</label>
+                <select value={followUpForm.lead_id} onChange={(e) => setFollowUpForm({ ...followUpForm, lead_id: e.target.value })} className="w-full px-3 py-2 rounded-xl bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700">
+                  <option value="">No lead</option>
+                  {leads.map((lead) => <option key={lead.id} value={lead.id}>{lead.name}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="block font-medium mb-1">Client</label>
+                <select value={followUpForm.client_id} onChange={(e) => setFollowUpForm({ ...followUpForm, client_id: e.target.value })} className="w-full px-3 py-2 rounded-xl bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700">
+                  <option value="">No client</option>
+                  {clients.map((client) => <option key={client.id} value={client.id}>{client.name}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="block font-medium mb-1">Channel</label>
+                <select value={followUpForm.channel} onChange={(e) => setFollowUpForm({ ...followUpForm, channel: e.target.value })} className="w-full px-3 py-2 rounded-xl bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700">
+                  <option value="phone">Phone</option>
+                  <option value="whatsapp">WhatsApp</option>
+                  <option value="email">Email</option>
+                  <option value="meeting">Meeting</option>
+                  <option value="other">Other</option>
+                </select>
+              </div>
+              <div>
+                <label className="block font-medium mb-1">Due Date & Time *</label>
+                <input type="datetime-local" required value={followUpForm.due_at} onChange={(e) => setFollowUpForm({ ...followUpForm, due_at: e.target.value })} className="w-full px-3 py-2 rounded-xl bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700" />
+              </div>
+              <div className="sm:col-span-2">
+                <label className="block font-medium mb-1">Notes</label>
+                <textarea rows={3} value={followUpForm.notes} onChange={(e) => setFollowUpForm({ ...followUpForm, notes: e.target.value })} className="w-full px-3 py-2 rounded-xl bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700" />
+              </div>
+            </div>
+            <div className="flex justify-end gap-2 pt-3 border-t border-gray-100 dark:border-[#3a3020]">
+              <button type="button" onClick={() => setShowFollowUpModal(false)} className="px-3.5 py-2 rounded-xl text-xs font-semibold text-gray-600 dark:text-neutral-300">Cancel</button>
+              <button type="submit" className="px-4 py-2 rounded-xl text-xs font-bold bg-blue-600 hover:bg-blue-700 text-white">Save Follow-up</button>
+            </div>
+          </form>
+        </div>
+      )}
+
+      {showSalesMeetingModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
+          <form onSubmit={handleCreateSalesMeetingSubmit} className="w-full max-w-xl rounded-2xl bg-white dark:bg-[#18150f] border border-gray-200 dark:border-[#3a3020] shadow-2xl p-5 space-y-4">
+            <div className="flex items-center justify-between border-b border-gray-100 dark:border-[#3a3020] pb-3">
+              <h3 className="font-bold text-base text-gray-900 dark:text-white">Schedule Sales Meeting</h3>
+              <button type="button" onClick={() => setShowSalesMeetingModal(false)} className="p-1 rounded-lg text-gray-400"><X className="w-4 h-4" /></button>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+              <div className="sm:col-span-2">
+                <label className="block font-medium mb-1">Title *</label>
+                <input required value={salesMeetingForm.title} onChange={(e) => setSalesMeetingForm({ ...salesMeetingForm, title: e.target.value })} className="w-full px-3 py-2 rounded-xl bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700" />
+              </div>
+              <div>
+                <label className="block font-medium mb-1">Lead</label>
+                <select value={salesMeetingForm.lead_id} onChange={(e) => setSalesMeetingForm({ ...salesMeetingForm, lead_id: e.target.value })} className="w-full px-3 py-2 rounded-xl bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700">
+                  <option value="">No lead</option>
+                  {leads.map((lead) => <option key={lead.id} value={lead.id}>{lead.name}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="block font-medium mb-1">Client</label>
+                <select value={salesMeetingForm.client_id} onChange={(e) => setSalesMeetingForm({ ...salesMeetingForm, client_id: e.target.value })} className="w-full px-3 py-2 rounded-xl bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700">
+                  <option value="">No client</option>
+                  {clients.map((client) => <option key={client.id} value={client.id}>{client.name}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="block font-medium mb-1">Meeting Type</label>
+                <select value={salesMeetingForm.meeting_type} onChange={(e) => setSalesMeetingForm({ ...salesMeetingForm, meeting_type: e.target.value })} className="w-full px-3 py-2 rounded-xl bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700">
+                  <option value="discovery">Discovery</option>
+                  <option value="requirement">Requirement</option>
+                  <option value="proposal">Proposal</option>
+                  <option value="negotiation">Negotiation</option>
+                  <option value="handover">Handover</option>
+                  <option value="other">Other</option>
+                </select>
+              </div>
+              <div>
+                <label className="block font-medium mb-1">Schedule *</label>
+                <input type="datetime-local" required value={salesMeetingForm.scheduled_at} onChange={(e) => setSalesMeetingForm({ ...salesMeetingForm, scheduled_at: e.target.value })} className="w-full px-3 py-2 rounded-xl bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700" />
+              </div>
+              <div>
+                <label className="block font-medium mb-1">Meeting Link</label>
+                <input value={salesMeetingForm.meeting_link} onChange={(e) => setSalesMeetingForm({ ...salesMeetingForm, meeting_link: e.target.value })} placeholder="https://meet.google.com/..." className="w-full px-3 py-2 rounded-xl bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700" />
+              </div>
+              <div>
+                <label className="block font-medium mb-1">Duration</label>
+                <input type="number" value={salesMeetingForm.duration_minutes} onChange={(e) => setSalesMeetingForm({ ...salesMeetingForm, duration_minutes: e.target.value })} className="w-full px-3 py-2 rounded-xl bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700" />
+              </div>
+              <div className="sm:col-span-2">
+                <label className="block font-medium mb-1">Agenda</label>
+                <textarea rows={3} value={salesMeetingForm.agenda} onChange={(e) => setSalesMeetingForm({ ...salesMeetingForm, agenda: e.target.value })} className="w-full px-3 py-2 rounded-xl bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700" />
+              </div>
+            </div>
+            <div className="flex justify-end gap-2 pt-3 border-t border-gray-100 dark:border-[#3a3020]">
+              <button type="button" onClick={() => setShowSalesMeetingModal(false)} className="px-3.5 py-2 rounded-xl text-xs font-semibold text-gray-600 dark:text-neutral-300">Cancel</button>
+              <button type="submit" className="px-4 py-2 rounded-xl text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white">Schedule Meeting</button>
             </div>
           </form>
         </div>

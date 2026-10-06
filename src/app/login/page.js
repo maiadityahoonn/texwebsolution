@@ -43,6 +43,7 @@ import {
   MoreHorizontal,
   PanelLeftClose,
   PanelLeftOpen,
+  Phone,
   Plus,
   RefreshCw,
   Repeat,
@@ -179,6 +180,12 @@ import {
   getAgreements,
   createAgreement,
   updateAgreement,
+  getSalesFollowUps,
+  createSalesFollowUp,
+  updateSalesFollowUp,
+  getSalesMeetings,
+  createSalesMeeting,
+  updateSalesMeeting,
   getProjects,
   createProject,
   updateProject,
@@ -647,6 +654,8 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
   const [proposals, setProposals] = useState([]);
   const [quotations, setQuotations] = useState([]);
   const [agreements, setAgreements] = useState([]);
+  const [salesFollowUps, setSalesFollowUps] = useState([]);
+  const [salesMeetings, setSalesMeetings] = useState([]);
   const [projectsData, setProjectsData] = useState([]);
   const [smmClients, setSmmClients] = useState([]);
   const [contentCalendar, setContentCalendar] = useState([]);
@@ -3419,7 +3428,7 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
   const allowedSections = useMemo(() => {
     const sections = ["overview", "settings"];
     if (canUseCrm) {
-      sections.push("crm", "pipeline", "sales_commercials", "agreements", "invoices", "payments", "clients");
+      sections.push("crm", "pipeline", "sales_followups", "sales_meetings", "sales_commercials", "agreements", "invoices", "payments", "clients");
     }
     if (canUseProjects) {
       sections.push("projects");
@@ -3545,6 +3554,8 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
       { key: "overview", label: "Dashboard", icon: Home, section: "overview", show: true },
       { key: "crm", label: "CRM", icon: Target, section: "crm", show: canUseCrm, badge: leads.length },
       { key: "pipeline", label: "Pipeline", icon: TrendingUp, section: "pipeline", show: canUseCrm, badge: deals.length },
+      { key: "sales_followups", label: "Follow-ups", icon: Phone, section: "sales_followups", show: canUseCrm, badge: salesFollowUps.filter((item) => item.status === "pending").length },
+      { key: "sales_meetings", label: "Meetings", icon: Calendar, section: "sales_meetings", show: canUseCrm, badge: salesMeetings.filter((item) => item.status === "scheduled").length },
       { key: "sales_commercials", label: "Proposal", icon: FileText, section: "sales_commercials", show: canUseCrm, badge: proposals.length + quotations.length },
       { key: "agreements", label: "Agreements", icon: ShieldCheck, section: "agreements", show: canUseCrm, badge: agreements.length },
       { key: "clients", label: "Clients", icon: Building2, section: "clients", show: canUseCrm || canUseProjects, badge: clients.length },
@@ -3609,6 +3620,8 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
     projectsData.length,
     proposals.length,
     quotations.length,
+    salesFollowUps,
+    salesMeetings,
     supportTicketsList,
     tasks.length,
     unreadCount,
@@ -3747,6 +3760,8 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
           proposalsRes,
           quotationsRes,
           agreementsRes,
+          followUpsRes,
+          salesMeetingsRes,
           projectsRes,
           smmRes,
           contentRes,
@@ -3759,6 +3774,8 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
           getProposals(),
           getQuotations(),
           getAgreements(),
+          getSalesFollowUps(),
+          getSalesMeetings(),
           getProjects(),
           getSmmClients(),
           getContentCalendar(),
@@ -3771,6 +3788,8 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
         setProposals(proposalsRes || []);
         setQuotations(quotationsRes || []);
         setAgreements(agreementsRes || []);
+        setSalesFollowUps(followUpsRes || []);
+        setSalesMeetings(salesMeetingsRes || []);
         setProjectsData(projectsRes || []);
         setSmmClients(smmRes || []);
         setContentCalendar(contentRes || []);
@@ -7094,6 +7113,48 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
                   </button>
 
                   <button
+                    onClick={() => selectSection("sales_followups")}
+                    aria-label="Sales Follow-ups"
+                    title="Sales Follow-ups"
+                    className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl transition cursor-pointer ${
+                      activeSection === "sales_followups"
+                        ? "text-gray-900 dark:text-white font-semibold bg-gray-100/90 dark:bg-slate-800 shadow-2xs"
+                        : "text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-50 dark:hover:bg-slate-800/60"
+                    }`}
+                  >
+                    <div className="flex items-center gap-3.5">
+                      <Phone className="w-5 h-5 shrink-0 stroke-[1.75] text-blue-500" />
+                      <span className="admin-sidebar-item-label">Follow-ups</span>
+                    </div>
+                    {salesFollowUps.filter((item) => item.status === "pending").length > 0 && (
+                      <span className="text-[11px] font-bold text-blue-600 bg-blue-50 dark:bg-blue-950/40 px-2 py-0.5 rounded-full">
+                        {salesFollowUps.filter((item) => item.status === "pending").length}
+                      </span>
+                    )}
+                  </button>
+
+                  <button
+                    onClick={() => selectSection("sales_meetings")}
+                    aria-label="Sales Meetings"
+                    title="Sales Meetings"
+                    className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl transition cursor-pointer ${
+                      activeSection === "sales_meetings"
+                        ? "text-gray-900 dark:text-white font-semibold bg-gray-100/90 dark:bg-slate-800 shadow-2xs"
+                        : "text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-50 dark:hover:bg-slate-800/60"
+                    }`}
+                  >
+                    <div className="flex items-center gap-3.5">
+                      <Calendar className="w-5 h-5 shrink-0 stroke-[1.75] text-cyan-500" />
+                      <span className="admin-sidebar-item-label">Meetings</span>
+                    </div>
+                    {salesMeetings.filter((item) => item.status === "scheduled").length > 0 && (
+                      <span className="text-[11px] font-bold text-cyan-600 bg-cyan-50 dark:bg-cyan-950/40 px-2 py-0.5 rounded-full">
+                        {salesMeetings.filter((item) => item.status === "scheduled").length}
+                      </span>
+                    )}
+                  </button>
+
+                  <button
                     onClick={() => selectSection("sales_commercials")}
                     aria-label="Proposal and Quotation"
                     title="Proposal + Quotation"
@@ -7826,6 +7887,8 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
                     {activeSection === "overview" && "Dashboard"}
                     {activeSection === "crm" && "CRM & Leads"}
                     {activeSection === "pipeline" && "Sales Pipeline"}
+                    {activeSection === "sales_followups" && "Sales Follow-ups"}
+                    {activeSection === "sales_meetings" && "Sales Meetings"}
                     {activeSection === "sales_commercials" && "Proposal + Quotation"}
                     {activeSection === "agreements" && "Client Agreements"}
                     {activeSection === "clients" && "Client Accounts"}
@@ -7859,6 +7922,8 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
                     {activeSection === "overview" && `Welcome back, ${userProfile?.full_name?.split(" ")[0] || sessionUser?.user_metadata?.full_name?.split(" ")[0] || "User"} 👋 Here is your workspace overview and activity today.`}
                     {activeSection === "crm" && "Track website inquiries, lead statuses, WhatsApp outreach, and qualification."}
                     {activeSection === "pipeline" && "Visual Kanban pipeline from Lead to Closed Won agreement and advance payment."}
+                    {activeSection === "sales_followups" && "Schedule calls, WhatsApp reminders, and sales next actions."}
+                    {activeSection === "sales_meetings" && "Plan discovery, requirement, proposal, and negotiation meetings."}
                     {activeSection === "sales_commercials" && "Create and track combined proposal quotation documents from Sales."}
                     {activeSection === "agreements" && "Manage final client agreement terms, milestones, and signed status."}
                     {activeSection === "clients" && "Central client directory with connected deals, projects, invoices, and support."}
@@ -7899,6 +7964,8 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
                       {activeSection === "overview" && "Dashboard"}
                       {activeSection === "crm" && "CRM & Leads"}
                       {activeSection === "pipeline" && "Sales Pipeline"}
+                      {activeSection === "sales_followups" && "Sales Follow-ups"}
+                      {activeSection === "sales_meetings" && "Sales Meetings"}
                       {activeSection === "sales_commercials" && "Proposal + Quotation"}
                       {activeSection === "agreements" && "Client Agreements"}
                       {activeSection === "clients" && "Client Accounts"}
@@ -12162,11 +12229,15 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
               )}
 
               {/* 4.7. CRM & SALES PIPELINE MODULE */}
-              {(activeSection === "crm" || activeSection === "pipeline" || activeSection === "sales_commercials" || activeSection === "agreements") && (
+              {(activeSection === "crm" || activeSection === "pipeline" || activeSection === "sales_followups" || activeSection === "sales_meetings" || activeSection === "sales_commercials" || activeSection === "agreements") && (
                 <CrmModule
                   initialViewMode={
                     activeSection === "pipeline"
                       ? "pipeline"
+                      : activeSection === "sales_followups"
+                      ? "followups"
+                      : activeSection === "sales_meetings"
+                      ? "sales_meetings"
                       : activeSection === "sales_commercials" || activeSection === "agreements"
                       ? "commercials"
                       : "leads"
@@ -12175,6 +12246,11 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
                   leads={leads}
                   deals={deals}
                   clients={clients}
+                  proposals={proposals}
+                  quotations={quotations}
+                  agreements={agreements}
+                  followUps={salesFollowUps}
+                  salesMeetings={salesMeetings}
                   onUpdateLeadStatus={async (id, status) => {
                     await updateCloudLeadStatus(id, status);
                     setLeads((prev) => prev.map((l) => (l.id === id ? { ...l, status } : l)));
@@ -12250,6 +12326,34 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
                     if (res) {
                       setAgreements((prev) => prev.map((item) => (item.id === id ? { ...item, ...updates, ...res } : item)));
                       setToast("Agreement updated.");
+                    }
+                  }}
+                  onCreateFollowUp={async (followUp) => {
+                    const res = await createSalesFollowUp({ ...followUp, created_by: sessionUser?.id || null, assigned_to: sessionUser?.id || null });
+                    if (res) {
+                      setSalesFollowUps((prev) => [res, ...prev.filter((item) => item.id !== res.id)]);
+                      setToast("Sales follow-up scheduled.");
+                    }
+                  }}
+                  onUpdateFollowUp={async (id, updates) => {
+                    const res = await updateSalesFollowUp(id, updates);
+                    if (res) {
+                      setSalesFollowUps((prev) => prev.map((item) => (item.id === id ? { ...item, ...updates, ...res } : item)));
+                      setToast("Follow-up updated.");
+                    }
+                  }}
+                  onCreateSalesMeeting={async (meeting) => {
+                    const res = await createSalesMeeting({ ...meeting, created_by: sessionUser?.id || null, host_id: sessionUser?.id || null });
+                    if (res) {
+                      setSalesMeetings((prev) => [res, ...prev.filter((item) => item.id !== res.id)]);
+                      setToast("Sales meeting scheduled.");
+                    }
+                  }}
+                  onUpdateSalesMeeting={async (id, updates) => {
+                    const res = await updateSalesMeeting(id, updates);
+                    if (res) {
+                      setSalesMeetings((prev) => prev.map((item) => (item.id === id ? { ...item, ...updates, ...res } : item)));
+                      setToast("Sales meeting updated.");
                     }
                   }}
                   onOpenDirectWhatsapp={handleDirectWhatsapp}
@@ -12462,7 +12566,7 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
               )}
 
               {/* 5. Main Data Table (for all list sections, plus admin overview) */}
-              {!["alerts", "chat", "settings", "batch_workspace", "batch_files", "review_center", "task_submissions", "at_risk_watchlist", "crm", "pipeline", "sales_commercials", "agreements", "clients", "projects", "smm", "content_calendar", "invoices", "payments", "support"].includes(activeSection) && (activeSection !== "overview" || isAdminRole) && (
+              {!["alerts", "chat", "settings", "batch_workspace", "batch_files", "review_center", "task_submissions", "at_risk_watchlist", "crm", "pipeline", "sales_followups", "sales_meetings", "sales_commercials", "agreements", "clients", "projects", "smm", "content_calendar", "invoices", "payments", "support"].includes(activeSection) && (activeSection !== "overview" || isAdminRole) && (
                 <div className="space-y-3 w-full max-w-full">
                   {/* Table header meta & horizontal scroll helper */}
                   <div className="flex items-center justify-between gap-2.5 text-[11px] text-gray-500 dark:text-slate-400 px-1 select-none">

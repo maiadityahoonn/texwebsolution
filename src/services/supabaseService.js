@@ -1871,6 +1871,8 @@ const LOCAL_DEALS_KEY = 'texweb_cache_deals';
 const LOCAL_PROPOSALS_KEY = 'texweb_cache_proposals';
 const LOCAL_QUOTATIONS_KEY = 'texweb_cache_quotations';
 const LOCAL_AGREEMENTS_KEY = 'texweb_cache_agreements';
+const LOCAL_SALES_FOLLOWUPS_KEY = 'texweb_cache_sales_followups';
+const LOCAL_SALES_MEETINGS_KEY = 'texweb_cache_sales_meetings';
 const LOCAL_PROJECTS_KEY = 'texweb_cache_projects';
 const LOCAL_SMM_KEY = 'texweb_cache_smm';
 const LOCAL_CONTENT_KEY = 'texweb_cache_content';
@@ -2274,6 +2276,124 @@ export async function updateAgreement(agreementId, updates) {
     const updated = current.map((item) => (item.id === agreementId ? { ...item, ...updates } : item));
     writeLocalCache(LOCAL_AGREEMENTS_KEY, updated);
     return updated.find((item) => item.id === agreementId) || null;
+  }
+}
+
+export async function getSalesFollowUps() {
+  try {
+    const { data, error } = await supabase
+      .from('sales_followups')
+      .select('*')
+      .order('due_at', { ascending: true });
+
+    if (error) throw error;
+    writeLocalCache(LOCAL_SALES_FOLLOWUPS_KEY, data || []);
+    return data || [];
+  } catch (err) {
+    console.warn('Fallback: getSalesFollowUps from cache:', err.message);
+    return readLocalCache(LOCAL_SALES_FOLLOWUPS_KEY, []);
+  }
+}
+
+export async function createSalesFollowUp(followUpData) {
+  try {
+    const { data, error } = await supabase
+      .from('sales_followups')
+      .insert([followUpData])
+      .select();
+
+    if (error) throw error;
+    const created = data?.[0] || followUpData;
+    const current = readLocalCache(LOCAL_SALES_FOLLOWUPS_KEY, []);
+    writeLocalCache(LOCAL_SALES_FOLLOWUPS_KEY, [created, ...current]);
+    return created;
+  } catch (err) {
+    console.warn('Fallback: createSalesFollowUp in cache:', err.message);
+    const fallback = { ...followUpData, id: `followup-${Date.now()}`, created_at: new Date().toISOString(), updated_at: new Date().toISOString() };
+    const current = readLocalCache(LOCAL_SALES_FOLLOWUPS_KEY, []);
+    writeLocalCache(LOCAL_SALES_FOLLOWUPS_KEY, [fallback, ...current]);
+    return fallback;
+  }
+}
+
+export async function updateSalesFollowUp(followUpId, updates) {
+  try {
+    const { data, error } = await supabase
+      .from('sales_followups')
+      .update({ ...updates, updated_at: new Date().toISOString() })
+      .eq('id', followUpId)
+      .select();
+
+    if (error) throw error;
+    const current = readLocalCache(LOCAL_SALES_FOLLOWUPS_KEY, []);
+    const merged = current.map((item) => (item.id === followUpId ? { ...item, ...updates } : item));
+    writeLocalCache(LOCAL_SALES_FOLLOWUPS_KEY, merged);
+    return data?.[0] || merged.find((item) => item.id === followUpId) || null;
+  } catch (err) {
+    console.warn('Fallback: updateSalesFollowUp in cache:', err.message);
+    const current = readLocalCache(LOCAL_SALES_FOLLOWUPS_KEY, []);
+    const updated = current.map((item) => (item.id === followUpId ? { ...item, ...updates } : item));
+    writeLocalCache(LOCAL_SALES_FOLLOWUPS_KEY, updated);
+    return updated.find((item) => item.id === followUpId) || null;
+  }
+}
+
+export async function getSalesMeetings() {
+  try {
+    const { data, error } = await supabase
+      .from('sales_meetings')
+      .select('*')
+      .order('scheduled_at', { ascending: true });
+
+    if (error) throw error;
+    writeLocalCache(LOCAL_SALES_MEETINGS_KEY, data || []);
+    return data || [];
+  } catch (err) {
+    console.warn('Fallback: getSalesMeetings from cache:', err.message);
+    return readLocalCache(LOCAL_SALES_MEETINGS_KEY, []);
+  }
+}
+
+export async function createSalesMeeting(meetingData) {
+  try {
+    const { data, error } = await supabase
+      .from('sales_meetings')
+      .insert([meetingData])
+      .select();
+
+    if (error) throw error;
+    const created = data?.[0] || meetingData;
+    const current = readLocalCache(LOCAL_SALES_MEETINGS_KEY, []);
+    writeLocalCache(LOCAL_SALES_MEETINGS_KEY, [created, ...current]);
+    return created;
+  } catch (err) {
+    console.warn('Fallback: createSalesMeeting in cache:', err.message);
+    const fallback = { ...meetingData, id: `sales-meeting-${Date.now()}`, created_at: new Date().toISOString(), updated_at: new Date().toISOString() };
+    const current = readLocalCache(LOCAL_SALES_MEETINGS_KEY, []);
+    writeLocalCache(LOCAL_SALES_MEETINGS_KEY, [fallback, ...current]);
+    return fallback;
+  }
+}
+
+export async function updateSalesMeeting(meetingId, updates) {
+  try {
+    const { data, error } = await supabase
+      .from('sales_meetings')
+      .update({ ...updates, updated_at: new Date().toISOString() })
+      .eq('id', meetingId)
+      .select();
+
+    if (error) throw error;
+    const current = readLocalCache(LOCAL_SALES_MEETINGS_KEY, []);
+    const merged = current.map((item) => (item.id === meetingId ? { ...item, ...updates } : item));
+    writeLocalCache(LOCAL_SALES_MEETINGS_KEY, merged);
+    return data?.[0] || merged.find((item) => item.id === meetingId) || null;
+  } catch (err) {
+    console.warn('Fallback: updateSalesMeeting in cache:', err.message);
+    const current = readLocalCache(LOCAL_SALES_MEETINGS_KEY, []);
+    const updated = current.map((item) => (item.id === meetingId ? { ...item, ...updates } : item));
+    writeLocalCache(LOCAL_SALES_MEETINGS_KEY, updated);
+    return updated.find((item) => item.id === meetingId) || null;
   }
 }
 
