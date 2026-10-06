@@ -14,16 +14,10 @@ import {
   Award,
   AlertTriangle,
   Folder,
+  ChevronDown,
+  MessageSquare,
 } from "lucide-react";
 import { safeExternalUrl } from "@/lib/safeUrl";
-
-function WhatsAppIcon({ className = "w-3.5 h-3.5" }) {
-  return (
-    <svg className={className} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-      <path d="M12.031 6.172c-3.181 0-5.767 2.586-5.768 5.766-.001 1.298.38 2.27 1.019 3.287l-.711 2.598 2.664-.698c.972.531 1.777.817 2.796.817 3.18 0 5.767-2.587 5.767-5.768.001-3.181-2.584-5.767-5.767-5.767zm3.364 8.163c-.144.405-.837.774-1.17.824-.312.045-.698.073-2.072-.497-1.756-.728-2.883-2.518-2.97-2.634-.087-.116-.711-.945-.711-1.8 0-.855.449-1.275.609-1.449.16-.174.348-.217.464-.217.116 0 .232.002.333.007.106.005.249-.04.39.299.144.348.492 1.203.535 1.29.043.087.072.189.014.305-.058.116-.087.188-.174.29-.087.102-.183.228-.261.306-.088.087-.179.182-.077.357.102.174.453.747.971 1.209.669.596 1.233.78 1.407.868.174.087.276.072.377-.044.102-.116.435-.508.551-.682.116-.174.232-.145.39-.087.16.058 1.014.478 1.188.565.174.087.29.13.333.203.044.072.044.42-.1.825zM12 2C6.477 2 2 6.477 2 12c0 1.891.524 3.66 1.434 5.178L2 22l4.981-1.306C8.423 21.524 10.158 22 12 22c5.523 0 10-4.477 10-10S17.523 2 12 2zm0 18.2c-1.632 0-3.149-.49-4.417-1.332l-.317-.212-2.964.777.791-2.89-.233-.371C3.968 14.869 3.5 13.486 3.5 12c0-4.687 3.813-8.5 8.5-8.5s8.5 3.813 8.5 8.5-3.813 8.5-8.5 8.5z"/>
-    </svg>
-  );
-}
 
 export default function MemberProfileModal({
   member,
@@ -37,7 +31,7 @@ export default function MemberProfileModal({
   attendanceRecords = [],
   onPromoteToTl,
   canPromoteTl = false,
-  onSendWhatsapp,
+  onStartChat,
   isDark = false,
   roleLabels = {},
   domainLabel = (d) => d,
@@ -118,29 +112,52 @@ export default function MemberProfileModal({
           </button>
         </div>
 
-        {/* Tab Navigation */}
-        <div className="flex gap-1 px-4 pt-2 border-b border-gray-100 dark:border-slate-800 overflow-x-auto text-xs font-bold">
-          {(isHrProfile
-            ? [["overview", "Assigned Batches"]]
-            : [
-                ["overview", "Overview & Team"],
-                ["tasks", `Tasks (${memberTasks.length})`],
-                ["submissions", `Submissions (${memberSubmissions.length})`],
-                ["attendance", `Attendance (${attendanceRate}%)`],
-              ]
-          ).map(([tabKey, label]) => (
-            <button
-              key={tabKey}
-              onClick={() => setActiveTab(tabKey)}
-              className={`px-3 py-2 border-b-2 whitespace-nowrap transition cursor-pointer ${
-                activeTab === tabKey
-                  ? "border-red-600 text-red-600 dark:text-red-400"
-                  : "border-transparent text-gray-500 hover:text-gray-900 dark:text-slate-400 dark:hover:text-white"
-              }`}
+        {/* Tab Navigation: Mobile Dropdown (<640px) vs Desktop Tabs */}
+        <div className="px-4 py-2 border-b border-gray-100 dark:border-slate-800">
+          <div className="block sm:hidden relative">
+            <select
+              value={activeTab}
+              onChange={(e) => setActiveTab(e.target.value)}
+              className="w-full pl-3.5 pr-8 py-2 rounded-xl border border-gray-200 dark:border-slate-700 bg-gray-50 dark:bg-slate-800 text-xs font-bold text-gray-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-600 appearance-none cursor-pointer"
             >
-              {label}
-            </button>
-          ))}
+              {(isHrProfile
+                ? [["overview", "Assigned Batches"]]
+                : [
+                    ["overview", "Overview & Team"],
+                    ["tasks", "Tasks"],
+                    ["submissions", "Submissions"],
+                    ["attendance", "Attendance"],
+                  ]
+              ).map(([tabKey, label]) => (
+                <option key={tabKey} value={tabKey}>{label}</option>
+              ))}
+            </select>
+            <ChevronDown className="w-4 h-4 absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+          </div>
+
+          <div className="hidden sm:flex gap-1 text-xs font-bold">
+            {(isHrProfile
+              ? [["overview", "Assigned Batches"]]
+              : [
+                  ["overview", "Overview & Team"],
+                  ["tasks", "Tasks"],
+                  ["submissions", "Submissions"],
+                  ["attendance", "Attendance"],
+                ]
+            ).map(([tabKey, label]) => (
+              <button
+                key={tabKey}
+                onClick={() => setActiveTab(tabKey)}
+                className={`px-3 py-2 border-b-2 whitespace-nowrap transition cursor-pointer ${
+                  activeTab === tabKey
+                    ? "border-red-600 text-red-600 dark:text-red-400"
+                    : "border-transparent text-gray-500 hover:text-gray-900 dark:text-slate-400 dark:hover:text-white"
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
         </div>
 
         {/* Modal Body */}
@@ -263,13 +280,14 @@ export default function MemberProfileModal({
 
               {/* Action Buttons */}
               <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-gray-100 dark:border-slate-800">
-                {onSendWhatsapp && member.phone && (
+                {onStartChat && (
                   <button
-                    onClick={() => onSendWhatsapp(member)}
-                    className="inline-flex items-center gap-1.5 px-3 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-xs transition"
+                    onClick={() => onStartChat(member)}
+                    className="inline-flex items-center gap-1.5 px-3 py-2 bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl text-xs transition cursor-pointer shadow-xs"
+                    title="Direct In-App Chat"
                   >
-                    <WhatsAppIcon className="w-3.5 h-3.5 fill-current" />
-                    <span>Send WhatsApp Details</span>
+                    <MessageSquare className="w-3.5 h-3.5" />
+                    <span>Message in Chat</span>
                   </button>
                 )}
                 {canPromoteTl && member.role === "intern" && onPromoteToTl && (

@@ -78,8 +78,10 @@ import {
   Archive,
   Tag,
   Ban,
-  Key,
   ShieldAlert,
+  Square,
+  Share2,
+  LifeBuoy,
 } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import Pagination from "@/components/Pagination";
@@ -93,6 +95,15 @@ import MentorOverview from "@/components/batch/MentorOverview";
 import HrOverview from "@/components/batch/HrOverview";
 import SupervisionPulsePanel from "@/components/batch/SupervisionPulsePanel";
 import TexAppBatchChat from "@/components/batch/TexAppBatchChat";
+import CrmModule from "@/components/modules/CrmModule";
+import ClientsModule from "@/components/modules/ClientsModule";
+import ProjectsModule from "@/components/modules/ProjectsModule";
+import SmmModule from "@/components/modules/SmmModule";
+import FinanceModule from "@/components/modules/FinanceModule";
+import SupportModule from "@/components/modules/SupportModule";
+import SalesHeadOverview from "@/components/modules/SalesHeadOverview";
+import NotificationCenterModal from "@/components/modules/NotificationCenterModal";
+import { isSoundEnabled, setSoundEnabled, playNotificationSound } from "@/lib/notificationSound";
 import { supabase } from "@/lib/supabase";
 import { safeExternalUrl, safeInternalPath } from "@/lib/safeUrl";
 import { processImageToWebp } from "@/lib/imageProcessor";
@@ -115,8 +126,15 @@ import {
   getCmsContent,
   getCmsVersions,
   getCloudLeads,
+  createCloudLead,
+  createCloudLeadsBatch,
+  updateCloudLead,
+  deleteCloudLead,
+  updateCloudLeadStatus,
   getDailyUpdates,
   getMeetings,
+  startMeeting,
+  endMeeting,
   getBatchMessageSummary,
   getDirectMessageSummary,
   getMessages,
@@ -147,6 +165,30 @@ import {
   uploadAvatarImage,
   uploadTaskReferenceFile,
   upsertCmsContent,
+  getClients,
+  createClient,
+  updateClient,
+  getDeals,
+  createDeal,
+  updateDealStage,
+  getProjects,
+  createProject,
+  updateProject,
+  assignProjectMember,
+  removeProjectMember,
+  getSmmClients,
+  createSmmClient,
+  getContentCalendar,
+  createContentItem,
+  updateContentItem,
+  getInvoices,
+  createInvoice,
+  updateInvoice,
+  getSupportTickets,
+  createSupportTicket,
+  updateSupportTicket,
+  getNotificationPreferences,
+  saveNotificationPreferences,
 } from "@/services/supabaseService";
 
 function WhatsAppIcon({ className = "w-3.5 h-3.5" }) {
@@ -159,11 +201,38 @@ function WhatsAppIcon({ className = "w-3.5 h-3.5" }) {
 
 const ROLE_LABELS = {
   super_admin: "Super Admin",
-  team_leader: "Team Leader",
-  mentor: "Mentor",
+  admin: "Administrator",
+  team_leader: "Delivery Lead",
+  mentor: "Operations Lead",
   hr: "HR Manager",
-  intern: "Intern",
+  intern: "Developer Intern",
+  sales_head: "Sales Head",
+  sales_executive: "Sales Executive",
+  telecaller: "Telecaller",
+  tech_lead: "Tech Lead",
+  pm: "Project Manager",
+  smm_head: "SMM Head",
+  finance_head: "Finance Head",
+  support_head: "Support Head",
 };
+
+const BUSINESS_DEPARTMENT_HEADS = [
+  { key: "sales", name: "Priyank Patel", role: "Sales Head", section: "crm" },
+  { key: "tech", name: "Aditya Kumar Gupta", role: "Tech Lead", section: "projects" },
+  { key: "hr", name: "Shashank Suman", role: "HR", section: "members" },
+  { key: "smm", name: "Thakur Kumar", role: "SMM Head", section: "smm" },
+];
+
+const BUSINESS_FLOW_STEPS = [
+  "Automatic lead capture",
+  "Sales qualification",
+  "Closed Won",
+  "Client account",
+  "Project creation",
+  "Tech assignment",
+  "Client visibility",
+  "Support & growth",
+];
 
 const MESSAGE_EDIT_WINDOW_MS = 60 * 1000;
 
@@ -217,8 +286,13 @@ function domainLabel(value) {
 
 function profileDepartmentLabel(profile) {
   if (!profile) return "All Departments";
-  if (profile.role === "super_admin") return "All Departments";
+  if (profile.role === "super_admin" || profile.role === "admin") return "All Departments";
   if (profile.role === "hr") return "HR Management";
+  if (["sales_head", "sales_executive", "telecaller"].includes(profile.role)) return "Sales & CRM";
+  if (["tech_lead", "pm"].includes(profile.role)) return "Engineering & Tech";
+  if (profile.role === "smm_head") return "Digital Marketing & SMM";
+  if (profile.role === "finance_head") return "Finance & Accounts";
+  if (profile.role === "support_head") return "Customer Support & SLA";
   return domainLabel(profile.domain);
 }
 
@@ -414,10 +488,7 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
   }
 
   function openDirectChatWithUser(userId) {
-    if (!userId || !["super_admin", "hr", "mentor"].includes(userProfile?.role)) {
-      setToast("Direct chat is available only for Super Admin, HR, and Mentor.");
-      return;
-    }
+    if (!userId) return;
     setChatChannelTab("direct");
     openContactChat(userId);
     selectSection("chat");
@@ -433,7 +504,124 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
     window.open(`https://wa.me/${cleanPhone}?text=${text}`, "_blank", "noopener,noreferrer");
   }
 
+  async function handleCreateNewClient(clientData) {
+    const created = await createClient(clientData);
+    if (created) {
+      setClients((prev) => [created, ...prev.filter((c) => c.id !== created.id)]);
+      setToast("Client account created successfully.");
+    }
+  }
+
+  async function handleCreateNewProject(projectData) {
+    const created = await createProject(projectData);
+    if (created) {
+      setProjectsData((prev) => [created, ...prev.filter((p) => p.id !== created.id)]);
+      setToast("Project created successfully.");
+    }
+  }
+
+  async function handleConvertToClientAndProject(leadOrDeal) {
+    let clientMatch = clients.find((c) => c.name?.toLowerCase() === (leadOrDeal.name || leadOrDeal.title)?.toLowerCase());
+    if (!clientMatch) {
+      clientMatch = await createClient({
+        name: leadOrDeal.name || leadOrDeal.title || "Client Account",
+        company_name: leadOrDeal.name ? `${leadOrDeal.name} Ventures` : "Client Company",
+        phone: leadOrDeal.phone || "",
+        email: leadOrDeal.email || "",
+        industry: "Technology",
+        status: "active",
+      });
+      if (clientMatch) {
+        setClients((prev) => [clientMatch, ...prev]);
+      }
+    }
+
+    const dealCreated = await createDeal({
+      title: `${clientMatch?.name || "Client"} - ${leadOrDeal.service || "Tech Development"} Delivery`,
+      client_id: clientMatch?.id,
+      deal_value: 120000,
+      service: leadOrDeal.service || "Web Development",
+      pipeline_stage: "closed_won",
+    });
+    if (dealCreated) {
+      setDeals((prev) => [dealCreated, ...prev]);
+    }
+
+    const projectCreated = await createProject({
+      name: `${clientMatch?.name || "Client"} Portal MVP`,
+      client_id: clientMatch?.id,
+      deal_id: dealCreated?.id,
+      description: `Delivery project for ${clientMatch?.name || "Client"}. Handed over from Closed Won deal.`,
+      status: "in_progress",
+      priority: "high",
+      budget: 120000,
+      start_date: new Date().toISOString().split("T")[0],
+    });
+    if (projectCreated) {
+      setProjectsData((prev) => [projectCreated, ...prev]);
+    }
+
+    if (leadOrDeal.id && !leadOrDeal.deal_value) {
+      await updateCloudLeadStatus(leadOrDeal.id, "Converted");
+      setLeads((prev) =>
+        prev.map((l) => (l.id === leadOrDeal.id ? { ...l, status: "Converted" } : l))
+      );
+    }
+
+    playNotificationSound("payment");
+    setToast("Deal Closed Won! Client & Project created successfully.");
+    selectSection("projects");
+  }
+
+  function handleOpenClientChat(client) {
+    if (!client) return;
+    selectSection("chat");
+    setToast(`Opened internal chat for client: ${client.name}`);
+  }
+
+  function handleOpenProjectChat(project) {
+    if (!project) return;
+    selectSection("chat");
+    setToast(`Opened internal chat for project: ${project.name}`);
+  }
+
+  function handleOpenSmmChat(item) {
+    selectSection("chat");
+    setToast("Opened SMM team chat");
+  }
+
+  function handleOpenSupportChat(ticket) {
+    selectSection("chat");
+    setToast(`Opened support discussion for ${ticket?.ticket_number || "Ticket"}`);
+  }
+
+  function handleHandoverToSupport(project) {
+    const tkt = {
+      ticket_number: `TCK-2026-${Math.floor(100 + Math.random() * 900)}`,
+      client_id: project.client_id,
+      project_id: project.id,
+      subject: `Handover & Maintenance: ${project.name}`,
+      description: `Project marked completed. Handed over to Support team for warranty & SLA maintenance.`,
+      priority: "medium",
+      status: "open",
+    };
+    createSupportTicket(tkt).then((res) => {
+      if (res) setSupportTicketsList((prev) => [res, ...prev]);
+      setToast("Project handover ticket created in Support Module.");
+      selectSection("support");
+    });
+  }
+
   const [leads, setLeads] = useState([]);
+  const [clients, setClients] = useState([]);
+  const [deals, setDeals] = useState([]);
+  const [projectsData, setProjectsData] = useState([]);
+  const [smmClients, setSmmClients] = useState([]);
+  const [contentCalendar, setContentCalendar] = useState([]);
+  const [invoicesList, setInvoicesList] = useState([]);
+  const [supportTicketsList, setSupportTicketsList] = useState([]);
+  const [notificationPreferences, setNotificationPreferences] = useState({});
+  const [notificationModalOpen, setNotificationModalOpen] = useState(false);
   const [tasks, setTasks] = useState([]);
   const [meetings, setMeetings] = useState([]);
   const [certificates, setCertificates] = useState([]);
@@ -525,11 +713,15 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
   const [newMeetingModal, setNewMeetingModal] = useState(false);
   const [newCertModal, setNewCertModal] = useState(false);
   const [newMemberModal, setNewMemberModal] = useState(false);
+  const [newMemberWhatsappModal, setNewMemberWhatsappModal] = useState(null);
   const [newBatchModal, setNewBatchModal] = useState(false);
   const [dailyUpdateModal, setDailyUpdateModal] = useState(false);
   const [dailyReportModalOpen, setDailyReportModalOpen] = useState(false);
   const [dailyCommentModal, setDailyCommentModal] = useState(null);
   const [attendanceModal, setAttendanceModal] = useState(false);
+  const [selectedAttendanceUser, setSelectedAttendanceUser] = useState(null);
+  const [attendanceHistoryFilter, setAttendanceHistoryFilter] = useState("all");
+  const [attendanceHistoryPage, setAttendanceHistoryPage] = useState(1);
   const [editMemberModal, setEditMemberModal] = useState(null);
   const [cmsModal, setCmsModal] = useState(false);
   const [reviewModal, setReviewModal] = useState(null);
@@ -1003,30 +1195,57 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
   });
 
   const currentRole = userProfile?.role || "intern";
-  const isAdminRole = currentRole === "super_admin";
+  const isAdminRole = currentRole === "super_admin" || currentRole === "admin";
   const isHrRole = currentRole === "hr";
   const isMentor = currentRole === "mentor";
   const isTeamLeader = currentRole === "team_leader";
-  const canAssignWork = isMentor || isTeamLeader;
-  const canScheduleMeetings = isHrRole || isMentor || isTeamLeader;
-  const canManageMembers = isAdminRole || isHrRole || isMentor || isTeamLeader;
-  const canViewAllTeam = isAdminRole || isMentor;
+  const isSalesHead = currentRole === "sales_head" || userProfile?.designation === "Sales Head";
+  const isTechLead = currentRole === "tech_lead" || currentRole === "pm" || userProfile?.designation === "Tech Lead";
+  const isSmmHead = currentRole === "smm_head" || userProfile?.designation === "SMM Head";
+  const isFinanceHead = currentRole === "finance_head" || userProfile?.designation === "Finance Head";
+  const isSupportHead = currentRole === "support_head" || userProfile?.designation === "Support Head";
+  const isSalesRole = isSalesHead || ["sales", "sales_executive", "telecaller"].includes(userProfile?.domain) || ["sales_executive", "telecaller"].includes(currentRole);
+  const isBusinessLeadership = isAdminRole || isHrRole || isSalesRole || isTechLead || isSmmHead || isFinanceHead || isSupportHead;
+  const isDeveloperRole = isTechLead || ["developer", "developer_intern", "intern", "pm"].includes(currentRole) || ["web_dev", "frontend_dev", "backend_dev", "ai_automation", "design"].includes(userProfile?.domain);
+  const canUseLegacyTrainingWorkspace = false;
+
+  const canAssignWork = isTechLead || isAdminRole;
+  const canScheduleMeetings = isBusinessLeadership;
+  const canManageMembers = isAdminRole || isHrRole || isSalesHead || isTechLead || isSmmHead;
+  const canViewAllTeam = isBusinessLeadership;
   const canManageCredentials = isAdminRole || isHrRole;
   const canCreateBatch = isAdminRole;
-  const canViewBatches = isAdminRole || isHrRole || isMentor || isTeamLeader || currentRole === "intern";
+  const canViewBatches = canUseLegacyTrainingWorkspace && (isAdminRole || isHrRole || isMentor || isTeamLeader || currentRole === "intern");
   const canIssueCertificates = isHrRole;
-  const canUseCrm = ["sales", "sales_executive", "telecaller"].includes(userProfile?.domain);
-  const canUseCms = false;
-  const canSeeOperations = isHrRole || isMentor || isTeamLeader || currentRole === "intern";
+  const canUseCrm = isAdminRole || isSalesRole;
+  const canUseProjects = isAdminRole || isDeveloperRole;
+  const canUseSmm = isAdminRole || isSmmHead || ["marketing", "digital_marketing", "video_editing", "script_writing", "design"].includes(userProfile?.domain);
+  const canUseFinance = isAdminRole || isHrRole || isFinanceHead || isSalesRole || ["management", "sales"].includes(userProfile?.domain);
+  const canUseSupport = isAdminRole || isHrRole || isSupportHead || isTechLead || ["web_dev", "sales", "management"].includes(userProfile?.domain);
+  const canUseCms = isAdminRole;
+  const canSeeOperations = isAdminRole || isDeveloperRole;
+  const canViewAttendanceHistory = isAdminRole || isHrRole;
   const canUseMessages = true;
   const canUseAlerts = true;
-  const canAccessDirectChat = Boolean(isAdminRole || isHrRole || isMentor || isTeamLeader || currentRole === "intern");
+  const canAccessDirectChat = Boolean(
+    isAdminRole || isHrRole || isMentor || isTeamLeader || currentRole === "intern" ||
+    isSalesRole || isTechLead || isSmmHead || isFinanceHead || isSupportHead
+  );
 
   useEffect(() => {
     if (batchWorkspaceTab === "activity" && !isAdminRole && !isHrRole) {
       setBatchWorkspaceTab("overview");
     }
-  }, [batchWorkspaceTab, isAdminRole, isHrRole]);
+    if (batchWorkspaceTab === "attendance" && !canViewAttendanceHistory) {
+      setBatchWorkspaceTab("overview");
+    }
+  }, [batchWorkspaceTab, canViewAttendanceHistory, isAdminRole, isHrRole]);
+
+  useEffect(() => {
+    if (activeSection === "attendance" && !canViewAttendanceHistory) {
+      setActiveSection("overview");
+    }
+  }, [activeSection, canViewAttendanceHistory]);
 
   useEffect(() => {
     if (canAccessDirectChat) return;
@@ -1034,10 +1253,37 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
     if (selectedContactId) setSelectedContactId("");
   }, [canAccessDirectChat, chatChannelTab, selectedContactId]);
   const memberRoleOptions = useMemo(() => {
-    if (isAdminRole) return [["hr", "HR Manager"]];
-    if (isHrRole) return [["mentor", "Mentor"], ["intern", "Intern"]];
+    if (isAdminRole) {
+      return [
+        ["sales_head", "Sales Head"],
+        ["tech_lead", "Tech Lead"],
+        ["smm_head", "SMM Head"],
+        ["finance_head", "Finance Head"],
+        ["support_head", "Support Head"],
+        ["hr", "HR Manager"],
+        ["mentor", "Mentor"],
+        ["team_leader", "Team Leader"],
+        ["intern", "Intern"],
+        ["sales_executive", "Sales Executive"],
+        ["telecaller", "Telecaller"],
+      ];
+    }
+    if (isHrRole) {
+      return [
+        ["mentor", "Mentor"],
+        ["intern", "Intern"],
+        ["sales_executive", "Sales Executive"],
+        ["telecaller", "Telecaller"],
+      ];
+    }
+    if (isSalesHead) {
+      return [
+        ["sales_executive", "Sales Executive"],
+        ["telecaller", "Telecaller"],
+      ];
+    }
     return [];
-  }, [isAdminRole, isHrRole]);
+  }, [isAdminRole, isHrRole, isSalesHead]);
   const memberModalRoleLabel = ROLE_LABELS[memberForm.role] || "Member";
 
   const ownedBatchIds = useMemo(() => {
@@ -1619,6 +1865,70 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
       return bPinned - aPinned;
     });
   }, [sortedChatContacts, chatSearchQuery, chatFilterChip, directChatMeta, pinnedChatIds, manualUnreadChatIds, archivedChatIds]);
+
+  const unifiedChatItems = useMemo(() => {
+    if (chatFilterChip === "groups") {
+      return filteredChatBatches.map((b) => ({ type: "batch", data: b, id: b.id }));
+    }
+    if (chatFilterChip === "direct") {
+      return canAccessDirectChat
+        ? filteredChatContacts.map((c) => ({ type: "contact", data: c, id: c.id }))
+        : [];
+    }
+
+    const batchItems = filteredChatBatches.map((b) => {
+      const isPinned = pinnedChatIds.includes(b.id);
+      const messageMeta = batchChatMeta[b.id] || {};
+      const notificationMeta = batchNotificationMeta[b.id] || {};
+      const lastTime = Math.max(
+        chatTimestamp(messageMeta.lastMessageTime),
+        chatTimestamp(notificationMeta.lastMessageTime)
+      );
+      const unreadCount = messageMeta.unreadCount || 0;
+      return {
+        type: "batch",
+        data: b,
+        id: b.id,
+        isPinned,
+        lastTime,
+        unreadCount,
+      };
+    });
+
+    const contactItems = canAccessDirectChat
+      ? filteredChatContacts.map((c) => {
+          const isPinned = pinnedChatIds.includes(c.id);
+          const meta = directChatMeta[c.id] || {};
+          const lastTime = chatTimestamp(meta.lastMessageTime);
+          const unreadCount = meta.unreadCount || 0;
+          return {
+            type: "contact",
+            data: c,
+            id: c.id,
+            isPinned,
+            lastTime,
+            unreadCount,
+          };
+        })
+      : [];
+
+    return [...batchItems, ...contactItems].sort((a, b) => {
+      if (a.isPinned !== b.isPinned) return a.isPinned ? -1 : 1;
+      if (a.lastTime !== b.lastTime) return b.lastTime - a.lastTime;
+      if (a.unreadCount !== b.unreadCount) return b.unreadCount - a.unreadCount;
+      if (a.type !== b.type) return a.type === "batch" ? -1 : 1;
+      return 0;
+    });
+  }, [
+    chatFilterChip,
+    filteredChatBatches,
+    filteredChatContacts,
+    canAccessDirectChat,
+    pinnedChatIds,
+    batchChatMeta,
+    batchNotificationMeta,
+    directChatMeta,
+  ]);
 
   useEffect(() => {
     if (!selectedContactId) return;
@@ -2593,14 +2903,37 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
     );
   }
 
+  const availableBatchOptions = useMemo(() => {
+    const map = new Map();
+    (batches || []).forEach((b) => {
+      if (b && b.id) {
+        map.set(b.id, {
+          id: b.id,
+          name: b.name || "Batch",
+          domain: b.domain,
+        });
+      }
+    });
+    (profiles || []).forEach((p) => {
+      if (p.batch_id && !map.has(p.batch_id)) {
+        map.set(p.batch_id, {
+          id: p.batch_id,
+          name: p.batch_name || p.batch?.name || "Batch",
+          domain: p.domain,
+        });
+      }
+    });
+    return Array.from(map.values()).sort((a, b) => (a.name || "").localeCompare(b.name || ""));
+  }, [batches, profiles]);
+
   const filteredMembers = useMemo(() => {
     let list = combinedMembers;
     if (memberFilter !== "all") {
-      list = list.filter((m) => m.domain === memberFilter);
+      list = list.filter((m) => m.batch_id === memberFilter || m.batch?.id === memberFilter || m.batch_name === memberFilter);
     }
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
-      list = list.filter((m) => m.full_name?.toLowerCase().includes(q) || m.email?.toLowerCase().includes(q) || m.phone?.includes(q));
+      list = list.filter((m) => m.full_name?.toLowerCase().includes(q) || m.email?.toLowerCase().includes(q) || m.phone?.includes(q) || m.batch_name?.toLowerCase().includes(q));
     }
     return list;
   }, [combinedMembers, memberFilter, searchQuery]);
@@ -2617,11 +2950,11 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
   const filteredBatches = useMemo(() => {
     let list = batches;
     if (memberFilter !== "all") {
-      list = list.filter((b) => b.domain === memberFilter);
+      list = list.filter((b) => b.id === memberFilter || b.name === memberFilter);
     }
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
-      list = list.filter((b) => b.name?.toLowerCase().includes(q));
+      list = list.filter((b) => b.name?.toLowerCase().includes(q) || b.domain?.toLowerCase().includes(q));
     }
     return list;
   }, [batches, memberFilter, searchQuery]);
@@ -2642,7 +2975,7 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
       list = list.filter((task) => task.assigned_to === sessionUser?.id || (task.visible_to_interns && task.batch_id === userProfile?.batch_id));
     }
     if (memberFilter !== "all") {
-      list = list.filter((t) => t.domain === memberFilter);
+      list = list.filter((t) => t.batch_id === memberFilter || t.batch?.id === memberFilter || t.assigned_to_profile?.batch_id === memberFilter);
     }
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
@@ -2680,6 +3013,9 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
     } else if (isHrRole) {
       list = list.filter((meeting) => !meeting.batch_id || ownedBatchIds.has(meeting.batch_id));
     }
+    if (memberFilter !== "all") {
+      list = list.filter((m) => m.batch_id === memberFilter);
+    }
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
       list = list.filter(
@@ -2687,34 +3023,116 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
       );
     }
     return list;
-  }, [currentRole, isHrRole, isMentor, isTeamLeader, meetings, ownedBatchIds, searchQuery, sessionUser?.id, userProfile?.batch_id]);
+  }, [currentRole, isHrRole, isMentor, isTeamLeader, meetings, memberFilter, ownedBatchIds, searchQuery, sessionUser?.id, userProfile?.batch_id]);
 
   const filteredAttendance = useMemo(() => {
-    let list = attendance;
-    if (isMentor || isHrRole) {
-      list = list.filter((item) => item.batch_id ? ownedBatchIds.has(item.batch_id) : item.domain === userProfile?.domain);
-    } else if (isTeamLeader || currentRole === "intern") {
-      list = list.filter((item) => item.user_id === sessionUser?.id || item.batch_id === userProfile?.batch_id);
+    // 1. Determine base target members based on role
+    let baseMembers = [];
+    if (isAdminRole) {
+      baseMembers = profiles.filter((p) => ["intern", "team_leader"].includes(p.role));
+      if (!baseMembers.length) baseMembers = profiles;
+    } else if (isHrRole) {
+      baseMembers = profiles.filter((p) => ["intern", "team_leader"].includes(p.role) && (!p.batch_id || ownedBatchIds.has(p.batch_id) || p.domain === userProfile?.domain));
+    } else if (isMentor) {
+      baseMembers = profiles.filter((p) => ["intern", "team_leader"].includes(p.role) && (p.batch_id ? ownedBatchIds.has(p.batch_id) : p.domain === userProfile?.domain));
+    } else if (isTeamLeader) {
+      baseMembers = profiles.filter((p) => (p.role === "intern" && p.batch_id === userProfile?.batch_id) || p.id === sessionUser?.id);
+    } else {
+      // Intern / Member: only self
+      baseMembers = profiles.filter((p) => p.id === sessionUser?.id);
     }
+
+    // Also include any user present in attendance records if not already in baseMembers
+    const existingMemberIds = new Set(baseMembers.map((m) => m.id));
+    attendance.forEach((att) => {
+      if (att.user_id && !existingMemberIds.has(att.user_id)) {
+        if (isAdminRole || (att.batch_id && ownedBatchIds.has(att.batch_id)) || (currentRole === "intern" && att.user_id === sessionUser?.id)) {
+          const profileMatch = profiles.find((p) => p.id === att.user_id) || att.user;
+          if (profileMatch) {
+            existingMemberIds.add(att.user_id);
+            baseMembers.push(profileMatch);
+          }
+        }
+      }
+    });
+
+    // 2. Build summary for each member
+    let memberSummaries = baseMembers.map((m) => {
+      const userAtt = attendance
+        .filter((a) => a.user_id === m.id)
+        .sort((a, b) => new Date(b.attendance_date || b.created_at).getTime() - new Date(a.attendance_date || a.created_at).getTime());
+
+      const presentCount = userAtt.filter((a) => a.status === "present").length;
+      const lateCount = userAtt.filter((a) => a.status === "late").length;
+      const absentCount = userAtt.filter((a) => a.status === "absent").length;
+      const attendedCount = presentCount + lateCount;
+
+      const batchObj = batches.find((b) => b.id === m.batch_id) || m.batch;
+      const batchMeetings = meetings.filter(
+        (meet) => meet.batch_id && meet.batch_id === m.batch_id && ["completed", "in_progress", "live"].includes(meet.status)
+      );
+
+      const totalSessions = Math.max(batchMeetings.length, userAtt.length);
+      const attendanceRate = totalSessions > 0
+        ? Math.min(100, Math.round(((presentCount + (lateCount * 0.8)) / totalSessions) * 100))
+        : userAtt.length > 0 ? 100 : 0;
+
+      let standing = "on_track";
+      if (totalSessions > 0 && attendanceRate < 70) standing = "at_risk";
+      else if (totalSessions > 0 && attendanceRate < 85) standing = "warning";
+
+      const lastAttendedDate = userAtt[0]?.attendance_date || userAtt[0]?.created_at || null;
+
+      return {
+        id: m.id,
+        user_id: m.id,
+        user: m,
+        batch: batchObj,
+        batch_name: m.batch_name || batchObj?.name || "Unassigned Cohort",
+        domain: m.domain || batchObj?.domain,
+        totalSessions,
+        presentCount,
+        lateCount,
+        absentCount,
+        attendedCount,
+        attendanceRate,
+        lastAttendedDate,
+        records: userAtt,
+        standing,
+      };
+    });
+
+    // 3. Apply filters
     if (memberFilter !== "all") {
-      list = list.filter((a) => a.domain === memberFilter);
+      memberSummaries = memberSummaries.filter(
+        (item) =>
+          item.batch?.id === memberFilter ||
+          item.batch_id === memberFilter ||
+          item.user?.batch_id === memberFilter ||
+          item.batch_name === memberFilter
+      );
     }
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
-      list = list.filter(
-        (a) =>
-          a.user?.full_name?.toLowerCase().includes(q) ||
-          a.batch?.name?.toLowerCase().includes(q) ||
-          a.attendance_date?.includes(q)
+      memberSummaries = memberSummaries.filter(
+        (item) =>
+          item.user?.full_name?.toLowerCase().includes(q) ||
+          item.user?.email?.toLowerCase().includes(q) ||
+          item.batch_name?.toLowerCase().includes(q) ||
+          item.domain?.toLowerCase().includes(q)
       );
     }
-    return list;
-  }, [attendance, currentRole, isHrRole, isMentor, isTeamLeader, memberFilter, ownedBatchIds, searchQuery, sessionUser?.id, userProfile?.batch_id, userProfile?.domain]);
+
+    return memberSummaries;
+  }, [attendance, batches, currentRole, isAdminRole, isHrRole, isMentor, isTeamLeader, meetings, memberFilter, ownedBatchIds, profiles, searchQuery, sessionUser?.id, userProfile?.batch_id, userProfile?.domain]);
 
   const filteredCertificates = useMemo(() => {
     let list = certificates;
     if (memberFilter !== "all") {
-      list = list.filter((c) => c.domain === memberFilter);
+      list = list.filter((c) => {
+        const intern = profiles.find((p) => p.id === c.intern_id);
+        return c.batch_id === memberFilter || intern?.batch_id === memberFilter || c.batch_name === memberFilter;
+      });
     }
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
@@ -2725,7 +3143,7 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
       );
     }
     return list;
-  }, [certificates, memberFilter, searchQuery]);
+  }, [certificates, memberFilter, profiles, searchQuery]);
 
   const filteredAuditLogs = useMemo(() => {
     const knownEntityIds = new Set((auditLogs || []).map((l) => l.entity_id).filter(Boolean));
@@ -2842,7 +3260,7 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
   const filteredDailyUpdates = useMemo(() => {
     let list = dailyUpdates;
     if (memberFilter !== "all") {
-      list = list.filter((update) => update.domain === memberFilter || update.batch?.domain === memberFilter);
+      list = list.filter((update) => update.batch_id === memberFilter || update.batch?.id === memberFilter || update.batch?.name === memberFilter);
     }
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
@@ -2968,30 +3386,68 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
 
   const allowedSections = useMemo(() => {
     const sections = ["overview", "settings"];
-    if (isMentor) {
+    if (canUseCrm) {
+      sections.push("crm", "pipeline", "clients");
+    }
+    if (canUseProjects) {
+      sections.push("projects");
+      if (!sections.includes("clients")) sections.push("clients");
+    }
+    if (canUseSmm) {
+      sections.push("smm", "content_calendar");
+    }
+    if (canUseFinance) {
+      sections.push("invoices");
+    }
+    if (canUseSupport) {
+      sections.push("support");
+    }
+    if (canUseCms) {
+      sections.push("cms");
+    }
+    if (canUseLegacyTrainingWorkspace && isMentor) {
       sections.push("review_center", "task_submissions", "at_risk_watchlist");
-    } else if (isTeamLeader) {
+    } else if (canUseLegacyTrainingWorkspace && isTeamLeader) {
       sections.push("task_submissions");
     }
-    if (isAdminRole || isHrRole) {
+    if (canUseLegacyTrainingWorkspace && (isAdminRole || isHrRole)) {
       sections.push("review_center", "at_risk_watchlist");
     }
     if (canSeeOperations) {
       if (!isHrRole) sections.push("tasks");
-      if (isMentor || isTeamLeader) sections.push("daily_updates");
       sections.push("classes", "attendance");
     }
     if (canViewAllTeam) sections.push("members");
-    if (isHrRole) sections.push("hr_mentors", "hr_interns");
+    if (canUseLegacyTrainingWorkspace && isHrRole) sections.push("hr_mentors", "hr_interns");
     if (canViewBatches) sections.push("batches", "batch_workspace");
-    if (!sections.includes("batch_workspace")) sections.push("batch_workspace");
-    sections.push("batch_files");
+    if (canUseLegacyTrainingWorkspace) {
+      if (!sections.includes("batch_workspace")) sections.push("batch_workspace");
+      sections.push("batch_files");
+    }
     if (canIssueCertificates) sections.push("certificates");
     if (canUseMessages) sections.push("chat");
     if (canUseAlerts) sections.push("alerts");
     if (isAdminRole) sections.push("audit");
     return sections;
-  }, [canIssueCertificates, canSeeOperations, canUseAlerts, canUseMessages, canViewAllTeam, canViewBatches, isAdminRole, isHrRole, isMentor, isTeamLeader]);
+  }, [
+    canIssueCertificates,
+    canSeeOperations,
+    canUseAlerts,
+    canUseCms,
+    canUseCrm,
+    canUseFinance,
+    canUseLegacyTrainingWorkspace,
+    canUseMessages,
+    canUseProjects,
+    canUseSmm,
+    canUseSupport,
+    canViewAllTeam,
+    canViewBatches,
+    isAdminRole,
+    isHrRole,
+    isMentor,
+    isTeamLeader,
+  ]);
 
   const cmsPreview = useMemo(() => {
     const usesRaw = Boolean(cmsForm.raw_json.trim());
@@ -3020,17 +3476,17 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
     const internCount = profiles.filter((member) => ["intern", "team_leader"].includes(member.role)).length;
     if (isAdminRole) {
       return [
-        { label: "Assigned Batches", value: batches.length, sub: "Cohorts assigned across domains", color: "text-gray-900 dark:text-white" },
-        { label: "HR Managers", value: profiles.filter((member) => member.role === "hr").length, sub: "HR Operations Team", color: "text-red-600" },
-        { label: "Mentors & Interns", value: mentorCount + internCount, sub: "Total technical workforce", color: "text-blue-600" },
-        { label: "Audit & Site Events", value: filteredAuditLogs.length, sub: "A to Z system & website activity", color: "text-emerald-600" },
+        { label: "Inbound Leads", value: leads.length, sub: "Website, Meta, and manual CRM entries", color: "text-gray-900 dark:text-white" },
+        { label: "Closed Won Deals", value: deals.filter((deal) => deal.pipeline_stage === "closed_won").length, sub: "Ready for client/project handover", color: "text-red-600" },
+        { label: "Client Projects", value: projectsData.length, sub: "Tech delivery and client visibility", color: "text-blue-600" },
+        { label: "Open Support", value: supportTicketsList.filter((ticket) => !["resolved", "closed"].includes(ticket.status)).length, sub: "Post-delivery care queue", color: "text-emerald-600" },
       ];
     }
     if (isHrRole) {
       return [
-        { label: "Assigned Batches", value: batches.length, sub: "Cohorts assigned by Super Admin", color: "text-gray-900 dark:text-white" },
-        { label: "Mentors", value: mentorCount, sub: "Mentors added batch by batch", color: "text-red-600" },
-        { label: "Interns", value: internCount, sub: "Interns added inside batches", color: "text-blue-600" },
+        { label: "Employees", value: profiles.length, sub: "Central employee profile directory", color: "text-gray-900 dark:text-white" },
+        { label: "Department Heads", value: profiles.filter((member) => /head|lead/i.test(member.designation || ROLE_LABELS[member.role] || "")).length, sub: "Sales, Tech, HR, SMM and support owners", color: "text-red-600" },
+        { label: "Developer Interns", value: internCount, sub: "Future hires tracked as employees", color: "text-blue-600" },
         { label: "Certificates", value: certificates.length, sub: "HR release queue", color: "text-emerald-600" },
       ];
     }
@@ -3050,29 +3506,33 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
       { label: canUseCrm ? "Website Client Leads" : "Meetings", value: canUseCrm ? leads.length : meetings.length, sub: canUseCrm ? "Inbound Contact & CRM Requests" : "Live sessions and check-ins", color: "text-blue-600" },
       { label: "Completed Deliverables", value: approvedTasks, sub: "Verified & Approved Milestones", color: "text-emerald-600" },
     ];
-  }, [batches.length, canUseCrm, certificates.length, combinedMembers, filteredAuditLogs.length, isAdminRole, isHrRole, isMentor, leads.length, meetings.length, ownedBatches.length, profiles, tasks]);
+  }, [canUseCrm, certificates.length, combinedMembers, deals, isAdminRole, isHrRole, isMentor, leads.length, meetings.length, profiles, projectsData.length, supportTicketsList, tasks]);
 
   const metrics = dashboardMetrics;
 
   const mobileNavItems = useMemo(() => {
     const items = [
       { key: "overview", label: "Dashboard", icon: Home, section: "overview", show: true },
-      { key: "crm", label: "Leads", icon: Target, href: "/crm", show: canUseCrm, badge: leads.length },
-      { key: "members", label: isAdminRole ? "HR" : "Team", icon: Users, section: "members", show: canViewAllTeam, badge: combinedMembers.length },
-      { key: "batches", label: "Batches", icon: Folder, section: "batches", show: canViewBatches, badge: batches.length },
+      { key: "crm", label: "CRM", icon: Target, section: "crm", show: canUseCrm, badge: leads.length },
+      { key: "pipeline", label: "Pipeline", icon: TrendingUp, section: "pipeline", show: canUseCrm, badge: deals.length },
+      { key: "clients", label: "Clients", icon: Building2, section: "clients", show: canUseCrm || canUseProjects, badge: clients.length },
+      { key: "projects", label: "Projects", icon: Layers, section: "projects", show: canUseProjects, badge: projectsData.length },
+      { key: "smm", label: "SMM", icon: Sparkles, section: "smm", show: canUseSmm, badge: contentCalendar.length },
+      { key: "invoices", label: "Finance", icon: CreditCard, section: "invoices", show: canUseFinance, badge: invoicesList.length },
+      { key: "support", label: "Support", icon: LifeBuoy, section: "support", show: canUseSupport, badge: supportTicketsList.filter((t) => t.status !== "resolved").length },
+      { key: "members", label: "Team", icon: Users, section: "members", show: canViewAllTeam, badge: combinedMembers.length },
       { key: "tasks", label: "Tasks", icon: CheckSquare, section: "tasks", show: canSeeOperations && !isHrRole, badge: tasks.length },
       { key: "chat", label: "Chat", icon: MessageSquare, section: "chat", show: canUseMessages },
       { key: "classes", label: "Classes", icon: Calendar, section: "classes", show: canSeeOperations, badge: meetings.length },
-      { key: "attendance", label: "Attendance", icon: Clock, section: "attendance", show: canSeeOperations },
-      { key: "batch_workspace", label: "Workspace", icon: LayoutDashboard, section: "batch_workspace", show: true },
-      { key: "batch_files", label: "Files", icon: Folder, section: "batch_files", show: true },
-      { key: "daily_updates", label: "Updates", icon: Activity, section: "daily_updates", show: isMentor || isTeamLeader, badge: dailyUpdates.length },
-      { key: "task_submissions", label: "Submissions", icon: Send, section: "task_submissions", show: isMentor || isTeamLeader, badge: pendingSubmissionsCount },
-      { key: "review_center", label: "Reviews", icon: AlertCircle, section: "review_center", show: isMentor || isHrRole || isAdminRole, badge: mentorReviewCenterData.total },
-      { key: "at_risk_watchlist", label: "At Risk", icon: AlertTriangle, section: "at_risk_watchlist", show: isMentor || isHrRole || isAdminRole, badge: mentorAtRiskMembers.length },
+      { key: "attendance", label: "Attendance", icon: Clock, section: "attendance", show: canViewAttendanceHistory },
+      { key: "batch_files", label: "Files", icon: Folder, section: "batch_files", show: canUseLegacyTrainingWorkspace },
+      { key: "daily_updates", label: "Updates", icon: Activity, section: "daily_updates", show: canUseLegacyTrainingWorkspace && (isMentor || isTeamLeader), badge: dailyUpdates.length },
+      { key: "task_submissions", label: "Submissions", icon: Send, section: "task_submissions", show: canUseLegacyTrainingWorkspace && (isMentor || isTeamLeader), badge: pendingSubmissionsCount },
+      { key: "review_center", label: "Reviews", icon: AlertCircle, section: "review_center", show: canUseLegacyTrainingWorkspace && (isMentor || isHrRole || isAdminRole), badge: mentorReviewCenterData.total },
+      { key: "at_risk_watchlist", label: "At Risk", icon: AlertTriangle, section: "at_risk_watchlist", show: canUseLegacyTrainingWorkspace && (isMentor || isHrRole || isAdminRole), badge: mentorAtRiskMembers.length },
       { key: "certificates", label: "Certificates", icon: Award, section: "certificates", show: canIssueCertificates, badge: certificates.length },
-      { key: "hr_mentors", label: "Mentors", icon: UserCheck, section: "hr_mentors", show: isHrRole, badge: combinedMembers.filter((member) => member.role === "mentor").length },
-      { key: "hr_interns", label: "Interns", icon: Users, section: "hr_interns", show: isHrRole, badge: combinedMembers.filter((member) => member.role === "intern").length },
+      { key: "hr_mentors", label: "Mentors", icon: UserCheck, section: "hr_mentors", show: canUseLegacyTrainingWorkspace && isHrRole, badge: combinedMembers.filter((member) => member.role === "mentor").length },
+      { key: "hr_interns", label: "Interns", icon: Users, section: "hr_interns", show: canUseLegacyTrainingWorkspace && isHrRole, badge: combinedMembers.filter((member) => member.role === "intern").length },
       { key: "alerts", label: "Alerts", icon: Bell, section: "alerts", show: canUseAlerts, badge: unreadCount },
       { key: "audit", label: "Audit", icon: ShieldCheck, section: "audit", show: isAdminRole },
       { key: "cms", label: "CMS", icon: FileText, section: "cms", show: canUseCms },
@@ -3084,15 +3544,25 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
     batches.length,
     canIssueCertificates,
     canSeeOperations,
+    canViewAttendanceHistory,
     canUseAlerts,
     canUseCms,
     canUseCrm,
+    canUseFinance,
+    canUseLegacyTrainingWorkspace,
     canUseMessages,
+    canUseProjects,
+    canUseSmm,
+    canUseSupport,
     canViewAllTeam,
     canViewBatches,
     certificates.length,
+    clients.length,
     combinedMembers,
+    contentCalendar.length,
     dailyUpdates.length,
+    deals.length,
+    invoicesList.length,
     isAdminRole,
     isHrRole,
     isMentor,
@@ -3102,6 +3572,8 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
     mentorAtRiskMembers.length,
     mentorReviewCenterData.total,
     pendingSubmissionsCount,
+    projectsData.length,
+    supportTicketsList,
     tasks.length,
     unreadCount,
   ]);
@@ -3164,9 +3636,9 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
       const shouldLoadMeetings = ["super_admin", "hr", "mentor", "team_leader", "intern"].includes(role);
       const shouldLoadAttendance = ["super_admin", "hr", "mentor", "team_leader", "intern"].includes(role);
       const shouldLoadOperations = true;
-      const shouldLoadPeople = ["super_admin", "hr", "mentor", "team_leader"].includes(role);
-      const shouldLoadBatches = ["super_admin", "hr", "mentor", "team_leader", "intern"].includes(role);
-      const shouldLoadCrmSummary = ["sales", "sales_executive", "telecaller"].includes(domain) || role === "super_admin";
+      const shouldLoadPeople = ["super_admin", "admin", "hr", "mentor", "team_leader", "sales_head", "tech_lead", "smm_head", "finance_head", "support_head"].includes(role);
+      const shouldLoadBatches = ["super_admin", "admin", "hr", "mentor", "team_leader", "intern"].includes(role);
+      const shouldLoadCrmSummary = ["sales", "sales_executive", "telecaller"].includes(domain) || role === "super_admin" || role === "sales_head";
       const shouldLoadCertificates = role === "hr" || role === "super_admin";
       const shouldLoadGovernance = role === "super_admin";
       // Priority 1: Fetch batches and profiles immediately for near-instant contact/batch list rendering
@@ -3188,7 +3660,7 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
       }).catch(() => {});
 
       const [leadsData, certsData, profilesData, notificationsData, batchesData, cmsData, cmsVersionsData, auditData, queueData] = await Promise.all([
-        shouldLoadCrmSummary ? getCloudLeads() : Promise.resolve([]),
+        getCloudLeads(),
         shouldLoadCertificates ? getCertificates() : Promise.resolve([]),
         fetchProfilesPromise,
         getNotifications(user.id),
@@ -3230,6 +3702,39 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
       setCmsVersions(cmsVersionsData || []);
       setAuditLogs(auditData || []);
       setNotificationQueue(queueData || []);
+
+      // Load Unified Enterprise Business Modules Data
+      try {
+        const [
+          clientsRes,
+          dealsRes,
+          projectsRes,
+          smmRes,
+          contentRes,
+          invoicesRes,
+          ticketsRes,
+          prefsRes,
+        ] = await Promise.all([
+          getClients(),
+          getDeals(),
+          getProjects(),
+          getSmmClients(),
+          getContentCalendar(),
+          getInvoices(),
+          getSupportTickets(),
+          getNotificationPreferences(user.id),
+        ]);
+        setClients(clientsRes || []);
+        setDeals(dealsRes || []);
+        setProjectsData(projectsRes || []);
+        setSmmClients(smmRes || []);
+        setContentCalendar(contentRes || []);
+        setInvoicesList(invoicesRes || []);
+        setSupportTicketsList(ticketsRes || []);
+        setNotificationPreferences(prefsRes || {});
+      } catch (e) {
+        console.warn("Unified business data fetch warning:", e?.message || e);
+      }
     } catch (err) {
       console.warn("Failed to load dashboard data (network or sync):", err?.message || err);
     }
@@ -3252,20 +3757,107 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
     }
   }
 
-  async function fetchProfile(userId, userEmail) {
+  async function fetchProfile(userId, userEmail, userMetadata = null) {
+    if (!userId) return;
     try {
-      const { data, error } = await supabase.from("profiles").select("*").eq("id", userId).maybeSingle();
+      // 1. Optimistic recovery from localStorage cache
+      let cachedProfile = null;
+      if (typeof window !== "undefined") {
+        try {
+          const rawLocal = localStorage.getItem("texweb_profile_" + userId);
+          if (rawLocal) cachedProfile = JSON.parse(rawLocal);
+          if (!cachedProfile) {
+            const cachedList = JSON.parse(localStorage.getItem("texweb_cached_profiles") || "[]");
+            cachedProfile = cachedList.find((p) => p.id === userId) || null;
+          }
+        } catch {}
+      }
+
+      // If we don't have userProfile yet, apply cached profile immediately
+      if (cachedProfile && !userProfile) {
+        setUserProfile(cachedProfile);
+      }
+
+      // 2. Fetch with 6-second timeout to prevent browser hanging on network latency
+      let data = null;
+      let error = null;
+      try {
+        const fetchPromise = supabase.from("profiles").select("*").eq("id", userId).maybeSingle();
+        const timeoutPromise = new Promise((_, reject) =>
+          setTimeout(() => reject(new Error("Profile query timeout")), 6000)
+        );
+        const res = await Promise.race([fetchPromise, timeoutPromise]);
+        data = res?.data;
+        error = res?.error;
+      } catch {
+        // Fallback to cached profile if connection times out
+        data = cachedProfile;
+      }
+
       if (error) {
         console.warn("Profile fetch warning:", error.message);
+        data = data || cachedProfile;
       }
-      const profile =
-        data || {
-          id: userId,
-          full_name: userEmail?.split("@")[0] || "User",
-          email: userEmail,
-          role: userEmail?.toLowerCase().includes("admin") ? "super_admin" : "intern",
-          domain: "web_dev",
-        };
+
+      // 3. User metadata (use passed in userMetadata first to avoid extra network roundtrip)
+      let metaRole = userMetadata?.role;
+      let metaDomain = userMetadata?.domain;
+      let metaFullName = userMetadata?.full_name;
+
+      if (!metaRole && !metaDomain) {
+        try {
+          const { data: authUserData } = await supabase.auth.getUser();
+          metaRole = authUserData?.user?.user_metadata?.role;
+          metaDomain = authUserData?.user?.user_metadata?.domain;
+          metaFullName = authUserData?.user?.user_metadata?.full_name;
+        } catch {}
+      }
+
+      let effectiveRole = data?.role;
+      if (!effectiveRole || effectiveRole === "intern") {
+        if (data?.designation === "Sales Head" || (data?.domain === "sales" && data?.designation?.toLowerCase().includes("head"))) {
+          effectiveRole = "sales_head";
+        } else if (data?.designation === "Sales Executive") {
+          effectiveRole = "sales_executive";
+        } else if (data?.designation === "Telecaller") {
+          effectiveRole = "telecaller";
+        } else if (data?.designation === "Tech Lead") {
+          effectiveRole = "tech_lead";
+        } else if (data?.designation === "Project Manager" || data?.designation === "PM") {
+          effectiveRole = "pm";
+        } else if (data?.designation === "SMM Head") {
+          effectiveRole = "smm_head";
+        } else if (data?.designation === "Finance Head") {
+          effectiveRole = "finance_head";
+        } else if (data?.designation === "Support Head") {
+          effectiveRole = "support_head";
+        } else if (metaRole) {
+          effectiveRole = metaRole;
+        } else if (userEmail?.toLowerCase().includes("admin")) {
+          effectiveRole = "super_admin";
+        } else {
+          effectiveRole = data?.role || "intern";
+        }
+      }
+      const effectiveDomain = (data?.domain && data.domain !== "web_dev")
+        ? data.domain
+        : (metaDomain || data?.domain || (effectiveRole.startsWith("sales") || effectiveRole === "telecaller" ? "sales" : "web_dev"));
+
+      const profile = {
+        ...(data || cachedProfile || {}),
+        id: userId,
+        full_name: data?.full_name || cachedProfile?.full_name || metaFullName || userEmail?.split("@")[0] || "User",
+        email: userEmail,
+        role: effectiveRole,
+        domain: effectiveDomain,
+      };
+
+      if (typeof window !== "undefined") {
+        try {
+          localStorage.setItem("texweb_profile_" + userId, JSON.stringify(profile));
+        } catch {}
+      }
+
       if (["suspended", "paused"].includes(profile.status)) {
         try {
           await supabase.auth.signOut();
@@ -3296,7 +3888,7 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
         } = await supabase.auth.getSession();
         if (session?.user && isMounted) {
           setSessionUser(session.user);
-          await fetchProfile(session.user.id, session.user.email);
+          await fetchProfile(session.user.id, session.user.email, session.user.user_metadata);
         }
       } catch (err) {
         console.warn("Auth check network error:", err?.message || err);
@@ -3311,10 +3903,14 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
           setAuthMode("reset");
           setAuthMessage({ type: "success", text: "Set a new password to complete secure account setup." });
         }
+        if (event === "INITIAL_SESSION") {
+          // Already handled by checkAuth on mount
+          return;
+        }
         if (session?.user) {
           setSessionUser(session.user);
-          await fetchProfile(session.user.id, session.user.email);
-        } else {
+          await fetchProfile(session.user.id, session.user.email, session.user.user_metadata);
+        } else if (event === "SIGNED_OUT") {
           setSessionUser(null);
           setUserProfile(null);
         }
@@ -3514,6 +4110,34 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
       supabase.removeChannel(batchChannel);
     };
   }, [sessionUser, selectedBatch?.id]);
+
+  // Realtime Notifications & Audio Chime Hook
+  useEffect(() => {
+    if (!sessionUser?.id) return undefined;
+    const notifChannel = supabase
+      .channel(`realtime-notifications-${sessionUser.id}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "notifications",
+          filter: `user_id=eq.${sessionUser.id}`,
+        },
+        (payload) => {
+          const newNotif = payload?.new;
+          if (newNotif) {
+            setNotifications((prev) => [newNotif, ...prev.filter((n) => n.id !== newNotif.id)]);
+            playNotificationSound(newNotif.type || "general");
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(notifChannel);
+    };
+  }, [sessionUser?.id]);
 
   useEffect(() => {
     if (!sessionUser?.id) return undefined;
@@ -4131,6 +4755,8 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
     }
 
     setSelectedContactId(contactId);
+    setSelectedBatchId("");
+    setChatChannelTab("direct");
     setChatMobilePane("chat");
     loadMessages(contactId, { preserveCurrent: Boolean(cached && cached.length) });
     markDirectChatRead(contactId);
@@ -4576,11 +5202,22 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
         data: { session },
       } = await supabase.auth.getSession();
       const selectedBatch = batches.find((b) => b.id === memberForm.batch_id);
-      if (isHrRole && !selectedBatch) {
+      if (isHrRole && !selectedBatch && ["mentor", "intern"].includes(memberForm.role)) {
         setToast("Please select an assigned batch first.");
         return;
       }
-      const resolvedDomain = isAdminRole && memberForm.role === "hr" ? "management" : isHrRole ? selectedBatch.domain : memberForm.domain;
+      const resolvedDomain =
+        ["sales_head", "sales_executive", "telecaller"].includes(memberForm.role)
+          ? "sales"
+          : memberForm.role === "smm_head"
+          ? "marketing"
+          : ["tech_lead", "pm"].includes(memberForm.role)
+          ? "web_dev"
+          : ["finance_head", "support_head", "hr"].includes(memberForm.role)
+          ? "management"
+          : isHrRole && selectedBatch
+          ? selectedBatch.domain
+          : memberForm.domain || "web_dev";
       const response = await fetch("/api/admin/create-user", {
         method: "POST",
         headers: {
@@ -4588,16 +5225,16 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
           Authorization: `Bearer ${session?.access_token || ""}`,
         },
         body: JSON.stringify({
-          full_name: memberForm.full_name,
-          email: memberForm.email,
-          phone: memberForm.phone.replace(/[^0-9]/g, ""),
-          role: memberForm.role,
-          domain: resolvedDomain,
-          batch_id: memberForm.batch_id || null,
-          batch_name: selectedBatch?.name || null,
+          full_name: typeof memberForm.full_name === "string" ? memberForm.full_name : "",
+          email: typeof memberForm.email === "string" ? memberForm.email : "",
+          phone: typeof memberForm.phone === "string" ? memberForm.phone.replace(/[^0-9]/g, "") : "",
+          role: typeof memberForm.role === "string" && memberForm.role ? memberForm.role : "intern",
+          domain: typeof resolvedDomain === "string" ? resolvedDomain : "web_dev",
+          batch_id: typeof memberForm.batch_id === "string" && memberForm.batch_id ? memberForm.batch_id : null,
+          batch_name: typeof selectedBatch?.name === "string" ? selectedBatch.name : null,
           assigned_tl_id: null,
-          assigned_mentor_id: memberForm.role === "intern" ? selectedBatch?.mentor_id || null : null,
-          password: memberForm.temp_password,
+          assigned_mentor_id: memberForm.role === "intern" && typeof selectedBatch?.mentor_id === "string" ? selectedBatch.mentor_id : null,
+          password: typeof memberForm.temp_password === "string" ? memberForm.temp_password : "",
         }),
       });
       const result = await response.json();
@@ -4609,6 +5246,16 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
         setSetupLinks((prev) => ({ ...prev, [result.profile.id]: result.setup_link }));
       }
       setNewMemberModal(false);
+      setNewMemberWhatsappModal({
+        full_name: result.profile?.full_name || memberForm.full_name,
+        email: result.profile?.email || memberForm.email,
+        phone: memberForm.phone || result.profile?.phone || "",
+        role: result.profile?.role || memberForm.role,
+        batch_name: selectedBatch?.name || "",
+        domain: resolvedDomain,
+        temp_password: memberForm.temp_password,
+        setup_link: result.setup_link || "",
+      });
       await createNotification({
         user_id: sessionUser.id,
         title: `${ROLE_LABELS[result.profile?.role] || "Account"} created`,
@@ -4647,13 +5294,23 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
   }
 
   function openEnrollMemberModal(roleOverride = "") {
-    const defaultRole = memberRoleOptions.some(([role]) => role === roleOverride) ? roleOverride : memberRoleOptions[0]?.[0] || "intern";
+    const cleanRoleOverride = typeof roleOverride === "string" ? roleOverride.trim() : "";
+    const defaultRole = memberRoleOptions.some(([role]) => role === cleanRoleOverride)
+      ? cleanRoleOverride
+      : memberRoleOptions[0]?.[0] || "intern";
     const defaultBatch = isHrRole ? batches[0] : null;
+    const assignedRole = cleanRoleOverride || (typeof memberForm.role === "string" && memberRoleOptions.some(([role]) => role === memberForm.role) ? memberForm.role : defaultRole);
+    let initialDomain = isHrRole ? defaultBatch?.domain || "web_dev" : "sales";
+    if (["sales_head", "sales_executive", "telecaller"].includes(assignedRole)) initialDomain = "sales";
+    else if (assignedRole === "smm_head") initialDomain = "marketing";
+    else if (["tech_lead", "pm"].includes(assignedRole)) initialDomain = "web_dev";
+    else if (["finance_head", "support_head", "hr"].includes(assignedRole)) initialDomain = "management";
+
     setMemberForm((prev) => ({
       ...prev,
-      role: roleOverride || (memberRoleOptions.some(([role]) => role === prev.role) ? prev.role : defaultRole),
-      batch_id: isHrRole ? defaultBatch?.id || "" : prev.batch_id,
-      domain: isHrRole ? defaultBatch?.domain || "web_dev" : prev.domain,
+      role: assignedRole,
+      batch_id: isHrRole ? defaultBatch?.id || "" : prev.batch_id || "",
+      domain: initialDomain,
       assigned_tl_id: "",
       assigned_mentor_id: "",
     }));
@@ -4675,17 +5332,24 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
   }
 
   function handleSendWhatsapp(member) {
-    if (!member.phone) {
+    if (!member || !member.phone) {
       setToast("WhatsApp phone number is missing.");
       return;
     }
+    const cleanPhone = member.phone.replace(/[^0-9]/g, "");
     const setupLine = member.setup_link
-      ? `Secure Setup Link: ${member.setup_link}\n`
-      : "Setup: Open login page and use Forgot password to set your password.\n";
+      ? `🔑 *Setup Link:* ${member.setup_link}\n`
+      : member.temp_password
+      ? `🔑 *Temporary Password:* ${member.temp_password}\n_(Please update your password after first login)_\n`
+      : "🔑 *Password:* Use 'Forgot Password' on login page to set your password.\n";
+    const batchLine = member.batch_name ? `📚 *Batch:* ${member.batch_name}\n` : "";
+    const roleLine = member.role ? `💼 *Role:* ${ROLE_LABELS[member.role] || member.role}\n` : "";
+    const domainLine = member.domain ? `🏷️ *Department:* ${domainLabel(member.domain)}\n` : "";
+    const supervisorLine = member.assigned_tl ? `👤 *Supervisor:* ${member.assigned_tl}\n` : "";
     const message = encodeURIComponent(
-      `*Welcome to TexWeb Solution Panel!*\n\nHello *${member.full_name}*,\nYour secure portal setup details are:\n\nURL: https://texwebsolution.in/login\nEmail: ${member.email}\n${setupLine}Domain: ${domainLabel(member.domain)}\nSupervisor: ${member.assigned_tl}\n\nPlease set your own password and do not share this link with anyone.`
+      `*Welcome to TexWeb Solution!*\n\nHello *${member.full_name}*,\nYour new workspace ID and portal access details have been created:\n\n🌐 *Portal URL:* https://texwebsolution.in/login\n📧 *Login Email:* ${member.email}\n${setupLine}${roleLine}${batchLine}${domainLine}${supervisorLine}\n⚠️ _Please do not share these credentials with anyone. Log in to access your batch dashboard, assignments, and team chat._`
     );
-    window.open(`https://wa.me/${member.phone.replace(/[^0-9]/g, "")}?text=${message}`, "_blank", "noopener,noreferrer");
+    window.open(`https://wa.me/${cleanPhone}?text=${message}`, "_blank", "noopener,noreferrer");
   }
 
   function openEditMemberModal(member) {
@@ -5223,6 +5887,21 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
     e.preventDefault();
     const userId = attendanceForm.user_id || sessionUser?.id;
     const profile = profiles.find((item) => item.id === userId) || userProfile;
+
+    if (attendanceForm.meeting_id) {
+      const targetMeeting = meetings.find((m) => m.id === attendanceForm.meeting_id);
+      if (targetMeeting) {
+        if (targetMeeting.status === "completed" || targetMeeting.status === "cancelled") {
+          setToast("Meeting has ended. Attendance is closed.");
+          return;
+        }
+        const isLive = Boolean(targetMeeting.attendance_token?.includes("#live:")) || targetMeeting.status === "in_progress" || targetMeeting.status === "live";
+        if (!isLive) {
+          setToast("Meeting has not started yet. Attendance is only enabled during live meetings.");
+          return;
+        }
+      }
+    }
     const saved = await markAttendance({
       user_id: userId,
       batch_id: attendanceForm.batch_id || profile?.batch_id || null,
@@ -5330,6 +6009,91 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
     setNewMeetingModal(false);
     setToast("Meeting scheduled.");
     setMeetingForm({ title: "", topic: "", scheduled_at: "", meeting_link: "https://meet.google.com/new", batch_id: "", attendee_id: "", attendance_token: "" });
+  }
+
+  async function handleStartMeeting(meeting) {
+    if (!meeting?.id) return;
+    try {
+      setToast("Starting meeting session...");
+      const saved = await startMeeting(meeting.id);
+      if (saved) {
+        setMeetings((prev) => prev.map((m) => (m.id === meeting.id ? { ...m, ...saved } : m)));
+        setToast("Meeting is now LIVE! Opening Google Meet...");
+      } else {
+        setMeetings((prev) => prev.map((m) => (m.id === meeting.id ? { ...m, attendance_token: `${(m.attendance_token || "").split("#")[0]}#live:${new Date().toISOString()}` } : m)));
+        setToast("Meeting started.");
+      }
+      if (meeting.meeting_link && typeof window !== "undefined") {
+        window.open(safeExternalUrl(meeting.meeting_link), "_blank", "noopener,noreferrer");
+      }
+      await loadDashboardData();
+    } catch (err) {
+      setToast(err.message || "Failed to start meeting.");
+    }
+  }
+
+  async function handleEndMeeting(meeting) {
+    if (!meeting?.id) return;
+    if (!confirm(`Are you sure you want to end "${meeting.title}"? This will close attendance and disable joining for everyone.`)) {
+      return;
+    }
+    try {
+      setToast("Ending meeting session...");
+      const saved = await endMeeting(meeting.id);
+      if (saved) {
+        setMeetings((prev) => prev.map((m) => (m.id === meeting.id ? { ...m, ...saved, status: "completed" } : m)));
+        setToast("Meeting ended successfully. Attendance closed.");
+      } else {
+        setMeetings((prev) => prev.map((m) => (m.id === meeting.id ? { ...m, status: "completed" } : m)));
+        setToast("Meeting ended.");
+      }
+      await loadDashboardData();
+    } catch (err) {
+      setToast(err.message || "Failed to end meeting.");
+    }
+  }
+
+  async function handleSelfMarkMeetingAttendance(meeting) {
+    if (!meeting?.id) return;
+    const isEnded = meeting.status === "completed" || meeting.status === "cancelled";
+    const isLive = !isEnded && (
+      Boolean(meeting.attendance_token?.includes("#live:")) ||
+      meeting.status === "in_progress" ||
+      meeting.status === "live"
+    );
+    if (isEnded) {
+      setToast("Meeting has ended. Attendance is closed.");
+      return;
+    }
+    if (!isLive) {
+      setToast("Meeting has not started yet. Attendance is only enabled during live meetings.");
+      return;
+    }
+    try {
+      const cleanToken = (meeting.attendance_token || "").split("#")[0];
+      const { data: { session } } = await supabase.auth.getSession();
+      const response = await fetch("/api/attendance/verify", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session?.access_token || ""}`,
+        },
+        body: JSON.stringify({
+          meeting_id: meeting.id,
+          batch_id: meeting.batch_id || userProfile?.batch_id || null,
+          token: cleanToken,
+        }),
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        setToast(result.error || "Failed to mark attendance.");
+        return;
+      }
+      setToast(result.alreadyMarked ? "Attendance already marked for this meeting." : "Attendance marked successfully!");
+      await loadDashboardData();
+    } catch (err) {
+      setToast(err.message || "Failed to mark attendance.");
+    }
   }
 
   async function handlePromoteInternToTl(member) {
@@ -6232,26 +6996,122 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
                 <span className="admin-sidebar-item-label">Dashboard</span>
               </button>
 
-              {/* Category 2: Supervision & Review */}
-              {(isMentor || isTeamLeader || isHrRole || isAdminRole) && (
+              {/* Category 2: CRM & Sales */}
+              {canUseCrm && (
                 <>
                   <div className="admin-sidebar-divider border-t border-gray-100 dark:border-slate-800/80 my-2 mx-1" />
                   <div className="admin-sidebar-group-header px-3 pt-2 pb-1">
                     <span className="admin-sidebar-group-title text-[10px] font-black uppercase tracking-wider text-gray-400 dark:text-neutral-500">
-                      Supervision
+                      CRM & Sales
                     </span>
                   </div>
 
-                  {/* Task Submissions */}
-                  {(isMentor || isTeamLeader) && (
+                  <button
+                    onClick={() => selectSection("crm")}
+                    aria-label="Leads"
+                    title="Leads"
+                    className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl transition cursor-pointer ${
+                      activeSection === "crm"
+                        ? "text-gray-900 dark:text-white font-semibold bg-gray-100/90 dark:bg-slate-800 shadow-2xs"
+                        : "text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-50 dark:hover:bg-slate-800/60"
+                    }`}
+                  >
+                    <div className="flex items-center gap-3.5">
+                      <Target className="w-5 h-5 shrink-0 stroke-[1.75] text-red-500" />
+                      <span className="admin-sidebar-item-label">Leads</span>
+                    </div>
+                    {leads.length > 0 && (
+                      <span className="text-[11px] font-bold text-red-600 bg-red-50 dark:bg-red-950/40 px-2 py-0.5 rounded-full">
+                        {leads.length}
+                      </span>
+                    )}
+                  </button>
+
+                  <button
+                    onClick={() => selectSection("pipeline")}
+                    aria-label="Sales Pipeline"
+                    title="Sales Pipeline"
+                    className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl transition cursor-pointer ${
+                      activeSection === "pipeline"
+                        ? "text-gray-900 dark:text-white font-semibold bg-gray-100/90 dark:bg-slate-800 shadow-2xs"
+                        : "text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-50 dark:hover:bg-slate-800/60"
+                    }`}
+                  >
+                    <div className="flex items-center gap-3.5">
+                      <TrendingUp className="w-5 h-5 shrink-0 stroke-[1.75] text-emerald-500" />
+                      <span className="admin-sidebar-item-label">Sales Pipeline</span>
+                    </div>
+                    {deals.length > 0 && (
+                      <span className="text-[11px] font-bold text-emerald-600 bg-emerald-50 dark:bg-emerald-950/40 px-2 py-0.5 rounded-full">
+                        {deals.length}
+                      </span>
+                    )}
+                  </button>
+
+                  <button
+                    onClick={() => selectSection("clients")}
+                    aria-label="Clients"
+                    title="Clients"
+                    className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl transition cursor-pointer ${
+                      activeSection === "clients"
+                        ? "text-gray-900 dark:text-white font-semibold bg-gray-100/90 dark:bg-slate-800 shadow-2xs"
+                        : "text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-50 dark:hover:bg-slate-800/60"
+                    }`}
+                  >
+                    <div className="flex items-center gap-3.5">
+                      <Building2 className="w-5 h-5 shrink-0 stroke-[1.75] text-blue-500" />
+                      <span className="admin-sidebar-item-label">Clients</span>
+                    </div>
+                    {clients.length > 0 && (
+                      <span className="text-[11px] font-bold text-blue-600 bg-blue-50 dark:bg-blue-950/40 px-2 py-0.5 rounded-full">
+                        {clients.length}
+                      </span>
+                    )}
+                  </button>
+                </>
+              )}
+
+              {/* Category 3: Tech & Projects */}
+              {canUseProjects && (
+                <>
+                  <div className="admin-sidebar-divider border-t border-gray-100 dark:border-slate-800/80 my-2 mx-1" />
+                  <div className="admin-sidebar-group-header px-3 pt-2 pb-1">
+                    <span className="admin-sidebar-group-title text-[10px] font-black uppercase tracking-wider text-gray-400 dark:text-neutral-500">
+                      Tech & Projects
+                    </span>
+                  </div>
+
+                  <button
+                    onClick={() => selectSection("projects")}
+                    aria-label="Projects"
+                    title="Projects"
+                    className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl transition cursor-pointer ${
+                      activeSection === "projects"
+                        ? "text-gray-900 dark:text-white font-semibold bg-gray-100/90 dark:bg-slate-800 shadow-2xs"
+                        : "text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-50 dark:hover:bg-slate-800/60"
+                    }`}
+                  >
+                    <div className="flex items-center gap-3.5">
+                      <Layers className="w-5 h-5 shrink-0 stroke-[1.75] text-purple-500" />
+                      <span className="admin-sidebar-item-label">Projects</span>
+                    </div>
+                    {projectsData.length > 0 && (
+                      <span className="text-[11px] font-bold text-purple-600 bg-purple-50 dark:bg-purple-950/40 px-2 py-0.5 rounded-full">
+                        {projectsData.length}
+                      </span>
+                    )}
+                  </button>
+
+                  {canUseLegacyTrainingWorkspace && (isMentor || isTeamLeader) && (
                     <button
                       onClick={() => selectSection("task_submissions")}
                       aria-label="Task Submissions"
                       title="Task Submissions"
-                      className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl transition cursor-pointer ${activeSection === "task_submissions"
-                        ? "text-gray-900 dark:text-white font-semibold bg-gray-100/90 dark:bg-slate-800 shadow-2xs"
-                        : "text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-50 dark:hover:bg-slate-800/60"
-                        }`}
+                      className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl transition cursor-pointer ${
+                        activeSection === "task_submissions"
+                          ? "text-gray-900 dark:text-white font-semibold bg-gray-100/90 dark:bg-slate-800 shadow-2xs"
+                          : "text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-50 dark:hover:bg-slate-800/60"
+                      }`}
                     >
                       <div className="flex items-center gap-3.5">
                         <Send className="w-5 h-5 shrink-0 stroke-[1.75] text-indigo-500" />
@@ -6265,16 +7125,16 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
                     </button>
                   )}
 
-                  {/* Review Center */}
-                  {(isMentor || isHrRole || isAdminRole) && (
+                  {canUseLegacyTrainingWorkspace && (isMentor || isHrRole || isAdminRole) && (
                     <button
                       onClick={() => selectSection("review_center")}
                       aria-label="Review Center"
                       title="Review Center"
-                      className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl transition cursor-pointer ${activeSection === "review_center"
-                        ? "text-gray-900 dark:text-white font-semibold bg-gray-100/90 dark:bg-slate-800 shadow-2xs"
-                        : "text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-50 dark:hover:bg-slate-800/60"
-                        }`}
+                      className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl transition cursor-pointer ${
+                        activeSection === "review_center"
+                          ? "text-gray-900 dark:text-white font-semibold bg-gray-100/90 dark:bg-slate-800 shadow-2xs"
+                          : "text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-50 dark:hover:bg-slate-800/60"
+                      }`}
                     >
                       <div className="flex items-center gap-3.5">
                         <AlertCircle className="w-5 h-5 shrink-0 stroke-[1.75] text-amber-500" />
@@ -6288,16 +7148,16 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
                     </button>
                   )}
 
-                  {/* At-Risk Watchlist */}
-                  {(isMentor || isHrRole || isAdminRole) && (
+                  {canUseLegacyTrainingWorkspace && (isMentor || isHrRole || isAdminRole) && (
                     <button
                       onClick={() => selectSection("at_risk_watchlist")}
                       aria-label="At-Risk Watchlist"
                       title="At-Risk Watchlist"
-                      className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl transition cursor-pointer ${activeSection === "at_risk_watchlist"
-                        ? "text-gray-900 dark:text-white font-semibold bg-gray-100/90 dark:bg-slate-800 shadow-2xs"
-                        : "text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-50 dark:hover:bg-slate-800/60"
-                        }`}
+                      className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl transition cursor-pointer ${
+                        activeSection === "at_risk_watchlist"
+                          ? "text-gray-900 dark:text-white font-semibold bg-gray-100/90 dark:bg-slate-800 shadow-2xs"
+                          : "text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-50 dark:hover:bg-slate-800/60"
+                      }`}
                     >
                       <div className="flex items-center gap-3.5">
                         <AlertTriangle className="w-5 h-5 shrink-0 stroke-[1.75] text-red-500" />
@@ -6313,57 +7173,135 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
                 </>
               )}
 
-              {/* Category 3: Batch Operations */}
-              {(canViewBatches || canSeeOperations || canIssueCertificates) && (
+              {/* Category 4: SMM */}
+              {canUseSmm && (
                 <>
                   <div className="admin-sidebar-divider border-t border-gray-100 dark:border-slate-800/80 my-2 mx-1" />
                   <div className="admin-sidebar-group-header px-3 pt-2 pb-1">
                     <span className="admin-sidebar-group-title text-[10px] font-black uppercase tracking-wider text-gray-400 dark:text-neutral-500">
-                      Operations
+                      SMM
                     </span>
                   </div>
 
-                  {/* Batches */}
-                  {canViewBatches && (
-                    <button
-                      onClick={() => selectSection("batches")}
-                      aria-label="Batches"
-                      title="Batches"
-                      className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl transition cursor-pointer ${activeSection === "batches"
+                  <button
+                    onClick={() => selectSection("smm")}
+                    aria-label="SMM Clients"
+                    title="SMM Clients"
+                    className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl transition cursor-pointer ${
+                      activeSection === "smm"
                         ? "text-gray-900 dark:text-white font-semibold bg-gray-100/90 dark:bg-slate-800 shadow-2xs"
                         : "text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-50 dark:hover:bg-slate-800/60"
-                        }`}
-                    >
-                      <div className="flex items-center gap-3.5">
-                        <Folder className="w-5 h-5 shrink-0 stroke-[1.75]" />
-                        <span className="admin-sidebar-item-label">Batches</span>
-                      </div>
-                      {batches.length > 0 && (
-                        <span className="text-[11px] font-semibold text-gray-500 dark:text-slate-400 bg-gray-100 dark:bg-slate-800 px-2 py-0.5 rounded-full">
-                          {batches.length}
-                        </span>
-                      )}
-                    </button>
-                  )}
-
-                  {/* Batch Files (Accessible to Admin, HR, Mentor, TL, and Intern) */}
-                  <button
-                    onClick={() => selectSection("batch_files")}
-                    aria-label="Batch Files"
-                    title="Batch Files"
-                    className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl transition cursor-pointer ${activeSection === "batch_files"
-                      ? "text-gray-900 dark:text-white font-semibold bg-gray-100/90 dark:bg-slate-800 shadow-2xs"
-                      : "text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-50 dark:hover:bg-slate-800/60"
-                      }`}
+                    }`}
                   >
                     <div className="flex items-center gap-3.5">
-                      <Folder className="w-5 h-5 shrink-0 stroke-[1.75] text-amber-500" />
-                      <span className="admin-sidebar-item-label">Batch Files</span>
+                      <Sparkles className="w-5 h-5 shrink-0 stroke-[1.75] text-pink-500" />
+                      <span className="admin-sidebar-item-label">SMM Clients</span>
                     </div>
-                    <span className="text-[10px] font-bold text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/50 px-2 py-0.5 rounded-full border border-amber-200/60 dark:border-amber-900/60">
-                      Docs
-                    </span>
+                    {smmClients.length > 0 && (
+                      <span className="text-[11px] font-bold text-pink-600 bg-pink-50 dark:bg-pink-950/40 px-2 py-0.5 rounded-full">
+                        {smmClients.length}
+                      </span>
+                    )}
                   </button>
+
+                  <button
+                    onClick={() => selectSection("content_calendar")}
+                    aria-label="Content Calendar"
+                    title="Content Calendar"
+                    className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl transition cursor-pointer ${
+                      activeSection === "content_calendar"
+                        ? "text-gray-900 dark:text-white font-semibold bg-gray-100/90 dark:bg-slate-800 shadow-2xs"
+                        : "text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-50 dark:hover:bg-slate-800/60"
+                    }`}
+                  >
+                    <div className="flex items-center gap-3.5">
+                      <Calendar className="w-5 h-5 shrink-0 stroke-[1.75] text-pink-500" />
+                      <span className="admin-sidebar-item-label">Content Calendar</span>
+                    </div>
+                    {contentCalendar.length > 0 && (
+                      <span className="text-[11px] font-bold text-pink-600 bg-pink-50 dark:bg-pink-950/40 px-2 py-0.5 rounded-full">
+                        {contentCalendar.length}
+                      </span>
+                    )}
+                  </button>
+                </>
+              )}
+
+              {/* Category 5: Finance */}
+              {canUseFinance && (
+                <>
+                  <div className="admin-sidebar-divider border-t border-gray-100 dark:border-slate-800/80 my-2 mx-1" />
+                  <div className="admin-sidebar-group-header px-3 pt-2 pb-1">
+                    <span className="admin-sidebar-group-title text-[10px] font-black uppercase tracking-wider text-gray-400 dark:text-neutral-500">
+                      Finance
+                    </span>
+                  </div>
+
+                  <button
+                    onClick={() => selectSection("invoices")}
+                    aria-label="Invoices"
+                    title="Invoices"
+                    className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl transition cursor-pointer ${
+                      activeSection === "invoices"
+                        ? "text-gray-900 dark:text-white font-semibold bg-gray-100/90 dark:bg-slate-800 shadow-2xs"
+                        : "text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-50 dark:hover:bg-slate-800/60"
+                    }`}
+                  >
+                    <div className="flex items-center gap-3.5">
+                      <CreditCard className="w-5 h-5 shrink-0 stroke-[1.75] text-emerald-500" />
+                      <span className="admin-sidebar-item-label">Invoices</span>
+                    </div>
+                    {invoicesList.length > 0 && (
+                      <span className="text-[11px] font-bold text-emerald-600 bg-emerald-50 dark:bg-emerald-950/40 px-2 py-0.5 rounded-full">
+                        {invoicesList.length}
+                      </span>
+                    )}
+                  </button>
+                </>
+              )}
+
+              {/* Category 6: Support */}
+              {canUseSupport && (
+                <>
+                  <div className="admin-sidebar-divider border-t border-gray-100 dark:border-slate-800/80 my-2 mx-1" />
+                  <div className="admin-sidebar-group-header px-3 pt-2 pb-1">
+                    <span className="admin-sidebar-group-title text-[10px] font-black uppercase tracking-wider text-gray-400 dark:text-neutral-500">
+                      Support
+                    </span>
+                  </div>
+
+                  <button
+                    onClick={() => selectSection("support")}
+                    aria-label="Support Tickets"
+                    title="Support Tickets"
+                    className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl transition cursor-pointer ${
+                      activeSection === "support"
+                        ? "text-gray-900 dark:text-white font-semibold bg-gray-100/90 dark:bg-slate-800 shadow-2xs"
+                        : "text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-50 dark:hover:bg-slate-800/60"
+                    }`}
+                  >
+                    <div className="flex items-center gap-3.5">
+                      <LifeBuoy className="w-5 h-5 shrink-0 stroke-[1.75] text-cyan-500" />
+                      <span className="admin-sidebar-item-label">Support Tickets</span>
+                    </div>
+                    {supportTicketsList.filter((t) => t.status !== "resolved").length > 0 && (
+                      <span className="text-[11px] font-bold text-cyan-600 bg-cyan-50 dark:bg-cyan-950/40 px-2 py-0.5 rounded-full">
+                        {supportTicketsList.filter((t) => t.status !== "resolved").length}
+                      </span>
+                    )}
+                  </button>
+                </>
+              )}
+
+              {/* Category 3: Engineering & Operations */}
+              {(canSeeOperations || canViewAttendanceHistory) && (
+                <>
+                  <div className="admin-sidebar-divider border-t border-gray-100 dark:border-slate-800/80 my-2 mx-1" />
+                  <div className="admin-sidebar-group-header px-3 pt-2 pb-1">
+                    <span className="admin-sidebar-group-title text-[10px] font-black uppercase tracking-wider text-gray-400 dark:text-neutral-500">
+                      Engineering & Tasks
+                    </span>
+                  </div>
 
                   {/* Tasks */}
                   {canSeeOperations && !isHrRole && (
@@ -6388,8 +7326,8 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
                     </button>
                   )}
 
-                  {/* Daily Updates (Strictly Mentor and TL only) */}
-                  {(isMentor || isTeamLeader) && (
+                  {/* Daily Updates (Strictly Mentor, Lead, and Team) */}
+                  {canUseLegacyTrainingWorkspace && (isMentor || isTeamLeader) && (
                     <button
                       onClick={() => selectSection("daily_updates")}
                       aria-label="Daily Updates"
@@ -6411,12 +7349,12 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
                     </button>
                   )}
 
-                  {/* Classes */}
+                  {/* Standups & Calls */}
                   {canSeeOperations && (
                     <button
                       onClick={() => selectSection("classes")}
-                      aria-label="Classes"
-                      title="Classes"
+                      aria-label="Standups & Calls"
+                      title="Standups & Calls"
                       className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl transition cursor-pointer ${activeSection === "classes"
                         ? "text-gray-900 dark:text-white font-semibold bg-gray-100/90 dark:bg-slate-800 shadow-2xs"
                         : "text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-50 dark:hover:bg-slate-800/60"
@@ -6424,7 +7362,7 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
                     >
                       <div className="flex items-center gap-3.5">
                         <Calendar className="w-5 h-5 shrink-0 stroke-[1.75]" />
-                        <span className="admin-sidebar-item-label">Classes</span>
+                        <span className="admin-sidebar-item-label">Standups & Calls</span>
                       </div>
                       {meetings.length > 0 && (
                         <span className="text-[11px] font-semibold text-gray-500 dark:text-slate-400 bg-gray-100 dark:bg-slate-800 px-2 py-0.5 rounded-full">
@@ -6435,7 +7373,7 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
                   )}
 
                   {/* Attendance */}
-                  {canSeeOperations && (
+                  {canViewAttendanceHistory && (
                     <button
                       onClick={() => selectSection("attendance")}
                       aria-label="Attendance"
@@ -6449,34 +7387,11 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
                       <span className="admin-sidebar-item-label">Attendance</span>
                     </button>
                   )}
-
-                  {/* Certificates */}
-                  {canIssueCertificates && (
-                    <button
-                      onClick={() => selectSection("certificates")}
-                      aria-label="Certificates"
-                      title="Certificates"
-                      className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl transition cursor-pointer ${activeSection === "certificates"
-                        ? "text-gray-900 dark:text-white font-semibold bg-gray-100/90 dark:bg-slate-800 shadow-2xs"
-                        : "text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-50 dark:hover:bg-slate-800/60"
-                        }`}
-                    >
-                      <div className="flex items-center gap-3.5">
-                        <Award className="w-5 h-5 shrink-0 stroke-[1.75]" />
-                        <span className="admin-sidebar-item-label">Certificates</span>
-                      </div>
-                      {certificates.length > 0 && (
-                        <span className="text-[11px] font-semibold text-gray-500 dark:text-slate-400 bg-gray-100 dark:bg-slate-800 px-2 py-0.5 rounded-full">
-                          {certificates.length}
-                        </span>
-                      )}
-                    </button>
-                  )}
                 </>
               )}
 
               {/* Category 4: Directory & Team */}
-              {(canViewAllTeam || isHrRole) && (
+              {(canViewAllTeam || (canUseLegacyTrainingWorkspace && isHrRole)) && (
                 <>
                   <div className="admin-sidebar-divider border-t border-gray-100 dark:border-slate-800/80 my-2 mx-1" />
                   <div className="admin-sidebar-group-header px-3 pt-2 pb-1">
@@ -6507,7 +7422,7 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
                     </button>
                   )}
 
-                  {isHrRole && (
+                  {canUseLegacyTrainingWorkspace && isHrRole && (
                     <>
                       <button
                         onClick={() => selectSection("hr_mentors")}
@@ -6603,33 +7518,13 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
                 </>
               )}
 
-              {/* Category 6: Governance & System */}
+              {/* Category 10: System */}
               <div className="admin-sidebar-divider border-t border-gray-100 dark:border-slate-800/80 my-2 mx-1" />
               <div className="admin-sidebar-group-header px-3 pt-2 pb-1">
                 <span className="admin-sidebar-group-title text-[10px] font-black uppercase tracking-wider text-gray-400 dark:text-neutral-500">
                   System
                 </span>
               </div>
-
-              {/* Sales CRM */}
-              {canUseCrm && (
-                <Link
-                  href="/crm"
-                  aria-label="Sales CRM"
-                  title="Sales CRM"
-                  className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl transition cursor-pointer text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-50 dark:hover:bg-slate-800/60"
-                >
-                  <div className="flex items-center gap-3.5">
-                    <Target className="w-5 h-5 shrink-0 stroke-[1.75]" />
-                    <span className="admin-sidebar-item-label">Sales CRM</span>
-                  </div>
-                  {leads.length > 0 && (
-                    <span className="text-[11px] font-bold text-red-600 bg-red-50 dark:bg-red-950/40 px-2 py-0.5 rounded-full">
-                      {leads.length}
-                    </span>
-                  )}
-                </Link>
-              )}
 
               {/* Audit Logs */}
               {isAdminRole && (
@@ -6815,39 +7710,102 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
           </aside>
 
           {/* Main Content Area: Transitions cleanly when sidebar collapses/expands */}
-          <main className={`flex-1 min-w-0 max-w-full transition-all duration-300 ${sidebarOpen ? "md:ml-64 sm:md:ml-68" : "ml-0 md:ml-[72px]"
+          <main className={`flex-1 min-w-0 max-w-full transition-[margin] duration-300 ${sidebarOpen ? "md:ml-64 sm:md:ml-68" : "ml-0 md:ml-[72px]"
             } ${activeSection === "chat"
               ? (chatMobilePane === "chat"
                 ? "h-[100dvh] max-h-[100dvh] overflow-hidden pt-0 md:pt-3 px-0 sm:px-3 lg:px-4 pb-0 md:pb-2 flex flex-col"
-                : "h-[100dvh] max-h-[100dvh] overflow-y-auto overflow-x-hidden overscroll-contain xl:overflow-hidden pt-[4.5rem] md:pt-3 sm:pt-[4.5rem] px-2 sm:px-3 lg:px-4 pb-28 md:pb-4 flex flex-col")
-              : "min-h-screen pt-[4.5rem] md:pt-3 sm:pt-[4.5rem] px-2 sm:px-3 lg:px-4 pb-28 md:pb-12"}`}>
+                : "h-[100dvh] max-h-[100dvh] overflow-y-auto overflow-x-hidden overscroll-contain xl:overflow-hidden pt-16 md:pt-3 px-2 sm:px-3 lg:px-4 pb-28 md:pb-4 flex flex-col")
+              : "min-h-screen pt-16 md:pt-3 px-3 sm:px-4 lg:px-5 pb-28 md:pb-12"}`}>
             <div
               className={`transition-colors min-w-0 max-w-full ${activeSection === "chat"
                 ? (chatMobilePane === "chat"
                   ? "flex-1 min-h-0 flex flex-col space-y-0 sm:space-y-2 p-0 sm:p-2"
                   : "flex-1 min-h-0 flex flex-col p-2 sm:p-3 lg:p-4 space-y-4")
-                : "p-2 sm:p-3 lg:p-4 space-y-2 md:space-y-4"} ${isDark ? "bg-transparent text-slate-100" : "bg-transparent text-gray-900"}`}
+                : "p-0 sm:p-3 lg:p-4 space-y-3 md:space-y-4"} ${isDark ? "bg-transparent text-slate-100" : "bg-transparent text-gray-900"}`}
             >
-              {/* 1. Header Banner of the Card with Title + Contextual Actions (Shown for Chat channels view and all standard sections) */}
+              {/* Mobile Page Header (Consistent heading size + tailored short para for all mobile pages) */}
               {!(activeSection === "chat" && chatMobilePane === "chat") && (
-                <div className={`flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-3 pb-1 md:pb-3 border-b-0 border-transparent shrink-0 ${activeSection === "chat" ? "md:hidden" : ""}`}>
-                  <div>
-                    {/* Role & Department Badges */}
-                    <div className="flex items-center gap-2 mb-2">
-                      <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-red-50 text-red-700 dark:bg-red-500/10 dark:text-red-400 border border-red-200 dark:border-red-500/20">
-                        {ROLE_LABELS[currentRole] || currentRole}
-                      </span>
-                      <span className="px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-700 dark:bg-slate-800 dark:text-slate-300 border border-gray-200 dark:border-slate-700">
-                        {profileDepartmentLabel(userProfile)}
-                      </span>
-                    </div>
+                <div className="md:hidden pt-1 pb-3 border-b border-gray-200/70 dark:border-slate-800/70 mb-3">
+                  <h1 className="text-lg font-bold text-gray-900 dark:text-white tracking-tight font-[Matter]">
+                    {activeSection === "overview" && "Dashboard"}
+                    {activeSection === "crm" && "CRM & Leads"}
+                    {activeSection === "pipeline" && "Sales Pipeline"}
+                    {activeSection === "clients" && "Client Accounts"}
+                    {activeSection === "projects" && "Projects & Delivery"}
+                    {activeSection === "smm" && "SMM Clients"}
+                    {activeSection === "content_calendar" && "Content Calendar"}
+                    {activeSection === "invoices" && "Invoices & Billing"}
+                    {activeSection === "support" && "Client Support"}
+                    {activeSection === "batches" && "Batches"}
+                    {activeSection === "batch_files" && "Batch Files"}
+                    {activeSection === "tasks" && "Tasks"}
+                    {activeSection === "task_submissions" && "Task Submissions"}
+                    {activeSection === "review_center" && "Supervisor Review"}
+                    {activeSection === "at_risk_watchlist" && "At-Risk Watchlist"}
+                    {activeSection === "classes" && "Classes & Meetings"}
+                    {activeSection === "daily_updates" && "Daily Updates"}
+                    {activeSection === "members" && (isAdminRole ? "HR Managers" : "Team Members")}
+                    {activeSection === "hr_mentors" && "Supervising Mentors"}
+                    {activeSection === "hr_interns" && "Enrolled Interns"}
+                    {activeSection === "attendance" && "Attendance"}
+                    {activeSection === "certificates" && "Certificates"}
+                    {activeSection === "cms" && "Website Content"}
+                    {activeSection === "alerts" && "Notifications"}
+                    {activeSection === "chat" && "Chat"}
+                    {activeSection === "settings" && "Profile & Settings"}
+                    {activeSection === "batch_workspace" && (selectedBatch?.name || "Batch Workspace")}
+                    {activeSection === "audit" && "Activity Logs"}
+                  </h1>
+                  <p className="text-xs text-gray-500 dark:text-slate-400 mt-1 leading-relaxed">
+                    {activeSection === "overview" && `Welcome back, ${userProfile?.full_name?.split(" ")[0] || sessionUser?.user_metadata?.full_name?.split(" ")[0] || "User"} 👋 Here is your workspace overview and activity today.`}
+                    {activeSection === "crm" && "Track website inquiries, lead statuses, WhatsApp outreach, and qualification."}
+                    {activeSection === "pipeline" && "Visual Kanban pipeline from Lead to Closed Won agreement and advance payment."}
+                    {activeSection === "clients" && "Central client directory with connected deals, projects, invoices, and support."}
+                    {activeSection === "projects" && "Manage development sprint delivery, QA checklists, and deployment handovers."}
+                    {activeSection === "smm" && "Oversee marketing retainers, social accounts, and campaign deliverable timelines."}
+                    {activeSection === "content_calendar" && "Multi-stage content approval workflow: draft, review, client approval, and publish."}
+                    {activeSection === "invoices" && "Milestone billing, invoice generation, GST breakdown, and payment recording."}
+                    {activeSection === "support" && "Client maintenance tickets, SLA resolution, and handover management."}
+                    {activeSection === "batches" && (isAdminRole ? "Create batches and assign HR managers." : "View and manage cohorts assigned to you.")}
+                    {activeSection === "batch_files" && "Access technical guides, resources, and documents."}
+                    {activeSection === "tasks" && "Track project deliverables, deadlines, and assignments."}
+                    {activeSection === "task_submissions" && "Inspect submitted deliverables and grade student assignments."}
+                    {activeSection === "review_center" && "Review batch escalations, critical roadblocks, and alerts."}
+                    {activeSection === "at_risk_watchlist" && "Monitor students with low attendance or pending tasks."}
+                    {activeSection === "classes" && "Join scheduled live sessions and Google Meet classes."}
+                    {activeSection === "daily_updates" && "Track daily standup progress, blockers, and comments."}
+                    {activeSection === "members" && (isAdminRole ? "Manage HR manager accounts across the workspace." : "Directory of mentors, team leaders, and students.")}
+                    {activeSection === "hr_mentors" && "Oversee domain mentors and active cohort assignments."}
+                    {activeSection === "hr_interns" && "Monitor student profiles, assigned cohorts, and progress."}
+                    {activeSection === "attendance" && "Track session participation and attendance records."}
+                    {activeSection === "certificates" && "Generate and issue verified completion credentials."}
+                    {activeSection === "cms" && "Manage website content, banners, and published courses."}
+                    {activeSection === "alerts" && "Recent notifications, announcements, and priority updates."}
+                    {activeSection === "chat" && "Direct and batch messaging with team members."}
+                    {activeSection === "settings" && "Manage your personal profile, credentials, and settings."}
+                    {activeSection === "batch_workspace" && "Collaborative workspace for tasks, files, and updates."}
+                    {activeSection === "audit" && "Recent activity logs and security history."}
+                  </p>
+                </div>
+              )}
 
+              {/* 1. Header Banner of the Card with Title + Contextual Actions (Desktop only; hidden on all mobile pages) */}
+              {activeSection !== "chat" && (
+                <div className="hidden md:flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-3 pb-1 md:pb-3 border-b-0 border-transparent shrink-0">
+                  <div>
                     <h1 className="text-2xl sm:text-3xl font-extrabold text-gray-900 dark:text-white tracking-tight font-[Matter]">
                       {activeSection === "overview" && "Dashboard"}
+                      {activeSection === "crm" && "CRM & Leads"}
+                      {activeSection === "pipeline" && "Sales Pipeline"}
+                      {activeSection === "clients" && "Client Accounts"}
+                      {activeSection === "projects" && "Projects & Delivery"}
+                      {activeSection === "smm" && "Social Media Marketing (SMM)"}
+                      {activeSection === "content_calendar" && "Content Calendar"}
+                      {activeSection === "invoices" && "Invoices & Billing"}
+                      {activeSection === "support" && "Client Support & Tickets"}
                       {activeSection === "task_submissions" && "Task Submissions"}
                       {activeSection === "review_center" && "Supervisor Review Center"}
                       {activeSection === "at_risk_watchlist" && "At-Risk Intern Watchlist"}
-                      {activeSection === "crm" && "Website Leads"}
                       {activeSection === "tasks" && "Tasks"}
                       {activeSection === "daily_updates" && "Daily Updates"}
                       {activeSection === "classes" && "Classes & Meetings"}
@@ -6868,10 +7826,17 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
 
                     <p className="text-xs text-gray-500 dark:text-slate-400 mt-1 max-w-2xl leading-relaxed">
                       {activeSection === "overview" && (isAdminRole ? "Overview of HR managers, training batches, and recent activity." : "Overview of team members, tasks, and updates.")}
+                      {activeSection === "crm" && "Track website inquiries, lead qualification, and customer acquisition."}
+                      {activeSection === "pipeline" && "Kanban deal progress: qualification, meetings, proposals, and closed won handover."}
+                      {activeSection === "clients" && "Centralized directory of client companies with linked deals, projects, invoices, and tickets."}
+                      {activeSection === "projects" && "Monitor technical project delivery, sprints, QA checklists, and deployment handover."}
+                      {activeSection === "smm" && "Social media client retainers, platform profiles, and deliverable targets."}
+                      {activeSection === "content_calendar" && "Multi-stage content approval workflow: draft, review, client approval, and publish."}
+                      {activeSection === "invoices" && "Generate invoices, calculate GST, manage milestones, and record client settlements."}
+                      {activeSection === "support" && "Post-delivery client tickets, resolution SLA, and project handover support."}
                       {activeSection === "task_submissions" && "Dedicated console to inspect submitted links, project deliverables, and grade intern task submissions."}
                       {activeSection === "review_center" && "Review and resolve batch escalations, critical roadblocks, and urgent issues escalated by batch managers."}
                       {activeSection === "at_risk_watchlist" && "Centralized monitoring of interns with low attendance (<70%) or blocked tasks requiring mentor intervention."}
-                      {activeSection === "crm" && "View customer inquiries from the website."}
                       {activeSection === "tasks" && "View and manage assigned tasks."}
                       {activeSection === "daily_updates" && "Track task-wise daily progress, blockers, and TL/Mentor comments."}
                       {activeSection === "classes" && "Join scheduled live sessions and Google Meet classes."}
@@ -6894,6 +7859,19 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
                   {/* Header Action Buttons (Context-Aware) */}
                   <div className="flex items-center gap-2 shrink-0">
                     <button
+                      onClick={() => setNotificationModalOpen(true)}
+                      className="relative p-2.5 rounded-xl text-gray-500 hover:text-gray-900 dark:text-slate-400 dark:hover:text-white bg-gray-100/80 hover:bg-gray-200/80 dark:bg-slate-800 dark:hover:bg-slate-700 border border-gray-200 dark:border-slate-700 shadow-2xs transition cursor-pointer"
+                      title="Open Notification Center"
+                      aria-label="Notifications"
+                    >
+                      <Bell className="w-4 h-4" />
+                      {unreadCount > 0 && (
+                        <span className="absolute -top-1 -right-1 min-w-4 h-4 px-1 rounded-full bg-red-600 text-white text-[9px] font-black flex items-center justify-center ring-2 ring-white dark:ring-slate-900">
+                          {unreadCount > 9 ? "9+" : unreadCount}
+                        </span>
+                      )}
+                    </button>
+                    <button
                       onClick={() => setGlobalSearchOpen(true)}
                       className="hidden md:inline-flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold bg-gray-100/80 hover:bg-gray-200/80 dark:bg-slate-800 dark:hover:bg-slate-700 text-gray-500 dark:text-slate-400 border border-gray-200 dark:border-slate-700 shadow-2xs transition cursor-pointer"
                       title="Global Search (Ctrl + K)"
@@ -6907,49 +7885,53 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
                     {activeSection === "overview" && isAdminRole && (
                       <>
                         <button
-                          onClick={openEnrollMemberModal}
+                          onClick={() => openEnrollMemberModal()}
                           className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-red-600 via-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 text-white font-bold text-xs transition-all shadow-md shadow-red-500/20 hover:shadow-lg hover:shadow-red-500/30 active:scale-95 cursor-pointer flex items-center gap-2 tracking-wide"
                         >
                           <Plus className="w-4 h-4" />
-                          <span>Add HR</span>
+                          <span>Add Member</span>
                         </button>
-                        <button
-                          onClick={() => setNewBatchModal(true)}
-                          className="px-4 py-2.5 rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-gray-50 dark:hover:bg-slate-700 text-gray-800 dark:text-white font-bold text-xs transition-all shadow-2xs hover:shadow-sm active:scale-95 cursor-pointer flex items-center gap-2"
-                        >
-                          <Folder className="w-4 h-4 text-red-600" />
-                          <span>Create Batch</span>
-                        </button>
+                        {canUseLegacyTrainingWorkspace && (
+                          <button
+                            onClick={() => setNewBatchModal(true)}
+                            className="px-4 py-2.5 rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-gray-50 dark:hover:bg-slate-700 text-gray-800 dark:text-white font-bold text-xs transition-all shadow-2xs hover:shadow-sm active:scale-95 cursor-pointer flex items-center gap-2"
+                          >
+                            <Folder className="w-4 h-4 text-red-600" />
+                            <span>Create Batch</span>
+                          </button>
+                        )}
                       </>
                     )}
                     {activeSection === "overview" && isHrRole && (
                       <>
                         <button
-                          onClick={() => openEnrollMemberModal("mentor")}
+                          onClick={() => openEnrollMemberModal()}
                           className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-red-600 via-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 text-white font-bold text-xs transition-all shadow-md shadow-red-500/20 hover:shadow-lg hover:shadow-red-500/30 active:scale-95 cursor-pointer flex items-center gap-2 tracking-wide"
                         >
                           <Plus className="w-4 h-4" />
-                          <span>Add Mentor</span>
-                        </button>
-                        <button
-                          onClick={() => openEnrollMemberModal("intern")}
-                          className="px-4 py-2.5 rounded-xl border border-gray-300 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-gray-100 dark:hover:bg-slate-700 text-gray-800 dark:text-white font-bold text-xs transition-all active:scale-95 cursor-pointer flex items-center gap-2 tracking-wide"
-                        >
-                          <Plus className="w-4 h-4 text-red-600" />
-                          <span>Add Intern</span>
+                          <span>Add Employee</span>
                         </button>
                       </>
                     )}
+                    {activeSection === "review_center" && (
+                      <button
+                        onClick={openRaiseEscalationModal}
+                        className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-red-600 via-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 text-white font-bold text-xs transition-all shadow-md shadow-red-500/20 active:scale-95 cursor-pointer flex items-center gap-2 tracking-wide"
+                      >
+                        <Plus className="w-4 h-4" />
+                        <span>Raise Escalation</span>
+                      </button>
+                    )}
                     {activeSection === "members" && canManageCredentials && (
                       <button
-                        onClick={openEnrollMemberModal}
+                        onClick={() => openEnrollMemberModal()}
                         className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-red-600 via-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 text-white font-bold text-xs transition-all shadow-md shadow-red-500/20 hover:shadow-lg hover:shadow-red-500/30 active:scale-95 cursor-pointer flex items-center gap-2 tracking-wide"
                       >
                         <Plus className="w-4 h-4" />
-                        <span>{isAdminRole ? "Add HR Manager" : "Add Team Member"}</span>
+                        <span>{isAdminRole ? "Add Member" : "Add Team Member"}</span>
                       </button>
                     )}
-                    {activeSection === "hr_mentors" && isHrRole && (
+                    {activeSection === "hr_mentors" && canUseLegacyTrainingWorkspace && isHrRole && (
                       <button
                         onClick={() => openEnrollMemberModal("mentor")}
                         className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-red-600 via-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 text-white font-bold text-xs transition-all shadow-md shadow-red-500/20 hover:shadow-lg hover:shadow-red-500/30 active:scale-95 cursor-pointer flex items-center gap-2 tracking-wide"
@@ -6958,7 +7940,7 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
                         <span>Add Mentor</span>
                       </button>
                     )}
-                    {activeSection === "hr_interns" && isHrRole && (
+                    {activeSection === "hr_interns" && canUseLegacyTrainingWorkspace && isHrRole && (
                       <button
                         onClick={() => openEnrollMemberModal("intern")}
                         className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-red-600 via-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 text-white font-bold text-xs transition-all shadow-md shadow-red-500/20 hover:shadow-lg hover:shadow-red-500/30 active:scale-95 cursor-pointer flex items-center gap-2 tracking-wide"
@@ -7070,12 +8052,12 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
 
               {/* 1.5. Branded Hero Welcome Card - ONLY on Admin Dashboard Overview */}
               {activeSection === "overview" && isAdminRole && (
-                <div className="relative overflow-hidden rounded-2xl border border-gray-200/90 dark:border-slate-800 bg-gradient-to-r from-red-50/70 via-rose-50/40 to-amber-50/30 dark:from-red-950/20 dark:via-transparent dark:to-transparent p-4 sm:p-5 backdrop-blur-xs transition-all shadow-2xs">
+                <div className="workspace-overview-card relative overflow-hidden rounded-xl sm:rounded-2xl border border-gray-200/90 dark:border-slate-800 bg-gradient-to-r from-red-50/70 via-rose-50/40 to-amber-50/30 dark:from-red-950/20 dark:via-transparent dark:to-transparent p-3.5 sm:p-5 backdrop-blur-xs transition-all shadow-2xs">
                   <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                    <div className="flex items-center gap-3.5 min-w-0">
+                    <div className="flex items-center gap-3 min-w-0 w-full">
                       <div className="min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
-                          <h2 className="text-base sm:text-lg font-bold text-gray-900 dark:text-white tracking-tight">
+                          <h2 className="text-base sm:text-lg font-bold text-gray-900 dark:text-white tracking-tight leading-tight break-words">
                             Welcome back, {userProfile?.full_name || "Workspace Admin"} 👋
                           </h2>
                           <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-bold tracking-wide uppercase bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
@@ -7083,13 +8065,13 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
                             Operational
                           </span>
                         </div>
-                        <p className="text-xs text-gray-500 dark:text-slate-400 mt-0.5 line-clamp-1 sm:line-clamp-none">
+                        <p className="text-xs text-gray-500 dark:text-slate-400 mt-1 sm:mt-0.5 leading-relaxed sm:line-clamp-none">
                           TexWeb Solution unified workspace dashboard — real-time monitoring of team members, tasks, and operational performance.
                         </p>
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
+                    <div className="flex items-center gap-2 shrink-0 self-start sm:self-center">
                       <div className="px-3 py-1.5 rounded-xl bg-white/90 dark:bg-transparent border border-gray-200/80 dark:border-slate-800 flex items-center gap-2 text-xs text-gray-600 dark:text-slate-300 shadow-2xs">
                         <Clock className="w-3.5 h-3.5 text-red-600" />
                         <span className="font-semibold text-[11px]">
@@ -7103,14 +8085,14 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
 
               {/* 2. Stat Metric Cards - ONLY on Admin Dashboard Overview */}
               {activeSection === "overview" && isAdminRole && (
-                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
+                <div className="grid grid-cols-1 min-[425px]:grid-cols-2 xl:grid-cols-4 gap-2.5 sm:gap-3">
                   {dashboardMetrics.map((m, mIdx) => {
                     const icons = [Users, Folder, Briefcase, Activity];
                     const IconComp = icons[mIdx % icons.length];
                     return (
                       <div
                         key={m.label}
-                        className="relative overflow-hidden p-3.5 rounded-xl border border-gray-200/80 dark:border-slate-800/80 bg-transparent dark:bg-transparent shadow-none hover:shadow-sm hover:-translate-y-0.5 transition-all duration-200 group"
+                        className="workspace-overview-card relative overflow-hidden p-3 sm:p-3.5 rounded-xl border border-gray-200/80 dark:border-slate-800/80 bg-transparent dark:bg-transparent shadow-none hover:shadow-sm hover:-translate-y-0.5 transition-all duration-200 group"
                       >
                         <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-red-500 via-rose-500 to-amber-500 opacity-80 group-hover:opacity-100 transition-opacity" />
                         <div className="flex items-start justify-between gap-3">
@@ -7118,14 +8100,14 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
                             <div className="text-[11px] font-bold text-gray-400 dark:text-slate-400 uppercase tracking-wider font-sans">
                               {m.label}
                             </div>
-                            <div className={`text-3xl font-black tracking-tight my-1.5 font-sans ${m.color}`}>
+                            <div className={`text-2xl sm:text-3xl font-black tracking-tight my-1.5 font-sans ${m.color}`}>
                               {m.value}
                             </div>
-                            <div className="text-xs text-gray-500 dark:text-slate-400 font-sans truncate">
+                            <div className="text-xs text-gray-500 dark:text-slate-400 font-sans leading-snug">
                               {m.sub}
                             </div>
                           </div>
-                          <div className="w-10 h-10 rounded-xl bg-red-50 dark:bg-red-500/10 border border-red-200/60 dark:border-red-500/20 text-red-600 dark:text-red-400 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
+                          <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-red-50 dark:bg-red-500/10 border border-red-200/60 dark:border-red-500/20 text-red-600 dark:text-red-400 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
                             <IconComp className="w-5 h-5 stroke-[1.75]" />
                           </div>
                         </div>
@@ -7133,6 +8115,21 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
                     );
                   })}
                 </div>
+              )}
+
+              {activeSection === "overview" && isBusinessLeadership && !isSalesRole && (
+                <BusinessCommandOverview
+                  heads={BUSINESS_DEPARTMENT_HEADS}
+                  flowSteps={BUSINESS_FLOW_STEPS}
+                  leads={leads}
+                  deals={deals}
+                  clients={clients}
+                  projects={projectsData}
+                  smmClients={smmClients}
+                  invoices={invoicesList}
+                  tickets={supportTicketsList}
+                  onNavigate={selectSection}
+                />
               )}
 
               {/* 3. Search & Filter Bar (Only for tables, not alerts, chat, settings, batch files, or non-admin overview) */}
@@ -7165,9 +8162,11 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
                         onChange={(e) => setMemberFilter(e.target.value)}
                         className="w-full pl-3.5 pr-8 py-2.5 rounded-xl border border-gray-200 dark:border-slate-700 bg-transparent dark:bg-transparent text-xs font-semibold text-gray-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-600 transition shadow-none cursor-pointer appearance-none"
                       >
-                        <option value="all">All Departments</option>
-                        {DOMAIN_OPTIONS.map((d) => (
-                          <option key={d.value} value={d.value}>{d.label}</option>
+                        <option value="all">All Batches</option>
+                        {availableBatchOptions.map((b) => (
+                          <option key={b.id} value={b.id}>
+                            {b.name}
+                          </option>
                         ))}
                       </select>
                       <ChevronDown className="w-4 h-4 absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
@@ -7688,7 +8687,7 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
               {activeSection === "chat" && (
                 <div className="flex-1 min-h-0 h-full grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_minmax(300px,340px)] gap-0 xl:gap-3 animate-fadeIn">
                   {/* Left Column: Active WhatsApp Chat Area */}
-                  <div className={`${chatMobilePane === "chat" ? "fixed inset-0 z-50 xl:relative xl:inset-auto xl:z-auto flex" : "hidden"} xl:flex h-full min-h-0 rounded-none sm:rounded-2xl xl:rounded-3xl overflow-hidden border-0 sm:border border-gray-200/80 dark:border-slate-800/80 flex-col relative shadow-none`}>
+                  <div className={`${chatMobilePane === "chat" ? "fixed inset-0 z-50 xl:relative xl:inset-auto xl:z-auto flex animate-chat-pane-in bg-white dark:bg-[#0b0f17]" : "hidden"} xl:flex h-full min-h-0 rounded-none sm:rounded-2xl xl:rounded-3xl overflow-hidden border-0 sm:border border-gray-200/80 dark:border-slate-800/80 flex-col relative shadow-none`}>
                     {selectedContactId && canAccessDirectChat ? (
                       (() => {
                         const activeContact = chatContacts.find((c) => c.id === selectedContactId) || profiles.find((p) => p.id === selectedContactId);
@@ -7992,14 +8991,18 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
                   </div>
 
                   {/* Right Column: Channels & Contacts List matching Batch Overview Chat Tab */}
-                  <div className={`${chatMobilePane === "chat" ? "hidden" : "flex"} xl:flex rounded-2xl xl:rounded-3xl border-0 xl:border xl:border-gray-200/80 xl:dark:border-slate-800/80 p-3 sm:p-4 space-y-3 bg-white/60 dark:bg-slate-900/30 shadow-none xl:shadow-2xs flex-col xl:h-full xl:min-h-0`}>
+                  <div className={`${chatMobilePane === "chat" ? "hidden" : "flex"} xl:flex rounded-none xl:rounded-3xl border-0 xl:border xl:border-gray-200/80 xl:dark:border-slate-800/80 p-0 xl:p-4 space-y-3 bg-transparent xl:bg-white/60 xl:dark:bg-slate-900/30 shadow-none xl:shadow-2xs flex-col xl:h-full xl:min-h-0 w-full`}>
                     <div className="hidden xl:flex items-center justify-between pb-2 border-b border-gray-100 dark:border-slate-800/80 shrink-0">
                       <span className="text-xs font-bold text-gray-900 dark:text-white">
                         Channels & Contacts
                       </span>
                       <div className="flex items-center gap-2">
                         <span className="text-[11px] font-medium text-gray-500 dark:text-slate-400">
-                          {chatChannelTab === "batches" ? `${availableChatBatches.length} Batches` : `${directChatStats.total} Direct`}
+                          {chatFilterChip === "groups"
+                            ? `${availableChatBatches.length} Batches`
+                            : chatFilterChip === "direct"
+                            ? `${directChatStats.total} Direct`
+                            : `${availableChatBatches.length + (canAccessDirectChat ? directChatStats.total : 0)} Chats`}
                         </span>
                         <button
                           type="button"
@@ -8023,168 +9026,106 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
                       </div>
                     </div>
 
-                    {/* Mode Toggle: Batches vs Direct */}
-                    <div className={`${canAccessDirectChat ? "grid-cols-2" : "grid-cols-1"} grid gap-1.5 p-1 rounded-2xl bg-gray-100/90 dark:bg-slate-800/60 text-xs font-bold shrink-0`}>
+                    {/* Search filter for channels */}
+                    <div className="relative shrink-0">
+                      <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                      <input
+                        type="text"
+                        placeholder="Search channels or contacts..."
+                        value={chatSearchQuery}
+                        onChange={(e) => setChatSearchQuery(e.target.value)}
+                        className="w-full pl-8 pr-3 py-2 rounded-xl border border-gray-200/80 dark:border-slate-800 bg-white/70 dark:bg-slate-900/40 text-xs placeholder-gray-400 dark:placeholder-slate-500 focus:outline-none focus:border-red-500 transition"
+                      />
+                    </div>
+
+                    {/* WhatsApp Filter: Mobile Dropdown (<640px / 320px, 375px, 475px) */}
+                    <div className="block sm:hidden relative">
+                      <select
+                        value={chatFilterChip}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setChatFilterChip(val);
+                          if (val === "groups") setChatChannelTab("batches");
+                          if (val === "direct") setChatChannelTab("direct");
+                        }}
+                        className="w-full pl-3 pr-8 py-1.5 rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-bold text-gray-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-600 appearance-none cursor-pointer"
+                      >
+                        <option value="all">All Chats</option>
+                        <option value="unread">Unread</option>
+                        <option value="groups">Groups</option>
+                        {canAccessDirectChat && <option value="direct">Direct Chats</option>}
+                        <option value="archived">Archived</option>
+                      </select>
+                      <ChevronDown className="w-3.5 h-3.5 absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+                    </div>
+
+                    {/* WhatsApp Filter Chips: Tablet & Desktop (>=640px / 768px+) */}
+                    <div className="hidden sm:flex items-center gap-1.5 flex-wrap py-0.5 shrink-0 text-[11px] select-none">
+                      <button
+                        type="button"
+                        onClick={() => setChatFilterChip("all")}
+                        className={`px-3 py-1 rounded-full font-bold transition cursor-pointer shrink-0 ${
+                          chatFilterChip === "all"
+                            ? "bg-red-600 text-white shadow-xs"
+                            : "bg-gray-100 dark:bg-slate-800/80 text-gray-600 dark:text-slate-300 hover:bg-red-50 dark:hover:bg-red-950/30 hover:text-red-600"
+                        }`}
+                      >
+                        All
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setChatFilterChip("unread")}
+                        className={`px-3 py-1 rounded-full font-bold transition cursor-pointer shrink-0 flex items-center gap-1 ${
+                          chatFilterChip === "unread"
+                            ? "bg-red-600 text-white shadow-xs"
+                            : "bg-gray-100 dark:bg-slate-800/80 text-gray-600 dark:text-slate-300 hover:bg-red-50 dark:hover:bg-red-950/30 hover:text-red-600"
+                        }`}
+                      >
+                        <span>Unread</span>
+                      </button>
                       <button
                         type="button"
                         onClick={() => {
-                          chatBackSuppressAutoOpenRef.current = false;
+                          setChatFilterChip("groups");
                           setChatChannelTab("batches");
-                          setSelectedContactId("");
-                          setSelectedBatchId("");
-                          setChatMobilePane("channels");
                         }}
-                        className={`py-2 px-3 rounded-xl transition flex items-center justify-center gap-1.5 cursor-pointer ${
-                          chatChannelTab === "batches"
-                            ? "bg-white dark:bg-slate-700 text-red-600 dark:text-red-400 shadow-2xs font-extrabold"
-                            : "text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white"
+                        className={`px-3 py-1 rounded-full font-bold transition cursor-pointer shrink-0 ${
+                          chatFilterChip === "groups"
+                            ? "bg-red-600 text-white shadow-xs"
+                            : "bg-gray-100 dark:bg-slate-800/80 text-gray-600 dark:text-slate-300 hover:bg-red-50 dark:hover:bg-red-950/30 hover:text-red-600"
                         }`}
                       >
-                        <Folder className="w-4 h-4" />
-                        <span>Batches</span>
-                        {availableChatBatches.length > 0 && (
-                          <span className="text-[10px] px-1.5 py-0.2 rounded-full font-mono bg-black/5 dark:bg-white/10">
-                            {availableChatBatches.length}
-                          </span>
-                        )}
+                        Groups
                       </button>
                       {canAccessDirectChat && (
                         <button
                           type="button"
                           onClick={() => {
-                            chatBackSuppressAutoOpenRef.current = false;
+                            setChatFilterChip("direct");
                             setChatChannelTab("direct");
-                            setSelectedBatchId("");
-                            setSelectedContactId("");
-                            setChatMobilePane("channels");
                           }}
-                          className={`py-2 px-3 rounded-xl transition flex items-center justify-center gap-1.5 cursor-pointer ${
-                            chatChannelTab === "direct"
-                              ? "bg-white dark:bg-slate-700 text-red-600 dark:text-red-400 shadow-2xs font-extrabold"
-                            : "text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white"
-                        }`}
-                      >
-                        <User className="w-4 h-4" />
-                        <span>Direct</span>
-                        {directChatStats.total > 0 && (
-                          <span className="text-[10px] px-1.5 py-0.2 rounded-full font-mono bg-black/5 dark:bg-white/10">
-                            {directChatStats.total}
-                          </span>
-                        )}
-                      </button>
-                    )}
-                  </div>
-
-                  {/* Search filter for channels */}
-                  <div className="relative shrink-0">
-                    <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                    <input
-                      type="text"
-                      placeholder="Search channels or contacts..."
-                      value={chatSearchQuery}
-                      onChange={(e) => setChatSearchQuery(e.target.value)}
-                      className="w-full pl-8 pr-3 py-2 rounded-xl border border-gray-200/80 dark:border-slate-800 bg-white/70 dark:bg-slate-900/40 text-xs placeholder-gray-400 dark:placeholder-slate-500 focus:outline-none focus:border-red-500 transition"
-                    />
-                  </div>
-
-                  {/* WhatsApp Filter Chips: All | Unread | Groups | Direct | Archived */}
-                  <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5 shrink-0 text-[11px] select-none">
-                    <button
-                      type="button"
-                      onClick={() => setChatFilterChip("all")}
-                      className={`px-3 py-1 rounded-full font-bold transition cursor-pointer shrink-0 ${
-                        chatFilterChip === "all"
-                          ? "bg-red-600 text-white shadow-xs"
-                          : "bg-gray-100 dark:bg-slate-800/80 text-gray-600 dark:text-slate-300 hover:bg-red-50 dark:hover:bg-red-950/30 hover:text-red-600"
-                      }`}
-                    >
-                      All
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setChatFilterChip("unread")}
-                      className={`px-3 py-1 rounded-full font-bold transition cursor-pointer shrink-0 flex items-center gap-1 ${
-                        chatFilterChip === "unread"
-                          ? "bg-red-600 text-white shadow-xs"
-                          : "bg-gray-100 dark:bg-slate-800/80 text-gray-600 dark:text-slate-300 hover:bg-red-50 dark:hover:bg-red-950/30 hover:text-red-600"
-                      }`}
-                    >
-                      <span>Unread</span>
-                      {totalUnreadSum > 0 && (
-                        <span className={`text-[9px] px-1.5 py-0.2 rounded-full font-black ${
-                          chatFilterChip === "unread" ? "bg-white text-red-600" : "bg-red-600 text-white"
-                        }`}>
-                          {totalUnreadSum}
-                        </span>
+                          className={`px-3 py-1 rounded-full font-bold transition cursor-pointer shrink-0 ${
+                            chatFilterChip === "direct"
+                              ? "bg-red-600 text-white shadow-xs"
+                              : "bg-gray-100 dark:bg-slate-800/80 text-gray-600 dark:text-slate-300 hover:bg-red-50 dark:hover:bg-red-950/30 hover:text-red-600"
+                          }`}
+                        >
+                          Direct
+                        </button>
                       )}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setChatFilterChip("groups");
-                        setChatChannelTab("batches");
-                      }}
-                      className={`px-3 py-1 rounded-full font-bold transition cursor-pointer shrink-0 ${
-                        chatFilterChip === "groups" || (chatFilterChip === "all" && chatChannelTab === "batches")
-                          ? "border border-red-500/40 text-red-600 dark:text-red-400 bg-red-50/50 dark:bg-red-950/20"
-                          : "bg-gray-100 dark:bg-slate-800/80 text-gray-600 dark:text-slate-300 hover:bg-red-50 dark:hover:bg-red-950/30 hover:text-red-600"
-                      }`}
-                    >
-                      Groups
-                    </button>
-                    {canAccessDirectChat && (
                       <button
                         type="button"
-                        onClick={() => {
-                          setChatFilterChip("direct");
-                          setChatChannelTab("direct");
-                        }}
-                        className={`px-3 py-1 rounded-full font-bold transition cursor-pointer shrink-0 ${
-                          chatFilterChip === "direct" || (chatFilterChip === "all" && chatChannelTab === "direct")
-                            ? "border border-red-500/40 text-red-600 dark:text-red-400 bg-red-50/50 dark:bg-red-950/20"
+                        onClick={() => setChatFilterChip("archived")}
+                        className={`px-3 py-1 rounded-full font-bold transition cursor-pointer shrink-0 flex items-center gap-1 ${
+                          chatFilterChip === "archived"
+                            ? "bg-red-600 text-white shadow-xs"
                             : "bg-gray-100 dark:bg-slate-800/80 text-gray-600 dark:text-slate-300 hover:bg-red-50 dark:hover:bg-red-950/30 hover:text-red-600"
                         }`}
                       >
-                        Direct
+                        <Archive className="w-3.5 h-3.5" />
+                        <span>Archived</span>
                       </button>
-                    )}
-                    <button
-                      type="button"
-                      onClick={() => setChatFilterChip("archived")}
-                      className={`px-3 py-1 rounded-full font-bold transition cursor-pointer shrink-0 flex items-center gap-1 ${
-                        chatFilterChip === "archived"
-                          ? "bg-red-600 text-white shadow-xs"
-                          : "bg-gray-100 dark:bg-slate-800/80 text-gray-600 dark:text-slate-300 hover:bg-red-50 dark:hover:bg-red-950/30 hover:text-red-600"
-                      }`}
-                    >
-                      <Archive className="w-3.5 h-3.5" />
-                      <span>Archived</span>
-                      {archivedChatIds.length > 0 && (
-                        <span className={`text-[9px] px-1.5 py-0.2 rounded-full font-black ${
-                          chatFilterChip === "archived" ? "bg-white text-red-600" : "bg-red-600 text-white"
-                        }`}>
-                          {archivedChatIds.length}
-                        </span>
-                      )}
-                    </button>
-                  </div>
-
-                  {chatChannelTab === "direct" && canAccessDirectChat && (
-                    <div className="grid grid-cols-3 gap-1.5 text-[10px] font-bold shrink-0">
-                      <div className="rounded-xl border border-gray-200/80 dark:border-slate-800 bg-white/60 dark:bg-slate-900/30 px-2 py-1.5 text-center">
-                        <div className="text-gray-400">Total</div>
-                        <div className="text-gray-900 dark:text-white">{directChatStats.total}</div>
-                      </div>
-                      <div className="rounded-xl border border-emerald-200/80 dark:border-emerald-900/50 bg-emerald-50/60 dark:bg-emerald-950/20 px-2 py-1.5 text-center">
-                        <div className="text-emerald-600 dark:text-emerald-400">Online</div>
-                        <div className="text-emerald-700 dark:text-emerald-300">{directChatStats.online}</div>
-                      </div>
-                      <div className="rounded-xl border border-gray-200/80 dark:border-slate-800 bg-white/60 dark:bg-slate-900/30 px-2 py-1.5 text-center">
-                        <div className="text-gray-400">Offline</div>
-                        <div className="text-gray-700 dark:text-slate-300">{directChatStats.offline}</div>
-                      </div>
                     </div>
-                  )}
 
                   {/* Channel List - Fluid Natural Scrolling on Mobile, Internal Panel Scrolling on Desktop */}
                   <div className="space-y-2 text-xs overflow-y-visible xl:overflow-y-auto pr-0 xl:pr-1 pb-24 xl:pb-0 flex-initial xl:flex-1">
@@ -8223,11 +9164,22 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
                           </button>
                         </div>
                       )}
-                      {chatChannelTab === "batches" ? (
-                        filteredChatBatches.length === 0 ? (
-                          <div className="text-center py-8 text-xs text-gray-400">No matching batches found.</div>
-                        ) : (
-                          filteredChatBatches.map((b) => {
+                      {unifiedChatItems.length === 0 ? (
+                        <div className="text-center py-8 text-xs text-gray-400">
+                          {chatFilterChip === "unread"
+                            ? "No unread messages."
+                            : chatFilterChip === "groups"
+                            ? "No matching batches found."
+                            : chatFilterChip === "direct"
+                            ? "No matching contacts found."
+                            : chatFilterChip === "archived"
+                            ? "No archived chats."
+                            : "No matching chats found."}
+                        </div>
+                      ) : (
+                        unifiedChatItems.map((item) => {
+                          if (item.type === "batch") {
+                            const b = item.data;
                             const isSelected = !selectedContactId && selectedBatch?.id === b.id;
                             const messageMeta = batchChatMeta[b.id] || {};
                             const notificationMeta = batchNotificationMeta[b.id] || {};
@@ -8278,7 +9230,7 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
                                   setChatMobilePane("chat");
                                   loadBatchWorkspaceData(b.id);
                                 }}
-                                className={`w-full flex items-center justify-between gap-3 p-3 rounded-2xl border transition-all cursor-pointer text-left group select-none ${
+                                className={`w-full flex items-center justify-between gap-3 p-3 rounded-2xl border transition-all cursor-pointer text-left group select-none touch-manipulation active:scale-[0.99] active:bg-gray-100/90 dark:active:bg-slate-800/90 ${
                                   isSelected
                                     ? "bg-red-50/80 text-red-950 dark:bg-red-500/10 dark:text-red-100 border-red-300 dark:border-red-500/30 font-bold shadow-xs"
                                     : "bg-white/60 dark:bg-slate-900/30 border-gray-200/80 dark:border-slate-800 hover:border-red-300 dark:hover:border-slate-700"
@@ -8382,14 +9334,10 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
                                 </div>
                               </div>
                             );
-                          })
-                        )
-                      ) : (
-                        filteredChatContacts.length === 0 ? (
-                          <div className="text-center py-8 text-xs text-gray-400">No matching contacts.</div>
-                        ) : (
-                          filteredChatContacts.map((contact) => {
-                            const profile = getChannelProfile(contact);
+                          }
+
+                          const contact = item.data;
+                          const profile = getChannelProfile(contact);
                             const isSelf = profile.id === sessionUser?.id || profile.id === userProfile?.id || (profile.email && profile.email === userProfile?.email);
                             const isSelected = selectedContactId === contact.id;
                             const unreadBadge = directChatMeta[contact.id]?.unreadCount || 0;
@@ -8420,7 +9368,7 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
                                 onClick={() => {
                                   openContactChat(contact.id);
                                 }}
-                                className={`w-full flex items-center justify-between gap-3 p-3 rounded-2xl border transition-all cursor-pointer text-left group select-none ${
+                                className={`w-full flex items-center justify-between gap-3 p-3 rounded-2xl border transition-all cursor-pointer text-left group select-none touch-manipulation active:scale-[0.99] active:bg-gray-100/90 dark:active:bg-slate-800/90 ${
                                   isSelected
                                     ? "bg-red-50/80 text-red-950 dark:bg-red-500/10 dark:text-red-100 border-red-300 dark:border-red-500/30 font-bold shadow-xs"
                                     : "bg-white/60 dark:bg-slate-900/30 border-gray-200/80 dark:border-slate-800 hover:border-red-500"
@@ -8525,8 +9473,7 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
                                 </div>
                               </div>
                             );
-                          })
-                        )
+                        })
                       )}
                     </div>
                   </div>
@@ -8605,13 +9552,40 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
                         </div>
                       )}
 
-                      <div className="flex gap-2 overflow-x-auto pb-1">
+                      {/* Mobile Dropdown (<640px / 320px, 375px, 475px) */}
+                      <div className="block sm:hidden mb-2">
+                        <div className="relative">
+                          <select
+                            value={batchWorkspaceTab}
+                            onChange={(e) => setBatchWorkspaceTab(e.target.value)}
+                            className="w-full pl-3.5 pr-8 py-2.5 rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-bold text-gray-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-600 appearance-none cursor-pointer shadow-xs"
+                          >
+                            {[
+                              ["overview", "Overview"],
+                              ["members", "Members"],
+                              ["tasks", "Tasks"],
+                              ["meetings", "Meetings"],
+                              ...(canViewAttendanceHistory ? [["attendance", "Attendance"]] : []),
+                              ...((isMentor || isTeamLeader) ? [["reports", "Daily Reports"]] : []),
+                              ["chat", "Chat"],
+                              ["announcements", "Announcements"],
+                              ...((isAdminRole || isHrRole) ? [["activity", "Activity"]] : []),
+                            ].map(([key, label]) => (
+                              <option key={key} value={key}>{label}</option>
+                            ))}
+                          </select>
+                          <ChevronDown className="w-4 h-4 absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+                        </div>
+                      </div>
+
+                      {/* Desktop / Tablet Buttons (>=640px / 768px+) */}
+                      <div className="hidden sm:flex gap-2 flex-wrap pb-1">
                         {[
                           ["overview", LayoutDashboard, "Overview"],
                           ["members", Users, "Members"],
                           ["tasks", CheckSquare, "Tasks"],
                           ["meetings", Video, "Meetings"],
-                          ["attendance", ShieldCheck, "Attendance"],
+                          ...(canViewAttendanceHistory ? [["attendance", ShieldCheck, "Attendance"]] : []),
                           ...((isMentor || isTeamLeader) ? [["reports", FileText, "Daily Reports"]] : []),
                           ["chat", MessageSquare, "Chat"],
                           ["announcements", Bell, "Announcements"],
@@ -8677,29 +9651,63 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
                       )}
 
                       {batchWorkspaceTab === "members" && (
-                        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
                           {selectedBatchMembers.map((member) => (
                             <div
                               key={member.id}
                               onClick={() => setSelectedMemberModal(member)}
-                              className="rounded-2xl border border-gray-200/80 dark:border-slate-800/80 p-4 hover:border-red-300 dark:hover:border-slate-700 transition cursor-pointer"
+                              className="rounded-xl border border-gray-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-3.5 shadow-xs flex flex-col justify-between hover:border-gray-300 dark:hover:border-slate-700 transition cursor-pointer"
                             >
-                              <div className="flex items-start justify-between gap-3">
-                                <div className="min-w-0">
-                                  <div className="font-black text-sm text-gray-900 dark:text-white truncate hover:text-red-600 transition">{member.full_name}</div>
-                                  <div className="text-xs text-gray-500 dark:text-slate-400 truncate">{member.email}</div>
-                                  <div className="mt-2 flex flex-wrap gap-1.5">
-                                    <span className="px-2 py-1 rounded-lg text-[10.5px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">{ROLE_LABELS[member.role] || member.role}</span>
-                                    <span className="px-2 py-1 rounded-lg text-[10.5px] font-bold bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300">{member.status || "active"}</span>
+                              <div>
+                                <div className="flex items-start justify-between gap-2">
+                                  <div className="flex items-center gap-2.5 min-w-0">
+                                    <div className="w-8 h-8 rounded-lg bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900 text-red-600 dark:text-red-400 text-xs font-bold flex items-center justify-center shrink-0">
+                                      {member.full_name?.charAt(0)?.toUpperCase() || "U"}
+                                    </div>
+                                    <div className="min-w-0">
+                                      <h3 className="text-xs font-bold text-gray-900 dark:text-white truncate" title={member.full_name}>
+                                        {member.full_name}
+                                      </h3>
+                                      <p className="text-[11px] text-gray-500 dark:text-slate-400 truncate" title={member.email}>
+                                        {member.email}
+                                      </p>
+                                    </div>
+                                  </div>
+
+                                  <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-950/50 dark:text-emerald-300 dark:border-emerald-800 shrink-0">
+                                    {member.status || "active"}
+                                  </span>
+                                </div>
+
+                                <div className="mt-2.5 pt-2 border-t border-gray-100 dark:border-slate-800/80 space-y-1 text-[11px] text-gray-500 dark:text-slate-400">
+                                  <div className="flex items-center justify-between gap-1.5">
+                                    <span className="text-gray-400">Role:</span>
+                                    <span className="font-semibold text-gray-700 dark:text-slate-300 truncate max-w-[130px]">
+                                      {ROLE_LABELS[member.role] || member.role}
+                                    </span>
                                   </div>
                                 </div>
-                                <div className="flex items-center gap-1.5 shrink-0" onClick={(e) => e.stopPropagation()}>
-                                  {isMentor && member.role === "intern" && (
-                                    <button onClick={() => handlePromoteInternToTl(member)} className="px-2.5 py-1.5 rounded-xl text-xs font-bold bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300 border border-amber-200 dark:border-amber-800">
-                                      Make TL
-                                    </button>
-                                  )}
-                                </div>
+                              </div>
+
+                              <div className="mt-3 pt-2.5 border-t border-gray-100 dark:border-slate-800 flex items-center justify-between gap-1.5" onClick={(e) => e.stopPropagation()}>
+                                <button
+                                  type="button"
+                                  onClick={() => setSelectedMemberModal(member)}
+                                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-gray-100 hover:bg-gray-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-gray-800 dark:text-slate-200 text-xs font-bold transition cursor-pointer"
+                                >
+                                  <User className="w-3.5 h-3.5 text-red-600" />
+                                  <span>Profile</span>
+                                </button>
+                                {isMentor && member.role === "intern" && (
+                                  <button
+                                    type="button"
+                                    onClick={() => handlePromoteInternToTl(member)}
+                                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800 text-xs font-bold transition cursor-pointer"
+                                  >
+                                    <UserCheck className="w-3.5 h-3.5" />
+                                    <span>Make TL</span>
+                                  </button>
+                                )}
                               </div>
                             </div>
                           ))}
@@ -8733,24 +9741,149 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
                       )}
 
                       {batchWorkspaceTab === "meetings" && (
-                        <div className="space-y-2">
-                          {selectedBatchMeetings.map((meeting) => (
-                            <div key={meeting.id} className="rounded-2xl border border-gray-200/80 dark:border-slate-800/80 p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                              <div>
-                                <div className="font-black text-sm text-gray-900 dark:text-white">{meeting.title}</div>
-                                <div className="text-xs text-gray-500 dark:text-slate-400">{meeting.topic} · {localDate(meeting.scheduled_at)}</div>
+                        <div className="grid gap-3 sm:grid-cols-1 lg:grid-cols-2">
+                          {selectedBatchMeetings.map((meeting) => {
+                            const isMeetingEnded = meeting.status === "completed" || meeting.status === "cancelled";
+                            const isMeetingLive = !isMeetingEnded && (
+                              Boolean(meeting.attendance_token?.includes("#live:")) ||
+                              meeting.status === "in_progress" ||
+                              meeting.status === "live"
+                            );
+                            const isHost = meeting.host_id === sessionUser?.id || (isMentor && ownedBatchIds.has(meeting.batch_id)) || (isTeamLeader && meeting.batch_id === userProfile?.batch_id && (!meeting.host_id || meeting.host_id === sessionUser?.id)) || isAdminRole;
+                            const isAttended = attendance.some((a) => a.meeting_id === meeting.id && a.user_id === sessionUser?.id);
+
+                            return (
+                              <div
+                                key={meeting.id}
+                                className="rounded-xl border border-gray-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-3.5 shadow-xs flex flex-col justify-between hover:border-gray-300 dark:hover:border-slate-700 transition"
+                              >
+                                <div>
+                                  <div className="flex items-start justify-between gap-2">
+                                    <div className="flex items-center gap-2.5 min-w-0">
+                                      <div className="w-8 h-8 rounded-lg bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900 text-red-600 dark:text-red-400 flex items-center justify-center shrink-0">
+                                        <Video className="w-4 h-4" />
+                                      </div>
+                                      <div className="min-w-0">
+                                        <h3 className="text-xs font-bold text-gray-900 dark:text-white truncate" title={meeting.title}>
+                                          {meeting.title}
+                                        </h3>
+                                        <p className="text-[11px] text-gray-500 dark:text-slate-400 truncate">
+                                          {meeting.topic || "General Session"}
+                                        </p>
+                                      </div>
+                                    </div>
+
+                                    {isMeetingEnded ? (
+                                      <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-semibold bg-gray-100 text-gray-500 dark:bg-slate-800 dark:text-slate-400 shrink-0">
+                                        Ended
+                                      </span>
+                                    ) : isMeetingLive ? (
+                                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-950/50 dark:text-emerald-300 dark:border-emerald-800 shrink-0">
+                                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse shrink-0" />
+                                        Live
+                                      </span>
+                                    ) : (
+                                      <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-semibold bg-blue-50 text-blue-700 border border-blue-200 dark:bg-blue-950/50 dark:text-blue-300 dark:border-blue-800 shrink-0">
+                                        Scheduled
+                                      </span>
+                                    )}
+                                  </div>
+
+                                  <div className="mt-2.5 pt-2 border-t border-gray-100 dark:border-slate-800/80 flex items-center justify-between text-[11px] text-gray-500 dark:text-slate-400">
+                                    <span className="font-mono">{localDate(meeting.scheduled_at)}</span>
+                                    <span className="font-semibold text-gray-600 dark:text-slate-300">{isHost ? "Host: You" : "Batch Meet"}</span>
+                                  </div>
+                                </div>
+
+                                <div className="mt-3 pt-2.5 border-t border-gray-100 dark:border-slate-800 flex items-center justify-between gap-1.5">
+                                  <div className="min-w-0">
+                                    {isMeetingLive && canScheduleMeetings ? (
+                                      <button
+                                        type="button"
+                                        onClick={() => copyAttendanceLink(meeting)}
+                                        className="text-[11px] font-bold text-emerald-700 dark:text-emerald-400 hover:underline cursor-pointer inline-flex items-center gap-1"
+                                      >
+                                        <ShieldCheck className="w-3 h-3" />
+                                        <span>Link</span>
+                                      </button>
+                                    ) : isMeetingLive && !isHost ? (
+                                      isAttended ? (
+                                        <span className="text-[11px] font-bold text-emerald-600 inline-flex items-center gap-1">
+                                          <CheckCircle2 className="w-3 h-3" /> Attended
+                                        </span>
+                                      ) : (
+                                        <button
+                                          type="button"
+                                          onClick={() => handleSelfMarkMeetingAttendance(meeting)}
+                                          className="px-2 py-1 rounded-md bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-bold cursor-pointer"
+                                        >
+                                          Mark Attendance
+                                        </button>
+                                      )
+                                    ) : (
+                                      <span className="text-[11px] text-gray-400">Batch Meet</span>
+                                    )}
+                                  </div>
+
+                                  <div className="flex items-center gap-1.5 shrink-0">
+                                    {isHost ? (
+                                      isMeetingEnded ? (
+                                        <span className="text-xs text-gray-400 font-medium">Meeting Ended</span>
+                                      ) : isMeetingLive ? (
+                                        <>
+                                          <a
+                                            href={safeExternalUrl(meeting.meeting_link)}
+                                            target="_blank"
+                                            rel="noreferrer"
+                                            className="px-2.5 py-1 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold"
+                                          >
+                                            Join
+                                          </a>
+                                          <button
+                                            type="button"
+                                            onClick={() => handleEndMeeting(meeting)}
+                                            className="px-2.5 py-1 rounded-lg bg-red-600 hover:bg-red-700 text-white text-xs font-bold cursor-pointer"
+                                          >
+                                            End
+                                          </button>
+                                        </>
+                                      ) : (
+                                        <button
+                                          type="button"
+                                          onClick={() => handleStartMeeting(meeting)}
+                                          className="px-3 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold cursor-pointer"
+                                        >
+                                          Start
+                                        </button>
+                                      )
+                                    ) : (
+                                      isMeetingEnded ? (
+                                        <span className="text-xs text-gray-400 font-medium">Meeting Ended</span>
+                                      ) : isMeetingLive ? (
+                                        <a
+                                          href={safeExternalUrl(meeting.meeting_link)}
+                                          target="_blank"
+                                          rel="noreferrer"
+                                          className="px-3 py-1 rounded-lg bg-red-600 hover:bg-red-700 text-white text-xs font-bold"
+                                        >
+                                          Join Meeting
+                                        </a>
+                                      ) : (
+                                        <span className="text-xs text-gray-400 font-medium" title="Waiting for host to start">
+                                          Waiting for Host
+                                        </span>
+                                      )
+                                    )}
+                                  </div>
+                                </div>
                               </div>
-                              <div className="flex flex-wrap gap-2">
-                                {canScheduleMeetings && <button onClick={() => copyAttendanceLink(meeting)} className="px-3 py-2 rounded-xl text-xs font-bold bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">Attendance Link</button>}
-                                <a href={safeExternalUrl(meeting.meeting_link)} target="_blank" rel="noreferrer" className="px-3 py-2 rounded-xl text-xs font-bold bg-red-600 text-white">Join</a>
-                              </div>
-                            </div>
-                          ))}
+                            );
+                          })}
                         </div>
                       )}
 
-                      {batchWorkspaceTab === "attendance" && (
-                        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+                      {batchWorkspaceTab === "attendance" && canViewAttendanceHistory && (
+                        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                           {selectedBatchAttendance.map((item) => (
                             <div key={item.id} className="rounded-2xl border border-gray-200/80 dark:border-slate-800/80 p-4">
                               <div className="font-black text-sm text-gray-900 dark:text-white">{item.user?.full_name || "Member"}</div>
@@ -9213,17 +10346,44 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
                               </div>
                             </div>
 
-                            {/* Category Filter Chips */}
-                            <div className="flex items-center gap-1.5 overflow-x-auto pb-1 text-xs">
+                            {/* Category Filter: Mobile Dropdown (<640px / 320px, 375px, 475px) */}
+                            <div className="block sm:hidden mb-2">
+                              <div className="relative">
+                                <select
+                                  value={batchActivityCategory}
+                                  onChange={(e) => {
+                                    setBatchActivityCategory(e.target.value);
+                                    setBatchActivityPage(1);
+                                  }}
+                                  className="w-full pl-3.5 pr-8 py-2 rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-bold text-gray-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-600 appearance-none cursor-pointer"
+                                >
+                                  {[
+                                    ["all", "All Events"],
+                                    ["announcements", "Announcements"],
+                                    ["files", "Files & Resources"],
+                                    ["tasks_and_work", "Tasks & Submissions"],
+                                    ["reports", "Daily Reports"],
+                                    ["meetings", "Classes & Meets"],
+                                    ["governance", "Governance & History"],
+                                  ].map(([catKey, catLabel]) => (
+                                    <option key={catKey} value={catKey}>{catLabel}</option>
+                                  ))}
+                                </select>
+                                <ChevronDown className="w-4 h-4 absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+                              </div>
+                            </div>
+
+                            {/* Category Filter: Desktop Chips (>=640px / 768px+) */}
+                            <div className="hidden sm:flex items-center gap-1.5 flex-wrap pb-1 text-xs">
                               {[
-                                ["all", "All Events", selectedBatchActivity.length],
-                                ["announcements", "Announcements", selectedBatchActivity.filter((x) => x.category === "announcements").length],
-                                ["files", "Files & Resources", selectedBatchActivity.filter((x) => x.category === "files").length],
-                                ["tasks_and_work", "Tasks & Submissions", selectedBatchActivity.filter((x) => ["tasks", "submissions", "reviews"].includes(x.category)).length],
-                                ["reports", "Daily Reports", selectedBatchActivity.filter((x) => x.category === "reports").length],
-                                ["meetings", "Classes & Meets", selectedBatchActivity.filter((x) => x.category === "meetings").length],
-                                ["governance", "Governance & History", selectedBatchActivity.filter((x) => ["escalations", "members", "audit", "batch"].includes(x.category)).length],
-                              ].map(([catKey, catLabel, catCount]) => (
+                                ["all", "All Events"],
+                                ["announcements", "Announcements"],
+                                ["files", "Files & Resources"],
+                                ["tasks_and_work", "Tasks & Submissions"],
+                                ["reports", "Daily Reports"],
+                                ["meetings", "Classes & Meets"],
+                                ["governance", "Governance & History"],
+                              ].map(([catKey, catLabel]) => (
                                 <button
                                   key={catKey}
                                   type="button"
@@ -9237,12 +10397,6 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
                                     }`}
                                 >
                                   <span>{catLabel}</span>
-                                  <span className={`text-[10px] px-1.5 py-0.2 rounded-full ${batchActivityCategory === catKey
-                                    ? "bg-white/20 text-white"
-                                    : "bg-gray-200 dark:bg-slate-700 text-gray-700 dark:text-slate-300"
-                                    }`}>
-                                    {catCount}
-                                  </span>
                                 </button>
                               ))}
                             </div>
@@ -9544,8 +10698,37 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
                             </div>
                           </div>
 
-                          {/* Category Filter Pills */}
-                          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 text-xs">
+                          {/* Category Filter: Mobile Dropdown (<640px / 320px, 375px, 475px) */}
+                          <div className="block sm:hidden">
+                            <div className="relative">
+                              <select
+                                value={filesCategoryFilter}
+                                onChange={(e) => {
+                                  setFilesCategoryFilter(e.target.value);
+                                  setFilesPage(1);
+                                }}
+                                className="w-full pl-3.5 pr-8 py-2 rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-bold text-gray-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-600 appearance-none cursor-pointer"
+                              >
+                                {[
+                                  ["all", "All Files"],
+                                  ["technical_guides", "Technical Guides"],
+                                  ["task_guidelines", "Task Guidelines"],
+                                  ["git_guidelines", "Git Guidelines"],
+                                  ["learning_material", "Learning Material"],
+                                  ["important_documents", "Documents"],
+                                  ["useful_links", "Useful Links"],
+                                  ["task_reference", "Task References"],
+                                  ["other", "Other"],
+                                ].map(([catKey, catLabel]) => (
+                                  <option key={catKey} value={catKey}>{catLabel}</option>
+                                ))}
+                              </select>
+                              <ChevronDown className="w-4 h-4 absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+                            </div>
+                          </div>
+
+                          {/* Category Filter: Desktop Pills (>=640px / 768px+) */}
+                          <div className="hidden sm:flex items-center gap-1.5 flex-wrap pb-1 text-xs">
                             {[
                               ["all", "All Files"],
                               ["technical_guides", "Technical Guides"],
@@ -9694,7 +10877,7 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
                                 </p>
                               </div>
                             ) : (
-                              <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+                              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                                 {paginatedFiles.map((item) => {
                                   const isImg = item.file_url && (
                                     item.file_url.startsWith("data:image") ||
@@ -9898,7 +11081,24 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
                 />
               )}
 
-              {activeSection === "overview" && currentRole === "intern" && (
+              {activeSection === "overview" && isSalesRole && (
+                <SalesHeadOverview
+                  userProfile={userProfile}
+                  leads={leads}
+                  deals={deals}
+                  clients={clients}
+                  onNavigate={selectSection}
+                  onRefresh={async () => {
+                    const fresh = await getCloudLeads();
+                    if (fresh) setLeads(fresh);
+                    setToast("Leads refreshed.");
+                  }}
+                  onDirectWhatsapp={handleDirectWhatsapp}
+                  isDark={isDark}
+                />
+              )}
+
+              {activeSection === "overview" && currentRole === "intern" && !isSalesRole && (
                 <InternOverview
                   userProfile={userProfile}
                   batch={batches.find((b) => b.id === userProfile?.batch_id)}
@@ -9912,6 +11112,8 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
                   onOpenTaskDetails={(task) => setTaskDetailsModal(task)}
                   onSubmitWork={(taskId) => setSubmissionModal(taskId)}
                   onOpenWorkspace={(batchId) => openBatchWorkspace(batchId)}
+                  onMarkAttendance={handleSelfMarkMeetingAttendance}
+                  onStartChat={(userId) => openDirectChatWithUser(userId)}
                   isDark={isDark}
                   domainLabel={domainLabel}
                   localDate={localDate}
@@ -9933,6 +11135,9 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
                   onOpenTaskDetails={(task) => setTaskDetailsModal(task)}
                   onOpenWorkspace={(batchId) => openBatchWorkspace(batchId)}
                   onScheduleMeeting={openMeetingModal}
+                  onStartMeeting={handleStartMeeting}
+                  onEndMeeting={handleEndMeeting}
+                  onMarkAttendance={handleSelfMarkMeetingAttendance}
                   onOpenEscalationModal={() => {
                     openBatchWorkspace(userProfile?.batch_id);
                     setBatchWorkspaceTab("escalations");
@@ -10013,20 +11218,6 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
               {/* 4.4. DEDICATED SUPERVISOR REVIEW & ESCALATION CENTER */}
               {activeSection === "review_center" && (
                 <div className="space-y-6 animate-fadeIn">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                    <div>
-                      <h2 className="text-lg font-black text-gray-900 dark:text-white">Escalation Review</h2>
-                      <p className="text-xs text-gray-500 dark:text-slate-400 mt-0.5">Raise and track batch-wise blockers, alerts, and urgent issues.</p>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => openRaiseEscalationModal()}
-                      className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs font-bold transition self-start sm:self-center"
-                    >
-                      <Plus className="w-3.5 h-3.5" />
-                      <span>Raise Escalation</span>
-                    </button>
-                  </div>
                   {/* Top Summary Metrics */}
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
                     <div
@@ -10077,48 +11268,68 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
 
                   {/* Filter and Search Bar */}
                   <div className={`p-4 rounded-2xl border ${isDark ? "bg-transparent border-slate-800/80" : "bg-white border-gray-200/80"} shadow-sm flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3`}>
-                    <div className="flex items-center gap-1.5 p-1 rounded-xl bg-gray-100 dark:bg-slate-800 text-xs font-bold overflow-x-auto">
+                    {/* Mobile Dropdown (<640px / 320px, 375px, 475px) */}
+                    <div className="block sm:hidden w-full">
+                      <div className="relative">
+                        <select
+                          value={reviewCenterTab}
+                          onChange={(e) => setReviewCenterTab(e.target.value)}
+                          className="w-full pl-3.5 pr-8 py-2 rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-bold text-gray-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-600 appearance-none cursor-pointer"
+                        >
+                          <option value="all">All Escalations</option>
+                          <option value="open">Open Only</option>
+                          <option value="critical">Critical & High</option>
+                          <option value="mine">Raised By Me</option>
+                          <option value="assigned">Assigned To Me</option>
+                          <option value="resolved">Resolved</option>
+                        </select>
+                        <ChevronDown className="w-4 h-4 absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+                      </div>
+                    </div>
+
+                    {/* Desktop / Tablet Tabs (>=640px / 768px+) */}
+                    <div className="hidden sm:flex items-center gap-1.5 p-1 rounded-xl bg-gray-100 dark:bg-slate-800 text-xs font-bold flex-wrap">
                       <button
                         onClick={() => setReviewCenterTab("all")}
                         className={`px-3 py-1.5 rounded-lg transition shrink-0 ${reviewCenterTab === "all" ? "bg-white dark:bg-slate-700 text-amber-600 shadow-xs" : "text-gray-500 hover:text-gray-900 dark:text-slate-400"
                           }`}
                       >
-                        All Escalations ({mentorReviewCenterData.all.length})
+                        All Escalations
                       </button>
                       <button
                         onClick={() => setReviewCenterTab("open")}
                         className={`px-3 py-1.5 rounded-lg transition shrink-0 ${reviewCenterTab === "open" ? "bg-white dark:bg-slate-700 text-amber-600 shadow-xs" : "text-gray-500 hover:text-gray-900 dark:text-slate-400"
                           }`}
                       >
-                        Open Only ({mentorReviewCenterData.open.length})
+                        Open Only
                       </button>
                       <button
                         onClick={() => setReviewCenterTab("critical")}
                         className={`px-3 py-1.5 rounded-lg transition shrink-0 ${reviewCenterTab === "critical" ? "bg-white dark:bg-slate-700 text-red-600 shadow-xs" : "text-gray-500 hover:text-gray-900 dark:text-slate-400"
                           }`}
                       >
-                        Critical & High ({mentorReviewCenterData.critical.length})
+                        Critical & High
                       </button>
                       <button
                         onClick={() => setReviewCenterTab("mine")}
                         className={`px-3 py-1.5 rounded-lg transition shrink-0 ${reviewCenterTab === "mine" ? "bg-white dark:bg-slate-700 text-red-600 shadow-xs" : "text-gray-500 hover:text-gray-900 dark:text-slate-400"
                           }`}
                       >
-                        Raised By Me ({mentorReviewCenterData.raisedByMe.length})
+                        Raised By Me
                       </button>
                       <button
                         onClick={() => setReviewCenterTab("assigned")}
                         className={`px-3 py-1.5 rounded-lg transition shrink-0 ${reviewCenterTab === "assigned" ? "bg-white dark:bg-slate-700 text-blue-600 shadow-xs" : "text-gray-500 hover:text-gray-900 dark:text-slate-400"
                           }`}
                       >
-                        Assigned To Me ({mentorReviewCenterData.assignedToMe.length})
+                        Assigned To Me
                       </button>
                       <button
                         onClick={() => setReviewCenterTab("resolved")}
                         className={`px-3 py-1.5 rounded-lg transition shrink-0 ${reviewCenterTab === "resolved" ? "bg-white dark:bg-slate-700 text-emerald-600 shadow-xs" : "text-gray-500 hover:text-gray-900 dark:text-slate-400"
                           }`}
                       >
-                        Resolved ({mentorReviewCenterData.resolved.length})
+                        Resolved
                       </button>
                     </div>
 
@@ -10167,7 +11378,7 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
                         <span>No escalations matching this filter.</span>
                       </div>
                     ) : (
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+                      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                         {paginatedReviewCenterEscalations.map((esc) => {
                           const batch = batches.find((b) => b.id === esc.batch_id);
                           const isResolved = esc.status === "resolved";
@@ -10349,27 +11560,44 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
 
                   {/* Filter and Search Bar */}
                   <div className={`p-4 rounded-2xl border ${isDark ? "bg-transparent border-slate-800/80" : "bg-white border-gray-200/80"} shadow-sm flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3`}>
-                    <div className="flex items-center gap-1.5 p-1 rounded-xl bg-gray-100 dark:bg-slate-800 text-xs font-bold overflow-x-auto">
+                    {/* Mobile Dropdown (<640px / 320px, 375px, 475px) */}
+                    <div className="block sm:hidden w-full">
+                      <div className="relative">
+                        <select
+                          value={taskSubmissionsTab}
+                          onChange={(e) => setTaskSubmissionsTab(e.target.value)}
+                          className="w-full pl-3.5 pr-8 py-2 rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-bold text-gray-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 appearance-none cursor-pointer"
+                        >
+                          <option value="pending">Pending Review</option>
+                          <option value="approved">Approved</option>
+                          <option value="all">All Submissions</option>
+                        </select>
+                        <ChevronDown className="w-4 h-4 absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+                      </div>
+                    </div>
+
+                    {/* Desktop / Tablet Tabs (>=640px / 768px+) */}
+                    <div className="hidden sm:flex items-center gap-1.5 p-1 rounded-xl bg-gray-100 dark:bg-slate-800 text-xs font-bold flex-wrap">
                       <button
                         onClick={() => setTaskSubmissionsTab("pending")}
                         className={`px-3 py-1.5 rounded-lg transition shrink-0 ${taskSubmissionsTab === "pending" ? "bg-white dark:bg-slate-700 text-indigo-600 shadow-xs" : "text-gray-500 hover:text-gray-900 dark:text-slate-400"
                           }`}
                       >
-                        Pending Review ({pendingSubmissionsCount})
+                        Pending Review
                       </button>
                       <button
                         onClick={() => setTaskSubmissionsTab("approved")}
                         className={`px-3 py-1.5 rounded-lg transition shrink-0 ${taskSubmissionsTab === "approved" ? "bg-white dark:bg-slate-700 text-emerald-600 shadow-xs" : "text-gray-500 hover:text-gray-900 dark:text-slate-400"
                           }`}
                       >
-                        Approved ({allSupervisedSubmissions.filter((s) => ["approved", "completed"].includes(tasks.find((t) => t.id === s.task_id)?.status)).length})
+                        Approved
                       </button>
                       <button
                         onClick={() => setTaskSubmissionsTab("all")}
                         className={`px-3 py-1.5 rounded-lg transition shrink-0 ${taskSubmissionsTab === "all" ? "bg-white dark:bg-slate-700 text-gray-900 dark:text-white shadow-xs" : "text-gray-500 hover:text-gray-900 dark:text-slate-400"
                           }`}
                       >
-                        All Submissions ({allSupervisedSubmissions.length})
+                        All Submissions
                       </button>
                     </div>
 
@@ -10420,7 +11648,7 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
                         <span>No task submissions found for this filter.</span>
                       </div>
                     ) : (
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+                      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                         {paginatedTaskSubmissions.map((submission) => {
                           const task = tasks.find((t) => t.id === submission.task_id);
                           const batch = batches.find((b) => b.id === task?.batch_id);
@@ -10675,7 +11903,7 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
                       </p>
                     </div>
                   ) : (
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                       {paginatedAtRiskMembers.map((member) => {
                         const batch = batches.find((b) => b.id === member.batch_id);
 
@@ -10825,23 +12053,1340 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
                 </div>
               )}
 
+              {/* 4.7. CRM & SALES PIPELINE MODULE */}
+              {(activeSection === "crm" || activeSection === "pipeline") && (
+                <CrmModule
+                  initialViewMode={activeSection === "pipeline" ? "pipeline" : "leads"}
+                  leads={leads}
+                  deals={deals}
+                  clients={clients}
+                  onUpdateLeadStatus={async (id, status) => {
+                    await updateCloudLeadStatus(id, status);
+                    setLeads((prev) => prev.map((l) => (l.id === id ? { ...l, status } : l)));
+                    setToast(`Lead status updated to ${status}.`);
+                  }}
+                  onCreateLead={async (data) => {
+                    const res = await createCloudLead(data);
+                    if (res) {
+                      setLeads((prev) => [res, ...prev]);
+                      setToast("New lead created successfully.");
+                    }
+                  }}
+                  onAddLead={async (data) => {
+                    const res = await createCloudLead(data);
+                    if (res) {
+                      setLeads((prev) => [res, ...prev]);
+                      setToast("New lead created successfully.");
+                    }
+                  }}
+                  onImportBatchLeads={async (importedLeads) => {
+                    const res = await createCloudLeadsBatch(importedLeads);
+                    if (res && res.length) {
+                      setLeads((prev) => [...res, ...prev]);
+                      setToast(`${res.length} Meta leads imported successfully.`);
+                    }
+                    return res;
+                  }}
+                  onUpdateLead={async (id, updates) => {
+                    const res = await updateCloudLead(id, updates);
+                    if (res) {
+                      setLeads((prev) => prev.map((l) => (l.id === id ? { ...l, ...updates } : l)));
+                      setToast("Lead updated successfully.");
+                    }
+                  }}
+                  onDeleteLead={async (id) => {
+                    const ok = await deleteCloudLead(id);
+                    if (ok) {
+                      setLeads((prev) => prev.filter((l) => l.id !== id));
+                      setToast("Lead deleted successfully.");
+                    }
+                  }}
+                  onConvertToClientAndProject={handleConvertToClientAndProject}
+                  onOpenDirectWhatsapp={handleDirectWhatsapp}
+                  onOpenChat={(lead) => handleOpenClientChat(lead)}
+                  onRefresh={async () => {
+                    const fresh = await getCloudLeads();
+                    if (fresh) setLeads(fresh);
+                    setToast("Leads list refreshed.");
+                  }}
+                  isDark={isDark}
+                />
+              )}
+
+              {/* 4.8. CLIENT MANAGEMENT MODULE */}
+              {activeSection === "clients" && (
+                <ClientsModule
+                  clients={clients}
+                  deals={deals}
+                  projects={projectsData}
+                  invoices={invoicesList}
+                  supportTickets={supportTicketsList}
+                  onCreateClient={handleCreateNewClient}
+                  onOpenChat={handleOpenClientChat}
+                  onConvertToDeal={handleConvertToClientAndProject}
+                  isDark={isDark}
+                />
+              )}
+
+              {/* 4.9. PROJECTS & DELIVERY MODULE */}
+              {activeSection === "projects" && (
+                <ProjectsModule
+                  projects={projectsData}
+                  clients={clients}
+                  tasks={tasks}
+                  profiles={profiles}
+                  onCreateProject={handleCreateNewProject}
+                  onUpdateProject={async (id, updates) => {
+                    const res = await updateProject(id, updates);
+                    if (res) {
+                      setProjectsData((prev) =>
+                        prev.map((p) => (p.id === id ? { ...p, ...updates } : p))
+                      );
+                      setToast("Project updated successfully.");
+                    }
+                  }}
+                  onAssignProjectMember={async (projectId, userId, role) => {
+                    const res = await assignProjectMember(projectId, userId, role);
+                    if (res) {
+                      setProjectsData((prev) =>
+                        prev.map((p) =>
+                          p.id === projectId
+                            ? { ...p, members: [...(p.members || []), res] }
+                            : p
+                        )
+                      );
+                      setToast("Team member assigned to project.");
+                      return res;
+                    }
+                  }}
+                  onRemoveProjectMember={async (memberId) => {
+                    const ok = await removeProjectMember(memberId);
+                    if (ok) {
+                      setProjectsData((prev) =>
+                        prev.map((p) => ({
+                          ...p,
+                          members: (p.members || []).filter((m) => m.id !== memberId),
+                        }))
+                      );
+                      setToast("Team member unassigned from project.");
+                      return true;
+                    }
+                  }}
+                  onOpenProjectChat={handleOpenProjectChat}
+                  onHandoverToSupport={handleHandoverToSupport}
+                  isDark={isDark}
+                />
+              )}
+
+              {/* 4.10. SOCIAL MEDIA MARKETING (SMM) MODULE */}
+              {(activeSection === "smm" || activeSection === "content_calendar") && (
+                <SmmModule
+                  smmClients={smmClients}
+                  contentCalendar={contentCalendar}
+                  onCreateSmmClient={async (clientData) => {
+                    const res = await createSmmClient(clientData);
+                    if (res) {
+                      setSmmClients((prev) => [res, ...prev]);
+                      setToast("SMM client registered.");
+                    }
+                  }}
+                  onCreateContentItem={async (itemData) => {
+                    const res = await createContentItem(itemData);
+                    if (res) {
+                      setContentCalendar((prev) => [res, ...prev]);
+                      setToast("Content item scheduled.");
+                    }
+                  }}
+                  onUpdateContentStatus={async (id, status) => {
+                    const res = await updateContentItem(id, { status });
+                    if (res) {
+                      setContentCalendar((prev) =>
+                        prev.map((item) => (item.id === id ? { ...item, status } : item))
+                      );
+                      setToast(`Content status updated to ${status}.`);
+                    }
+                  }}
+                  onOpenChat={handleOpenSmmChat}
+                  isDark={isDark}
+                />
+              )}
+
+              {/* 4.11. FINANCE & BILLING MODULE */}
+              {(activeSection === "invoices" || activeSection === "payments") && (
+                <FinanceModule
+                  invoices={invoicesList}
+                  clients={clients}
+                  projects={projectsData}
+                  onCreateInvoice={async (inv) => {
+                    const res = await createInvoice(inv);
+                    if (res) {
+                      setInvoicesList((prev) => [res, ...prev]);
+                      setToast("Invoice generated.");
+                    }
+                  }}
+                  onRecordPayment={async (id, amount) => {
+                    const res = await updateInvoice(id, { status: "paid", paid_amount: amount });
+                    if (res) {
+                      setInvoicesList((prev) =>
+                        prev.map((i) => (i.id === id ? { ...i, status: "paid", paid_amount: amount } : i))
+                      );
+                      playNotificationSound("payment");
+                      setToast("Payment recorded successfully.");
+                    }
+                  }}
+                  isDark={isDark}
+                />
+              )}
+
+              {/* 4.12. SUPPORT & TICKETS MODULE */}
+              {activeSection === "support" && (
+                <SupportModule
+                  tickets={supportTicketsList}
+                  clients={clients}
+                  projects={projectsData}
+                  onCreateTicket={async (ticketData) => {
+                    const res = await createSupportTicket(ticketData);
+                    if (res) {
+                      setSupportTicketsList((prev) => [res, ...prev]);
+                      setToast("Support ticket logged.");
+                    }
+                  }}
+                  onUpdateTicketStatus={async (id, status) => {
+                    const res = await updateSupportTicket(id, { status });
+                    if (res) {
+                      setSupportTicketsList((prev) =>
+                        prev.map((t) => (t.id === id ? { ...t, status } : t))
+                      );
+                      setToast(`Ticket status set to ${status}.`);
+                    }
+                  }}
+                  onOpenChat={handleOpenSupportChat}
+                  isDark={isDark}
+                />
+              )}
+
               {/* 5. Main Data Table (for all list sections, plus admin overview) */}
-              {activeSection !== "alerts" && activeSection !== "chat" && activeSection !== "settings" && activeSection !== "batch_workspace" && activeSection !== "batch_files" && activeSection !== "review_center" && activeSection !== "task_submissions" && activeSection !== "at_risk_watchlist" && (activeSection !== "overview" || isAdminRole) && (
+              {!["alerts", "chat", "settings", "batch_workspace", "batch_files", "review_center", "task_submissions", "at_risk_watchlist", "crm", "pipeline", "clients", "projects", "smm", "content_calendar", "invoices", "payments", "support"].includes(activeSection) && (activeSection !== "overview" || isAdminRole) && (
                 <div className="space-y-3 w-full max-w-full">
                   {/* Table header meta & horizontal scroll helper */}
-                  <div className="flex flex-wrap items-center justify-between gap-2 text-[11px] text-gray-500 dark:text-slate-400 px-1 select-none">
+                  <div className="flex items-center justify-between gap-2.5 text-[11px] text-gray-500 dark:text-slate-400 px-1 select-none">
                     <span className="font-semibold text-gray-700 dark:text-slate-300">
-                      Showing {paginatedRecords.length} of {totalRecords} {activeSection === "crm" ? "leads" : activeSection === "batches" ? "batches" : activeSection === "daily_updates" ? "daily updates" : activeSection === "members" ? "members" : "records"}
+                      Showing {paginatedRecords.length} of {totalRecords}
                     </span>
-                    <span className="inline-flex xl:hidden items-center gap-1 font-mono text-[10.5px] text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/40 border border-red-200/70 dark:border-red-900/50 px-2.5 py-1 rounded-lg shadow-2xs">
-                      <ArrowRight className="w-3.5 h-3.5 text-red-500 shrink-0 animate-pulse" />
-                      Scroll to view all columns
-                    </span>
+
+                    {activeSection === "classes" && canScheduleMeetings ? (
+                      <button
+                        type="button"
+                        onClick={openMeetingModal}
+                        className="inline-flex items-center gap-1 text-red-600 dark:text-red-400 font-bold text-xs hover:underline cursor-pointer"
+                      >
+                        <Plus className="w-3.5 h-3.5" />
+                        <span>Schedule Meeting</span>
+                      </button>
+                    ) : activeSection === "batches" && canCreateBatch ? (
+                      <button
+                        type="button"
+                        onClick={() => setNewBatchModal(true)}
+                        className="inline-flex items-center gap-1 text-red-600 dark:text-red-400 font-bold text-xs hover:underline cursor-pointer"
+                      >
+                        <Plus className="w-3.5 h-3.5" />
+                        <span>Create Batch</span>
+                      </button>
+                    ) : activeSection === "members" && canManageCredentials ? (
+                      <button
+                        type="button"
+                        onClick={() => openEnrollMemberModal()}
+                        className="inline-flex items-center gap-1 text-red-600 dark:text-red-400 font-bold text-xs hover:underline cursor-pointer"
+                      >
+                        <Plus className="w-3.5 h-3.5" />
+                        <span>{isAdminRole ? "Add Member" : "Add Member"}</span>
+                      </button>
+                    ) : activeSection === "hr_mentors" && isHrRole ? (
+                      <button
+                        type="button"
+                        onClick={() => openEnrollMemberModal("mentor")}
+                        className="inline-flex items-center gap-1 text-red-600 dark:text-red-400 font-bold text-xs hover:underline cursor-pointer"
+                      >
+                        <Plus className="w-3.5 h-3.5" />
+                        <span>Add Mentor</span>
+                      </button>
+                    ) : activeSection === "hr_interns" && isHrRole ? (
+                      <button
+                        type="button"
+                        onClick={() => openEnrollMemberModal("intern")}
+                        className="inline-flex items-center gap-1 text-red-600 dark:text-red-400 font-bold text-xs hover:underline cursor-pointer"
+                      >
+                        <Plus className="w-3.5 h-3.5" />
+                        <span>Add Intern</span>
+                      </button>
+                    ) : activeSection === "certificates" && canIssueCertificates ? (
+                      <button
+                        type="button"
+                        onClick={() => setNewCertModal(true)}
+                        className="inline-flex items-center gap-1 text-red-600 dark:text-red-400 font-bold text-xs hover:underline cursor-pointer"
+                      >
+                        <Plus className="w-3.5 h-3.5" />
+                        <span>Issue Certificate</span>
+                      </button>
+                    ) : activeSection === "tasks" && canAssignWork ? (
+                      <button
+                        type="button"
+                        onClick={openTaskModal}
+                        className="inline-flex items-center gap-1 text-red-600 dark:text-red-400 font-bold text-xs hover:underline cursor-pointer"
+                      >
+                        <Plus className="w-3.5 h-3.5" />
+                        <span>New Task</span>
+                      </button>
+                    ) : activeSection === "daily_updates" && isTeamLeader ? (
+                      <button
+                        type="button"
+                        onClick={() => openDailyUpdateModal()}
+                        className="inline-flex items-center gap-1 text-red-600 dark:text-red-400 font-bold text-xs hover:underline cursor-pointer"
+                      >
+                        <Plus className="w-3.5 h-3.5" />
+                        <span>Daily Report</span>
+                      </button>
+                    ) : (
+                      <span className={`${["batches", "members", "hr_mentors", "hr_interns", "classes", "attendance", "certificates", "tasks", "daily_updates", "crm", "cms", "audit", "overview"].includes(activeSection) ? "hidden" : "inline-flex"} xl:hidden items-center gap-1 font-mono text-[10.5px] text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/40 border border-red-200/70 dark:border-red-900/50 px-2.5 py-1 rounded-lg shadow-2xs`}>
+                        <ArrowRight className="w-3.5 h-3.5 text-red-500 shrink-0 animate-pulse" />
+                        Scroll to view all columns
+                      </span>
+                    )}
                   </div>
 
-                  <div className="rounded-2xl border border-gray-200/80 dark:border-slate-800/80 bg-transparent dark:bg-transparent shadow-none overflow-hidden">
+                  {activeSection === "batches" && (
+                    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                      {paginatedRecords.map((b, idx) => {
+                        const assignedHr = resolveBatchLead(b, "hr");
+                        const assignedMentor = resolveBatchLead(b, "mentor");
+                        const assignedTl = resolveBatchLead(b, "team_leader");
+                        return (
+                          <div
+                            key={b.id}
+                            className="rounded-xl border border-gray-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-3.5 shadow-xs flex flex-col justify-between hover:border-gray-300 dark:hover:border-slate-700 transition"
+                          >
+                            <div>
+                              {/* Header: Icon + Title + Status Badge */}
+                              <div className="flex items-start justify-between gap-2">
+                                <div className="flex items-center gap-2.5 min-w-0">
+                                  <div className="w-8 h-8 rounded-lg bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900 text-red-600 dark:text-red-400 flex items-center justify-center shrink-0">
+                                    <Folder className="w-4 h-4" />
+                                  </div>
+                                  <div className="min-w-0">
+                                    <h3 className="text-xs font-bold text-gray-900 dark:text-white truncate" title={b.name}>
+                                      {b.name}
+                                    </h3>
+                                    <p className="text-[11px] text-gray-500 dark:text-slate-400 truncate" title={domainLabel(b.domain)}>
+                                      {b.domain === "web_dev" ? "Web Development" : domainLabel(b.domain)}
+                                    </p>
+                                  </div>
+                                </div>
+
+                                <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-semibold border shrink-0 ${
+                                  b.status === "active"
+                                    ? "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/50 dark:text-emerald-300 dark:border-emerald-800"
+                                    : b.status === "completed"
+                                    ? "bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/50 dark:text-blue-300 dark:border-blue-800"
+                                    : "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/50 dark:text-amber-300 dark:border-amber-800"
+                                }`}>
+                                  <span className={`w-1.5 h-1.5 rounded-full mr-1 ${
+                                    b.status === "active" ? "bg-emerald-500" : b.status === "completed" ? "bg-blue-500" : "bg-amber-500"
+                                  }`} />
+                                  {b.status || "active"}
+                                </span>
+                              </div>
+
+                              {/* Meta details: HR, Mentor, TL, Start Date */}
+                              <div className="mt-2.5 pt-2 border-t border-gray-100 dark:border-slate-800/80 space-y-1 text-[11px] text-gray-500 dark:text-slate-400">
+                                <div className="flex items-center justify-between gap-1.5">
+                                  <span className="text-gray-400">HR:</span>
+                                  <span className="font-semibold text-gray-700 dark:text-slate-300 truncate max-w-[130px]" title={assignedHr?.full_name || "Unassigned"}>
+                                    {assignedHr?.full_name || "Unassigned"}
+                                  </span>
+                                </div>
+                                <div className="flex items-center justify-between gap-1.5">
+                                  <span className="text-gray-400">Mentor:</span>
+                                  <span className="font-semibold text-gray-700 dark:text-slate-300 truncate max-w-[130px]" title={assignedMentor?.full_name || "None"}>
+                                    {assignedMentor?.full_name || "None"}
+                                  </span>
+                                </div>
+                                <div className="flex items-center justify-between gap-1.5">
+                                  <span className="text-gray-400">TL:</span>
+                                  <span className="font-semibold text-gray-700 dark:text-slate-300 truncate max-w-[130px]" title={assignedTl?.full_name || "None"}>
+                                    {assignedTl?.full_name || "None"}
+                                  </span>
+                                </div>
+                                <div className="flex items-center justify-between gap-1.5">
+                                  <span className="text-gray-400">Starts:</span>
+                                  <span className="font-mono text-gray-600 dark:text-slate-400 truncate" title={b.starts_at || "Immediate"}>
+                                    {b.starts_at || "Immediate"}
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Actions footer */}
+                            <div className="mt-3 pt-2.5 border-t border-gray-100 dark:border-slate-800 flex items-center justify-between gap-1.5">
+                              <button
+                                type="button"
+                                onClick={() => openBatchWorkspace(b.id)}
+                                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-gray-100 hover:bg-gray-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-gray-800 dark:text-slate-200 text-xs font-bold transition cursor-pointer"
+                              >
+                                <LayoutDashboard className="w-3.5 h-3.5 text-red-600" />
+                                <span>Workspace</span>
+                              </button>
+
+                              <div className="flex items-center gap-1">
+                                {isAdminRole ? (
+                                  <>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleToggleBatchStatus(b)}
+                                      className={`p-1.5 rounded-lg border text-xs font-bold transition cursor-pointer ${
+                                        b.status === "paused"
+                                          ? "bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100"
+                                          : "bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100"
+                                      }`}
+                                      title={b.status === "paused" ? "Resume Batch" : "Pause Batch"}
+                                    >
+                                      {b.status === "paused" ? <Play className="w-3 h-3" /> : <Pause className="w-3 h-3" />}
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => openEditBatch(b)}
+                                      className="p-1.5 rounded-lg bg-red-600 hover:bg-red-700 text-white text-xs font-bold transition cursor-pointer"
+                                      title="Edit Batch"
+                                    >
+                                      <Edit3 className="w-3 h-3" />
+                                    </button>
+                                  </>
+                                ) : isHrRole || isMentor ? (
+                                  <button
+                                    type="button"
+                                    onClick={() => openAssignLeads(b)}
+                                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-red-600 hover:bg-red-700 text-white text-xs font-bold transition cursor-pointer"
+                                  >
+                                    <Users className="w-3 h-3" />
+                                    <span>{isHrRole ? "Mentor" : "TL"}</span>
+                                  </button>
+                                ) : null}
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+
+                  {(["members", "hr_mentors", "hr_interns", "classes", "attendance", "certificates", "tasks", "daily_updates", "cms", "audit"].includes(activeSection) || (activeSection === "overview" && isAdminRole)) && (
+                    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                      {paginatedRecords.map((item) => {
+                        if (activeSection === "classes") {
+                          const isMeetingEnded = item.status === "completed" || item.status === "cancelled";
+                          const isMeetingLive = !isMeetingEnded && (
+                            Boolean(item.attendance_token?.includes("#live:")) ||
+                            item.status === "in_progress" ||
+                            item.status === "live"
+                          );
+                          const isHost = item.host_id === sessionUser?.id || (isMentor && ownedBatchIds.has(item.batch_id)) || (isTeamLeader && item.batch_id === userProfile?.batch_id && (!item.host_id || item.host_id === sessionUser?.id)) || isAdminRole;
+                          const isAttended = attendance.some((a) => a.meeting_id === item.id && a.user_id === sessionUser?.id);
+
+                          return (
+                            <div
+                              key={item.id}
+                              className="rounded-xl border border-gray-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-3.5 shadow-xs flex flex-col justify-between hover:border-gray-300 dark:hover:border-slate-700 transition"
+                            >
+                              <div>
+                                {/* Header: Icon + Title + Status Badge */}
+                                <div className="flex items-start justify-between gap-2">
+                                  <div className="flex items-center gap-2.5 min-w-0">
+                                    <div className="w-8 h-8 rounded-lg bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900 text-red-600 dark:text-red-400 flex items-center justify-center shrink-0">
+                                      <Video className="w-4 h-4" />
+                                    </div>
+                                    <div className="min-w-0">
+                                      <h3 className="text-xs font-bold text-gray-900 dark:text-white truncate" title={item.title}>
+                                        {item.title}
+                                      </h3>
+                                      <p className="text-[11px] text-gray-500 dark:text-slate-400 truncate" title={item.topic || "Session"}>
+                                        {item.topic || "General Session"}
+                                      </p>
+                                    </div>
+                                  </div>
+
+                                  {isMeetingEnded ? (
+                                    <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-semibold bg-gray-100 text-gray-500 dark:bg-slate-800 dark:text-slate-400 shrink-0">
+                                      Ended
+                                    </span>
+                                  ) : isMeetingLive ? (
+                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-950/50 dark:text-emerald-300 dark:border-emerald-800 shrink-0">
+                                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse shrink-0" />
+                                      Live
+                                    </span>
+                                  ) : (
+                                    <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-semibold bg-blue-50 text-blue-700 border border-blue-200 dark:bg-blue-950/50 dark:text-blue-300 dark:border-blue-800 shrink-0">
+                                      Scheduled
+                                    </span>
+                                  )}
+                                </div>
+
+                                {/* Meta details: Date, Batch, Format & Host */}
+                                <div className="mt-2.5 pt-2 border-t border-gray-100 dark:border-slate-800/80 space-y-1 text-[11px] text-gray-500 dark:text-slate-400">
+                                  <div className="flex items-center justify-between gap-1.5">
+                                    <span className="font-mono truncate" title={localDate(item.scheduled_at)}>
+                                      {localDate(item.scheduled_at)}
+                                    </span>
+                                    <span className="font-semibold text-gray-700 dark:text-slate-300 truncate max-w-[120px]" title={batches.find((b) => b.id === item.batch_id)?.name || "Batch"}>
+                                      {batches.find((b) => b.id === item.batch_id)?.name || (item.domain ? domainLabel(item.domain) : "Batch")}
+                                    </span>
+                                  </div>
+                                  <div className="flex items-center justify-between gap-1.5 text-[10.5px]">
+                                    <span className="text-gray-400 truncate">
+                                      {item.attendee_id ? "1:1 Meet" : "Whole Batch"}
+                                    </span>
+                                    <span className="font-medium text-gray-600 dark:text-slate-400">
+                                      {isHost ? "Host: You" : "Participant"}
+                                    </span>
+                                  </div>
+                                </div>
+                              </div>
+
+                              {/* Action Row */}
+                              <div className="mt-3 pt-2.5 border-t border-gray-100 dark:border-slate-800 flex items-center justify-between gap-1.5">
+                                {/* Left side: Attendance action (only during live) */}
+                                <div className="min-w-0">
+                                  {isMeetingLive && canScheduleMeetings && item.batch_id ? (
+                                    <button
+                                      type="button"
+                                      onClick={() => copyAttendanceLink(item)}
+                                      className="text-[11px] font-bold text-emerald-700 dark:text-emerald-400 hover:underline cursor-pointer inline-flex items-center gap-1"
+                                      title="Copy attendance verification link"
+                                    >
+                                      <ShieldCheck className="w-3 h-3" />
+                                      <span>Link</span>
+                                    </button>
+                                  ) : isMeetingLive && !isHost ? (
+                                    isAttended ? (
+                                      <span className="text-[11px] font-bold text-emerald-600 inline-flex items-center gap-1">
+                                        <CheckCircle2 className="w-3 h-3" /> Attended
+                                      </span>
+                                    ) : (
+                                      <button
+                                        type="button"
+                                        onClick={() => handleSelfMarkMeetingAttendance(item)}
+                                        className="px-2 py-1 rounded-md bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-bold cursor-pointer"
+                                      >
+                                        Mark Attendance
+                                      </button>
+                                    )
+                                  ) : (
+                                    <span className="text-[11px] text-gray-400">
+                                      {item.attendee_id ? "1:1" : "Batch"}
+                                    </span>
+                                  )}
+                                </div>
+
+                                {/* Right side: Start / Join / End / Ended */}
+                                <div className="flex items-center gap-1.5 shrink-0">
+                                  {isHost ? (
+                                    isMeetingEnded ? (
+                                      <span className="text-xs text-gray-400 font-medium">Meeting Ended</span>
+                                    ) : isMeetingLive ? (
+                                      <>
+                                        <a
+                                          href={safeExternalUrl(item.meeting_link)}
+                                          target="_blank"
+                                          rel="noopener noreferrer"
+                                          className="px-2.5 py-1 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold"
+                                        >
+                                          Join
+                                        </a>
+                                        <button
+                                          type="button"
+                                          onClick={() => handleEndMeeting(item)}
+                                          className="px-2.5 py-1 rounded-lg bg-red-600 hover:bg-red-700 text-white text-xs font-bold cursor-pointer"
+                                        >
+                                          End
+                                        </button>
+                                      </>
+                                    ) : (
+                                      <button
+                                        type="button"
+                                        onClick={() => handleStartMeeting(item)}
+                                        className="px-3 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold cursor-pointer"
+                                      >
+                                        Start
+                                      </button>
+                                    )
+                                  ) : (
+                                    isMeetingEnded ? (
+                                      <span className="text-xs text-gray-400 font-medium">Meeting Ended</span>
+                                    ) : isMeetingLive ? (
+                                      <a
+                                        href={safeExternalUrl(item.meeting_link)}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="px-3 py-1 rounded-lg bg-red-600 hover:bg-red-700 text-white text-xs font-bold"
+                                      >
+                                        Join Meeting
+                                      </a>
+                                    ) : (
+                                      <span className="text-xs text-gray-400 font-medium" title="Waiting for host to start">
+                                        Waiting for Host
+                                      </span>
+                                    )
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        }
+
+                        if (activeSection === "attendance") {
+                          const standingColors = {
+                            on_track: {
+                              badge: "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800",
+                              dot: "bg-emerald-500",
+                              bar: "bg-emerald-500",
+                              text: "text-emerald-600 dark:text-emerald-400",
+                              label: "On Track",
+                            },
+                            warning: {
+                              badge: "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800",
+                              dot: "bg-amber-500",
+                              bar: "bg-amber-500",
+                              text: "text-amber-600 dark:text-amber-400",
+                              label: "Warning",
+                            },
+                            at_risk: {
+                              badge: "bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950/40 dark:text-rose-300 dark:border-rose-800",
+                              dot: "bg-rose-500",
+                              bar: "bg-rose-500",
+                              text: "text-rose-600 dark:text-rose-400",
+                              label: "Low Attendance",
+                            },
+                          };
+                          const standingStyle = standingColors[item.standing] || standingColors.on_track;
+
+                          return (
+                            <div
+                              key={item.id}
+                              className="rounded-xl border border-gray-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-3.5 shadow-xs flex flex-col justify-between hover:border-gray-300 dark:hover:border-slate-700 transition"
+                            >
+                              <div>
+                                {/* Header: Member Initial/Avatar + Full Name + Standing Badge */}
+                                <div className="flex items-start justify-between gap-2">
+                                  <div className="flex items-center gap-2.5 min-w-0">
+                                    {item.user?.avatar_url ? (
+                                      /* eslint-disable-next-line @next/next/no-img-element */
+                                      <img
+                                        src={item.user.avatar_url}
+                                        alt={item.user.full_name || "Member"}
+                                        className="w-8 h-8 rounded-lg object-cover ring-1 ring-black/5 dark:ring-white/10 shrink-0"
+                                      />
+                                    ) : (
+                                      <div className="w-8 h-8 rounded-lg bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900 text-red-600 dark:text-red-400 text-xs font-bold flex items-center justify-center shrink-0">
+                                        {(item.user?.full_name || "M")[0]?.toUpperCase()}
+                                      </div>
+                                    )}
+                                    <div className="min-w-0">
+                                      <h3 className="text-xs font-bold text-gray-900 dark:text-white truncate" title={item.user?.full_name || "Member"}>
+                                        {item.user?.full_name || "Member"}
+                                      </h3>
+                                      <p className="text-[11px] text-gray-500 dark:text-slate-400 truncate" title={item.batch_name || "Cohort"}>
+                                        {item.batch_name || "Cohort"}
+                                      </p>
+                                    </div>
+                                  </div>
+
+                                  <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-semibold border shrink-0 ${standingStyle.badge}`}>
+                                    <span className={`w-1.5 h-1.5 rounded-full ${standingStyle.dot}`} />
+                                    {standingStyle.label}
+                                  </span>
+                                </div>
+
+                                {/* Attendance Percentage & Progress Bar */}
+                                <div className="mt-3 p-2.5 rounded-xl bg-gray-50/70 dark:bg-slate-800/40 border border-gray-100 dark:border-slate-800 space-y-1.5">
+                                  <div className="flex items-center justify-between text-xs">
+                                    <span className="font-bold text-gray-700 dark:text-slate-300">Attendance Rate</span>
+                                    <span className={`text-sm font-black font-mono ${standingStyle.text}`}>
+                                      {item.attendanceRate}%
+                                    </span>
+                                  </div>
+                                  <div className="w-full bg-gray-200 dark:bg-slate-700 rounded-full h-1.5 overflow-hidden">
+                                    <div
+                                      className={`h-full rounded-full transition-all duration-300 ${standingStyle.bar}`}
+                                      style={{ width: `${Math.max(4, Math.min(100, item.attendanceRate))}%` }}
+                                    />
+                                  </div>
+                                  <div className="flex items-center justify-between text-[10.5px] text-gray-500 dark:text-slate-400 pt-0.5">
+                                    <span>
+                                      Attended: <strong className="text-gray-900 dark:text-white">{item.attendedCount}</strong> / {Math.max(item.totalSessions, item.attendedCount)} Sessions
+                                    </span>
+                                    {item.lateCount > 0 && (
+                                      <span className="text-amber-600 font-medium">({item.lateCount} Late)</span>
+                                    )}
+                                  </div>
+                                </div>
+
+                                {/* Meta details: Batch & Last Attended */}
+                                <div className="mt-2.5 space-y-1 text-[11px] text-gray-500 dark:text-slate-400">
+                                  <div className="flex items-center justify-between gap-1.5">
+                                    <span className="text-gray-400">Batch:</span>
+                                    <span className="font-semibold text-gray-700 dark:text-slate-300 truncate max-w-[130px]" title={item.batch_name}>
+                                      {item.batch_name}
+                                    </span>
+                                  </div>
+                                  <div className="flex items-center justify-between gap-1.5">
+                                    <span className="text-gray-400">Last Attended:</span>
+                                    <span className="font-mono text-gray-600 dark:text-slate-300 truncate" title={item.lastAttendedDate ? localDate(item.lastAttendedDate) : "None yet"}>
+                                      {item.lastAttendedDate ? localDate(item.lastAttendedDate) : "None yet"}
+                                    </span>
+                                  </div>
+                                </div>
+                              </div>
+
+                              {/* Footer Actions: View Logs + WhatsApp */}
+                              <div className="mt-3 pt-2.5 border-t border-gray-100 dark:border-slate-800 flex items-center justify-between gap-1.5">
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setSelectedAttendanceUser(item);
+                                    setAttendanceHistoryFilter("all");
+                                    setAttendanceHistoryPage(1);
+                                  }}
+                                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-gray-100 hover:bg-gray-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-gray-800 dark:text-slate-200 text-xs font-bold transition cursor-pointer"
+                                >
+                                  <Clock className="w-3.5 h-3.5 text-red-600" />
+                                  <span>History</span>
+                                </button>
+
+                                {item.user?.id && (
+                                  <button
+                                    type="button"
+                                    onClick={() => openDirectChatWithUser(item.user.id)}
+                                    className="p-1.5 rounded-lg bg-red-50 hover:bg-red-100 dark:bg-red-950/40 text-red-600 dark:text-red-400 transition cursor-pointer"
+                                    title="Direct In-App Chat"
+                                  >
+                                    <MessageSquare className="w-3.5 h-3.5" />
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        }
+
+                        if (activeSection === "certificates") {
+                          return (
+                            <div
+                              key={item.id || item.certificate_code}
+                              className="rounded-xl border border-gray-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-3.5 shadow-xs flex flex-col justify-between hover:border-gray-300 dark:hover:border-slate-700 transition"
+                            >
+                              <div>
+                                {/* Header: Icon + Intern Name + Verified Badge */}
+                                <div className="flex items-start justify-between gap-2">
+                                  <div className="flex items-center gap-2.5 min-w-0">
+                                    <div className="w-8 h-8 rounded-lg bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900 text-red-600 dark:text-red-400 text-xs font-bold flex items-center justify-center shrink-0">
+                                      <Award className="w-4 h-4" />
+                                    </div>
+                                    <div className="min-w-0">
+                                      <h3 className="text-xs font-bold text-gray-900 dark:text-white truncate" title={item.intern_name}>
+                                        {item.intern_name}
+                                      </h3>
+                                      <p className="text-[11px] text-gray-500 dark:text-slate-400 truncate" title={item.domain}>
+                                        {domainLabel(item.domain)}
+                                      </p>
+                                    </div>
+                                  </div>
+
+                                  <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-950/50 dark:text-emerald-300 dark:border-emerald-800 shrink-0">
+                                    Verified
+                                  </span>
+                                </div>
+
+                                {/* Meta details: Code & Grade */}
+                                <div className="mt-2.5 pt-2 border-t border-gray-100 dark:border-slate-800/80 space-y-1 text-[11px] text-gray-500 dark:text-slate-400">
+                                  <div className="flex items-center justify-between gap-1.5">
+                                    <span className="text-gray-400">Code:</span>
+                                    <span className="font-mono font-bold text-gray-700 dark:text-slate-300 truncate max-w-[130px]" title={item.certificate_code}>
+                                      {item.certificate_code}
+                                    </span>
+                                  </div>
+                                  <div className="flex items-center justify-between gap-1.5">
+                                    <span className="text-gray-400">Grade:</span>
+                                    <span className="font-semibold text-emerald-600 dark:text-emerald-400">
+                                      {item.performance_grade || "A+"}
+                                    </span>
+                                  </div>
+                                </div>
+                              </div>
+
+                              {/* Actions footer */}
+                              <div className="mt-3 pt-2.5 border-t border-gray-100 dark:border-slate-800 flex items-center justify-end">
+                                <Link
+                                  href={`/verify/${item.certificate_code}`}
+                                  target="_blank"
+                                  className="inline-flex items-center gap-1 px-3 py-1 rounded-lg bg-gray-100 hover:bg-gray-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-gray-800 dark:text-slate-200 text-xs font-bold transition"
+                                >
+                                  <span>Verify</span>
+                                  <ExternalLink className="w-3.5 h-3.5 text-gray-400" />
+                                </Link>
+                              </div>
+                            </div>
+                          );
+                        }
+
+                        if (activeSection === "tasks") {
+                          const t = item;
+                          const statusColors = {
+                            approved: "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800",
+                            reviewed: "bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/40 dark:text-blue-300 dark:border-blue-800",
+                            submitted: "bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-950/40 dark:text-purple-300 dark:border-purple-800",
+                            pending: "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800",
+                          };
+                          const statusBadgeClass = statusColors[t.status] || "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800";
+                          const latestUpdate = latestDailyUpdateByTaskId?.get(t.id);
+
+                          return (
+                            <div
+                              key={t.id}
+                              className="rounded-xl border border-gray-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-3.5 shadow-xs flex flex-col justify-between hover:border-gray-300 dark:hover:border-slate-700 transition"
+                            >
+                              <div>
+                                <div className="flex items-start justify-between gap-2">
+                                  <div className="flex items-center gap-2 min-w-0">
+                                    <div className="w-8 h-8 rounded-lg bg-red-50 dark:bg-red-950/40 text-red-600 dark:text-red-400 flex items-center justify-center shrink-0 border border-red-200 dark:border-red-900">
+                                      <CheckSquare className="w-4 h-4" />
+                                    </div>
+                                    <div className="min-w-0">
+                                      <h4 className="text-xs font-bold text-gray-900 dark:text-white truncate" title={t.title}>
+                                        {t.title}
+                                      </h4>
+                                      <p className="text-[11px] text-gray-500 dark:text-slate-400 truncate mt-0.5" title={t.description}>
+                                        {t.description || "No description"}
+                                      </p>
+                                    </div>
+                                  </div>
+                                  <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-md border shrink-0 uppercase tracking-wider ${statusBadgeClass}`}>
+                                    {t.status}
+                                  </span>
+                                </div>
+
+                                <div className="mt-2.5 pt-2 border-t border-gray-100 dark:border-slate-800/80 space-y-1 text-[11px] text-gray-500 dark:text-slate-400">
+                                  <div className="flex items-center justify-between gap-2">
+                                    <span>Batch:</span>
+                                    <span className="font-semibold text-gray-800 dark:text-slate-200 truncate max-w-[130px]" title={t.batch?.name || batches.find((b) => b.id === t.batch_id)?.name || "All Batches"}>
+                                      {t.batch?.name || batches.find((b) => b.id === t.batch_id)?.name || "All Batches"}
+                                    </span>
+                                  </div>
+                                  <div className="flex items-center justify-between gap-2">
+                                    <span>Assigned To:</span>
+                                    <span className="font-semibold text-gray-800 dark:text-slate-200 truncate max-w-[130px]" title={t.assigned_to_profile?.full_name || "Whole Batch"}>
+                                      {t.assigned_to_profile?.full_name || "Whole Batch"}
+                                    </span>
+                                  </div>
+                                  <div className="flex items-center justify-between gap-2">
+                                    <span>Deadline:</span>
+                                    <span className="font-mono text-gray-700 dark:text-slate-300">
+                                      {localDate(t.deadline)}
+                                    </span>
+                                  </div>
+                                  {(t.reference_url || t.file_name) && (
+                                    <div className="flex items-center justify-between gap-2 pt-0.5">
+                                      <span>Reference:</span>
+                                      {t.reference_url ? (
+                                        <a
+                                          href={safeExternalUrl(t.reference_url)}
+                                          target="_blank"
+                                          rel="noreferrer"
+                                          className="inline-flex items-center gap-1 text-[10.5px] font-bold text-red-600 hover:underline truncate max-w-[130px]"
+                                        >
+                                          <ExternalLink className="w-3 h-3 shrink-0" />
+                                          <span>View URL</span>
+                                        </a>
+                                      ) : (
+                                        <span className="text-[10.5px] font-medium text-slate-600 dark:text-slate-300 truncate max-w-[130px]" title={t.file_name}>
+                                          {t.file_name}
+                                        </span>
+                                      )}
+                                    </div>
+                                  )}
+                                  {latestUpdate && (
+                                    <div className="text-[10.5px] text-emerald-600 dark:text-emerald-400 font-semibold truncate pt-0.5" title={latestUpdate.summary}>
+                                      Update: {latestUpdate.summary}
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+
+                              <div className="mt-3 pt-2.5 border-t border-gray-100 dark:border-slate-800 flex items-center justify-between gap-1.5 flex-wrap">
+                                <button
+                                  type="button"
+                                  onClick={() => setTaskDetailsModal(t)}
+                                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-gray-100 hover:bg-gray-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-gray-800 dark:text-slate-200 text-xs font-bold transition cursor-pointer"
+                                >
+                                  <FileText className="w-3 h-3 text-red-600" />
+                                  <span>Details</span>
+                                </button>
+
+                                <div className="flex items-center gap-1">
+                                  {canReviewTask(t) && (
+                                    <button
+                                      type="button"
+                                      onClick={() => setReviewModal(t)}
+                                      className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-amber-50 hover:bg-amber-100 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800 text-xs font-bold transition cursor-pointer"
+                                    >
+                                      <CheckSquare className="w-3 h-3" />
+                                      <span>Review</span>
+                                    </button>
+                                  )}
+                                  {canSendDailyTaskUpdate(t) && (
+                                    <button
+                                      type="button"
+                                      onClick={() => setSubmissionModal(t.id)}
+                                      className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-red-600 hover:bg-red-700 text-white text-xs font-bold shadow-xs transition cursor-pointer"
+                                    >
+                                      <Send className="w-3 h-3" />
+                                      <span>Submit</span>
+                                    </button>
+                                  )}
+                                  {canCommentDailyUpdate(latestDailyUpdateByTaskId?.get(t.id)) && (
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        const update = latestDailyUpdateByTaskId.get(t.id);
+                                        setDailyCommentModal(update);
+                                        setDailyCommentText(update?.reviewer_comment || "");
+                                      }}
+                                      className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-blue-50 hover:bg-blue-100 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 text-xs font-bold transition cursor-pointer"
+                                    >
+                                      <MessageSquare className="w-3 h-3" />
+                                      <span>Comment</span>
+                                    </button>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        }
+
+                        if (activeSection === "daily_updates") {
+                          const update = item;
+                          const updateTl = update.tl || profiles.find((p) => p.id === update.tl_id);
+                          const updateBatch = update.batch || batches.find((b) => b.id === update.batch_id);
+                          const updateTask = update.task || tasks.find((t) => t.id === update.task_id);
+                          const hasReviewed = Boolean(update.reviewer_comment);
+
+                          return (
+                            <div
+                              key={update.id}
+                              className="rounded-xl border border-gray-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-3.5 shadow-xs flex flex-col justify-between hover:border-gray-300 dark:hover:border-slate-700 transition"
+                            >
+                              <div>
+                                <div className="flex items-start justify-between gap-2">
+                                  <div className="flex items-center gap-2 min-w-0">
+                                    <div className="w-8 h-8 rounded-lg bg-amber-500 text-white text-xs font-bold flex items-center justify-center shrink-0">
+                                      {(updateTl?.full_name || "T")[0]?.toUpperCase()}
+                                    </div>
+                                    <div className="min-w-0">
+                                      <h4 className="text-xs font-bold text-gray-900 dark:text-white truncate" title={updateTl?.full_name || "Team Leader"}>
+                                        {updateTl?.full_name || "Team Leader"}
+                                      </h4>
+                                      <p className="text-[11px] text-gray-500 dark:text-slate-400 truncate mt-0.5">
+                                        {updateTl?.role === "team_leader" ? "Team Leader" : "Member Report"}
+                                      </p>
+                                    </div>
+                                  </div>
+                                  <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-md border shrink-0 uppercase tracking-wider ${
+                                    hasReviewed
+                                      ? "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800"
+                                      : "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800"
+                                  }`}>
+                                    {hasReviewed ? "Reviewed" : "Pending"}
+                                  </span>
+                                </div>
+
+                                <div className="mt-2.5 pt-2 border-t border-gray-100 dark:border-slate-800/80 space-y-1.5 text-[11px] text-gray-500 dark:text-slate-400">
+                                  {updateBatch && (
+                                    <div className="flex items-center justify-between gap-2">
+                                      <span>Batch:</span>
+                                      <span className="font-semibold text-gray-800 dark:text-slate-200 truncate max-w-[130px]">
+                                        {updateBatch.name}
+                                      </span>
+                                    </div>
+                                  )}
+                                  <div className="flex items-center justify-between gap-2">
+                                    <span>Task:</span>
+                                    <span className="font-semibold text-gray-800 dark:text-slate-200 truncate max-w-[130px]" title={updateTask?.title || update.assigned_tasks || "Daily Standup"}>
+                                      {updateTask?.title || update.assigned_tasks || "Daily Standup"}
+                                    </span>
+                                  </div>
+                                  <p className="text-xs text-gray-800 dark:text-slate-200 font-medium line-clamp-2 pt-0.5" title={update.summary}>
+                                    {update.summary}
+                                  </p>
+                                  {(update.completed_count > 0 || update.pending_count > 0) && (
+                                    <div className="flex items-center gap-2 text-[10.5px]">
+                                      <span className="text-emerald-600 font-semibold">Done: {update.completed_count || 0}</span>
+                                      <span>•</span>
+                                      <span className="text-amber-600 font-semibold">Pending: {update.pending_count || 0}</span>
+                                    </div>
+                                  )}
+                                  {update.blockers && (
+                                    <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10.5px] bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300 border border-amber-200 truncate w-full">
+                                      <AlertTriangle className="w-3 h-3 text-amber-600 shrink-0" />
+                                      <span className="truncate">{update.blockers}</span>
+                                    </div>
+                                  )}
+                                  <div className="flex items-center justify-between text-[10.5px] pt-0.5">
+                                    <span>Date:</span>
+                                    <span className="font-mono text-gray-600 dark:text-slate-300">{localDate(update.created_at)}</span>
+                                  </div>
+                                </div>
+                              </div>
+
+                              <div className="mt-3 pt-2.5 border-t border-gray-100 dark:border-slate-800 flex items-center justify-between gap-1.5">
+                                {canCommentDailyUpdate(update) ? (
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setDailyCommentModal(update);
+                                      setDailyCommentText(update.reviewer_comment || "");
+                                    }}
+                                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-red-600 hover:bg-red-700 text-white text-xs font-bold transition cursor-pointer shadow-xs"
+                                  >
+                                    <MessageSquare className="w-3 h-3" />
+                                    <span>{hasReviewed ? "Feedback" : "Review"}</span>
+                                  </button>
+                                ) : <span />}
+
+                                {updateTl?.phone && (
+                                  <button
+                                    type="button"
+                                    onClick={() => handleDirectWhatsapp(updateTl.phone, updateTl.full_name, `Hi ${updateTl.full_name}, regarding your daily report for ${updateBatch?.name || "batch"}...`)}
+                                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-xs transition cursor-pointer"
+                                  >
+                                    <WhatsAppIcon className="w-3.5 h-3.5 fill-current" />
+                                    <span>WhatsApp</span>
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        }
+
+                        if (activeSection === "crm") {
+                          const lead = item;
+                          return (
+                            <div
+                              key={lead.id}
+                              className="rounded-xl border border-gray-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-3.5 shadow-xs flex flex-col justify-between hover:border-gray-300 dark:hover:border-slate-700 transition"
+                            >
+                              <div>
+                                <div className="flex items-start justify-between gap-2">
+                                  <div className="flex items-center gap-2 min-w-0">
+                                    <div className="w-8 h-8 rounded-lg bg-red-50 dark:bg-red-950/40 text-red-600 dark:text-red-400 flex items-center justify-center shrink-0 border border-red-200 dark:border-red-900 text-xs font-bold">
+                                      {(lead.full_name || "L")[0]?.toUpperCase()}
+                                    </div>
+                                    <div className="min-w-0">
+                                      <h4 className="text-xs font-bold text-gray-900 dark:text-white truncate" title={lead.full_name}>
+                                        {lead.full_name}
+                                      </h4>
+                                      <p className="text-[11px] text-gray-500 dark:text-slate-400 truncate mt-0.5" title={lead.email}>
+                                        {lead.email}
+                                      </p>
+                                    </div>
+                                  </div>
+                                  <span className="text-[10px] font-semibold px-2 py-0.5 rounded-md border bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800 uppercase tracking-wider shrink-0">
+                                    {lead.status || "new"}
+                                  </span>
+                                </div>
+
+                                <div className="mt-2.5 pt-2 border-t border-gray-100 dark:border-slate-800/80 space-y-1 text-[11px] text-gray-500 dark:text-slate-400">
+                                  <div className="flex items-center justify-between gap-2">
+                                    <span>Service:</span>
+                                    <span className="font-semibold text-red-600 dark:text-red-400 truncate max-w-[130px]" title={lead.service_interest}>
+                                      {lead.service_interest}
+                                    </span>
+                                  </div>
+                                  <div className="flex items-center justify-between gap-2">
+                                    <span>Phone:</span>
+                                    <span className="font-mono text-gray-700 dark:text-slate-300 truncate max-w-[130px]">
+                                      {lead.phone || "-"}
+                                    </span>
+                                  </div>
+                                  <div className="flex items-center justify-between gap-2">
+                                    <span>Date:</span>
+                                    <span className="font-mono text-gray-600 dark:text-slate-400">
+                                      {localDate(lead.created_at)}
+                                    </span>
+                                  </div>
+                                </div>
+                              </div>
+
+                              <div className="mt-3 pt-2.5 border-t border-gray-100 dark:border-slate-800 flex items-center justify-end">
+                                <button
+                                  type="button"
+                                  onClick={() => handleSendWhatsapp(lead)}
+                                  className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-xs transition cursor-pointer"
+                                >
+                                  <WhatsAppIcon className="w-3.5 h-3.5 fill-current" />
+                                  <span>WhatsApp</span>
+                                </button>
+                              </div>
+                            </div>
+                          );
+                        }
+
+                        if (activeSection === "cms") {
+                          const c = item;
+                          return (
+                            <div
+                              key={c.id || c.key}
+                              className="rounded-xl border border-gray-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-3.5 shadow-xs flex flex-col justify-between hover:border-gray-300 dark:hover:border-slate-700 transition"
+                            >
+                              <div>
+                                <div className="flex items-start justify-between gap-2">
+                                  <div className="flex items-center gap-2 min-w-0">
+                                    <div className="w-8 h-8 rounded-lg bg-purple-50 dark:bg-purple-950/40 border border-purple-200 dark:border-purple-900 flex items-center justify-center shrink-0">
+                                      <FileText className="w-4 h-4 text-purple-600 dark:text-purple-400" />
+                                    </div>
+                                    <div className="min-w-0">
+                                      <h4 className="text-xs font-bold text-gray-900 dark:text-white truncate" title={c.content_json?.title || "Untitled"}>
+                                        {c.content_json?.title || "Untitled"}
+                                      </h4>
+                                      <p className="text-[10.5px] font-mono text-red-600 dark:text-red-400 truncate mt-0.5" title={c.key}>
+                                        {c.key}
+                                      </p>
+                                    </div>
+                                  </div>
+                                  <span className="text-[10px] font-semibold px-2 py-0.5 rounded-md border bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-950/40 dark:text-purple-300 dark:border-purple-800 uppercase tracking-wider shrink-0">
+                                    Published
+                                  </span>
+                                </div>
+
+                                <div className="mt-2.5 pt-2 border-t border-gray-100 dark:border-slate-800/80 space-y-1 text-[11px] text-gray-500 dark:text-slate-400">
+                                  <div className="flex items-center justify-between gap-2">
+                                    <span>Description:</span>
+                                    <span className="truncate max-w-[130px] text-gray-700 dark:text-slate-300" title={c.content_json?.subtitle || "-"}>
+                                      {c.content_json?.subtitle || "-"}
+                                    </span>
+                                  </div>
+                                  <div className="flex items-center justify-between gap-2">
+                                    <span>Button CTA:</span>
+                                    <span className="font-semibold text-gray-800 dark:text-slate-200 truncate max-w-[130px]">
+                                      {c.content_json?.cta || "Standard CTA"}
+                                    </span>
+                                  </div>
+                                  <div className="flex items-center justify-between gap-2">
+                                    <span>Updated:</span>
+                                    <span className="font-mono text-gray-600 dark:text-slate-400">
+                                      {localDate(c.updated_at)}
+                                    </span>
+                                  </div>
+                                </div>
+                              </div>
+
+                              <div className="mt-3 pt-2.5 border-t border-gray-100 dark:border-slate-800 flex items-center justify-end">
+                                <button
+                                  type="button"
+                                  onClick={() => openCmsEditor(c)}
+                                  className="inline-flex items-center gap-1 px-3 py-1 rounded-lg bg-gray-100 hover:bg-gray-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-gray-800 dark:text-slate-200 text-xs font-bold transition cursor-pointer"
+                                >
+                                  <Edit3 className="w-3 h-3 text-red-600" />
+                                  <span>Edit Block</span>
+                                </button>
+                              </div>
+                            </div>
+                          );
+                        }
+
+                        if (activeSection === "audit") {
+                          const a = item;
+                          const sourceColor =
+                            a.source === "Website"
+                              ? "bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/40 dark:text-blue-300 dark:border-blue-900"
+                              : a.source === "Website CMS"
+                              ? "bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-950/40 dark:text-purple-300 dark:border-purple-900"
+                              : a.source === "Portal"
+                              ? "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-900"
+                              : a.source === "Auth"
+                              ? "bg-teal-50 text-teal-700 border-teal-200 dark:bg-teal-950/40 dark:text-teal-300 dark:border-teal-900"
+                              : a.source === "Batches"
+                              ? "bg-red-50 text-red-700 border-red-200 dark:bg-red-950/40 dark:text-red-400 dark:border-red-900"
+                              : "bg-slate-100 text-slate-700 border-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700";
+
+                          return (
+                            <div
+                              key={a.id}
+                              className="rounded-xl border border-gray-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-3.5 shadow-xs flex flex-col justify-between hover:border-gray-300 dark:hover:border-slate-700 transition"
+                            >
+                              <div>
+                                <div className="flex items-start justify-between gap-2">
+                                  <div className="flex items-center gap-2 min-w-0">
+                                    <div className="w-8 h-8 rounded-lg bg-gray-100 dark:bg-slate-800 text-gray-700 dark:text-slate-300 text-xs font-bold flex items-center justify-center shrink-0 border border-gray-200 dark:border-slate-700">
+                                      {(a.actor?.full_name || "S")[0]?.toUpperCase()}
+                                    </div>
+                                    <div className="min-w-0">
+                                      <h4 className="text-xs font-bold text-gray-900 dark:text-white truncate" title={a.actor?.full_name || "System"}>
+                                        {a.actor?.full_name || "System"}
+                                      </h4>
+                                      <p className="text-[10.5px] text-gray-400 dark:text-slate-500 capitalize truncate mt-0.5">
+                                        {ROLE_LABELS[a.actor_role || a.actor?.role] || a.actor_role || "User"}
+                                      </p>
+                                    </div>
+                                  </div>
+                                  <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-md border shrink-0 ${sourceColor}`}>
+                                    {a.source || "System"}
+                                  </span>
+                                </div>
+
+                                <div className="mt-2.5 pt-2 border-t border-gray-100 dark:border-slate-800/80 space-y-1.5 text-[11px] text-gray-500 dark:text-slate-400">
+                                  <div className="flex items-center justify-between gap-2">
+                                    <span>Action:</span>
+                                    <span className="font-mono text-[10.5px] font-semibold text-red-700 dark:text-red-400 bg-red-50 dark:bg-red-500/10 px-1.5 py-0.5 rounded border border-red-200/60 dark:border-red-500/20 truncate max-w-[130px]">
+                                      {(a.action || "activity").replaceAll("_", " ")}
+                                    </span>
+                                  </div>
+                                  <p className="text-xs text-gray-700 dark:text-slate-300 line-clamp-2" title={a.summary}>
+                                    {a.summary}
+                                  </p>
+                                  <div className="flex items-center justify-between gap-2 text-[10.5px]">
+                                    <span>Timestamp:</span>
+                                    <span className="font-mono text-gray-600 dark:text-slate-400">
+                                      {localDate(a.created_at)}
+                                    </span>
+                                  </div>
+                                </div>
+                              </div>
+
+                              <div className="mt-3 pt-2.5 border-t border-gray-100 dark:border-slate-800 flex items-center justify-between">
+                                <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-600">
+                                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                                  RECORDED
+                                </span>
+                                <span className="text-[10.5px] text-gray-400 font-mono">#{a.id?.slice?.(0, 8) || "log"}</span>
+                              </div>
+                            </div>
+                          );
+                        }
+
+                        const member = item;
+                        return (
+                          <div
+                            key={member.id}
+                            className="rounded-xl border border-gray-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-3.5 shadow-xs flex flex-col justify-between hover:border-gray-300 dark:hover:border-slate-700 transition"
+                          >
+                            <div>
+                              {/* Header: Avatar/Initial + Name & Email + Status Badge */}
+                              <div className="flex items-start justify-between gap-2">
+                                <div className="flex items-center gap-2.5 min-w-0">
+                                  {member.avatar_url ? (
+                                    <img src={member.avatar_url} alt={member.full_name || "Profile"} className="w-8 h-8 rounded-lg object-cover ring-1 ring-black/5 dark:ring-white/10 shrink-0" />
+                                  ) : (
+                                    <div className="w-8 h-8 rounded-lg bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900 text-red-600 dark:text-red-400 text-xs font-bold flex items-center justify-center shrink-0">
+                                      {member.full_name?.charAt(0)?.toUpperCase() || "U"}
+                                    </div>
+                                  )}
+                                  <div className="min-w-0">
+                                    <h3 className="text-xs font-bold text-gray-900 dark:text-white truncate" title={member.full_name}>
+                                      {member.full_name}
+                                    </h3>
+                                    <p className="text-[11px] text-gray-500 dark:text-slate-400 truncate" title={member.email}>
+                                      {member.email}
+                                    </p>
+                                  </div>
+                                </div>
+
+                                <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-semibold border shrink-0 ${
+                                  member.status === "paused"
+                                    ? "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/50 dark:text-amber-300 dark:border-amber-800"
+                                    : member.status === "suspended"
+                                    ? "bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950/50 dark:text-rose-300 dark:border-rose-800"
+                                    : member.status === "completed"
+                                    ? "bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/50 dark:text-blue-300 dark:border-blue-800"
+                                    : "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/50 dark:text-emerald-300 dark:border-emerald-800"
+                                }`}>
+                                  <span className={`w-1.5 h-1.5 rounded-full mr-1 ${
+                                    member.status === "paused" ? "bg-amber-500" : member.status === "suspended" ? "bg-rose-500" : member.status === "completed" ? "bg-blue-500" : "bg-emerald-500"
+                                  }`} />
+                                  {member.status || "active"}
+                                </span>
+                              </div>
+
+                              {/* Meta details: Role, Department, Batch */}
+                              <div className="mt-2.5 pt-2 border-t border-gray-100 dark:border-slate-800/80 space-y-1 text-[11px] text-gray-500 dark:text-slate-400">
+                                <div className="flex items-center justify-between gap-1.5">
+                                  <span className="text-gray-400">Role:</span>
+                                  <span className="font-semibold text-gray-700 dark:text-slate-300 truncate max-w-[130px]">
+                                    {ROLE_LABELS[member.role] || member.role}
+                                  </span>
+                                </div>
+                                <div className="flex items-center justify-between gap-1.5">
+                                  <span className="text-gray-400">Department:</span>
+                                  <span className="font-semibold text-gray-700 dark:text-slate-300 truncate max-w-[130px]">
+                                    {domainLabel(member.domain)}
+                                  </span>
+                                </div>
+                                <div className="flex items-center justify-between gap-1.5">
+                                  <span className="text-gray-400">Batch:</span>
+                                  <span className="font-semibold text-gray-700 dark:text-slate-300 truncate max-w-[130px]" title={member.batch_name || "Unassigned"}>
+                                    {member.batch_name || "Unassigned"}
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Actions footer */}
+                            <div className="mt-3 pt-2.5 border-t border-gray-100 dark:border-slate-800 flex items-center justify-between gap-1.5">
+                              <button
+                                type="button"
+                                onClick={() => setSelectedMemberModal(member)}
+                                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-gray-100 hover:bg-gray-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-gray-800 dark:text-slate-200 text-xs font-bold transition cursor-pointer"
+                              >
+                                <User className="w-3.5 h-3.5 text-red-600" />
+                                <span>Profile</span>
+                              </button>
+
+                              <div className="flex items-center gap-1">
+                                {isMentor && member.role === "intern" ? (
+                                  <button
+                                    type="button"
+                                    onClick={() => handlePromoteInternToTl(member)}
+                                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800 text-xs font-bold transition cursor-pointer"
+                                  >
+                                    <UserCheck className="w-3.5 h-3.5" />
+                                    <span>Make TL</span>
+                                  </button>
+                                ) : canManageCredentials ? (
+                                  <button
+                                    type="button"
+                                    onClick={() => openEditMemberModal(member)}
+                                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-red-600 hover:bg-red-700 text-white text-xs font-bold shadow-xs transition cursor-pointer"
+                                  >
+                                    <Edit3 className="w-3 h-3" />
+                                    <span>Edit</span>
+                                  </button>
+                                ) : (
+                                  <button
+                                    type="button"
+                                    onClick={() => openDirectChatWithUser(member.id)}
+                                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-red-600 hover:bg-red-700 text-white text-xs font-bold shadow-xs transition cursor-pointer"
+                                    title="Direct In-App Chat"
+                                  >
+                                    <MessageSquare className="w-3 h-3" />
+                                    <span>Chat</span>
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+
+                  <div className={`${["batches", "members", "hr_mentors", "hr_interns", "classes", "attendance", "certificates", "tasks", "daily_updates", "crm", "cms", "audit", "overview"].includes(activeSection) ? "hidden" : "block"} rounded-2xl border border-gray-200/80 dark:border-slate-800/80 bg-transparent dark:bg-transparent shadow-none overflow-hidden`}>
                     <div className="table-scroll w-full max-w-full overflow-x-auto pb-1">
-                      <table className="w-full min-w-[1080px] sm:min-w-[1160px] text-left text-xs border-collapse whitespace-nowrap">
+                      <table className="hide-record-index w-full min-w-[1080px] sm:min-w-[1160px] text-left text-xs border-collapse whitespace-nowrap">
                         <thead className="bg-transparent dark:bg-transparent border-b border-gray-200 dark:border-slate-800 text-gray-500 dark:text-slate-400 font-bold text-[10.5px] uppercase tracking-wider whitespace-nowrap">
                           <tr className="whitespace-nowrap">
                             <th className="py-3.5 px-4 w-12 text-center">#</th>
@@ -11310,16 +13855,14 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
                                         <span>Edit</span>
                                       </button>
                                     )}
-                                    {!isMentor && (
-                                      <button
-                                        onClick={() => handleSendWhatsapp(m)}
-                                        className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-500 hover:to-green-500 text-white font-bold rounded-xl text-xs transition-all shadow-xs hover:shadow-md hover:shadow-emerald-500/20 active:scale-95 cursor-pointer"
-                                        title="Send WhatsApp Login Details"
-                                      >
-                                        <WhatsAppIcon className="w-3.5 h-3.5 fill-current" />
-                                        <span>WhatsApp</span>
-                                      </button>
-                                    )}
+                                    <button
+                                      onClick={() => openDirectChatWithUser(m.id)}
+                                      className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl text-xs transition-all shadow-xs active:scale-95 cursor-pointer"
+                                      title="Direct In-App Chat"
+                                    >
+                                      <MessageSquare className="w-3.5 h-3.5" />
+                                      <span>Chat</span>
+                                    </button>
                                   </div>
                                 </td>
                               </tr>
@@ -11437,7 +13980,7 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
                                           <span>{isHrRole ? "Assign Mentor" : "Assign TL"}</span>
                                         </button>
                                       ) : (
-                                        <span className="text-gray-400 text-xs font-mono">Cohort #{startIndex + idx + 1}</span>
+                                        <span className="text-gray-400 text-xs font-mono">Cohort</span>
                                       )}
                                     </div>
                                   </td>
@@ -11497,67 +14040,157 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
 
                           {/* SECTION: CLASSES */}
                           {activeSection === "classes" &&
-                            paginatedRecords.map((m, idx) => (
-                              <tr key={m.id || idx} className="hover:bg-red-50/15 dark:hover:bg-slate-800/40 transition group whitespace-nowrap">
-                                <td className="py-3.5 px-4 text-center font-bold text-gray-400 text-xs whitespace-nowrap">{startIndex + idx + 1}</td>
-                                <td className="py-3.5 px-4 whitespace-nowrap">
-                                  <div className="flex items-center gap-2.5">
-                                    <div className="w-8 h-8 rounded-xl bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-900 flex items-center justify-center shrink-0">
-                                      <Video className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                            paginatedRecords.map((m, idx) => {
+                              const isMeetingLive = m.status === "in_progress" || (m.status === "scheduled" && (m.attendance_token || "").includes("#live:"));
+                              const isMeetingEnded = m.status === "completed" || m.status === "cancelled";
+                              const isMeetingScheduled = m.status === "scheduled" && !isMeetingLive && !isMeetingEnded;
+                              const isHost = (m.host_id && m.host_id === sessionUser?.id) || (!m.host_id && canScheduleMeetings);
+
+                              return (
+                                <tr key={m.id || idx} className="hover:bg-red-50/15 dark:hover:bg-slate-800/40 transition group whitespace-nowrap">
+                                  <td className="py-3.5 px-4 text-center font-bold text-gray-400 text-xs whitespace-nowrap">{startIndex + idx + 1}</td>
+                                  <td className="py-3.5 px-4 whitespace-nowrap">
+                                    <div className="flex items-center gap-2.5">
+                                      <div className="w-8 h-8 rounded-xl bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-900 flex items-center justify-center shrink-0">
+                                        <Video className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                                      </div>
+                                      <div className="font-bold text-xs text-gray-900 dark:text-white group-hover:text-red-600 transition-colors max-w-[140px] truncate block" title={m.title}>
+                                        {m.title}
+                                      </div>
                                     </div>
-                                    <div className="font-bold text-xs text-gray-900 dark:text-white group-hover:text-red-600 transition-colors max-w-[140px] truncate block" title={m.title}>
-                                      {m.title}
-                                    </div>
-                                  </div>
-                                </td>
-                                <td className="py-3.5 px-4 whitespace-nowrap">
-                                  <span className="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-semibold bg-gray-100 dark:bg-slate-800 text-gray-700 dark:text-slate-300 border border-gray-200 dark:border-slate-700 max-w-[120px] truncate block" title={m.topic}>
-                                    <span className="truncate block">{m.topic}</span>
-                                  </span>
-                                </td>
-                                <td className="py-3.5 px-4 whitespace-nowrap">
-                                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-mono text-slate-700 dark:text-slate-300 bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700">
-                                    <Calendar className="w-3 h-3 text-red-500 shrink-0" />
-                                    {localDate(m.scheduled_at)}
-                                  </span>
-                                </td>
-                                <td className="py-3.5 px-4 whitespace-nowrap">
-                                  <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[11px] font-semibold text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800">
-                                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />
-                                    {m.attendee_id ? "1:1 Meet" : "Batch Meet"}
-                                  </span>
-                                </td>
-                                <td className="py-3.5 px-4 text-center whitespace-nowrap">
-                                  <span className="inline-flex items-center gap-1.5 px-2.5 py-0.8 rounded-full text-[10.5px] font-bold bg-blue-50 text-blue-700 border border-blue-200 dark:bg-blue-950/40 dark:text-blue-300 dark:border-blue-800 uppercase tracking-wider shadow-2xs">
-                                    <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse shrink-0" />
-                                    SCHEDULED
-                                  </span>
-                                </td>
-                                <td className="py-3.5 px-4 text-right whitespace-nowrap">
-                                  <div className="flex items-center justify-end gap-1.5">
-                                    {canScheduleMeetings && m.batch_id && (
-                                      <button
-                                        onClick={() => copyAttendanceLink(m)}
-                                        className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/40 dark:hover:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300 font-bold rounded-xl text-xs transition-all active:scale-95 cursor-pointer border border-emerald-200 dark:border-emerald-800"
-                                        title="Copy secure self-attendance link"
-                                      >
-                                        <ShieldCheck className="w-3.5 h-3.5" />
-                                        <span>Attendance</span>
-                                      </button>
+                                  </td>
+                                  <td className="py-3.5 px-4 whitespace-nowrap">
+                                    <span className="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-semibold bg-gray-100 dark:bg-slate-800 text-gray-700 dark:text-slate-300 border border-gray-200 dark:border-slate-700 max-w-[120px] truncate block" title={m.topic}>
+                                      <span className="truncate block">{m.topic}</span>
+                                    </span>
+                                  </td>
+                                  <td className="py-3.5 px-4 whitespace-nowrap">
+                                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-mono text-slate-700 dark:text-slate-300 bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700">
+                                      <Calendar className="w-3 h-3 text-red-500 shrink-0" />
+                                      {localDate(m.scheduled_at)}
+                                    </span>
+                                  </td>
+                                  <td className="py-3.5 px-4 whitespace-nowrap">
+                                    <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[11px] font-semibold text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800">
+                                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />
+                                      {m.attendee_id ? "1:1 Meet" : "Batch Meet"}
+                                    </span>
+                                  </td>
+                                  <td className="py-3.5 px-4 text-center whitespace-nowrap">
+                                    {isMeetingEnded ? (
+                                      <span className="inline-flex items-center gap-1.5 px-2.5 py-0.8 rounded-full text-[10.5px] font-bold bg-gray-100 text-gray-600 border border-gray-200 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700 uppercase tracking-wider">
+                                        <span className="w-1.5 h-1.5 rounded-full bg-gray-400 shrink-0" />
+                                        ENDED
+                                      </span>
+                                    ) : isMeetingLive ? (
+                                      <span className="inline-flex items-center gap-1.5 px-2.5 py-0.8 rounded-full text-[10.5px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800 uppercase tracking-wider shadow-2xs">
+                                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping shrink-0" />
+                                        LIVE NOW
+                                      </span>
+                                    ) : (
+                                      <span className="inline-flex items-center gap-1.5 px-2.5 py-0.8 rounded-full text-[10.5px] font-bold bg-blue-50 text-blue-700 border border-blue-200 dark:bg-blue-950/40 dark:text-blue-300 dark:border-blue-800 uppercase tracking-wider shadow-2xs">
+                                        <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse shrink-0" />
+                                        SCHEDULED
+                                      </span>
                                     )}
-                                    <a
-                                      href={safeExternalUrl(m.meeting_link)}
-                                      target="_blank"
-                                      rel="noopener noreferrer"
-                                      className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 text-white font-bold rounded-xl text-xs transition-all shadow-xs hover:shadow-md hover:shadow-red-500/20 active:scale-95 cursor-pointer"
-                                    >
-                                      <Video className="w-3.5 h-3.5" />
-                                      <span>Join</span>
-                                    </a>
-                                  </div>
-                                </td>
-                              </tr>
-                            ))}
+                                  </td>
+                                  <td className="py-3.5 px-4 text-right whitespace-nowrap">
+                                    <div className="flex items-center justify-end gap-1.5">
+                                      {canScheduleMeetings && m.batch_id && (
+                                        <button
+                                          onClick={() => {
+                                            if (!isMeetingLive) {
+                                              toast.error("Self-attendance link is only active during a live meeting!");
+                                              return;
+                                            }
+                                            copyAttendanceLink(m);
+                                          }}
+                                          disabled={!isMeetingLive}
+                                          className={`inline-flex items-center gap-1.5 px-3 py-1.5 font-bold rounded-xl text-xs transition-all border ${
+                                            isMeetingLive
+                                              ? "bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/40 dark:hover:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800 cursor-pointer active:scale-95"
+                                              : "bg-gray-100 dark:bg-slate-800/60 text-gray-400 dark:text-slate-500 border-gray-200 dark:border-slate-700 opacity-60 cursor-not-allowed"
+                                          }`}
+                                          title={isMeetingLive ? "Copy secure self-attendance link" : "Attendance is only allowed during live meetings"}
+                                        >
+                                          <ShieldCheck className="w-3.5 h-3.5" />
+                                          <span>Attendance</span>
+                                        </button>
+                                      )}
+
+                                      {/* HOST CONTROLS */}
+                                      {isHost ? (
+                                        isMeetingScheduled ? (
+                                          <button
+                                            onClick={() => handleStartMeeting(m)}
+                                            className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold rounded-xl text-xs transition-all shadow-xs hover:shadow-md hover:shadow-emerald-500/20 active:scale-95 cursor-pointer"
+                                          >
+                                            <Play className="w-3.5 h-3.5 fill-current" />
+                                            <span>Start Meeting</span>
+                                          </button>
+                                        ) : isMeetingLive ? (
+                                          <div className="inline-flex items-center gap-1">
+                                            <a
+                                              href={safeExternalUrl(m.meeting_link)}
+                                              target="_blank"
+                                              rel="noopener noreferrer"
+                                              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold rounded-xl text-xs transition-all shadow-xs active:scale-95 cursor-pointer"
+                                            >
+                                              <Video className="w-3.5 h-3.5" />
+                                              <span>In Meeting</span>
+                                            </a>
+                                            <button
+                                              onClick={() => handleEndMeeting(m)}
+                                              className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/40 dark:hover:bg-rose-900/50 text-rose-600 dark:text-rose-400 font-bold rounded-xl text-xs transition-all border border-rose-200 dark:border-rose-800 cursor-pointer active:scale-95"
+                                              title="End meeting for everyone"
+                                            >
+                                              <Square className="w-3 h-3 fill-current" />
+                                              <span>End</span>
+                                            </button>
+                                          </div>
+                                        ) : (
+                                          <button
+                                            disabled
+                                            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-gray-100 dark:bg-slate-800 text-gray-400 dark:text-slate-500 font-bold rounded-xl text-xs border border-gray-200 dark:border-slate-700 opacity-60 cursor-not-allowed select-none"
+                                          >
+                                            <span>Meeting Ended</span>
+                                          </button>
+                                        )
+                                      ) : (
+                                        /* PARTICIPANT CONTROLS */
+                                        isMeetingEnded ? (
+                                          <button
+                                            disabled
+                                            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-gray-100 dark:bg-slate-800 text-gray-400 dark:text-slate-500 font-bold rounded-xl text-xs border border-gray-200 dark:border-slate-700 opacity-60 cursor-not-allowed select-none"
+                                          >
+                                            <span>Meeting Ended</span>
+                                          </button>
+                                        ) : isMeetingLive ? (
+                                          <a
+                                            href={safeExternalUrl(m.meeting_link)}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold rounded-xl text-xs transition-all shadow-xs hover:shadow-md hover:shadow-emerald-500/20 active:scale-95 cursor-pointer"
+                                          >
+                                            <Video className="w-3.5 h-3.5" />
+                                            <span>Join</span>
+                                          </a>
+                                        ) : (
+                                          <button
+                                            disabled
+                                            title="Meeting has not been started by the host yet."
+                                            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-gray-100 dark:bg-slate-800 text-gray-400 dark:text-slate-500 font-bold rounded-xl text-xs border border-gray-200 dark:border-slate-700 opacity-60 cursor-not-allowed select-none"
+                                          >
+                                            <Clock className="w-3.5 h-3.5" />
+                                            <span>Waiting for Host</span>
+                                          </button>
+                                        )
+                                      )}
+                                    </div>
+                                  </td>
+                                </tr>
+                              );
+                            })}
 
                           {/* SECTION: ATTENDANCE */}
                           {activeSection === "attendance" &&
@@ -11882,8 +14515,8 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
       {newMemberModal && (
         <ModalWrapper
           isDark={isDark}
-          title={isAdminRole ? "Create HR Account" : `Create ${memberModalRoleLabel} Account`}
-          subtitle={isAdminRole ? "Super Admin can create and manage HR accounts only." : `${memberModalRoleLabel} will be added inside an admin-assigned batch.`}
+          title={`Create ${memberModalRoleLabel} Account`}
+          subtitle={isAdminRole ? `Assign and onboard a new ${memberModalRoleLabel} into the TexWeb unified platform.` : `${memberModalRoleLabel} will be added inside an assigned workspace.`}
         >
           <form onSubmit={handleEnrollMember} className="space-y-3 text-xs">
             <InputField label="Full Name" value={memberForm.full_name} onChange={(v) => setMemberForm({ ...memberForm, full_name: v })} required />
@@ -11892,20 +14525,35 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
               <InputField label="WhatsApp Phone" value={memberForm.phone} onChange={(v) => setMemberForm({ ...memberForm, phone: v })} required />
             </div>
             <div className="grid grid-cols-2 gap-2">
-              {isHrRole ? (
-                <InputField label="Role Privilege" value={memberModalRoleLabel} onChange={() => { }} />
+              <SelectField
+                label="Role Privilege"
+                value={memberForm.role}
+                onChange={(v) => {
+                  let nextDomain = memberForm.domain;
+                  if (["sales_head", "sales_executive", "telecaller"].includes(v)) nextDomain = "sales";
+                  else if (v === "smm_head") nextDomain = "marketing";
+                  else if (["tech_lead", "pm"].includes(v)) nextDomain = "web_dev";
+                  else if (["finance_head", "support_head", "hr"].includes(v)) nextDomain = "management";
+                  setMemberForm({ ...memberForm, role: v, domain: nextDomain });
+                }}
+                options={memberRoleOptions}
+              />
+              {isAdminRole ? (
+                <SelectField
+                  label="Department"
+                  value={memberForm.domain}
+                  onChange={(v) => setMemberForm({ ...memberForm, domain: v })}
+                  options={DOMAIN_OPTIONS.map((d) => [d.value, d.label])}
+                />
               ) : (
-                <SelectField label="Role Privilege" value={memberForm.role} onChange={(v) => setMemberForm({ ...memberForm, role: v })} options={memberRoleOptions} />
-              )}
-              {isAdminRole && memberForm.role !== "hr" ? (
-                <SelectField label="Department" value={memberForm.domain} onChange={(v) => setMemberForm({ ...memberForm, domain: v })} options={DOMAIN_OPTIONS.map((d) => [d.value, d.label])} />
-              ) : isAdminRole ? (
-                <InputField label="Department" value="HR Management" onChange={() => { }} />
-              ) : (
-                <InputField label="Department" value={domainLabel(batches.find((b) => b.id === memberForm.batch_id)?.domain || memberForm.domain)} onChange={() => { }} />
+                <InputField
+                  label="Department"
+                  value={domainLabel(batches.find((b) => b.id === memberForm.batch_id)?.domain || memberForm.domain)}
+                  onChange={() => { }}
+                />
               )}
             </div>
-            {isHrRole && (
+            {isHrRole && ["mentor", "intern"].includes(memberForm.role) && (
               <>
                 <SelectField label="Batch / Cohort" value={memberForm.batch_id} onChange={(v) => {
                   const selected = batches.find((batch) => batch.id === v);
@@ -11922,9 +14570,82 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
             </p>
             <div className="flex justify-end gap-2 pt-3 border-t">
               <button type="button" onClick={() => setNewMemberModal(false)} className="px-3 py-1.5 rounded-lg text-xs font-semibold text-gray-500">Cancel</button>
-              <button type="submit" className="bg-red-600 hover:bg-red-700 text-white font-bold px-4 py-1.5 rounded-lg text-xs">{isAdminRole ? "Create HR" : `Create ${memberModalRoleLabel}`}</button>
+              <button type="submit" className="bg-red-600 hover:bg-red-700 text-white font-bold px-4 py-1.5 rounded-lg text-xs">{`Create ${memberModalRoleLabel}`}</button>
             </div>
           </form>
+        </ModalWrapper>
+      )}
+
+      {/* First-Time Onboarding Credentials WhatsApp Modal for New ID */}
+      {newMemberWhatsappModal && (
+        <ModalWrapper
+          isDark={isDark}
+          title="Send User Credentials on WhatsApp"
+          subtitle="First-time login setup details for new workspace member"
+          onClose={() => setNewMemberWhatsappModal(null)}
+          maxWidth="max-w-md"
+        >
+          <div className="space-y-4 text-xs">
+            <div className="p-3.5 rounded-2xl bg-emerald-50/70 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800/60 space-y-1.5">
+              <div className="flex items-center gap-2 text-emerald-700 dark:text-emerald-400 font-bold">
+                <CheckCircle2 className="w-4 h-4 shrink-0" />
+                <span>Account Created Successfully!</span>
+              </div>
+              <p className="text-gray-600 dark:text-slate-300 leading-relaxed text-[11px]">
+                A new ID has been created for <strong>{newMemberWhatsappModal.full_name}</strong>. HR can now send their initial login credentials and portal setup details on WhatsApp.
+              </p>
+            </div>
+
+            <div className="p-3 rounded-xl bg-gray-50 dark:bg-slate-800/60 border border-gray-200 dark:border-slate-700 space-y-2">
+              <div className="flex justify-between items-center text-[11px]">
+                <span className="text-gray-400">Full Name</span>
+                <span className="font-bold text-gray-900 dark:text-white">{newMemberWhatsappModal.full_name}</span>
+              </div>
+              <div className="flex justify-between items-center text-[11px]">
+                <span className="text-gray-400">Email ID</span>
+                <span className="font-mono font-bold text-gray-900 dark:text-white">{newMemberWhatsappModal.email}</span>
+              </div>
+              <div className="flex justify-between items-center text-[11px]">
+                <span className="text-gray-400">WhatsApp Phone</span>
+                <span className="font-mono font-bold text-gray-900 dark:text-white">{newMemberWhatsappModal.phone || "Not provided"}</span>
+              </div>
+              {newMemberWhatsappModal.batch_name && (
+                <div className="flex justify-between items-center text-[11px]">
+                  <span className="text-gray-400">Assigned Cohort</span>
+                  <span className="font-bold text-gray-900 dark:text-white">{newMemberWhatsappModal.batch_name}</span>
+                </div>
+              )}
+              {newMemberWhatsappModal.temp_password && (
+                <div className="flex justify-between items-center text-[11px] pt-1 border-t border-gray-200/60 dark:border-slate-700">
+                  <span className="text-gray-400">Initial Password</span>
+                  <span className="font-mono font-bold text-red-600 dark:text-red-400 px-2 py-0.5 rounded bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900/60">
+                    {newMemberWhatsappModal.temp_password}
+                  </span>
+                </div>
+              )}
+            </div>
+
+            <div className="flex flex-col sm:flex-row items-center justify-end gap-2 pt-3 border-t border-gray-100 dark:border-slate-800">
+              <button
+                type="button"
+                onClick={() => setNewMemberWhatsappModal(null)}
+                className="w-full sm:w-auto px-4 py-2 rounded-xl text-xs font-bold text-gray-500 hover:text-gray-800 dark:hover:text-slate-200 transition cursor-pointer"
+              >
+                Skip / Later
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  handleSendWhatsapp(newMemberWhatsappModal);
+                  setNewMemberWhatsappModal(null);
+                }}
+                className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold shadow-md hover:shadow-emerald-600/30 transition cursor-pointer"
+              >
+                <WhatsAppIcon className="w-4 h-4 fill-current" />
+                <span>Send Details on WhatsApp</span>
+              </button>
+            </div>
+          </div>
         </ModalWrapper>
       )}
 
@@ -12489,11 +15210,9 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
             setSelectedMemberModal(null);
           }}
           canPromoteTl={isMentor && selectedMemberProfile.role === "intern" && ownedBatchIds.has(selectedMemberProfile.batch_id)}
-          onSendWhatsapp={(member) => {
-            if (!member?.phone) return;
-            const cleanPhone = member.phone.replace(/[^0-9]/g, "");
-            const text = encodeURIComponent(`Hi ${member.full_name || "there"}, this is ${userProfile?.full_name || "Team Member"} from TexWeb Solution.`);
-            window.open(`https://wa.me/${cleanPhone}?text=${text}`, "_blank");
+          onStartChat={(member) => {
+            setSelectedMemberModal(null);
+            openDirectChatWithUser(member.id);
           }}
           isDark={isDark}
           roleLabels={ROLE_LABELS}
@@ -13131,6 +15850,229 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
           </div>
         </ModalWrapper>
       )}
+
+      {selectedAttendanceUser && (() => {
+        const allRecords = selectedAttendanceUser.records || [];
+        const presentCount = allRecords.filter((r) => r.status === "present").length;
+        const lateCount = allRecords.filter((r) => r.status === "late").length;
+        const absentCount = allRecords.filter((r) => r.status === "absent").length;
+
+        const filteredRecords = allRecords.filter((r) => {
+          if (attendanceHistoryFilter === "all") return true;
+          return r.status === attendanceHistoryFilter;
+        });
+
+        const ITEMS_PER_PAGE = 5;
+        const totalPages = Math.max(1, Math.ceil(filteredRecords.length / ITEMS_PER_PAGE));
+        const currentPage = Math.min(Math.max(1, attendanceHistoryPage), totalPages);
+        const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+        const paginatedRecords = filteredRecords.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+
+        return (
+          <ModalWrapper
+            isDark={isDark}
+            title={`Attendance History - ${selectedAttendanceUser.user?.full_name || "Member"}`}
+            subtitle={`${selectedAttendanceUser.batch_name || "Cohort"} • Batch Member`}
+            onClose={() => setSelectedAttendanceUser(null)}
+            maxWidth="max-w-2xl"
+          >
+            <div className="space-y-3">
+              {/* Quick Metrics Header - Ultra responsive 320px - 768px */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-2.5 p-2 sm:p-3 rounded-xl sm:rounded-2xl bg-gray-50 dark:bg-slate-900 border border-gray-100 dark:border-slate-800 text-xs">
+                <div className="p-2 sm:p-2.5 rounded-lg sm:rounded-xl bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700/60">
+                  <span className="text-gray-400 block text-[9.5px] sm:text-[10px] uppercase font-bold tracking-wider">Attendance</span>
+                  <span className="text-sm sm:text-base font-black text-gray-900 dark:text-white font-mono">{selectedAttendanceUser.attendanceRate}%</span>
+                </div>
+                <div className="p-2 sm:p-2.5 rounded-lg sm:rounded-xl bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700/60">
+                  <span className="text-emerald-500 block text-[9.5px] sm:text-[10px] uppercase font-bold tracking-wider">Present</span>
+                  <span className="text-sm sm:text-base font-black text-emerald-600 dark:text-emerald-400 font-mono">{selectedAttendanceUser.presentCount}</span>
+                </div>
+                <div className="p-2 sm:p-2.5 rounded-lg sm:rounded-xl bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700/60">
+                  <span className="text-amber-500 block text-[9.5px] sm:text-[10px] uppercase font-bold tracking-wider">Late</span>
+                  <span className="text-sm sm:text-base font-black text-amber-600 dark:text-amber-400 font-mono">{selectedAttendanceUser.lateCount}</span>
+                </div>
+                <div className="p-2 sm:p-2.5 rounded-lg sm:rounded-xl bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700/60">
+                  <span className="text-gray-400 block text-[9.5px] sm:text-[10px] uppercase font-bold tracking-wider">Total Attended</span>
+                  <span className="text-sm sm:text-base font-black text-gray-900 dark:text-white font-mono">
+                    {selectedAttendanceUser.attendedCount} / {Math.max(selectedAttendanceUser.totalSessions, selectedAttendanceUser.attendedCount)}
+                  </span>
+                </div>
+              </div>
+
+              {/* Status Filter: Mobile Dropdown (<640px / 320px, 375px, 475px) vs Desktop Tabs */}
+              <div className="block sm:hidden relative">
+                <select
+                  value={attendanceHistoryFilter}
+                  onChange={(e) => {
+                    setAttendanceHistoryFilter(e.target.value);
+                    setAttendanceHistoryPage(1);
+                  }}
+                  className="w-full pl-3.5 pr-9 py-2 rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-bold text-gray-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-600 appearance-none cursor-pointer shadow-xs"
+                >
+                  <option value="all">All Records</option>
+                  <option value="present">Present</option>
+                  <option value="late">Late</option>
+                  <option value="absent">Absent</option>
+                </select>
+                <ChevronDown className="w-4 h-4 absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+              </div>
+
+              {/* Status Filter: Tablet & Desktop Tabs (>=640px / 768px+) */}
+              <div className="hidden sm:flex items-center gap-1.5 p-1 rounded-xl bg-gray-100 dark:bg-slate-900 text-xs">
+                {[
+                  { key: "all", label: "All Records" },
+                  { key: "present", label: "Present" },
+                  { key: "late", label: "Late" },
+                  { key: "absent", label: "Absent" },
+                ].map((tab) => {
+                  const isActive = attendanceHistoryFilter === tab.key;
+                  return (
+                    <button
+                      key={tab.key}
+                      type="button"
+                      onClick={() => {
+                        setAttendanceHistoryFilter(tab.key);
+                        setAttendanceHistoryPage(1);
+                      }}
+                      className={`px-3 py-1.5 rounded-lg font-bold text-xs transition cursor-pointer shrink-0 flex items-center gap-1.5 ${
+                        isActive
+                          ? "bg-white dark:bg-slate-800 text-gray-900 dark:text-white shadow-xs"
+                          : "text-gray-500 hover:text-gray-800 dark:text-slate-400 dark:hover:text-slate-200"
+                      }`}
+                    >
+                      <span>{tab.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* List of date-wise records */}
+              <div className="space-y-2 min-h-[130px]">
+                {paginatedRecords.length === 0 ? (
+                  <div className="text-center py-8 border border-dashed border-gray-200 dark:border-slate-800 rounded-2xl text-xs text-gray-400">
+                    {allRecords.length === 0
+                      ? "No session attendance logs recorded for this member yet."
+                      : `No attendance records found with status "${attendanceHistoryFilter}".`}
+                  </div>
+                ) : (
+                  paginatedRecords.map((rec, idx) => {
+                    const statusMap = {
+                      present: { label: "Present", badge: "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800" },
+                      late: { label: "Late", badge: "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800" },
+                      absent: { label: "Absent", badge: "bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950/40 dark:text-rose-300 dark:border-rose-800" },
+                    };
+                    const statusInfo = statusMap[rec.status] || { label: rec.status || "Recorded", badge: "bg-gray-100 text-gray-700 border-gray-200" };
+                    const recDate = rec.attendance_date || rec.created_at;
+
+                    return (
+                      <div
+                        key={rec.id || (startIndex + idx)}
+                        className="p-2.5 sm:p-3 rounded-xl border border-gray-200/80 dark:border-slate-800 bg-white dark:bg-slate-900/60 flex flex-col gap-1.5 text-xs"
+                      >
+                        <div className="flex items-center justify-between gap-2 flex-wrap">
+                          <span className="font-bold text-gray-900 dark:text-white text-xs sm:text-[13px]">
+                            {recDate ? localDate(recDate) : `Session #${startIndex + idx + 1}`}
+                          </span>
+                          <span className={`px-2 py-0.5 rounded-md text-[10px] font-semibold border shrink-0 ${statusInfo.badge}`}>
+                            {statusInfo.label}
+                          </span>
+                        </div>
+
+                        <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-[10.5px] sm:text-[11px] text-gray-400">
+                          {rec.check_in_at && (
+                            <span className="font-mono">
+                              Checked in: {new Date(rec.check_in_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                            </span>
+                          )}
+                          {rec.marker?.full_name && (
+                            <span>
+                              Marked by: <strong className="text-gray-600 dark:text-slate-300 font-semibold">{rec.marker.full_name}</strong>
+                            </span>
+                          )}
+                        </div>
+
+                        {rec.notes && (
+                          <p className="text-[11px] text-gray-500 dark:text-slate-400 italic break-words pt-0.5">
+                            &ldquo;{rec.notes}&rdquo;
+                          </p>
+                        )}
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+
+              {/* Pagination Bar + Footer Close - Fully responsive for 320px+ */}
+              <div className="pt-2.5 border-t border-gray-100 dark:border-slate-800 flex flex-col xs:flex-row items-center justify-between gap-2 text-xs">
+                <div className="text-gray-500 dark:text-slate-400 text-[11px] text-center xs:text-left">
+                  {filteredRecords.length > 0 ? (
+                    <>
+                      Showing <strong className="text-gray-900 dark:text-white font-mono">{startIndex + 1}</strong>–<strong className="text-gray-900 dark:text-white font-mono">{Math.min(startIndex + ITEMS_PER_PAGE, filteredRecords.length)}</strong> of <strong className="text-gray-900 dark:text-white font-mono">{filteredRecords.length}</strong>
+                    </>
+                  ) : (
+                    "0 records"
+                  )}
+                </div>
+
+                <div className="flex items-center justify-center gap-2 w-full xs:w-auto">
+                  {totalPages > 1 && (
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        type="button"
+                        disabled={currentPage <= 1}
+                        onClick={() => setAttendanceHistoryPage((p) => Math.max(1, p - 1))}
+                        className="px-2.5 py-1 text-xs font-bold rounded-lg border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-gray-50 dark:hover:bg-slate-750 disabled:opacity-35 disabled:cursor-not-allowed transition cursor-pointer"
+                      >
+                        Prev
+                      </button>
+                      <span className="text-[11px] font-mono text-gray-600 dark:text-slate-300 px-1 whitespace-nowrap">
+                        {currentPage} / {totalPages}
+                      </span>
+                      <button
+                        type="button"
+                        disabled={currentPage >= totalPages}
+                        onClick={() => setAttendanceHistoryPage((p) => Math.min(totalPages, p + 1))}
+                        className="px-2.5 py-1 text-xs font-bold rounded-lg border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-gray-50 dark:hover:bg-slate-750 disabled:opacity-35 disabled:cursor-not-allowed transition cursor-pointer"
+                      >
+                        Next
+                      </button>
+                    </div>
+                  )}
+
+                  <button
+                    type="button"
+                    onClick={() => setSelectedAttendanceUser(null)}
+                    className="px-4 py-1.5 text-xs font-bold rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-gray-50 dark:hover:bg-slate-750 transition cursor-pointer xs:ml-auto"
+                  >
+                    Close
+                  </button>
+                </div>
+              </div>
+            </div>
+          </ModalWrapper>
+        );
+      })()}
+
+      {/* 16. Global Notification Center Modal / Drawer */}
+      <NotificationCenterModal
+        isOpen={notificationModalOpen}
+        onClose={() => setNotificationModalOpen(false)}
+        notifications={notifications}
+        unreadCount={unreadCount}
+        preferences={notificationPreferences}
+        onSavePreferences={async (prefs) => {
+          const res = await saveNotificationPreferences(userProfile?.id || sessionUser?.id, prefs);
+          if (res) setNotificationPreferences(res);
+        }}
+        onMarkRead={markNotificationRead}
+        onMarkAllRead={markAllNotificationsRead}
+        onDeleteNotification={deleteNotification}
+        onNavigate={(sec) => {
+          setNotificationModalOpen(false);
+          selectSection(sec);
+        }}
+        isDark={isDark}
+      />
     </div>
   );
 }
@@ -13139,24 +16081,137 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
    SIMPLE, CLEAN REUSABLE COMPONENTS
    ============================================================================== */
 
+function BusinessCommandOverview({
+  heads = [],
+  flowSteps = [],
+  leads = [],
+  deals = [],
+  clients = [],
+  projects = [],
+  smmClients = [],
+  invoices = [],
+  tickets = [],
+  onNavigate,
+}) {
+  const closedWonCount = deals.filter((deal) => deal.pipeline_stage === "closed_won").length;
+  const openTickets = tickets.filter((ticket) => !["resolved", "closed"].includes(ticket.status)).length;
+  const commandCards = [
+    { label: "Sales CRM", value: leads.length, sub: "Automatic and manual leads", icon: Target, section: "crm", tone: "text-red-600 bg-red-50 dark:bg-red-500/10 dark:text-red-400" },
+    { label: "Won Deals", value: closedWonCount, sub: "Ready for project handover", icon: TrendingUp, section: "pipeline", tone: "text-emerald-600 bg-emerald-50 dark:bg-emerald-500/10 dark:text-emerald-400" },
+    { label: "Clients", value: clients.length, sub: "Central client accounts", icon: Building2, section: "clients", tone: "text-blue-600 bg-blue-50 dark:bg-blue-500/10 dark:text-blue-400" },
+    { label: "Projects", value: projects.length, sub: "Tech delivery pipeline", icon: Layers, section: "projects", tone: "text-purple-600 bg-purple-50 dark:bg-purple-500/10 dark:text-purple-400" },
+    { label: "SMM", value: smmClients.length, sub: "Retainers and approvals", icon: Sparkles, section: "smm", tone: "text-pink-600 bg-pink-50 dark:bg-pink-500/10 dark:text-pink-400" },
+    { label: "Finance", value: invoices.length, sub: "Invoices and payments", icon: CreditCard, section: "invoices", tone: "text-amber-600 bg-amber-50 dark:bg-amber-500/10 dark:text-amber-400" },
+    { label: "Support", value: openTickets, sub: "Open post-delivery tickets", icon: LifeBuoy, section: "support", tone: "text-cyan-600 bg-cyan-50 dark:bg-cyan-500/10 dark:text-cyan-400" },
+  ];
+
+  return (
+    <div className="space-y-4 animate-fadeIn">
+      <div className="rounded-2xl border border-gray-200/80 dark:border-[#3a3020] bg-white dark:bg-[#18150f] p-4 sm:p-5 shadow-2xs">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+          <div className="min-w-0">
+            <div className="flex items-center gap-2">
+              <span className="p-2 rounded-xl bg-orange-500/10 text-orange-600 dark:text-orange-400">
+                <LayoutDashboard className="w-5 h-5" />
+              </span>
+              <h2 className="text-lg sm:text-xl font-black text-gray-900 dark:text-white tracking-tight">
+                Unified TexWeb Business Platform
+              </h2>
+            </div>
+            <p className="text-xs sm:text-sm text-gray-500 dark:text-slate-400 mt-2 max-w-3xl leading-relaxed">
+              One login panel for Sales, Tech, HR, SMM, Finance, Support, Chat, and Notifications. Leads move from CRM to Closed Won, then client account, project delivery, client visibility, support, and growth.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => onNavigate?.("crm")}
+            className="self-start lg:self-center inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-orange-600 hover:bg-orange-700 text-white text-xs font-bold shadow-sm transition cursor-pointer"
+          >
+            <Target className="w-4 h-4" />
+            <span>Open CRM Flow</span>
+          </button>
+        </div>
+
+        <div className="mt-5 grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
+          {heads.map((head) => (
+            <button
+              key={head.key}
+              type="button"
+              onClick={() => onNavigate?.(head.section)}
+              className="text-left p-3.5 rounded-xl border border-gray-200/80 dark:border-[#3a3020] bg-gray-50/70 dark:bg-[#211d14] hover:border-orange-500 transition cursor-pointer min-w-0"
+            >
+              <div className="text-[10px] font-black uppercase tracking-wider text-gray-400 dark:text-slate-500">{head.role}</div>
+              <div className="mt-1 font-bold text-sm text-gray-900 dark:text-white truncate">{head.name}</div>
+              <div className="mt-2 inline-flex items-center gap-1.5 text-[11px] font-semibold text-orange-600 dark:text-orange-400">
+                <span>Open department</span>
+                <ArrowRight className="w-3.5 h-3.5" />
+              </div>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 lg:grid-cols-4 2xl:grid-cols-7 gap-3">
+        {commandCards.map((card) => {
+          const Icon = card.icon;
+          return (
+            <button
+              key={card.label}
+              type="button"
+              onClick={() => onNavigate?.(card.section)}
+              className="p-3.5 rounded-2xl border border-gray-200/80 dark:border-[#3a3020] bg-white dark:bg-[#18150f] shadow-2xs text-left hover:border-orange-500 transition cursor-pointer min-w-0"
+            >
+              <div className="flex items-center justify-between gap-2">
+                <span className={`p-2 rounded-xl ${card.tone}`}>
+                  <Icon className="w-4 h-4" />
+                </span>
+                <span className="text-xl font-black text-gray-900 dark:text-white">{card.value}</span>
+              </div>
+              <div className="mt-3 text-xs font-bold text-gray-900 dark:text-white truncate">{card.label}</div>
+              <div className="mt-0.5 text-[11px] text-gray-500 dark:text-slate-400 line-clamp-2">{card.sub}</div>
+            </button>
+          );
+        })}
+      </div>
+
+      <div className="rounded-2xl border border-gray-200/80 dark:border-[#3a3020] bg-white dark:bg-[#18150f] p-4 shadow-2xs">
+        <div className="flex items-center gap-2 mb-3">
+          <Repeat className="w-4 h-4 text-orange-600" />
+          <h3 className="font-bold text-sm text-gray-900 dark:text-white">A to Z Client Delivery Flow</h3>
+        </div>
+        <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1">
+          {flowSteps.map((step, index) => (
+            <div key={step} className="flex items-center gap-2 shrink-0">
+              <div className="px-3 py-2 rounded-xl border border-gray-200 dark:border-[#3a3020] bg-gray-50 dark:bg-[#211d14] text-xs font-bold text-gray-700 dark:text-slate-200 whitespace-nowrap">
+                {index + 1}. {step}
+              </div>
+              {index < flowSteps.length - 1 && <ArrowRight className="w-4 h-4 text-gray-300 dark:text-slate-600 shrink-0" />}
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function ModalWrapper({ isDark, title, subtitle, children, onClose, maxWidth = "max-w-lg" }) {
   return (
     <div
-      className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-sm flex items-center justify-center p-2.5 sm:p-4 md:p-6 overflow-y-auto"
+      className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-sm flex items-center justify-center p-2 sm:p-4 md:p-6 overflow-y-auto"
       onClick={(e) => {
         if (e.target === e.currentTarget && onClose) onClose();
       }}
     >
       <div
-        className={`border rounded-2xl sm:rounded-3xl p-4 sm:p-6 ${maxWidth} w-full shadow-2xl relative my-auto max-h-[92dvh] flex flex-col overflow-hidden transition-all ${
+        className={`border rounded-2xl sm:rounded-3xl p-3 sm:p-5 md:p-6 ${maxWidth} w-full shadow-2xl relative my-auto max-h-[92dvh] flex flex-col overflow-hidden transition-all ${
           isDark ? "bg-[#18150f] border-[#3a3020] text-[#f4ead2]" : "bg-white border-gray-200 text-gray-900"
         }`}
       >
-        <div className="shrink-0 flex items-start justify-between gap-3 mb-3">
+        <div className="shrink-0 flex items-start justify-between gap-2 mb-3">
           <div className="min-w-0 pr-1">
-            <div className="text-[10.5px] font-bold text-red-600 uppercase tracking-wider font-mono">TexWeb Workspace</div>
-            <h3 className="text-base sm:text-lg font-bold tracking-tight">{title}</h3>
-            {subtitle && <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{subtitle}</p>}
+            <div className="text-[10px] sm:text-[10.5px] font-bold text-red-600 uppercase tracking-wider font-mono">TexWeb Workspace</div>
+            <h3 className="text-sm sm:text-base md:text-lg font-bold tracking-tight truncate" title={title}>{title}</h3>
+            {subtitle && <p className="text-[11px] sm:text-xs text-gray-500 dark:text-gray-400 mt-0.5 truncate" title={subtitle}>{subtitle}</p>}
           </div>
           {onClose && (
             <button

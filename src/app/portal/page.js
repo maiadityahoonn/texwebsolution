@@ -1,14 +1,7 @@
 "use client";
 
-import { useEffect } from "react";
-import { useRouter } from "next/navigation";
+import LoginPage from "../login/page";
 
-export default function PortalRedirect() {
-  const router = useRouter();
-
-  useEffect(() => {
-    router.replace("/login");
-  }, [router]);
-
-  return null;
+export default function PortalPage() {
+  return <LoginPage defaultSection="overview" />;
 }

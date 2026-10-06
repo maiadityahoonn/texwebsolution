@@ -5,7 +5,25 @@ import { safeExternalUrl, safeInternalPath } from "@/lib/safeUrl";
 import { getBearerToken, getClientIp, isBodyTooLarge, isJsonRequest } from "@/lib/apiSecurity";
 
 const ALLOWED_CHANNELS = new Set(["email", "whatsapp"]);
-const ALLOWED_TYPES = new Set(["task", "meeting", "message", "certificate", "lead", "general", "announcement", "file"]);
+const ALLOWED_TYPES = new Set([
+  "task",
+  "meeting",
+  "message",
+  "certificate",
+  "lead",
+  "deal",
+  "project",
+  "client",
+  "smm",
+  "finance",
+  "payment",
+  "invoice",
+  "support",
+  "general",
+  "announcement",
+  "file",
+  "hr",
+]);
 
 function getAdminClient() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;

@@ -170,7 +170,7 @@ export default function DailyReportModal({
                     <div key={intern.id || index} className="p-3.5 rounded-2xl border border-gray-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-2xs space-y-2.5">
                       <div className="flex items-center justify-between">
                         <span className="font-bold text-gray-900 dark:text-white text-xs">{intern.name}</span>
-                        <span className="text-[10px] text-gray-400 font-mono">Member #{index + 1}</span>
+                        <span className="text-[10px] text-gray-400 font-mono">Member</span>
                       </div>
 
                       <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">

@@ -3,7 +3,21 @@ import { NextResponse } from "next/server";
 import { checkApiRateLimit, rateLimitResponse } from "@/lib/rateLimit";
 import { cleanPhone, cleanText, getBearerToken, getClientIp, isBodyTooLarge, isJsonRequest, isValidEmail, normalizeEmail } from "@/lib/apiSecurity";
 
-const ALLOWED_ROLES = new Set(["intern", "team_leader", "mentor", "hr", "super_admin"]);
+const ALLOWED_ROLES = new Set([
+  "intern",
+  "team_leader",
+  "mentor",
+  "hr",
+  "super_admin",
+  "sales_head",
+  "sales_executive",
+  "telecaller",
+  "tech_lead",
+  "pm",
+  "smm_head",
+  "finance_head",
+  "support_head",
+]);
 const ALLOWED_DOMAINS = new Set([
   "web_dev",
   "frontend_dev",
@@ -21,8 +35,22 @@ const ALLOWED_DOMAINS = new Set([
 ]);
 const ALLOWED_STATUSES = new Set(["active", "pending", "paused", "completed", "suspended"]);
 const MANAGEMENT_SCOPE = {
-  super_admin: new Set(["hr"]),
-  hr: new Set(["mentor", "intern"]),
+  super_admin: new Set([
+    "hr",
+    "sales_head",
+    "sales_executive",
+    "telecaller",
+    "tech_lead",
+    "pm",
+    "smm_head",
+    "finance_head",
+    "support_head",
+    "mentor",
+    "team_leader",
+    "intern",
+  ]),
+  hr: new Set(["mentor", "intern", "team_leader", "sales_executive", "telecaller"]),
+  sales_head: new Set(["sales_executive", "telecaller"]),
   mentor: new Set(["intern"]),
 };
 
@@ -71,8 +99,8 @@ export async function POST(request) {
     .single();
 
   const requesterRole = requesterProfile?.role || "";
-  if (!["super_admin", "hr", "mentor"].includes(requesterRole)) {
-    return NextResponse.json({ error: "Only Admin, HR or Mentor can update workspace users." }, { status: 403 });
+  if (!["super_admin", "hr", "mentor", "sales_head"].includes(requesterRole)) {
+    return NextResponse.json({ error: "Only Admin, HR or Department Heads can update workspace users." }, { status: 403 });
   }
 
   if (!isJsonRequest(request)) {

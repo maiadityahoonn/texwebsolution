@@ -19,15 +19,15 @@ async function getMeeting(admin, meetingId) {
   if (!meetingId) return null;
   const { data, error } = await admin
     .from("meetings")
-    .select("id, title, batch_id, domain, attendance_token")
+    .select("id, title, batch_id, domain, attendance_token, status, scheduled_at")
     .eq("id", meetingId)
     .maybeSingle();
 
-  if (!error) return data;
+  if (!error && data) return data;
 
   const fallback = await admin
     .from("meetings")
-    .select("id, title")
+    .select("id, title, status, attendance_token")
     .eq("id", meetingId)
     .maybeSingle();
   return fallback.data || null;
@@ -86,8 +86,25 @@ export async function POST(request) {
     return NextResponse.json({ error: "Meeting not found." }, { status: 404 });
   }
 
-  if (meeting?.attendance_token && meeting.attendance_token !== submittedToken) {
-    return NextResponse.json({ error: "Invalid attendance link." }, { status: 403 });
+  if (meeting) {
+    // 1. Check if meeting has ended
+    if (meeting.status === "completed" || meeting.status === "cancelled") {
+      return NextResponse.json({ error: "Meeting has ended. Attendance is closed." }, { status: 403 });
+    }
+
+    // 2. Check if meeting has been started by host
+    const isMeetingLive = Boolean(meeting.attendance_token?.includes("#live:")) || meeting.status === "in_progress" || meeting.status === "live";
+    if (!isMeetingLive) {
+      return NextResponse.json({ error: "Meeting has not started yet. Attendance will open once the host starts the meeting." }, { status: 403 });
+    }
+  }
+
+  if (meeting?.attendance_token) {
+    const cleanStoredToken = meeting.attendance_token.split("#")[0];
+    const cleanSubmittedToken = (submittedToken || "").split("#")[0];
+    if (cleanSubmittedToken && cleanStoredToken && cleanStoredToken !== cleanSubmittedToken) {
+      return NextResponse.json({ error: "Invalid attendance link." }, { status: 403 });
+    }
   }
 
   const batchId = meeting?.batch_id || requestedBatchId || profile.batch_id || null;

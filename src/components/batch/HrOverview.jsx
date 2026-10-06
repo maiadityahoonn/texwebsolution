@@ -42,7 +42,7 @@ export default function HrOverview({
   const interns = profiles.filter((p) => ["intern", "team_leader"].includes(p.role));
 
   return (
-    <div className="space-y-6">
+    <div className="workspace-overview space-y-4 sm:space-y-6">
       {/* 1. TOP METRICS & QUICK ACTIONS */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
         <div className={`p-4 rounded-2xl border ${
@@ -103,10 +103,10 @@ export default function HrOverview({
         isDark ? "bg-transparent border-slate-800/80" : "bg-white border-gray-200/80"
       } shadow-sm`}>
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
-          <div>
-            <h3 className="text-base font-bold text-gray-900 dark:text-white flex items-center gap-2">
-              <Folder className="w-4 h-4 text-red-600" />
-              <span>Assigned Batches Management ({batches.length})</span>
+          <div className="min-w-0">
+            <h3 className="text-base font-bold text-gray-900 dark:text-white flex items-center gap-2 min-w-0">
+              <Folder className="w-4 h-4 text-red-600 shrink-0" />
+              <span className="truncate">Assigned Batches Management ({batches.length})</span>
             </h3>
             <p className="text-xs text-gray-500 dark:text-slate-400 mt-0.5">
               Cohorts assigned to you by Super Admin. Assign mentors and monitor team growth.
@@ -148,16 +148,16 @@ export default function HrOverview({
                   className="p-4 rounded-xl border border-gray-200/80 dark:border-slate-800 bg-gray-50/40 dark:bg-slate-800/30 flex flex-col justify-between gap-3 text-xs"
                 >
                   <div>
-                    <div className="flex items-center justify-between mb-1.5">
-                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase bg-red-50 text-red-600 border border-red-200 dark:bg-red-950/50 dark:border-red-900">
+                    <div className="flex items-center justify-between gap-2 mb-1.5 min-w-0">
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase bg-red-50 text-red-600 border border-red-200 dark:bg-red-950/50 dark:border-red-900 shrink-0 whitespace-nowrap">
                         {b.batch_type || "Internship"}
                       </span>
-                      <span className="text-[11px] font-semibold text-gray-400">
+                      <span className="text-[11px] font-semibold text-gray-400 truncate text-right">
                         {domainLabel(b.domain)}
                       </span>
                     </div>
 
-                    <h4 className="font-bold text-sm text-gray-900 dark:text-white">
+                    <h4 className="font-bold text-sm text-gray-900 dark:text-white truncate">
                       {b.name}
                     </h4>
 

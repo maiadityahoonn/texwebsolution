@@ -3,7 +3,21 @@ import { NextResponse } from "next/server";
 import { checkApiRateLimit, rateLimitResponse } from "@/lib/rateLimit";
 import { cleanPhone, cleanText, getBearerToken, getClientIp, isBodyTooLarge, isJsonRequest, isValidEmail, normalizeEmail } from "@/lib/apiSecurity";
 
-const ALLOWED_ROLES = new Set(["intern", "team_leader", "mentor", "hr", "super_admin"]);
+const ALLOWED_ROLES = new Set([
+  "intern",
+  "team_leader",
+  "mentor",
+  "hr",
+  "super_admin",
+  "sales_head",
+  "sales_executive",
+  "telecaller",
+  "tech_lead",
+  "pm",
+  "smm_head",
+  "finance_head",
+  "support_head",
+]);
 const ALLOWED_DOMAINS = new Set([
   "web_dev",
   "frontend_dev",
@@ -20,8 +34,22 @@ const ALLOWED_DOMAINS = new Set([
   "management",
 ]);
 const CREATION_SCOPE = {
-  super_admin: new Set(["hr"]),
-  hr: new Set(["mentor", "intern"]),
+  super_admin: new Set([
+    "hr",
+    "sales_head",
+    "sales_executive",
+    "telecaller",
+    "tech_lead",
+    "pm",
+    "smm_head",
+    "finance_head",
+    "support_head",
+    "mentor",
+    "team_leader",
+    "intern",
+  ]),
+  hr: new Set(["mentor", "intern", "team_leader", "sales_executive", "telecaller"]),
+  sales_head: new Set(["sales_executive", "telecaller"]),
 };
 
 function getSiteUrl() {
@@ -79,8 +107,8 @@ export async function POST(request) {
     .single();
 
   const requesterRole = requesterProfile?.role || "";
-  if (!["super_admin", "hr"].includes(requesterRole)) {
-    return NextResponse.json({ error: "Only Admin or HR can create workspace users." }, { status: 403 });
+  if (!["super_admin", "hr", "sales_head"].includes(requesterRole)) {
+    return NextResponse.json({ error: "Only Admin, HR, or Department Heads can create workspace users." }, { status: 403 });
   }
 
   if (!isJsonRequest(request)) {
@@ -109,6 +137,17 @@ export async function POST(request) {
     return NextResponse.json({ error: "Password must be at least 12 characters." }, { status: 400 });
   }
 
+  // Auto-resolve domains for departmental head roles if not explicitly passed
+  if (["sales_head", "sales_executive", "telecaller"].includes(role)) {
+    domain = body.domain || "sales";
+  } else if (role === "smm_head") {
+    domain = body.domain || "marketing";
+  } else if (["tech_lead", "pm"].includes(role)) {
+    domain = body.domain || "web_dev";
+  } else if (["finance_head", "support_head", "hr"].includes(role)) {
+    domain = body.domain || "management";
+  }
+
   if (!ALLOWED_ROLES.has(role) || !ALLOWED_DOMAINS.has(domain)) {
     return NextResponse.json({ error: "Invalid role or domain." }, { status: 400 });
   }
@@ -117,12 +156,8 @@ export async function POST(request) {
     return NextResponse.json({ error: "This role cannot be created by your account." }, { status: 403 });
   }
 
-  if (requesterRole === "super_admin" && role === "hr") {
-    domain = "management";
-  }
-
   let selectedBatch = null;
-  if (requesterRole === "hr") {
+  if (requesterRole === "hr" && ["mentor", "intern"].includes(role)) {
     if (!body.batch_id) {
       return NextResponse.json({ error: "HR must select an assigned batch before creating mentors or interns." }, { status: 400 });
     }

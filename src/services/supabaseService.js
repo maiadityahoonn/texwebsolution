@@ -29,6 +29,17 @@ export async function createCloudLead(leadData) {
       status: leadData.status || 'New',
       notes: leadData.notes || '',
     };
+    // Direct Supabase insert first
+    const { data, error } = await supabase
+      .from('leads')
+      .insert([payload])
+      .select();
+
+    if (!error && data?.[0]) {
+      return data[0];
+    }
+
+    // Fallback to API route
     const response = await fetch('/api/leads/create', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -42,6 +53,40 @@ export async function createCloudLead(leadData) {
   } catch (err) {
     console.error('Error creating cloud lead:', err.message);
     return null;
+  }
+}
+
+export async function createCloudLeadsBatch(leadsArray) {
+  try {
+    if (!Array.isArray(leadsArray) || leadsArray.length === 0) return [];
+    const payloads = leadsArray.map((l) => ({
+      name: l.name || "Meta Lead",
+      phone: l.phone || "",
+      email: l.email || "",
+      service: l.service || "Website Development",
+      source: l.source || "Meta Ads",
+      status: l.status || "New",
+      notes: l.notes || "",
+    }));
+
+    const { data, error } = await supabase
+      .from('leads')
+      .insert(payloads)
+      .select();
+
+    if (!error && Array.isArray(data)) {
+      return data;
+    }
+
+    const results = [];
+    for (const p of payloads) {
+      const res = await createCloudLead(p);
+      if (res) results.push(res);
+    }
+    return results;
+  } catch (err) {
+    console.error('Error in createCloudLeadsBatch:', err.message);
+    return [];
   }
 }
 
@@ -61,6 +106,37 @@ export async function updateCloudLeadStatus(leadId, newStatus) {
   }
 }
 
+export async function updateCloudLead(leadId, updates) {
+  try {
+    const { data, error } = await supabase
+      .from('leads')
+      .update({ ...updates, updated_at: new Date().toISOString() })
+      .eq('id', leadId)
+      .select();
+
+    if (error) throw error;
+    return data?.[0] || null;
+  } catch (err) {
+    console.error('Error updating lead:', err.message);
+    return null;
+  }
+}
+
+export async function deleteCloudLead(leadId) {
+  try {
+    const { error } = await supabase
+      .from('leads')
+      .delete()
+      .eq('id', leadId);
+
+    if (error) throw error;
+    return true;
+  } catch (err) {
+    console.error('Error deleting lead:', err.message);
+    return false;
+  }
+}
+
 // ==========================================
 // 2. PROFILES & ROLES
 // ==========================================
@@ -72,7 +148,29 @@ export async function getProfiles() {
       .order('created_at', { ascending: false });
 
     if (error) throw error;
-    return data || [];
+    return (data || []).map((p) => {
+      let mappedRole = p.role;
+      if (p.role === "intern" || !p.role) {
+        if (p.designation === "Sales Head" || (p.domain === "sales" && p.designation?.toLowerCase().includes("head"))) {
+          mappedRole = "sales_head";
+        } else if (p.designation === "Sales Executive") {
+          mappedRole = "sales_executive";
+        } else if (p.designation === "Telecaller") {
+          mappedRole = "telecaller";
+        } else if (p.designation === "Tech Lead") {
+          mappedRole = "tech_lead";
+        } else if (p.designation === "Project Manager" || p.designation === "PM") {
+          mappedRole = "pm";
+        } else if (p.designation === "SMM Head") {
+          mappedRole = "smm_head";
+        } else if (p.designation === "Finance Head") {
+          mappedRole = "finance_head";
+        } else if (p.designation === "Support Head") {
+          mappedRole = "support_head";
+        }
+      }
+      return { ...p, role: mappedRole };
+    });
   } catch (err) {
     console.warn('Error fetching profiles:', err.message);
     return [];
@@ -778,7 +876,9 @@ export async function getAttendance(userId, role, domain) {
       .select('*, user:profiles!attendance_user_id_fkey(*), marker:profiles!attendance_marked_by_fkey(*), batch:batches(*), meeting:meetings(*)')
       .order('created_at', { ascending: false });
 
-    if (role === 'intern' && userId) {
+    // Only super_admin, hr, and mentor can access batch/domain attendance history.
+    // Team leaders, interns, regular developers, sales employees, etc. can ONLY see their own attendance!
+    if (!['super_admin', 'hr', 'mentor'].includes(role) && userId) {
       query = query.eq('user_id', userId);
     } else if (domain && role !== 'super_admin' && role !== 'hr') {
       query = query.eq('domain', domain);
@@ -879,6 +979,74 @@ export async function createMeeting(meetingData) {
     } else {
       console.error('Error creating meeting:', err.message);
     }
+    return null;
+  }
+}
+
+export async function startMeeting(meetingId) {
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    const token = session?.access_token;
+    if (token) {
+      const res = await fetch('/api/meetings/action', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({ action: 'start', meeting_id: meetingId }),
+      });
+      if (res.ok) {
+        const result = await res.json();
+        return result.meeting || null;
+      }
+    }
+
+    // Direct fallback
+    const { data: current } = await supabase.from('meetings').select('attendance_token, status').eq('id', meetingId).maybeSingle();
+    const cleanToken = (current?.attendance_token || '').split('#')[0] || `${Date.now().toString(36)}`;
+    const { data, error } = await supabase
+      .from('meetings')
+      .update({ attendance_token: `${cleanToken}#live:${new Date().toISOString()}`, status: 'scheduled' })
+      .eq('id', meetingId)
+      .select();
+    if (error) throw error;
+    return data?.[0] || null;
+  } catch (err) {
+    console.error('Error starting meeting:', err.message);
+    return null;
+  }
+}
+
+export async function endMeeting(meetingId) {
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    const token = session?.access_token;
+    if (token) {
+      const res = await fetch('/api/meetings/action', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({ action: 'end', meeting_id: meetingId }),
+      });
+      if (res.ok) {
+        const result = await res.json();
+        return result.meeting || null;
+      }
+    }
+
+    // Direct fallback
+    const { data, error } = await supabase
+      .from('meetings')
+      .update({ status: 'completed' })
+      .eq('id', meetingId)
+      .select();
+    if (error) throw error;
+    return data?.[0] || null;
+  } catch (err) {
+    console.error('Error ending meeting:', err.message);
     return null;
   }
 }
@@ -1293,16 +1461,31 @@ async function getBatchWorkspaceViaRls(batchId, fallbackReason = "") {
 
 export async function getBatchWorkspace(batchId, options = {}) {
   try {
-    const token = await getAuthToken();
+    let token = await getAuthToken();
     if (!token || !batchId) return emptyBatchWorkspaceData({ error: !token ? "Missing auth session." : "Batch id is required." });
     const scopeParam = options.scope ? `&scope=${encodeURIComponent(options.scope)}` : "";
-    const response = await fetch(`/api/batch-workspace?batch_id=${encodeURIComponent(batchId)}${scopeParam}`, {
+    let response = await fetch(`/api/batch-workspace?batch_id=${encodeURIComponent(batchId)}${scopeParam}`, {
       cache: "no-store",
       headers: { Authorization: `Bearer ${token}` },
     });
+    
+    if (response.status === 401) {
+      clearAuthTokenCache();
+      token = await getAuthToken(true);
+      if (token) {
+        response = await fetch(`/api/batch-workspace?batch_id=${encodeURIComponent(batchId)}${scopeParam}`, {
+          cache: "no-store",
+          headers: { Authorization: `Bearer ${token}` },
+        });
+      }
+    }
+
     const result = await response.json().catch(() => ({}));
     if (!response.ok && /admin key is not configured/i.test(result.error || "")) {
       return getBatchWorkspaceViaRls(batchId, result.error);
+    }
+    if (response.status === 401) {
+      return emptyBatchWorkspaceData({ error: "Session expired or unauthorized" });
     }
     if (!response.ok) throw new Error(result.error || "Batch workspace load failed");
     return {
@@ -1320,17 +1503,36 @@ export async function getBatchWorkspace(batchId, options = {}) {
 
 export async function getVisibleBatchEscalations() {
   try {
-    const token = await getAuthToken();
+    let token = await getAuthToken();
     if (!token) return [];
-    const response = await fetch("/api/batch-workspace?scope=escalations", {
+    let response = await fetch("/api/batch-workspace?scope=escalations", {
       cache: "no-store",
       headers: { Authorization: `Bearer ${token}` },
     });
+    
+    // Auto-refresh token on 401
+    if (response.status === 401) {
+      clearAuthTokenCache();
+      token = await getAuthToken(true);
+      if (token) {
+        response = await fetch("/api/batch-workspace?scope=escalations", {
+          cache: "no-store",
+          headers: { Authorization: `Bearer ${token}` },
+        });
+      }
+    }
+    
+    if (response.status === 401) {
+      return [];
+    }
+
     const result = await response.json().catch(() => ({}));
     if (!response.ok) throw new Error(result.error || "Escalations load failed");
     return result.escalations || [];
   } catch (err) {
-    console.warn("Error loading visible escalations:", err.message);
+    if (!/authorization|unauthorized|aborted|token/i.test(err?.message || "")) {
+      console.warn("Error loading visible escalations:", err.message);
+    }
     return [];
   }
 }
@@ -1660,3 +1862,718 @@ export async function getAuditLogs() {
     return [];
   }
 }
+
+// ==========================================
+// 12. CLIENTS & CRM PIPELINE
+// ==========================================
+const LOCAL_CLIENTS_KEY = 'texweb_cache_clients';
+const LOCAL_DEALS_KEY = 'texweb_cache_deals';
+const LOCAL_PROJECTS_KEY = 'texweb_cache_projects';
+const LOCAL_SMM_KEY = 'texweb_cache_smm';
+const LOCAL_CONTENT_KEY = 'texweb_cache_content';
+const LOCAL_INVOICES_KEY = 'texweb_cache_invoices';
+const LOCAL_PAYMENTS_KEY = 'texweb_cache_payments';
+const LOCAL_TICKETS_KEY = 'texweb_cache_tickets';
+const LOCAL_PREFS_KEY = 'texweb_cache_notification_prefs';
+
+function readLocalCache(key, fallback = []) {
+  if (typeof window === 'undefined') return fallback;
+  try {
+    const raw = localStorage.getItem(key);
+    return raw ? JSON.parse(raw) : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+function writeLocalCache(key, data) {
+  if (typeof window === 'undefined') return;
+  try {
+    localStorage.setItem(key, JSON.stringify(data));
+  } catch {}
+}
+
+export async function getClients() {
+  try {
+    const { data, error } = await supabase
+      .from('clients')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+    writeLocalCache(LOCAL_CLIENTS_KEY, data || []);
+    return data || [];
+  } catch (err) {
+    console.warn('Fallback: getClients from cache:', err.message);
+    return readLocalCache(LOCAL_CLIENTS_KEY, [
+      {
+        id: 'client-001',
+        name: 'Apex Digital Labs',
+        company_name: 'Apex Global Enterprises',
+        email: 'contact@apexdigital.io',
+        phone: '+91 98765 43210',
+        website: 'https://apexdigital.io',
+        industry: 'Technology & SaaS',
+        status: 'active',
+        created_at: new Date(Date.now() - 7 * 86400000).toISOString(),
+      },
+      {
+        id: 'client-002',
+        name: 'Zenith Healthtech',
+        company_name: 'Zenith Care Solutions',
+        email: 'info@zenithhealth.com',
+        phone: '+91 91234 56789',
+        website: 'https://zenithhealth.com',
+        industry: 'Healthcare',
+        status: 'active',
+        created_at: new Date(Date.now() - 3 * 86400000).toISOString(),
+      },
+    ]);
+  }
+}
+
+export async function createClient(clientData) {
+  try {
+    const { data, error } = await supabase
+      .from('clients')
+      .insert([clientData])
+      .select();
+
+    if (error) throw error;
+    const created = data?.[0] || clientData;
+    const current = readLocalCache(LOCAL_CLIENTS_KEY, []);
+    writeLocalCache(LOCAL_CLIENTS_KEY, [created, ...current]);
+    return created;
+  } catch (err) {
+    console.warn('Fallback: createClient in cache:', err.message);
+    const fallback = {
+      ...clientData,
+      id: `client-${Date.now()}`,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    };
+    const current = readLocalCache(LOCAL_CLIENTS_KEY, []);
+    writeLocalCache(LOCAL_CLIENTS_KEY, [fallback, ...current]);
+    return fallback;
+  }
+}
+
+export async function updateClient(clientId, updates) {
+  try {
+    const { data, error } = await supabase
+      .from('clients')
+      .update({ ...updates, updated_at: new Date().toISOString() })
+      .eq('id', clientId)
+      .select();
+
+    if (error) throw error;
+    const updated = data?.[0] || null;
+    const current = readLocalCache(LOCAL_CLIENTS_KEY, []);
+    writeLocalCache(
+      LOCAL_CLIENTS_KEY,
+      current.map((c) => (c.id === clientId ? { ...c, ...updates } : c))
+    );
+    return updated;
+  } catch (err) {
+    console.warn('Fallback: updateClient in cache:', err.message);
+    const current = readLocalCache(LOCAL_CLIENTS_KEY, []);
+    const updated = current.map((c) => (c.id === clientId ? { ...c, ...updates } : c));
+    writeLocalCache(LOCAL_CLIENTS_KEY, updated);
+    return updated.find((c) => c.id === clientId) || null;
+  }
+}
+
+export async function getDeals() {
+  try {
+    const { data, error } = await supabase
+      .from('deals')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+    writeLocalCache(LOCAL_DEALS_KEY, data || []);
+    return data || [];
+  } catch (err) {
+    console.warn('Fallback: getDeals from cache:', err.message);
+    return readLocalCache(LOCAL_DEALS_KEY, [
+      {
+        id: 'deal-001',
+        title: 'Full-Stack SaaS Platform MVP',
+        client_id: 'client-001',
+        pipeline_stage: 'closed_won',
+        deal_value: 185000,
+        service: 'Web Development',
+        expected_close_date: new Date().toISOString().split('T')[0],
+        notes: 'Signed contract with advance paid.',
+        created_at: new Date(Date.now() - 5 * 86400000).toISOString(),
+      },
+      {
+        id: 'deal-002',
+        title: 'Healthcare AI Automation Portal',
+        client_id: 'client-002',
+        pipeline_stage: 'proposal',
+        deal_value: 240000,
+        service: 'AI Automation',
+        expected_close_date: new Date(Date.now() + 10 * 86400000).toISOString().split('T')[0],
+        notes: 'Proposal sent, waiting for board approval.',
+        created_at: new Date(Date.now() - 2 * 86400000).toISOString(),
+      },
+    ]);
+  }
+}
+
+export async function createDeal(dealData) {
+  try {
+    const { data, error } = await supabase
+      .from('deals')
+      .insert([dealData])
+      .select();
+
+    if (error) throw error;
+    const created = data?.[0] || dealData;
+    const current = readLocalCache(LOCAL_DEALS_KEY, []);
+    writeLocalCache(LOCAL_DEALS_KEY, [created, ...current]);
+    return created;
+  } catch (err) {
+    console.warn('Fallback: createDeal in cache:', err.message);
+    const fallback = {
+      ...dealData,
+      id: `deal-${Date.now()}`,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    };
+    const current = readLocalCache(LOCAL_DEALS_KEY, []);
+    writeLocalCache(LOCAL_DEALS_KEY, [fallback, ...current]);
+    return fallback;
+  }
+}
+
+export async function updateDealStage(dealId, newStage, extra = {}) {
+  try {
+    const { data, error } = await supabase
+      .from('deals')
+      .update({ pipeline_stage: newStage, ...extra, updated_at: new Date().toISOString() })
+      .eq('id', dealId)
+      .select();
+
+    if (error) throw error;
+    const current = readLocalCache(LOCAL_DEALS_KEY, []);
+    writeLocalCache(
+      LOCAL_DEALS_KEY,
+      current.map((d) => (d.id === dealId ? { ...d, pipeline_stage: newStage, ...extra } : d))
+    );
+    return data?.[0] || null;
+  } catch (err) {
+    console.warn('Fallback: updateDealStage in cache:', err.message);
+    const current = readLocalCache(LOCAL_DEALS_KEY, []);
+    const updated = current.map((d) => (d.id === dealId ? { ...d, pipeline_stage: newStage, ...extra } : d));
+    writeLocalCache(LOCAL_DEALS_KEY, updated);
+    return updated.find((d) => d.id === dealId) || null;
+  }
+}
+
+// ==========================================
+// 13. PROJECTS & ENGINEERING
+// ==========================================
+export async function getProjects() {
+  try {
+    let { data, error } = await supabase
+      .from('projects')
+      .select(`
+        *,
+        tech_lead:profiles!projects_tech_lead_id_fkey(id, full_name, role, designation),
+        members:project_members(id, user_id, role_in_project, profile:profiles(id, full_name, role, designation))
+      `)
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      const fallback = await supabase
+        .from('projects')
+        .select('*')
+        .order('created_at', { ascending: false });
+      if (fallback.error) throw fallback.error;
+      data = fallback.data;
+    }
+    writeLocalCache(LOCAL_PROJECTS_KEY, data || []);
+    return data || [];
+  } catch (err) {
+    console.warn('Fallback: getProjects from cache:', err.message);
+    return readLocalCache(LOCAL_PROJECTS_KEY, [
+      {
+        id: 'proj-001',
+        name: 'Apex Digital SaaS Platform',
+        client_id: 'client-001',
+        deal_id: 'deal-001',
+        description: 'Next.js 16 + Supabase scalable multi-tenant SaaS application.',
+        status: 'in_progress',
+        priority: 'high',
+        budget: 185000,
+        start_date: new Date(Date.now() - 4 * 86400000).toISOString().split('T')[0],
+        target_date: new Date(Date.now() + 25 * 86400000).toISOString().split('T')[0],
+        github_repo: 'https://github.com/texwebsolution/apex-platform',
+        staging_url: 'https://apex-staging.texwebsolution.in',
+        created_at: new Date(Date.now() - 4 * 86400000).toISOString(),
+      },
+    ]);
+  }
+}
+
+export async function assignProjectMember(projectId, userId, roleInProject = 'developer') {
+  try {
+    const { data, error } = await supabase
+      .from('project_members')
+      .insert([{ project_id: projectId, user_id: userId, role_in_project: roleInProject }])
+      .select('*, profile:profiles(id, full_name, role, designation)');
+    if (error) throw error;
+    return data?.[0] || null;
+  } catch (err) {
+    console.error('assignProjectMember error:', err.message);
+    return null;
+  }
+}
+
+export async function removeProjectMember(memberId) {
+  try {
+    const { error } = await supabase
+      .from('project_members')
+      .delete()
+      .eq('id', memberId);
+    if (error) throw error;
+    return true;
+  } catch (err) {
+    console.error('removeProjectMember error:', err.message);
+    return false;
+  }
+}
+
+export async function createProject(projectData) {
+  try {
+    const { data, error } = await supabase
+      .from('projects')
+      .insert([projectData])
+      .select();
+
+    if (error) throw error;
+    const created = data?.[0] || projectData;
+    const current = readLocalCache(LOCAL_PROJECTS_KEY, []);
+    writeLocalCache(LOCAL_PROJECTS_KEY, [created, ...current]);
+    return created;
+  } catch (err) {
+    console.warn('Fallback: createProject in cache:', err.message);
+    const fallback = {
+      ...projectData,
+      id: `proj-${Date.now()}`,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    };
+    const current = readLocalCache(LOCAL_PROJECTS_KEY, []);
+    writeLocalCache(LOCAL_PROJECTS_KEY, [fallback, ...current]);
+    return fallback;
+  }
+}
+
+export async function updateProject(projectId, updates) {
+  try {
+    const { data, error } = await supabase
+      .from('projects')
+      .update({ ...updates, updated_at: new Date().toISOString() })
+      .eq('id', projectId)
+      .select();
+
+    if (error) throw error;
+    const current = readLocalCache(LOCAL_PROJECTS_KEY, []);
+    writeLocalCache(
+      LOCAL_PROJECTS_KEY,
+      current.map((p) => (p.id === projectId ? { ...p, ...updates } : p))
+    );
+    return data?.[0] || null;
+  } catch (err) {
+    console.warn('Fallback: updateProject in cache:', err.message);
+    const current = readLocalCache(LOCAL_PROJECTS_KEY, []);
+    const updated = current.map((p) => (p.id === projectId ? { ...p, ...updates } : p));
+    writeLocalCache(LOCAL_PROJECTS_KEY, updated);
+    return updated.find((p) => p.id === projectId) || null;
+  }
+}
+
+// ==========================================
+// 14. SOCIAL MEDIA MARKETING (SMM)
+// ==========================================
+export async function getSmmClients() {
+  try {
+    const { data, error } = await supabase
+      .from('smm_clients')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+    writeLocalCache(LOCAL_SMM_KEY, data || []);
+    return data || [];
+  } catch (err) {
+    console.warn('Fallback: getSmmClients from cache:', err.message);
+    return readLocalCache(LOCAL_SMM_KEY, [
+      {
+        id: 'smm-001',
+        client_id: 'client-001',
+        package_tier: 'Growth Tier (12 Posts + 4 Reels/mo)',
+        monthly_fee: 35000,
+        target_audience: 'B2B SaaS Founders, Tech Professionals in India & USA',
+        status: 'active',
+        created_at: new Date(Date.now() - 3 * 86400000).toISOString(),
+      },
+    ]);
+  }
+}
+
+export async function createSmmClient(data) {
+  try {
+    const { data: res, error } = await supabase
+      .from('smm_clients')
+      .insert([data])
+      .select();
+
+    if (error) throw error;
+    const created = res?.[0] || data;
+    const current = readLocalCache(LOCAL_SMM_KEY, []);
+    writeLocalCache(LOCAL_SMM_KEY, [created, ...current]);
+    return created;
+  } catch (err) {
+    console.warn('Fallback: createSmmClient in cache:', err.message);
+    const fallback = {
+      ...data,
+      id: `smm-${Date.now()}`,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    };
+    const current = readLocalCache(LOCAL_SMM_KEY, []);
+    writeLocalCache(LOCAL_SMM_KEY, [fallback, ...current]);
+    return fallback;
+  }
+}
+
+export async function getContentCalendar() {
+  try {
+    const { data, error } = await supabase
+      .from('content_calendar')
+      .select('*')
+      .order('scheduled_at', { ascending: true });
+
+    if (error) throw error;
+    writeLocalCache(LOCAL_CONTENT_KEY, data || []);
+    return data || [];
+  } catch (err) {
+    console.warn('Fallback: getContentCalendar from cache:', err.message);
+    return readLocalCache(LOCAL_CONTENT_KEY, [
+      {
+        id: 'post-001',
+        smm_client_id: 'smm-001',
+        title: '5 Reasons Why Custom Software Outperforms No-Code in 2026',
+        platform: 'linkedin',
+        content_type: 'carousel',
+        copy_text: 'Are you scaling past $10k MRR? Here is why templates and generic no-code tools hit hard architectural walls.',
+        scheduled_at: new Date(Date.now() + 2 * 86400000).toISOString(),
+        status: 'client_review',
+        created_at: new Date().toISOString(),
+      },
+      {
+        id: 'post-002',
+        smm_client_id: 'smm-001',
+        title: 'Behind the Scenes: Fast Next.js 16 Migration',
+        platform: 'instagram',
+        content_type: 'reel',
+        copy_text: 'Watch how we optimized load speeds by 68% in 3 simple steps.',
+        scheduled_at: new Date(Date.now() + 4 * 86400000).toISOString(),
+        status: 'approved',
+        created_at: new Date().toISOString(),
+      },
+    ]);
+  }
+}
+
+export async function createContentItem(data) {
+  try {
+    const { data: res, error } = await supabase
+      .from('content_calendar')
+      .insert([data])
+      .select();
+
+    if (error) throw error;
+    const created = res?.[0] || data;
+    const current = readLocalCache(LOCAL_CONTENT_KEY, []);
+    writeLocalCache(LOCAL_CONTENT_KEY, [created, ...current]);
+    return created;
+  } catch (err) {
+    console.warn('Fallback: createContentItem in cache:', err.message);
+    const fallback = {
+      ...data,
+      id: `post-${Date.now()}`,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    };
+    const current = readLocalCache(LOCAL_CONTENT_KEY, []);
+    writeLocalCache(LOCAL_CONTENT_KEY, [fallback, ...current]);
+    return fallback;
+  }
+}
+
+export async function updateContentItem(id, updates) {
+  try {
+    const { data, error } = await supabase
+      .from('content_calendar')
+      .update({ ...updates, updated_at: new Date().toISOString() })
+      .eq('id', id)
+      .select();
+
+    if (error) throw error;
+    const current = readLocalCache(LOCAL_CONTENT_KEY, []);
+    writeLocalCache(
+      LOCAL_CONTENT_KEY,
+      current.map((item) => (item.id === id ? { ...item, ...updates } : item))
+    );
+    return data?.[0] || null;
+  } catch (err) {
+    console.warn('Fallback: updateContentItem in cache:', err.message);
+    const current = readLocalCache(LOCAL_CONTENT_KEY, []);
+    const updated = current.map((item) => (item.id === id ? { ...item, ...updates } : item));
+    writeLocalCache(LOCAL_CONTENT_KEY, updated);
+    return updated.find((item) => item.id === id) || null;
+  }
+}
+
+// ==========================================
+// 15. FINANCE & INVOICES
+// ==========================================
+export async function getInvoices() {
+  try {
+    const { data, error } = await supabase
+      .from('invoices')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+    writeLocalCache(LOCAL_INVOICES_KEY, data || []);
+    return data || [];
+  } catch (err) {
+    console.warn('Fallback: getInvoices from cache:', err.message);
+    return readLocalCache(LOCAL_INVOICES_KEY, [
+      {
+        id: 'inv-001',
+        invoice_number: 'TEX-2026-0081',
+        client_id: 'client-001',
+        project_id: 'proj-001',
+        title: 'Advance Payment (40%) - Apex Digital Platform',
+        amount: 74000,
+        tax_amount: 13320,
+        total_amount: 87320,
+        due_date: new Date(Date.now() - 3 * 86400000).toISOString().split('T')[0],
+        status: 'paid',
+        milestone_type: 'advance',
+        created_at: new Date(Date.now() - 5 * 86400000).toISOString(),
+      },
+      {
+        id: 'inv-002',
+        invoice_number: 'TEX-2026-0082',
+        client_id: 'client-001',
+        project_id: 'proj-001',
+        title: 'Milestone 1 Payment (30%) - Alpha Sprint Delivery',
+        amount: 55500,
+        tax_amount: 9990,
+        total_amount: 65490,
+        due_date: new Date(Date.now() + 15 * 86400000).toISOString().split('T')[0],
+        status: 'sent',
+        milestone_type: 'milestone',
+        created_at: new Date().toISOString(),
+      },
+    ]);
+  }
+}
+
+export async function createInvoice(invoiceData) {
+  try {
+    const { data, error } = await supabase
+      .from('invoices')
+      .insert([invoiceData])
+      .select();
+
+    if (error) throw error;
+    const created = data?.[0] || invoiceData;
+    const current = readLocalCache(LOCAL_INVOICES_KEY, []);
+    writeLocalCache(LOCAL_INVOICES_KEY, [created, ...current]);
+    return created;
+  } catch (err) {
+    console.warn('Fallback: createInvoice in cache:', err.message);
+    const fallback = {
+      ...invoiceData,
+      id: `inv-${Date.now()}`,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    };
+    const current = readLocalCache(LOCAL_INVOICES_KEY, []);
+    writeLocalCache(LOCAL_INVOICES_KEY, [fallback, ...current]);
+    return fallback;
+  }
+}
+
+export async function updateInvoice(invoiceId, updates) {
+  try {
+    const { data, error } = await supabase
+      .from('invoices')
+      .update({ ...updates, updated_at: new Date().toISOString() })
+      .eq('id', invoiceId)
+      .select();
+
+    if (error) throw error;
+    const current = readLocalCache(LOCAL_INVOICES_KEY, []);
+    writeLocalCache(
+      LOCAL_INVOICES_KEY,
+      current.map((inv) => (inv.id === invoiceId ? { ...inv, ...updates } : inv))
+    );
+    return data?.[0] || null;
+  } catch (err) {
+    console.warn('Fallback: updateInvoice in cache:', err.message);
+    const current = readLocalCache(LOCAL_INVOICES_KEY, []);
+    const updated = current.map((inv) => (inv.id === invoiceId ? { ...inv, ...updates } : inv));
+    writeLocalCache(LOCAL_INVOICES_KEY, updated);
+    return updated.find((inv) => inv.id === invoiceId) || null;
+  }
+}
+
+// ==========================================
+// 16. SUPPORT TICKETS
+// ==========================================
+export async function getSupportTickets() {
+  try {
+    const { data, error } = await supabase
+      .from('support_tickets')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+    writeLocalCache(LOCAL_TICKETS_KEY, data || []);
+    return data || [];
+  } catch (err) {
+    console.warn('Fallback: getSupportTickets from cache:', err.message);
+    return readLocalCache(LOCAL_TICKETS_KEY, [
+      {
+        id: 'tkt-001',
+        ticket_number: 'TCK-2026-104',
+        client_id: 'client-001',
+        project_id: 'proj-001',
+        subject: 'Custom webhook endpoint timeout issue on staging',
+        description: 'Payment gateway callback hook occasionally encounters a 5-second timeout on cold starts.',
+        priority: 'high',
+        status: 'in_progress',
+        created_at: new Date(Date.now() - 24 * 3600000).toISOString(),
+      },
+    ]);
+  }
+}
+
+export async function createSupportTicket(ticketData) {
+  try {
+    const { data, error } = await supabase
+      .from('support_tickets')
+      .insert([ticketData])
+      .select();
+
+    if (error) throw error;
+    const created = data?.[0] || ticketData;
+    const current = readLocalCache(LOCAL_TICKETS_KEY, []);
+    writeLocalCache(LOCAL_TICKETS_KEY, [created, ...current]);
+    return created;
+  } catch (err) {
+    console.warn('Fallback: createSupportTicket in cache:', err.message);
+    const fallback = {
+      ...ticketData,
+      id: `tkt-${Date.now()}`,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    };
+    const current = readLocalCache(LOCAL_TICKETS_KEY, []);
+    writeLocalCache(LOCAL_TICKETS_KEY, [fallback, ...current]);
+    return fallback;
+  }
+}
+
+export async function updateSupportTicket(ticketId, updates) {
+  try {
+    const { data, error } = await supabase
+      .from('support_tickets')
+      .update({ ...updates, updated_at: new Date().toISOString() })
+      .eq('id', ticketId)
+      .select();
+
+    if (error) throw error;
+    const current = readLocalCache(LOCAL_TICKETS_KEY, []);
+    writeLocalCache(
+      LOCAL_TICKETS_KEY,
+      current.map((t) => (t.id === ticketId ? { ...t, ...updates } : t))
+    );
+    return data?.[0] || null;
+  } catch (err) {
+    console.warn('Fallback: updateSupportTicket in cache:', err.message);
+    const current = readLocalCache(LOCAL_TICKETS_KEY, []);
+    const updated = current.map((t) => (t.id === ticketId ? { ...t, ...updates } : t));
+    writeLocalCache(LOCAL_TICKETS_KEY, updated);
+    return updated.find((t) => t.id === ticketId) || null;
+  }
+}
+
+// ==========================================
+// 17. NOTIFICATION PREFERENCES
+// ==========================================
+export async function getNotificationPreferences(userId) {
+  try {
+    const { data, error } = await supabase
+      .from('notification_preferences')
+      .select('*')
+      .eq('user_id', userId)
+      .maybeSingle();
+
+    if (error) throw error;
+    return (
+      data || {
+        sound_enabled: true,
+        push_enabled: true,
+        email_enabled: true,
+        lead_alerts: true,
+        task_alerts: true,
+        chat_alerts: true,
+        project_alerts: true,
+        smm_alerts: true,
+        finance_alerts: true,
+        support_alerts: true,
+      }
+    );
+  } catch {
+    return readLocalCache(`${LOCAL_PREFS_KEY}_${userId}`, {
+      sound_enabled: true,
+      push_enabled: true,
+      email_enabled: true,
+      lead_alerts: true,
+      task_alerts: true,
+      chat_alerts: true,
+      project_alerts: true,
+      smm_alerts: true,
+      finance_alerts: true,
+      support_alerts: true,
+    });
+  }
+}
+
+export async function saveNotificationPreferences(userId, prefs) {
+  try {
+    const { data, error } = await supabase
+      .from('notification_preferences')
+      .upsert({ user_id: userId, ...prefs, updated_at: new Date().toISOString() })
+      .select();
+
+    if (error) throw error;
+    writeLocalCache(`${LOCAL_PREFS_KEY}_${userId}`, prefs);
+    return data?.[0] || prefs;
+  } catch {
+    writeLocalCache(`${LOCAL_PREFS_KEY}_${userId}`, prefs);
+    return prefs;
+  }
+}
+

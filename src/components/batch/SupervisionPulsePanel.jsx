@@ -94,7 +94,7 @@ export default function SupervisionPulsePanel({
   ];
 
   return (
-    <div className={`p-5 rounded-2xl border ${isDark ? "bg-transparent border-slate-800/80 dark:border-slate-800/80" : "bg-white border-gray-200/80"} shadow-sm`}>
+    <div className={`workspace-overview workspace-overview-card p-4 sm:p-5 rounded-xl sm:rounded-2xl border ${isDark ? "bg-transparent border-slate-800/80 dark:border-slate-800/80" : "bg-white border-gray-200/80"} shadow-sm`}>
       <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-4 mb-4">
         <div>
           <h3 className="text-base font-black text-gray-900 dark:text-white flex items-center gap-2">

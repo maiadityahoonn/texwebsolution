@@ -119,7 +119,7 @@ export default function MentorOverview({
   };
 
   return (
-    <div className="space-y-6">
+    <div className="workspace-overview space-y-4 sm:space-y-6">
       {/* 0. BRANDED HERO WELCOME CARD - MENTOR SUPERVISION MODE */}
       <div className="relative overflow-hidden rounded-2xl border border-gray-200/90 dark:border-slate-800 bg-gradient-to-r from-red-50/70 via-rose-50/40 to-amber-50/30 dark:from-red-950/25 dark:via-transparent dark:to-transparent p-4 sm:p-5 backdrop-blur-xs transition-all shadow-2xs">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">

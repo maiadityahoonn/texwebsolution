@@ -45,6 +45,9 @@ export default function TeamLeaderOverview({
   onOpenTaskDetails,
   onOpenWorkspace,
   onScheduleMeeting,
+  onStartMeeting,
+  onEndMeeting,
+  onMarkAttendance,
   onOpenEscalationModal,
   isDark = false,
   domainLabel = (d) => d,
@@ -77,7 +80,7 @@ export default function TeamLeaderOverview({
   };
 
   return (
-    <div className="space-y-6">
+    <div className="workspace-overview space-y-4 sm:space-y-6">
       {/* 1. TOP SUMMARY CARDS */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {/* Batch Info Card */}
@@ -205,37 +208,181 @@ export default function TeamLeaderOverview({
       </div>
 
       {/* 2. TODAY'S MEETING BANNER */}
-      {todayMeetings.length > 0 && (
-        <div className="p-4 rounded-2xl bg-gradient-to-r from-red-600/10 via-rose-600/5 to-transparent border border-red-200/80 dark:border-red-900/50 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-red-600 text-white flex items-center justify-center shrink-0 shadow-md shadow-red-500/20">
-              <Video className="w-5 h-5" />
-            </div>
-            <div>
-              <div className="text-[11px] font-bold text-red-600 uppercase tracking-wider">Today's Standup</div>
-              <h4 className="font-bold text-sm text-gray-900 dark:text-white">
-                {todayMeetings[0].title}
-              </h4>
-              <p className="text-xs text-gray-500 dark:text-slate-400 flex items-center gap-2 mt-0.5">
-                <Clock className="w-3 h-3" />
-                <span>{new Date(todayMeetings[0].scheduled_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>
-              </p>
-            </div>
-          </div>
+      {todayMeetings.length > 0 && (() => {
+        const currentMeeting = todayMeetings[0];
+        const isMeetingEnded = currentMeeting?.status === "completed" || currentMeeting?.status === "cancelled";
+        const isMeetingLive = !isMeetingEnded && (
+          Boolean(currentMeeting?.attendance_token?.includes("#live:")) ||
+          currentMeeting?.status === "in_progress" ||
+          currentMeeting?.status === "live"
+        );
+        const isHost = currentMeeting?.host_id === userProfile?.id || (!currentMeeting?.host_id && currentMeeting?.batch_id === userProfile?.batch_id);
+        const isAttendanceMarkedToday = attendanceRecords.some((a) => {
+          if (currentMeeting?.id && a.meeting_id === currentMeeting.id) return true;
+          return a.attendance_date === todayStr && a.user_id === userProfile?.id;
+        });
 
-          <div className="flex items-center gap-2 self-stretch sm:self-auto">
-            <a
-              href={safeExternalUrl(todayMeetings[0].meeting_link || "https://meet.google.com/new")}
-              target="_blank"
-              rel="noreferrer"
-              className="px-4 py-2 bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 text-white font-bold rounded-xl text-xs flex items-center gap-1.5 transition shadow-sm justify-center flex-1 sm:flex-none"
-            >
-              <Video className="w-3.5 h-3.5" />
-              <span>Join Meeting</span>
-            </a>
+        return (
+          <div className="p-4 rounded-2xl bg-gradient-to-r from-red-600/10 via-rose-600/5 to-transparent border border-red-200/80 dark:border-red-900/50 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <div className={`w-10 h-10 rounded-xl text-white flex items-center justify-center shrink-0 shadow-md ${
+                isMeetingEnded ? "bg-gray-400 dark:bg-slate-700" : isMeetingLive ? "bg-red-600 shadow-red-500/20" : "bg-blue-600 shadow-blue-500/20"
+              }`}>
+                <Video className="w-5 h-5" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="text-[11px] font-bold text-red-600 uppercase tracking-wider">Today's Standup</span>
+                  {isMeetingEnded ? (
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase bg-gray-100 text-gray-600 dark:bg-slate-800 dark:text-slate-400 border border-gray-200 dark:border-slate-700">
+                      Ended
+                    </span>
+                  ) : isMeetingLive ? (
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 animate-pulse">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />
+                      Live Now
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
+                      <Clock className="w-2.5 h-2.5" />
+                      Scheduled
+                    </span>
+                  )}
+                </div>
+                <h4 className="font-bold text-sm text-gray-900 dark:text-white mt-0.5">
+                  {currentMeeting.title}
+                </h4>
+                <p className="text-xs text-gray-500 dark:text-slate-400 flex items-center gap-2 mt-0.5">
+                  <Clock className="w-3 h-3" />
+                  <span>{new Date(currentMeeting.scheduled_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>
+                  {currentMeeting.topic && <span>• Topic: {currentMeeting.topic}</span>}
+                </p>
+              </div>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2 self-stretch sm:self-auto justify-end">
+              {/* Attendance timing check: Only active during live meeting */}
+              {isMeetingEnded ? (
+                <button
+                  type="button"
+                  disabled
+                  className="px-3 py-2 rounded-xl text-xs font-bold border border-gray-200 dark:border-slate-800 bg-gray-100/80 dark:bg-slate-800/80 text-gray-400 dark:text-slate-500 cursor-not-allowed opacity-60 flex items-center gap-1.5 select-none"
+                  title="Meeting ended. Attendance is closed."
+                >
+                  <ShieldCheck className="w-3.5 h-3.5" />
+                  <span>Attendance Closed</span>
+                </button>
+              ) : isMeetingLive ? (
+                isAttendanceMarkedToday ? (
+                  <span className="px-3 py-2 rounded-xl text-xs font-bold border border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 flex items-center gap-1.5 shadow-2xs">
+                    <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
+                    <span>Attendance Marked</span>
+                  </span>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => onMarkAttendance && onMarkAttendance(currentMeeting)}
+                    className="px-3 py-2 rounded-xl text-xs font-bold bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white flex items-center gap-1.5 transition shadow-sm hover:shadow-emerald-500/20 active:scale-95 cursor-pointer"
+                    title="Mark attendance for this live session"
+                  >
+                    <ShieldCheck className="w-3.5 h-3.5" />
+                    <span>Mark Attendance</span>
+                  </button>
+                )
+              ) : (
+                <button
+                  type="button"
+                  disabled
+                  className="px-3 py-2 rounded-xl text-xs font-bold border border-gray-200 dark:border-slate-800 bg-gray-100/70 dark:bg-slate-800/70 text-gray-400 dark:text-slate-500 cursor-not-allowed opacity-60 flex items-center gap-1.5 select-none"
+                  title="Attendance opens during the live meeting only."
+                >
+                  <ShieldCheck className="w-3.5 h-3.5" />
+                  <span>Opens on Start</span>
+                </button>
+              )}
+
+              {/* Host Controls vs Non-Host Participant Controls */}
+              {isHost ? (
+                <>
+                  {isMeetingEnded ? (
+                    <button
+                      type="button"
+                      disabled
+                      className="px-4 py-2 bg-gray-100 dark:bg-slate-800 text-gray-400 dark:text-slate-500 border border-gray-200 dark:border-slate-700 font-bold rounded-xl text-xs flex items-center gap-1.5 cursor-not-allowed opacity-60 select-none"
+                    >
+                      <Video className="w-3.5 h-3.5" />
+                      <span>Meeting Ended</span>
+                    </button>
+                  ) : isMeetingLive ? (
+                    <>
+                      <a
+                        href={safeExternalUrl(currentMeeting.meeting_link || "https://meet.google.com/new")}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="px-3.5 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold rounded-xl text-xs flex items-center gap-1.5 transition shadow-sm active:scale-95"
+                      >
+                        <Video className="w-3.5 h-3.5" />
+                        <span>In Meeting (Join)</span>
+                      </a>
+                      <button
+                        type="button"
+                        onClick={() => onEndMeeting && onEndMeeting(currentMeeting)}
+                        className="px-3.5 py-2 bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 text-white font-bold rounded-xl text-xs flex items-center gap-1.5 transition shadow-sm active:scale-95 cursor-pointer"
+                        title="End this meeting for all participants"
+                      >
+                        <span>End Meeting</span>
+                      </button>
+                    </>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => onStartMeeting && onStartMeeting(currentMeeting)}
+                      className="px-4 py-2 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold rounded-xl text-xs flex items-center gap-1.5 transition shadow-md shadow-emerald-500/20 active:scale-95 cursor-pointer"
+                      title="Start meeting session now"
+                    >
+                      <Video className="w-3.5 h-3.5" />
+                      <span>Start Meeting</span>
+                    </button>
+                  )}
+                </>
+              ) : (
+                <>
+                  {isMeetingEnded ? (
+                    <button
+                      type="button"
+                      disabled
+                      className="px-4 py-2 bg-gray-100 dark:bg-slate-800 text-gray-400 dark:text-slate-500 border border-gray-200 dark:border-slate-700 font-bold rounded-xl text-xs flex items-center gap-1.5 cursor-not-allowed opacity-60 select-none"
+                    >
+                      <Video className="w-3.5 h-3.5" />
+                      <span>Meeting Ended</span>
+                    </button>
+                  ) : isMeetingLive ? (
+                    <a
+                      href={safeExternalUrl(currentMeeting.meeting_link || "https://meet.google.com/new")}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="px-4 py-2 bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 text-white font-bold rounded-xl text-xs flex items-center gap-1.5 transition shadow-md shadow-red-500/20 justify-center active:scale-95"
+                    >
+                      <Video className="w-3.5 h-3.5" />
+                      <span>Join Meeting</span>
+                    </a>
+                  ) : (
+                    <button
+                      type="button"
+                      disabled
+                      className="px-4 py-2 bg-gray-100 dark:bg-slate-800 text-gray-400 dark:text-slate-500 border border-gray-200 dark:border-slate-700 font-bold rounded-xl text-xs flex items-center gap-1.5 cursor-not-allowed opacity-60 select-none"
+                      title="Waiting for the host to start the meeting"
+                    >
+                      <Clock className="w-3.5 h-3.5" />
+                      <span>Waiting for Host</span>
+                    </button>
+                  )}
+                </>
+              )}
+            </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* 3. MY TEAM TABLE (PRD Section 40) */}
       <div className={`p-5 rounded-2xl border ${
@@ -258,7 +405,7 @@ export default function TeamLeaderOverview({
             No interns currently in this batch.
           </div>
         ) : (
-          <div className="overflow-x-auto">
+          <div className="table-scroll">
             <table className="w-full text-left text-xs border-collapse">
               <thead>
                 <tr className="border-b border-gray-100 dark:border-slate-800 text-[11px] font-bold text-gray-400 dark:text-slate-400 uppercase tracking-wider">
