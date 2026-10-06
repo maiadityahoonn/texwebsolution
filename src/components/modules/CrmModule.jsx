@@ -82,7 +82,6 @@ export default function CrmModule({
   onConvertToClientAndProject,
   onCreateProposal,
   onUpdateProposal,
-  onCreateQuotation,
   onUpdateQuotation,
   onCreateAgreement,
   onUpdateAgreement,
@@ -172,8 +171,8 @@ export default function CrmModule({
   const commercialDocs = useMemo(() => {
     const q = query.trim().toLowerCase();
     const rows = [
-      ...proposals.map((item) => ({ ...item, docType: "proposal" })),
-      ...quotations.map((item) => ({ ...item, docType: "quotation" })),
+      ...proposals.map((item) => ({ ...item, docType: "proposal_quote" })),
+      ...quotations.map((item) => ({ ...item, docType: "proposal_quote" })),
       ...agreements.map((item) => ({ ...item, docType: "agreement" })),
     ];
     return rows.filter((item) => {
@@ -256,7 +255,7 @@ export default function CrmModule({
     e.preventDefault();
     if (!commercialForm.client_id) return;
     const amount = parseFloat(commercialForm.amount) || 0;
-    if (commercialType === "proposal") {
+    if (commercialType !== "agreement") {
       onCreateProposal?.({
         client_id: commercialForm.client_id,
         deal_id: commercialForm.deal_id || null,
@@ -267,21 +266,6 @@ export default function CrmModule({
         deliverables: commercialForm.deliverables,
         sent_at: commercialForm.status === "sent" ? new Date().toISOString() : null,
         notes: commercialForm.notes,
-      });
-    } else if (commercialType === "quotation") {
-      const tax = Math.round(amount * 0.18);
-      onCreateQuotation?.({
-        quotation_number: commercialForm.quotation_number,
-        client_id: commercialForm.client_id,
-        deal_id: commercialForm.deal_id || null,
-        subtotal: amount,
-        discount: 0,
-        tax,
-        total: amount + tax,
-        status: commercialForm.status === "accepted" ? "accepted" : "sent",
-        valid_until: commercialForm.valid_until,
-        notes: commercialForm.notes,
-        items: [{ title: commercialForm.title, description: commercialForm.scope_of_work, amount }],
       });
     } else {
       onCreateAgreement?.({
@@ -382,7 +366,7 @@ export default function CrmModule({
             className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-orange-200 bg-orange-50 text-orange-700 hover:bg-orange-100 font-semibold text-xs transition shadow-sm cursor-pointer"
           >
             <FileText className="w-4 h-4" />
-            <span>Proposal / Agreement</span>
+            <span>Proposal + Agreement</span>
           </button>
 
           <button
@@ -732,8 +716,7 @@ export default function CrmModule({
         <div className="space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             {[
-              ["proposal", "New Proposal", "Scope, deliverables, timeline"],
-              ["quotation", "New Quotation", "Price, tax, validity"],
+              ["proposal", "New Proposal + Quotation", "Scope, deliverables, price, tax"],
               ["agreement", "New Agreement", "Terms, milestones, signature"],
             ].map(([type, title, desc]) => (
               <button
@@ -753,7 +736,7 @@ export default function CrmModule({
           <div className="rounded-2xl bg-white dark:bg-[#18150f] border border-gray-100 dark:border-[#3a3020] overflow-hidden shadow-2xs">
             {commercialDocs.length === 0 ? (
               <div className="p-8 text-center text-sm text-gray-500 dark:text-neutral-400">
-                No proposal, quotation, or agreement found.
+                No proposal quotation or agreement found.
               </div>
             ) : (
               <div className="overflow-x-auto table-scroll">
@@ -811,7 +794,7 @@ export default function CrmModule({
                                 <button
                                   onClick={() => {
                                     if (doc.docType === "agreement") onUpdateAgreement?.(doc.id, { status: "signed", signed_at: new Date().toISOString() });
-                                    else if (doc.docType === "quotation") onUpdateQuotation?.(doc.id, { status: "accepted" });
+                                    else if (doc.quotation_number) onUpdateQuotation?.(doc.id, { status: "accepted" });
                                     else onUpdateProposal?.(doc.id, { status: "accepted", accepted_at: new Date().toISOString() });
                                   }}
                                   className="px-2.5 py-1 rounded-lg text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white transition"
@@ -821,7 +804,7 @@ export default function CrmModule({
                                 <button
                                   onClick={() => {
                                     if (doc.docType === "agreement") onUpdateAgreement?.(doc.id, { status: "cancelled" });
-                                    else if (doc.docType === "quotation") onUpdateQuotation?.(doc.id, { status: "declined" });
+                                    else if (doc.quotation_number) onUpdateQuotation?.(doc.id, { status: "declined" });
                                     else onUpdateProposal?.(doc.id, { status: "rejected" });
                                   }}
                                   className="px-2.5 py-1 rounded-lg text-xs font-bold bg-gray-100 dark:bg-slate-800 text-gray-700 dark:text-neutral-200 transition"
@@ -1093,7 +1076,7 @@ export default function CrmModule({
             <div className="flex items-center justify-between border-b border-gray-100 dark:border-[#3a3020] pb-3">
               <div>
                 <h3 className="font-bold text-base text-gray-900 dark:text-white">Sales Commercial Document</h3>
-                <p className="text-[11px] text-gray-400">Proposal, quotation, and agreement stay inside Sales until deal won.</p>
+                <p className="text-[11px] text-gray-400">Proposal + quotation is one Sales document; agreement is final signing before deal won.</p>
               </div>
               <button type="button" onClick={() => setShowCommercialModal(false)} className="p-1 rounded-lg text-gray-400">
                 <X className="w-4 h-4" />
@@ -1102,8 +1085,7 @@ export default function CrmModule({
 
             <div className="flex items-center gap-1 p-1 rounded-xl bg-gray-100 dark:bg-slate-800 text-xs">
               {[
-                ["proposal", "Proposal"],
-                ["quotation", "Quotation"],
+                ["proposal", "Proposal + Quotation"],
                 ["agreement", "Agreement"],
               ].map(([id, label]) => (
                 <button
@@ -1149,18 +1131,6 @@ export default function CrmModule({
                 </select>
               </div>
 
-              {commercialType === "quotation" && (
-                <div>
-                  <label className="block font-medium mb-1 text-gray-700 dark:text-neutral-300">Quotation Number</label>
-                  <input
-                    type="text"
-                    value={commercialForm.quotation_number}
-                    onChange={(e) => setCommercialForm({ ...commercialForm, quotation_number: e.target.value })}
-                    className="w-full px-3 py-2 rounded-xl bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 font-mono"
-                  />
-                </div>
-              )}
-
               {commercialType === "agreement" && (
                 <>
                   <div>
@@ -1181,17 +1151,6 @@ export default function CrmModule({
                     >
                       <option value="">No proposal ref</option>
                       {proposals.map((item) => <option key={item.id} value={item.id}>{item.title}</option>)}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block font-medium mb-1 text-gray-700 dark:text-neutral-300">Quotation Ref</label>
-                    <select
-                      value={commercialForm.quotation_id}
-                      onChange={(e) => setCommercialForm({ ...commercialForm, quotation_id: e.target.value })}
-                      className="w-full px-3 py-2 rounded-xl bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700"
-                    >
-                      <option value="">No quotation ref</option>
-                      {quotations.map((item) => <option key={item.id} value={item.id}>{item.quotation_number}</option>)}
                     </select>
                   </div>
                 </>

@@ -31,7 +31,6 @@ export default function FinanceModule({
   onRecordPayment,
   onCreateProposal,
   onUpdateProposal,
-  onCreateQuotation,
   onUpdateQuotation,
 }) {
   const [activeView, setActiveView] = useState("invoices");
@@ -39,7 +38,6 @@ export default function FinanceModule({
   const [statusFilter, setStatusFilter] = useState("all");
   const [showAddInvoiceModal, setShowAddInvoiceModal] = useState(false);
   const [showCommercialModal, setShowCommercialModal] = useState(false);
-  const [commercialType, setCommercialType] = useState("proposal");
   const [recordPaymentModal, setRecordPaymentModal] = useState(null); // invoice to pay
   const [paymentForm, setPaymentForm] = useState({
     amount: "",
@@ -89,8 +87,8 @@ export default function FinanceModule({
   const filteredCommercialDocs = useMemo(() => {
     const q = query.trim().toLowerCase();
     const rows = [
-      ...proposals.map((item) => ({ ...item, docType: "proposal" })),
-      ...quotations.map((item) => ({ ...item, docType: "quotation" })),
+      ...proposals.map((item) => ({ ...item, docType: "proposal_quote" })),
+      ...quotations.map((item) => ({ ...item, docType: "proposal_quote" })),
     ];
     return rows.filter((item) => {
       const matchStatus = statusFilter === "all" || item.status === statusFilter;
@@ -155,40 +153,17 @@ export default function FinanceModule({
     e.preventDefault();
     if (!commercialForm.client_id || !commercialForm.amount) return;
     const amount = parseFloat(commercialForm.amount) || 0;
-    if (commercialType === "proposal") {
-      onCreateProposal?.({
-        client_id: commercialForm.client_id,
-        deal_id: commercialForm.deal_id || null,
-        title: commercialForm.title,
-        amount,
-        status: commercialForm.status,
-        scope_of_work: commercialForm.scope_of_work,
-        deliverables: commercialForm.deliverables,
-        sent_at: commercialForm.status === "sent" ? new Date().toISOString() : null,
-        notes: commercialForm.notes,
-      });
-    } else {
-      const tax = Math.round(amount * 0.18);
-      onCreateQuotation?.({
-        quotation_number: commercialForm.quotation_number,
-        client_id: commercialForm.client_id,
-        deal_id: commercialForm.deal_id || null,
-        subtotal: amount,
-        discount: 0,
-        tax,
-        total: amount + tax,
-        status: commercialForm.status === "accepted" ? "accepted" : "sent",
-        valid_until: commercialForm.valid_until,
-        notes: commercialForm.notes,
-        items: [
-          {
-            title: commercialForm.title,
-            description: commercialForm.scope_of_work,
-            amount,
-          },
-        ],
-      });
-    }
+    onCreateProposal?.({
+      client_id: commercialForm.client_id,
+      deal_id: commercialForm.deal_id || null,
+      title: commercialForm.title,
+      amount,
+      status: commercialForm.status,
+      scope_of_work: commercialForm.scope_of_work,
+      deliverables: commercialForm.deliverables,
+      sent_at: commercialForm.status === "sent" ? new Date().toISOString() : null,
+      notes: commercialForm.notes,
+    });
     setShowCommercialModal(false);
   }
 
@@ -228,7 +203,6 @@ export default function FinanceModule({
         <div className="flex flex-wrap items-center gap-2 self-start sm:self-auto">
           <button
             onClick={() => {
-              setCommercialType("proposal");
               setCommercialForm((prev) => ({
                 ...prev,
                 client_id: clients[0]?.id || "",
@@ -240,7 +214,7 @@ export default function FinanceModule({
             className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-orange-200 bg-orange-50 text-orange-700 hover:bg-orange-100 font-semibold text-xs transition shadow-sm"
           >
             <FileText className="w-4 h-4" />
-            <span>Proposal / Quote</span>
+            <span>Proposal + Quotation</span>
           </button>
 
           <button
@@ -310,14 +284,14 @@ export default function FinanceModule({
           <div className="text-xl sm:text-2xl font-bold mt-2 font-mono text-purple-600 dark:text-purple-400">
             ₹{stats.overdue.toLocaleString("en-IN")}
           </div>
-          <div className="text-[11px] text-purple-600 mt-1 font-medium">Proposal and quotation pipeline</div>
+          <div className="text-[11px] text-purple-600 mt-1 font-medium">Combined proposal quotation pipeline</div>
         </div>
       </div>
 
       <div className="flex items-center gap-1 p-1 rounded-2xl bg-white dark:bg-[#18150f] border border-gray-100 dark:border-[#3a3020] w-full sm:w-fit overflow-x-auto no-scrollbar">
         {[
           { id: "invoices", label: "Invoices & Payments" },
-          { id: "commercial", label: "Proposals & Quotations" },
+          { id: "commercial", label: "Proposal + Quotation" },
         ].map((item) => (
           <button
             key={item.id}
@@ -375,7 +349,7 @@ export default function FinanceModule({
         <div className="rounded-2xl bg-white dark:bg-[#18150f] border border-gray-100 dark:border-[#3a3020] overflow-hidden shadow-2xs">
           {filteredCommercialDocs.length === 0 ? (
             <div className="p-8 text-center text-sm text-gray-400">
-              No proposal or quotation found for the current filter.
+              No proposal quotation found for the current filter.
             </div>
           ) : (
             <div className="overflow-x-auto table-scroll">
@@ -394,9 +368,9 @@ export default function FinanceModule({
                   {filteredCommercialDocs.map((doc) => {
                     const client = clients.find((item) => item.id === doc.client_id);
                     const amount = Number(doc.total) || Number(doc.amount) || Number(doc.subtotal) || 0;
-                    const docLabel = doc.docType === "quotation" ? doc.quotation_number : doc.title;
-                    const acceptedStatus = doc.docType === "quotation" ? "accepted" : "accepted";
-                    const rejectedStatus = doc.docType === "quotation" ? "declined" : "rejected";
+                    const docLabel = doc.quotation_number || doc.title;
+                    const acceptedStatus = "accepted";
+                    const rejectedStatus = doc.quotation_number ? "declined" : "rejected";
 
                     return (
                       <tr key={`${doc.docType}-${doc.id}`} className="hover:bg-gray-50/60 dark:hover:bg-slate-800/40 transition">
@@ -430,7 +404,7 @@ export default function FinanceModule({
                             {!["accepted", "declined", "rejected"].includes(doc.status) && (
                               <button
                                 onClick={() =>
-                                  doc.docType === "quotation"
+                                  doc.quotation_number
                                     ? onUpdateQuotation?.(doc.id, { status: acceptedStatus })
                                     : onUpdateProposal?.(doc.id, { status: acceptedStatus, accepted_at: new Date().toISOString() })
                                 }
@@ -442,7 +416,7 @@ export default function FinanceModule({
                             {!["accepted", "declined", "rejected"].includes(doc.status) && (
                               <button
                                 onClick={() =>
-                                  doc.docType === "quotation"
+                                  doc.quotation_number
                                     ? onUpdateQuotation?.(doc.id, { status: rejectedStatus })
                                     : onUpdateProposal?.(doc.id, { status: rejectedStatus })
                                 }
@@ -581,29 +555,15 @@ export default function FinanceModule({
             <div className="flex items-center justify-between border-b border-gray-100 dark:border-[#3a3020] pb-3">
               <div>
                 <h3 className="font-bold text-base text-gray-900 dark:text-white">Create Commercial Document</h3>
-                <p className="text-[11px] text-gray-400">Proposal or quotation before agreement and invoice.</p>
+                <p className="text-[11px] text-gray-400">Combined proposal quotation before agreement and invoice.</p>
               </div>
               <button type="button" onClick={() => setShowCommercialModal(false)} className="p-1 rounded-lg text-gray-400">
                 <X className="w-4 h-4" />
               </button>
             </div>
 
-            <div className="flex items-center gap-1 p-1 rounded-xl bg-gray-100 dark:bg-slate-800 text-xs">
-              {[
-                ["proposal", "Proposal"],
-                ["quotation", "Quotation"],
-              ].map(([id, label]) => (
-                <button
-                  key={id}
-                  type="button"
-                  onClick={() => setCommercialType(id)}
-                  className={`flex-1 rounded-lg px-3 py-2 font-bold transition ${
-                    commercialType === id ? "bg-white dark:bg-slate-900 text-orange-600 shadow-2xs" : "text-gray-500"
-                  }`}
-                >
-                  {label}
-                </button>
-              ))}
+            <div className="rounded-xl bg-orange-50 dark:bg-orange-950/30 border border-orange-200 dark:border-orange-900/50 px-3 py-2 text-xs font-bold text-orange-700 dark:text-orange-300">
+              Proposal + Quotation is one combined Sales document.
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
@@ -635,18 +595,6 @@ export default function FinanceModule({
                   ))}
                 </select>
               </div>
-
-              {commercialType === "quotation" && (
-                <div>
-                  <label className="block font-medium mb-1">Quotation Number</label>
-                  <input
-                    type="text"
-                    value={commercialForm.quotation_number}
-                    onChange={(e) => setCommercialForm({ ...commercialForm, quotation_number: e.target.value })}
-                    className="w-full px-3 py-2 rounded-xl bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 font-mono"
-                  />
-                </div>
-              )}
 
               <div>
                 <label className="block font-medium mb-1">Commercial Value *</label>

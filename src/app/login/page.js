@@ -175,7 +175,6 @@ import {
   createProposal,
   updateProposal,
   getQuotations,
-  createQuotation,
   updateQuotation,
   getAgreements,
   createAgreement,
@@ -12161,13 +12160,6 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
                       setToast("Proposal updated.");
                     }
                   }}
-                  onCreateQuotation={async (quotation) => {
-                    const res = await createQuotation({ ...quotation, created_by: sessionUser?.id || null });
-                    if (res) {
-                      setQuotations((prev) => [res, ...prev.filter((item) => item.id !== res.id)]);
-                      setToast("Sales quotation saved.");
-                    }
-                  }}
                   onUpdateQuotation={async (id, updates) => {
                     const res = await updateQuotation(id, updates);
                     if (res) {
@@ -12356,13 +12348,6 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
                     if (res) {
                       setProposals((prev) => prev.map((item) => (item.id === id ? { ...item, ...updates, ...res } : item)));
                       setToast("Proposal updated.");
-                    }
-                  }}
-                  onCreateQuotation={async (quotation) => {
-                    const res = await createQuotation({ ...quotation, created_by: sessionUser?.id || null });
-                    if (res) {
-                      setQuotations((prev) => [res, ...prev.filter((item) => item.id !== res.id)]);
-                      setToast("Quotation saved.");
                     }
                   }}
                   onUpdateQuotation={async (id, updates) => {
