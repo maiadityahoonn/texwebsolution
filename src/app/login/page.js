@@ -177,6 +177,9 @@ import {
   getQuotations,
   createQuotation,
   updateQuotation,
+  getAgreements,
+  createAgreement,
+  updateAgreement,
   getProjects,
   createProject,
   updateProject,
@@ -644,6 +647,7 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
   const [deals, setDeals] = useState([]);
   const [proposals, setProposals] = useState([]);
   const [quotations, setQuotations] = useState([]);
+  const [agreements, setAgreements] = useState([]);
   const [projectsData, setProjectsData] = useState([]);
   const [smmClients, setSmmClients] = useState([]);
   const [contentCalendar, setContentCalendar] = useState([]);
@@ -3739,6 +3743,7 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
           dealsRes,
           proposalsRes,
           quotationsRes,
+          agreementsRes,
           projectsRes,
           smmRes,
           contentRes,
@@ -3750,6 +3755,7 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
           getDeals(),
           getProposals(),
           getQuotations(),
+          getAgreements(),
           getProjects(),
           getSmmClients(),
           getContentCalendar(),
@@ -3761,6 +3767,7 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
         setDeals(dealsRes || []);
         setProposals(proposalsRes || []);
         setQuotations(quotationsRes || []);
+        setAgreements(agreementsRes || []);
         setProjectsData(projectsRes || []);
         setSmmClients(smmRes || []);
         setContentCalendar(contentRes || []);
@@ -8159,6 +8166,9 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
                   leads={leads}
                   deals={deals}
                   clients={clients}
+                  proposals={proposals}
+                  quotations={quotations}
+                  agreements={agreements}
                   projects={projectsData}
                   smmClients={smmClients}
                   invoices={invoicesList}
@@ -12137,6 +12147,48 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
                     }
                   }}
                   onConvertToClientAndProject={handleConvertToClientAndProject}
+                  onCreateProposal={async (proposal) => {
+                    const res = await createProposal({ ...proposal, created_by: sessionUser?.id || null });
+                    if (res) {
+                      setProposals((prev) => [res, ...prev.filter((item) => item.id !== res.id)]);
+                      setToast("Sales proposal saved.");
+                    }
+                  }}
+                  onUpdateProposal={async (id, updates) => {
+                    const res = await updateProposal(id, updates);
+                    if (res) {
+                      setProposals((prev) => prev.map((item) => (item.id === id ? { ...item, ...updates, ...res } : item)));
+                      setToast("Proposal updated.");
+                    }
+                  }}
+                  onCreateQuotation={async (quotation) => {
+                    const res = await createQuotation({ ...quotation, created_by: sessionUser?.id || null });
+                    if (res) {
+                      setQuotations((prev) => [res, ...prev.filter((item) => item.id !== res.id)]);
+                      setToast("Sales quotation saved.");
+                    }
+                  }}
+                  onUpdateQuotation={async (id, updates) => {
+                    const res = await updateQuotation(id, updates);
+                    if (res) {
+                      setQuotations((prev) => prev.map((item) => (item.id === id ? { ...item, ...updates, ...res } : item)));
+                      setToast("Quotation updated.");
+                    }
+                  }}
+                  onCreateAgreement={async (agreement) => {
+                    const res = await createAgreement({ ...agreement, created_by: sessionUser?.id || null });
+                    if (res) {
+                      setAgreements((prev) => [res, ...prev.filter((item) => item.id !== res.id)]);
+                      setToast("Client agreement saved.");
+                    }
+                  }}
+                  onUpdateAgreement={async (id, updates) => {
+                    const res = await updateAgreement(id, updates);
+                    if (res) {
+                      setAgreements((prev) => prev.map((item) => (item.id === id ? { ...item, ...updates, ...res } : item)));
+                      setToast("Agreement updated.");
+                    }
+                  }}
                   onOpenDirectWhatsapp={handleDirectWhatsapp}
                   onOpenChat={(lead) => handleOpenClientChat(lead)}
                   onRefresh={async () => {

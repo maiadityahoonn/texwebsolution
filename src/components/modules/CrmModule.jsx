@@ -20,6 +20,7 @@ import {
   Briefcase,
   X,
   ExternalLink,
+  FileText,
   Pencil,
   Trash2,
   Sparkles,
@@ -67,6 +68,9 @@ export default function CrmModule({
   leads = [],
   deals = [],
   clients = [],
+  proposals = [],
+  quotations = [],
+  agreements = [],
   initialViewMode = "leads",
   isDark = false,
   onUpdateLeadStatus,
@@ -76,6 +80,12 @@ export default function CrmModule({
   onUpdateLead,
   onDeleteLead,
   onConvertToClientAndProject,
+  onCreateProposal,
+  onUpdateProposal,
+  onCreateQuotation,
+  onUpdateQuotation,
+  onCreateAgreement,
+  onUpdateAgreement,
   onOpenChatWithLead,
   onOpenChat,
   onRefresh,
@@ -91,6 +101,8 @@ export default function CrmModule({
   const [selectedLead, setSelectedLead] = useState(null);
   const [showAddLeadModal, setShowAddLeadModal] = useState(false);
   const [showMetaImportModal, setShowMetaImportModal] = useState(false);
+  const [showCommercialModal, setShowCommercialModal] = useState(false);
+  const [commercialType, setCommercialType] = useState("proposal");
   const [editingLead, setEditingLead] = useState(null);
   const [deleteConfirmId, setDeleteConfirmId] = useState(null);
   const [newLeadForm, setNewLeadForm] = useState({
@@ -110,6 +122,24 @@ export default function CrmModule({
     source: "Website",
     status: "New",
     notes: "",
+  });
+  const [commercialForm, setCommercialForm] = useState({
+    title: "Website + CRM Implementation Proposal",
+    quotation_number: `QT-2026-${Math.floor(1000 + Math.random() * 9000)}`,
+    agreement_number: `AGR-2026-${Math.floor(1000 + Math.random() * 9000)}`,
+    client_id: "",
+    deal_id: "",
+    proposal_id: "",
+    quotation_id: "",
+    amount: "120000",
+    valid_until: new Date(Date.now() + 10 * 86400000).toISOString().split("T")[0],
+    start_date: new Date().toISOString().split("T")[0],
+    end_date: new Date(Date.now() + 45 * 86400000).toISOString().split("T")[0],
+    scope_of_work: "Discovery, UI/UX, Next.js development, Supabase setup, QA, deployment, and handover.",
+    deliverables: "Admin panel, client portal, responsive website, source handover, and support.",
+    commercial_terms: "40% advance, 30% milestone, 30% final before handover.",
+    status: "sent",
+    notes: "Prepared by Sales Head for client approval.",
   });
 
   const filteredLeads = useMemo(() => {
@@ -138,6 +168,23 @@ export default function CrmModule({
 
     return { total, newCount, convertedCount, rate, totalPipelineValue, wonValue };
   }, [leads, deals]);
+
+  const commercialDocs = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    const rows = [
+      ...proposals.map((item) => ({ ...item, docType: "proposal" })),
+      ...quotations.map((item) => ({ ...item, docType: "quotation" })),
+      ...agreements.map((item) => ({ ...item, docType: "agreement" })),
+    ];
+    return rows.filter((item) => {
+      const client = clients.find((c) => c.id === item.client_id);
+      return (
+        !q ||
+        [item.title, item.quotation_number, item.agreement_number, item.status, client?.name, client?.company_name]
+          .some((value) => String(value || "").toLowerCase().includes(q))
+      );
+    });
+  }, [agreements, clients, proposals, query, quotations]);
 
   function handleAddLeadSubmit(e) {
     e.preventDefault();
@@ -191,6 +238,77 @@ export default function CrmModule({
     window.open(`https://wa.me/${cleanPhone}?text=${text}`, "_blank", "noopener,noreferrer");
   }
 
+  function openCommercialModal(type = "proposal") {
+    setCommercialType(type);
+    setCommercialForm((prev) => ({
+      ...prev,
+      client_id: clients[0]?.id || "",
+      deal_id: deals[0]?.id || "",
+      proposal_id: proposals[0]?.id || "",
+      quotation_id: quotations[0]?.id || "",
+      quotation_number: `QT-2026-${Math.floor(1000 + Math.random() * 9000)}`,
+      agreement_number: `AGR-2026-${Math.floor(1000 + Math.random() * 9000)}`,
+    }));
+    setShowCommercialModal(true);
+  }
+
+  function handleCreateCommercialSubmit(e) {
+    e.preventDefault();
+    if (!commercialForm.client_id) return;
+    const amount = parseFloat(commercialForm.amount) || 0;
+    if (commercialType === "proposal") {
+      onCreateProposal?.({
+        client_id: commercialForm.client_id,
+        deal_id: commercialForm.deal_id || null,
+        title: commercialForm.title,
+        amount,
+        status: commercialForm.status,
+        scope_of_work: commercialForm.scope_of_work,
+        deliverables: commercialForm.deliverables,
+        sent_at: commercialForm.status === "sent" ? new Date().toISOString() : null,
+        notes: commercialForm.notes,
+      });
+    } else if (commercialType === "quotation") {
+      const tax = Math.round(amount * 0.18);
+      onCreateQuotation?.({
+        quotation_number: commercialForm.quotation_number,
+        client_id: commercialForm.client_id,
+        deal_id: commercialForm.deal_id || null,
+        subtotal: amount,
+        discount: 0,
+        tax,
+        total: amount + tax,
+        status: commercialForm.status === "accepted" ? "accepted" : "sent",
+        valid_until: commercialForm.valid_until,
+        notes: commercialForm.notes,
+        items: [{ title: commercialForm.title, description: commercialForm.scope_of_work, amount }],
+      });
+    } else {
+      onCreateAgreement?.({
+        agreement_number: commercialForm.agreement_number,
+        client_id: commercialForm.client_id,
+        deal_id: commercialForm.deal_id || null,
+        proposal_id: commercialForm.proposal_id || null,
+        quotation_id: commercialForm.quotation_id || null,
+        title: commercialForm.title,
+        scope_of_work: commercialForm.scope_of_work,
+        deliverables: commercialForm.deliverables,
+        commercial_terms: commercialForm.commercial_terms,
+        payment_milestones: [
+          { label: "Advance", percent: 40 },
+          { label: "Milestone", percent: 30 },
+          { label: "Final", percent: 30 },
+        ],
+        start_date: commercialForm.start_date,
+        end_date: commercialForm.end_date,
+        status: commercialForm.status === "signed" ? "signed" : "sent",
+        signed_at: commercialForm.status === "signed" ? new Date().toISOString() : null,
+        notes: commercialForm.notes,
+      });
+    }
+    setShowCommercialModal(false);
+  }
+
   return (
     <div className="space-y-6">
       {/* 1. Header & Actions */}
@@ -230,6 +348,16 @@ export default function CrmModule({
             >
               Sales Pipeline
             </button>
+            <button
+              onClick={() => setViewMode("commercials")}
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition ${
+                viewMode === "commercials"
+                  ? "bg-white dark:bg-slate-900 text-gray-900 dark:text-white shadow-2xs"
+                  : "text-gray-500 dark:text-neutral-400 hover:text-gray-900 dark:hover:text-white"
+              }`}
+            >
+              Commercials
+            </button>
           </div>
 
           <button
@@ -247,6 +375,14 @@ export default function CrmModule({
           >
             <Sparkles className="w-4 h-4" />
             <span>Import Meta Leads</span>
+          </button>
+
+          <button
+            onClick={() => openCommercialModal("proposal")}
+            className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-orange-200 bg-orange-50 text-orange-700 hover:bg-orange-100 font-semibold text-xs transition shadow-sm cursor-pointer"
+          >
+            <FileText className="w-4 h-4" />
+            <span>Proposal / Agreement</span>
           </button>
 
           <button
@@ -592,6 +728,120 @@ export default function CrmModule({
         </div>
       )}
 
+      {viewMode === "commercials" && (
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            {[
+              ["proposal", "New Proposal", "Scope, deliverables, timeline"],
+              ["quotation", "New Quotation", "Price, tax, validity"],
+              ["agreement", "New Agreement", "Terms, milestones, signature"],
+            ].map(([type, title, desc]) => (
+              <button
+                key={type}
+                onClick={() => openCommercialModal(type)}
+                className="p-4 rounded-2xl bg-white dark:bg-[#18150f] border border-gray-100 dark:border-[#3a3020] text-left hover:border-orange-500/60 transition shadow-2xs"
+              >
+                <div className="flex items-center justify-between gap-3">
+                  <span className="font-bold text-sm text-gray-900 dark:text-white">{title}</span>
+                  <Plus className="w-4 h-4 text-orange-600" />
+                </div>
+                <p className="text-xs text-gray-500 dark:text-neutral-400 mt-1">{desc}</p>
+              </button>
+            ))}
+          </div>
+
+          <div className="rounded-2xl bg-white dark:bg-[#18150f] border border-gray-100 dark:border-[#3a3020] overflow-hidden shadow-2xs">
+            {commercialDocs.length === 0 ? (
+              <div className="p-8 text-center text-sm text-gray-500 dark:text-neutral-400">
+                No proposal, quotation, or agreement found.
+              </div>
+            ) : (
+              <div className="overflow-x-auto table-scroll">
+                <table className="w-full text-left text-xs sm:text-sm border-collapse min-w-[860px]">
+                  <thead>
+                    <tr className="border-b border-gray-100 dark:border-[#3a3020] bg-gray-50/70 dark:bg-[#211d14] text-gray-500 dark:text-neutral-400 text-[11px] font-semibold uppercase tracking-wider">
+                      <th className="py-3 px-4">Document</th>
+                      <th className="py-3 px-4">Client</th>
+                      <th className="py-3 px-4">Value / Terms</th>
+                      <th className="py-3 px-4">Status</th>
+                      <th className="py-3 px-4">Date</th>
+                      <th className="py-3 px-4 text-right">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100 dark:divide-[#3a3020]/60">
+                    {commercialDocs.map((doc) => {
+                      const client = clients.find((item) => item.id === doc.client_id);
+                      const amount = Number(doc.total) || Number(doc.amount) || Number(doc.subtotal) || 0;
+                      const label = doc.agreement_number || doc.quotation_number || doc.title;
+                      const isFinal = ["accepted", "signed", "rejected", "declined", "cancelled"].includes(doc.status);
+
+                      return (
+                        <tr key={`${doc.docType}-${doc.id}`} className="hover:bg-gray-50/60 dark:hover:bg-slate-800/40 transition">
+                          <td className="py-3.5 px-4">
+                            <div className="font-bold text-gray-900 dark:text-white">{label || "Commercial Document"}</div>
+                            <div className="text-[11px] text-gray-500 capitalize">{doc.docType}</div>
+                          </td>
+                          <td className="py-3.5 px-4">
+                            <div className="font-semibold text-gray-900 dark:text-white">{client?.name || "Client Account"}</div>
+                            <div className="text-[11px] text-gray-500">{client?.company_name || client?.email || "Central client entity"}</div>
+                          </td>
+                          <td className="py-3.5 px-4">
+                            <div className="font-mono font-bold text-gray-900 dark:text-white">
+                              {doc.docType === "agreement" ? (doc.commercial_terms || "Payment milestones") : `Rs. ${amount.toLocaleString("en-IN")}`}
+                            </div>
+                            {doc.scope_of_work && <div className="text-[11px] text-gray-500 line-clamp-1">{doc.scope_of_work}</div>}
+                          </td>
+                          <td className="py-3.5 px-4">
+                            <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase ${
+                              ["accepted", "signed"].includes(doc.status)
+                                ? "bg-emerald-50 text-emerald-600"
+                                : ["rejected", "declined", "cancelled"].includes(doc.status)
+                                ? "bg-red-50 text-red-600"
+                                : "bg-amber-50 text-amber-600"
+                            }`}>
+                              {doc.status || "draft"}
+                            </span>
+                          </td>
+                          <td className="py-3.5 px-4 text-gray-500 text-xs">
+                            {doc.valid_until || doc.start_date || doc.sent_at?.slice(0, 10) || doc.created_at?.slice(0, 10) || "-"}
+                          </td>
+                          <td className="py-3.5 px-4 text-right">
+                            {!isFinal && (
+                              <div className="flex items-center justify-end gap-2">
+                                <button
+                                  onClick={() => {
+                                    if (doc.docType === "agreement") onUpdateAgreement?.(doc.id, { status: "signed", signed_at: new Date().toISOString() });
+                                    else if (doc.docType === "quotation") onUpdateQuotation?.(doc.id, { status: "accepted" });
+                                    else onUpdateProposal?.(doc.id, { status: "accepted", accepted_at: new Date().toISOString() });
+                                  }}
+                                  className="px-2.5 py-1 rounded-lg text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white transition"
+                                >
+                                  {doc.docType === "agreement" ? "Signed" : "Accept"}
+                                </button>
+                                <button
+                                  onClick={() => {
+                                    if (doc.docType === "agreement") onUpdateAgreement?.(doc.id, { status: "cancelled" });
+                                    else if (doc.docType === "quotation") onUpdateQuotation?.(doc.id, { status: "declined" });
+                                    else onUpdateProposal?.(doc.id, { status: "rejected" });
+                                  }}
+                                  className="px-2.5 py-1 rounded-lg text-xs font-bold bg-gray-100 dark:bg-slate-800 text-gray-700 dark:text-neutral-200 transition"
+                                >
+                                  Reject
+                                </button>
+                              </div>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* 6. Lead Detail Drawer / Modal with Activity Timeline */}
       {selectedLead && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
@@ -828,6 +1078,225 @@ export default function CrmModule({
                 className="px-4 py-2 rounded-xl text-xs font-bold bg-orange-600 hover:bg-orange-700 text-white transition shadow-sm"
               >
                 Save Lead
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
+
+      {showCommercialModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
+          <form
+            onSubmit={handleCreateCommercialSubmit}
+            className="w-full max-w-2xl max-h-[90vh] overflow-y-auto no-scrollbar rounded-2xl bg-white dark:bg-[#18150f] border border-gray-200 dark:border-[#3a3020] shadow-2xl p-5 space-y-4"
+          >
+            <div className="flex items-center justify-between border-b border-gray-100 dark:border-[#3a3020] pb-3">
+              <div>
+                <h3 className="font-bold text-base text-gray-900 dark:text-white">Sales Commercial Document</h3>
+                <p className="text-[11px] text-gray-400">Proposal, quotation, and agreement stay inside Sales until deal won.</p>
+              </div>
+              <button type="button" onClick={() => setShowCommercialModal(false)} className="p-1 rounded-lg text-gray-400">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="flex items-center gap-1 p-1 rounded-xl bg-gray-100 dark:bg-slate-800 text-xs">
+              {[
+                ["proposal", "Proposal"],
+                ["quotation", "Quotation"],
+                ["agreement", "Agreement"],
+              ].map(([id, label]) => (
+                <button
+                  key={id}
+                  type="button"
+                  onClick={() => setCommercialType(id)}
+                  className={`flex-1 rounded-lg px-3 py-2 font-bold transition ${
+                    commercialType === id ? "bg-white dark:bg-slate-900 text-orange-600 shadow-2xs" : "text-gray-500"
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+              <div>
+                <label className="block font-medium mb-1 text-gray-700 dark:text-neutral-300">Client Account *</label>
+                <select
+                  required
+                  value={commercialForm.client_id}
+                  onChange={(e) => setCommercialForm({ ...commercialForm, client_id: e.target.value })}
+                  className="w-full px-3 py-2 rounded-xl bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 font-semibold"
+                >
+                  <option value="">Select Client...</option>
+                  {clients.map((client) => (
+                    <option key={client.id} value={client.id}>{client.name}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block font-medium mb-1 text-gray-700 dark:text-neutral-300">Linked Deal</label>
+                <select
+                  value={commercialForm.deal_id}
+                  onChange={(e) => setCommercialForm({ ...commercialForm, deal_id: e.target.value })}
+                  className="w-full px-3 py-2 rounded-xl bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700"
+                >
+                  <option value="">No linked deal</option>
+                  {deals.map((deal) => (
+                    <option key={deal.id} value={deal.id}>{deal.title}</option>
+                  ))}
+                </select>
+              </div>
+
+              {commercialType === "quotation" && (
+                <div>
+                  <label className="block font-medium mb-1 text-gray-700 dark:text-neutral-300">Quotation Number</label>
+                  <input
+                    type="text"
+                    value={commercialForm.quotation_number}
+                    onChange={(e) => setCommercialForm({ ...commercialForm, quotation_number: e.target.value })}
+                    className="w-full px-3 py-2 rounded-xl bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 font-mono"
+                  />
+                </div>
+              )}
+
+              {commercialType === "agreement" && (
+                <>
+                  <div>
+                    <label className="block font-medium mb-1 text-gray-700 dark:text-neutral-300">Agreement Number</label>
+                    <input
+                      type="text"
+                      value={commercialForm.agreement_number}
+                      onChange={(e) => setCommercialForm({ ...commercialForm, agreement_number: e.target.value })}
+                      className="w-full px-3 py-2 rounded-xl bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 font-mono"
+                    />
+                  </div>
+                  <div>
+                    <label className="block font-medium mb-1 text-gray-700 dark:text-neutral-300">Proposal Ref</label>
+                    <select
+                      value={commercialForm.proposal_id}
+                      onChange={(e) => setCommercialForm({ ...commercialForm, proposal_id: e.target.value })}
+                      className="w-full px-3 py-2 rounded-xl bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700"
+                    >
+                      <option value="">No proposal ref</option>
+                      {proposals.map((item) => <option key={item.id} value={item.id}>{item.title}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block font-medium mb-1 text-gray-700 dark:text-neutral-300">Quotation Ref</label>
+                    <select
+                      value={commercialForm.quotation_id}
+                      onChange={(e) => setCommercialForm({ ...commercialForm, quotation_id: e.target.value })}
+                      className="w-full px-3 py-2 rounded-xl bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700"
+                    >
+                      <option value="">No quotation ref</option>
+                      {quotations.map((item) => <option key={item.id} value={item.id}>{item.quotation_number}</option>)}
+                    </select>
+                  </div>
+                </>
+              )}
+
+              {commercialType !== "agreement" && (
+                <div>
+                  <label className="block font-medium mb-1 text-gray-700 dark:text-neutral-300">Commercial Value *</label>
+                  <input
+                    type="number"
+                    required
+                    value={commercialForm.amount}
+                    onChange={(e) => setCommercialForm({ ...commercialForm, amount: e.target.value })}
+                    className="w-full px-3 py-2 rounded-xl bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 font-mono"
+                  />
+                </div>
+              )}
+
+              <div>
+                <label className="block font-medium mb-1 text-gray-700 dark:text-neutral-300">
+                  {commercialType === "agreement" ? "Start Date" : "Valid Until"}
+                </label>
+                <input
+                  type="date"
+                  value={commercialType === "agreement" ? commercialForm.start_date : commercialForm.valid_until}
+                  onChange={(e) =>
+                    setCommercialForm({
+                      ...commercialForm,
+                      [commercialType === "agreement" ? "start_date" : "valid_until"]: e.target.value,
+                    })
+                  }
+                  className="w-full px-3 py-2 rounded-xl bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700"
+                />
+              </div>
+
+              {commercialType === "agreement" && (
+                <div>
+                  <label className="block font-medium mb-1 text-gray-700 dark:text-neutral-300">End Date</label>
+                  <input
+                    type="date"
+                    value={commercialForm.end_date}
+                    onChange={(e) => setCommercialForm({ ...commercialForm, end_date: e.target.value })}
+                    className="w-full px-3 py-2 rounded-xl bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700"
+                  />
+                </div>
+              )}
+
+              <div>
+                <label className="block font-medium mb-1 text-gray-700 dark:text-neutral-300">Status</label>
+                <select
+                  value={commercialForm.status}
+                  onChange={(e) => setCommercialForm({ ...commercialForm, status: e.target.value })}
+                  className="w-full px-3 py-2 rounded-xl bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700"
+                >
+                  <option value="draft">Draft</option>
+                  <option value="sent">Sent</option>
+                  {commercialType === "agreement" ? <option value="signed">Signed</option> : <option value="accepted">Accepted</option>}
+                </select>
+              </div>
+
+              <div className="sm:col-span-2">
+                <label className="block font-medium mb-1 text-gray-700 dark:text-neutral-300">Title *</label>
+                <input
+                  type="text"
+                  required
+                  value={commercialForm.title}
+                  onChange={(e) => setCommercialForm({ ...commercialForm, title: e.target.value })}
+                  className="w-full px-3 py-2 rounded-xl bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700"
+                />
+              </div>
+
+              <div className="sm:col-span-2">
+                <label className="block font-medium mb-1 text-gray-700 dark:text-neutral-300">Scope of Work</label>
+                <textarea
+                  rows={3}
+                  value={commercialForm.scope_of_work}
+                  onChange={(e) => setCommercialForm({ ...commercialForm, scope_of_work: e.target.value })}
+                  className="w-full px-3 py-2 rounded-xl bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700"
+                />
+              </div>
+
+              <div className="sm:col-span-2">
+                <label className="block font-medium mb-1 text-gray-700 dark:text-neutral-300">
+                  {commercialType === "agreement" ? "Commercial Terms" : "Deliverables"}
+                </label>
+                <textarea
+                  rows={3}
+                  value={commercialType === "agreement" ? commercialForm.commercial_terms : commercialForm.deliverables}
+                  onChange={(e) =>
+                    setCommercialForm({
+                      ...commercialForm,
+                      [commercialType === "agreement" ? "commercial_terms" : "deliverables"]: e.target.value,
+                    })
+                  }
+                  className="w-full px-3 py-2 rounded-xl bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700"
+                />
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-3 border-t border-gray-100 dark:border-[#3a3020]">
+              <button type="button" onClick={() => setShowCommercialModal(false)} className="px-3.5 py-2 rounded-xl text-xs font-semibold text-gray-600 dark:text-neutral-300">
+                Cancel
+              </button>
+              <button type="submit" className="px-4 py-2 rounded-xl text-xs font-bold bg-orange-600 hover:bg-orange-700 text-white transition shadow-sm">
+                Save {commercialType}
               </button>
             </div>
           </form>

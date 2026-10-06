@@ -1870,6 +1870,7 @@ const LOCAL_CLIENTS_KEY = 'texweb_cache_clients';
 const LOCAL_DEALS_KEY = 'texweb_cache_deals';
 const LOCAL_PROPOSALS_KEY = 'texweb_cache_proposals';
 const LOCAL_QUOTATIONS_KEY = 'texweb_cache_quotations';
+const LOCAL_AGREEMENTS_KEY = 'texweb_cache_agreements';
 const LOCAL_PROJECTS_KEY = 'texweb_cache_projects';
 const LOCAL_SMM_KEY = 'texweb_cache_smm';
 const LOCAL_CONTENT_KEY = 'texweb_cache_content';
@@ -2209,6 +2210,70 @@ export async function updateQuotation(quotationId, updates) {
     const updated = current.map((item) => (item.id === quotationId ? { ...item, ...updates } : item));
     writeLocalCache(LOCAL_QUOTATIONS_KEY, updated);
     return updated.find((item) => item.id === quotationId) || null;
+  }
+}
+
+export async function getAgreements() {
+  try {
+    const { data, error } = await supabase
+      .from('agreements')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+    writeLocalCache(LOCAL_AGREEMENTS_KEY, data || []);
+    return data || [];
+  } catch (err) {
+    console.warn('Fallback: getAgreements from cache:', err.message);
+    return readLocalCache(LOCAL_AGREEMENTS_KEY, []);
+  }
+}
+
+export async function createAgreement(agreementData) {
+  try {
+    const { data, error } = await supabase
+      .from('agreements')
+      .insert([agreementData])
+      .select();
+
+    if (error) throw error;
+    const created = data?.[0] || agreementData;
+    const current = readLocalCache(LOCAL_AGREEMENTS_KEY, []);
+    writeLocalCache(LOCAL_AGREEMENTS_KEY, [created, ...current]);
+    return created;
+  } catch (err) {
+    console.warn('Fallback: createAgreement in cache:', err.message);
+    const fallback = {
+      ...agreementData,
+      id: `agreement-${Date.now()}`,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    };
+    const current = readLocalCache(LOCAL_AGREEMENTS_KEY, []);
+    writeLocalCache(LOCAL_AGREEMENTS_KEY, [fallback, ...current]);
+    return fallback;
+  }
+}
+
+export async function updateAgreement(agreementId, updates) {
+  try {
+    const { data, error } = await supabase
+      .from('agreements')
+      .update({ ...updates, updated_at: new Date().toISOString() })
+      .eq('id', agreementId)
+      .select();
+
+    if (error) throw error;
+    const current = readLocalCache(LOCAL_AGREEMENTS_KEY, []);
+    const merged = current.map((item) => (item.id === agreementId ? { ...item, ...updates } : item));
+    writeLocalCache(LOCAL_AGREEMENTS_KEY, merged);
+    return data?.[0] || merged.find((item) => item.id === agreementId) || null;
+  } catch (err) {
+    console.warn('Fallback: updateAgreement in cache:', err.message);
+    const current = readLocalCache(LOCAL_AGREEMENTS_KEY, []);
+    const updated = current.map((item) => (item.id === agreementId ? { ...item, ...updates } : item));
+    writeLocalCache(LOCAL_AGREEMENTS_KEY, updated);
+    return updated.find((item) => item.id === agreementId) || null;
   }
 }
 
