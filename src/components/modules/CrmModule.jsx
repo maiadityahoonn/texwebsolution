@@ -72,6 +72,7 @@ export default function CrmModule({
   quotations = [],
   agreements = [],
   initialViewMode = "leads",
+  commercialScope = "all",
   isDark = false,
   onUpdateLeadStatus,
   onCreateLead,
@@ -176,6 +177,8 @@ export default function CrmModule({
       ...agreements.map((item) => ({ ...item, docType: "agreement" })),
     ];
     return rows.filter((item) => {
+      if (commercialScope === "proposal_quote" && item.docType !== "proposal_quote") return false;
+      if (commercialScope === "agreement" && item.docType !== "agreement") return false;
       const client = clients.find((c) => c.id === item.client_id);
       return (
         !q ||
@@ -183,7 +186,7 @@ export default function CrmModule({
           .some((value) => String(value || "").toLowerCase().includes(q))
       );
     });
-  }, [agreements, clients, proposals, query, quotations]);
+  }, [agreements, clients, commercialScope, proposals, query, quotations]);
 
   function handleAddLeadSubmit(e) {
     e.preventDefault();

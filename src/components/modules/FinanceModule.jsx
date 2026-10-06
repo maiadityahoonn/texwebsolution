@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   CreditCard,
   DollarSign,
@@ -25,6 +25,9 @@ export default function FinanceModule({
   clients = [],
   deals = [],
   projects = [],
+  initialViewMode = "invoices",
+  initialStatusFilter = "all",
+  showCommercialDocuments = false,
   isDark = false,
   onCreateInvoice,
   onUpdateInvoice,
@@ -70,6 +73,11 @@ export default function FinanceModule({
     notes: "Advance payment required before project kickoff.",
     status: "sent",
   });
+
+  useEffect(() => {
+    setActiveView(initialViewMode || "invoices");
+    setStatusFilter(initialStatusFilter || "all");
+  }, [initialViewMode, initialStatusFilter]);
 
   const filteredInvoices = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -192,30 +200,32 @@ export default function FinanceModule({
               <CreditCard className="w-5 h-5" />
             </span>
             <h1 className="text-xl sm:text-2xl font-bold tracking-tight">
-              Finance & Milestone Invoicing
+              Sales Billing & Payments
             </h1>
           </div>
           <p className="text-xs sm:text-sm text-gray-500 dark:text-neutral-400 mt-1">
-            Quotations → Invoices → Advance Payments → Sprint Milestones → Final Handover Payments.
+            Proposal + Quotation → Agreement → Advance invoice → Payment → Project handover.
           </p>
         </div>
 
         <div className="flex flex-wrap items-center gap-2 self-start sm:self-auto">
-          <button
-            onClick={() => {
-              setCommercialForm((prev) => ({
-                ...prev,
-                client_id: clients[0]?.id || "",
-                deal_id: deals[0]?.id || "",
-                quotation_number: `QT-2026-${Math.floor(1000 + Math.random() * 9000)}`,
-              }));
-              setShowCommercialModal(true);
-            }}
-            className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-orange-200 bg-orange-50 text-orange-700 hover:bg-orange-100 font-semibold text-xs transition shadow-sm"
-          >
-            <FileText className="w-4 h-4" />
-            <span>Proposal + Quotation</span>
-          </button>
+          {showCommercialDocuments && (
+            <button
+              onClick={() => {
+                setCommercialForm((prev) => ({
+                  ...prev,
+                  client_id: clients[0]?.id || "",
+                  deal_id: deals[0]?.id || "",
+                  quotation_number: `QT-2026-${Math.floor(1000 + Math.random() * 9000)}`,
+                }));
+                setShowCommercialModal(true);
+              }}
+              className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-orange-200 bg-orange-50 text-orange-700 hover:bg-orange-100 font-semibold text-xs transition shadow-sm"
+            >
+              <FileText className="w-4 h-4" />
+              <span>Proposal + Quotation</span>
+            </button>
+          )}
 
           <button
             onClick={() => {
@@ -288,6 +298,7 @@ export default function FinanceModule({
         </div>
       </div>
 
+      {showCommercialDocuments && (
       <div className="flex items-center gap-1 p-1 rounded-2xl bg-white dark:bg-[#18150f] border border-gray-100 dark:border-[#3a3020] w-full sm:w-fit overflow-x-auto no-scrollbar">
         {[
           { id: "invoices", label: "Invoices & Payments" },
@@ -309,6 +320,7 @@ export default function FinanceModule({
           </button>
         ))}
       </div>
+      )}
 
       {/* 3. Search and Status Tabs */}
       <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 p-3 rounded-2xl bg-white dark:bg-[#18150f] border border-gray-100 dark:border-[#3a3020]">

@@ -3419,7 +3419,7 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
   const allowedSections = useMemo(() => {
     const sections = ["overview", "settings"];
     if (canUseCrm) {
-      sections.push("crm", "pipeline", "clients");
+      sections.push("crm", "pipeline", "sales_commercials", "agreements", "invoices", "payments", "clients");
     }
     if (canUseProjects) {
       sections.push("projects");
@@ -3428,9 +3428,7 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
     if (canUseSmm) {
       sections.push("smm", "content_calendar");
     }
-    if (canUseFinance) {
-      sections.push("invoices");
-    }
+    if (canUseFinance && !sections.includes("invoices")) sections.push("invoices", "payments");
     if (canUseSupport) {
       sections.push("support");
     }
@@ -3547,10 +3545,13 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
       { key: "overview", label: "Dashboard", icon: Home, section: "overview", show: true },
       { key: "crm", label: "CRM", icon: Target, section: "crm", show: canUseCrm, badge: leads.length },
       { key: "pipeline", label: "Pipeline", icon: TrendingUp, section: "pipeline", show: canUseCrm, badge: deals.length },
+      { key: "sales_commercials", label: "Proposal", icon: FileText, section: "sales_commercials", show: canUseCrm, badge: proposals.length + quotations.length },
+      { key: "agreements", label: "Agreements", icon: ShieldCheck, section: "agreements", show: canUseCrm, badge: agreements.length },
       { key: "clients", label: "Clients", icon: Building2, section: "clients", show: canUseCrm || canUseProjects, badge: clients.length },
       { key: "projects", label: "Projects", icon: Layers, section: "projects", show: canUseProjects, badge: projectsData.length },
       { key: "smm", label: "SMM", icon: Sparkles, section: "smm", show: canUseSmm, badge: contentCalendar.length },
-      { key: "invoices", label: "Finance", icon: CreditCard, section: "invoices", show: canUseFinance, badge: invoicesList.length },
+      { key: "invoices", label: "Billing", icon: CreditCard, section: "invoices", show: canUseCrm || canUseFinance, badge: invoicesList.length },
+      { key: "payments", label: "Payments", icon: Wallet, section: "payments", show: canUseCrm || canUseFinance, badge: invoicesList.filter((invoice) => invoice.status === "paid").length },
       { key: "support", label: "Support", icon: LifeBuoy, section: "support", show: canUseSupport, badge: supportTicketsList.filter((t) => t.status !== "resolved").length },
       { key: "members", label: "Team", icon: Users, section: "members", show: canViewAllTeam, badge: combinedMembers.length },
       { key: "tasks", label: "Tasks", icon: CheckSquare, section: "tasks", show: canSeeOperations && !isHrRole, badge: tasks.length },
@@ -3594,6 +3595,7 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
     contentCalendar.length,
     dailyUpdates.length,
     deals.length,
+    agreements.length,
     invoicesList.length,
     isAdminRole,
     isHrRole,
@@ -3605,6 +3607,8 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
     mentorReviewCenterData.total,
     pendingSubmissionsCount,
     projectsData.length,
+    proposals.length,
+    quotations.length,
     supportTicketsList,
     tasks.length,
     unreadCount,
@@ -7090,6 +7094,90 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
                   </button>
 
                   <button
+                    onClick={() => selectSection("sales_commercials")}
+                    aria-label="Proposal and Quotation"
+                    title="Proposal + Quotation"
+                    className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl transition cursor-pointer ${
+                      activeSection === "sales_commercials"
+                        ? "text-gray-900 dark:text-white font-semibold bg-gray-100/90 dark:bg-slate-800 shadow-2xs"
+                        : "text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-50 dark:hover:bg-slate-800/60"
+                    }`}
+                  >
+                    <div className="flex items-center gap-3.5">
+                      <FileText className="w-5 h-5 shrink-0 stroke-[1.75] text-orange-500" />
+                      <span className="admin-sidebar-item-label">Proposal + Quotation</span>
+                    </div>
+                    {proposals.length + quotations.length > 0 && (
+                      <span className="text-[11px] font-bold text-orange-600 bg-orange-50 dark:bg-orange-950/40 px-2 py-0.5 rounded-full">
+                        {proposals.length + quotations.length}
+                      </span>
+                    )}
+                  </button>
+
+                  <button
+                    onClick={() => selectSection("agreements")}
+                    aria-label="Agreements"
+                    title="Agreements"
+                    className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl transition cursor-pointer ${
+                      activeSection === "agreements"
+                        ? "text-gray-900 dark:text-white font-semibold bg-gray-100/90 dark:bg-slate-800 shadow-2xs"
+                        : "text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-50 dark:hover:bg-slate-800/60"
+                    }`}
+                  >
+                    <div className="flex items-center gap-3.5">
+                      <ShieldCheck className="w-5 h-5 shrink-0 stroke-[1.75] text-indigo-500" />
+                      <span className="admin-sidebar-item-label">Agreements</span>
+                    </div>
+                    {agreements.length > 0 && (
+                      <span className="text-[11px] font-bold text-indigo-600 bg-indigo-50 dark:bg-indigo-950/40 px-2 py-0.5 rounded-full">
+                        {agreements.length}
+                      </span>
+                    )}
+                  </button>
+
+                  <button
+                    onClick={() => selectSection("invoices")}
+                    aria-label="Invoices"
+                    title="Invoices"
+                    className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl transition cursor-pointer ${
+                      activeSection === "invoices"
+                        ? "text-gray-900 dark:text-white font-semibold bg-gray-100/90 dark:bg-slate-800 shadow-2xs"
+                        : "text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-50 dark:hover:bg-slate-800/60"
+                    }`}
+                  >
+                    <div className="flex items-center gap-3.5">
+                      <CreditCard className="w-5 h-5 shrink-0 stroke-[1.75] text-emerald-500" />
+                      <span className="admin-sidebar-item-label">Invoices</span>
+                    </div>
+                    {invoicesList.length > 0 && (
+                      <span className="text-[11px] font-bold text-emerald-600 bg-emerald-50 dark:bg-emerald-950/40 px-2 py-0.5 rounded-full">
+                        {invoicesList.length}
+                      </span>
+                    )}
+                  </button>
+
+                  <button
+                    onClick={() => selectSection("payments")}
+                    aria-label="Payments"
+                    title="Payments"
+                    className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl transition cursor-pointer ${
+                      activeSection === "payments"
+                        ? "text-gray-900 dark:text-white font-semibold bg-gray-100/90 dark:bg-slate-800 shadow-2xs"
+                        : "text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-50 dark:hover:bg-slate-800/60"
+                    }`}
+                  >
+                    <div className="flex items-center gap-3.5">
+                      <Wallet className="w-5 h-5 shrink-0 stroke-[1.75] text-lime-600" />
+                      <span className="admin-sidebar-item-label">Payments</span>
+                    </div>
+                    {invoicesList.filter((invoice) => invoice.status === "paid").length > 0 && (
+                      <span className="text-[11px] font-bold text-lime-700 bg-lime-50 dark:bg-lime-950/40 px-2 py-0.5 rounded-full">
+                        {invoicesList.filter((invoice) => invoice.status === "paid").length}
+                      </span>
+                    )}
+                  </button>
+
+                  <button
                     onClick={() => selectSection("clients")}
                     aria-label="Clients"
                     title="Clients"
@@ -7268,40 +7356,7 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
                 </>
               )}
 
-              {/* Category 5: Finance */}
-              {canUseFinance && (
-                <>
-                  <div className="admin-sidebar-divider border-t border-gray-100 dark:border-slate-800/80 my-2 mx-1" />
-                  <div className="admin-sidebar-group-header px-3 pt-2 pb-1">
-                    <span className="admin-sidebar-group-title text-[10px] font-black uppercase tracking-wider text-gray-400 dark:text-neutral-500">
-                      Finance
-                    </span>
-                  </div>
-
-                  <button
-                    onClick={() => selectSection("invoices")}
-                    aria-label="Invoices"
-                    title="Invoices"
-                    className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl transition cursor-pointer ${
-                      activeSection === "invoices"
-                        ? "text-gray-900 dark:text-white font-semibold bg-gray-100/90 dark:bg-slate-800 shadow-2xs"
-                        : "text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-50 dark:hover:bg-slate-800/60"
-                    }`}
-                  >
-                    <div className="flex items-center gap-3.5">
-                      <CreditCard className="w-5 h-5 shrink-0 stroke-[1.75] text-emerald-500" />
-                      <span className="admin-sidebar-item-label">Invoices</span>
-                    </div>
-                    {invoicesList.length > 0 && (
-                      <span className="text-[11px] font-bold text-emerald-600 bg-emerald-50 dark:bg-emerald-950/40 px-2 py-0.5 rounded-full">
-                        {invoicesList.length}
-                      </span>
-                    )}
-                  </button>
-                </>
-              )}
-
-              {/* Category 6: Support */}
+              {/* Category 5: Support */}
               {canUseSupport && (
                 <>
                   <div className="admin-sidebar-divider border-t border-gray-100 dark:border-slate-800/80 my-2 mx-1" />
@@ -7771,11 +7826,14 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
                     {activeSection === "overview" && "Dashboard"}
                     {activeSection === "crm" && "CRM & Leads"}
                     {activeSection === "pipeline" && "Sales Pipeline"}
+                    {activeSection === "sales_commercials" && "Proposal + Quotation"}
+                    {activeSection === "agreements" && "Client Agreements"}
                     {activeSection === "clients" && "Client Accounts"}
                     {activeSection === "projects" && "Projects & Delivery"}
                     {activeSection === "smm" && "SMM Clients"}
                     {activeSection === "content_calendar" && "Content Calendar"}
-                    {activeSection === "invoices" && "Invoices & Billing"}
+                    {activeSection === "invoices" && "Sales Invoices"}
+                    {activeSection === "payments" && "Sales Payments"}
                     {activeSection === "support" && "Client Support"}
                     {activeSection === "batches" && "Batches"}
                     {activeSection === "batch_files" && "Batch Files"}
@@ -7801,11 +7859,14 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
                     {activeSection === "overview" && `Welcome back, ${userProfile?.full_name?.split(" ")[0] || sessionUser?.user_metadata?.full_name?.split(" ")[0] || "User"} 👋 Here is your workspace overview and activity today.`}
                     {activeSection === "crm" && "Track website inquiries, lead statuses, WhatsApp outreach, and qualification."}
                     {activeSection === "pipeline" && "Visual Kanban pipeline from Lead to Closed Won agreement and advance payment."}
+                    {activeSection === "sales_commercials" && "Create and track combined proposal quotation documents from Sales."}
+                    {activeSection === "agreements" && "Manage final client agreement terms, milestones, and signed status."}
                     {activeSection === "clients" && "Central client directory with connected deals, projects, invoices, and support."}
                     {activeSection === "projects" && "Manage development sprint delivery, QA checklists, and deployment handovers."}
                     {activeSection === "smm" && "Oversee marketing retainers, social accounts, and campaign deliverable timelines."}
                     {activeSection === "content_calendar" && "Multi-stage content approval workflow: draft, review, client approval, and publish."}
-                    {activeSection === "invoices" && "Milestone billing, invoice generation, GST breakdown, and payment recording."}
+                    {activeSection === "invoices" && "Sales-owned milestone invoices and GST billing before project handover."}
+                    {activeSection === "payments" && "Track paid invoices, settlement references, and collected revenue."}
                     {activeSection === "support" && "Client maintenance tickets, SLA resolution, and handover management."}
                     {activeSection === "batches" && (isAdminRole ? "Create batches and assign HR managers." : "View and manage cohorts assigned to you.")}
                     {activeSection === "batch_files" && "Access technical guides, resources, and documents."}
@@ -7838,11 +7899,14 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
                       {activeSection === "overview" && "Dashboard"}
                       {activeSection === "crm" && "CRM & Leads"}
                       {activeSection === "pipeline" && "Sales Pipeline"}
+                      {activeSection === "sales_commercials" && "Proposal + Quotation"}
+                      {activeSection === "agreements" && "Client Agreements"}
                       {activeSection === "clients" && "Client Accounts"}
                       {activeSection === "projects" && "Projects & Delivery"}
                       {activeSection === "smm" && "Social Media Marketing (SMM)"}
                       {activeSection === "content_calendar" && "Content Calendar"}
-                      {activeSection === "invoices" && "Invoices & Billing"}
+                      {activeSection === "invoices" && "Sales Invoices"}
+                      {activeSection === "payments" && "Sales Payments"}
                       {activeSection === "support" && "Client Support & Tickets"}
                       {activeSection === "task_submissions" && "Task Submissions"}
                       {activeSection === "review_center" && "Supervisor Review Center"}
@@ -12098,9 +12162,16 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
               )}
 
               {/* 4.7. CRM & SALES PIPELINE MODULE */}
-              {(activeSection === "crm" || activeSection === "pipeline") && (
+              {(activeSection === "crm" || activeSection === "pipeline" || activeSection === "sales_commercials" || activeSection === "agreements") && (
                 <CrmModule
-                  initialViewMode={activeSection === "pipeline" ? "pipeline" : "leads"}
+                  initialViewMode={
+                    activeSection === "pipeline"
+                      ? "pipeline"
+                      : activeSection === "sales_commercials" || activeSection === "agreements"
+                      ? "commercials"
+                      : "leads"
+                  }
+                  commercialScope={activeSection === "agreements" ? "agreement" : activeSection === "sales_commercials" ? "proposal_quote" : "all"}
                   leads={leads}
                   deals={deals}
                   clients={clients}
@@ -12208,7 +12279,7 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
                     selectSection("projects");
                   }}
                   onCreateInvoiceForClient={(client) => {
-                    setToast(`Create invoice for ${client.name} from Finance module.`);
+                    setToast(`Create invoice for ${client.name} from Sales Billing.`);
                     selectSection("invoices");
                   }}
                   onCreateTicketForClient={(client) => {
@@ -12311,6 +12382,8 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
                   clients={clients}
                   deals={deals}
                   projects={projectsData}
+                  initialViewMode="invoices"
+                  initialStatusFilter={activeSection === "payments" ? "paid" : "all"}
                   onCreateInvoice={async (inv) => {
                     const res = await createInvoice(inv);
                     if (res) {
@@ -12389,7 +12462,7 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
               )}
 
               {/* 5. Main Data Table (for all list sections, plus admin overview) */}
-              {!["alerts", "chat", "settings", "batch_workspace", "batch_files", "review_center", "task_submissions", "at_risk_watchlist", "crm", "pipeline", "clients", "projects", "smm", "content_calendar", "invoices", "payments", "support"].includes(activeSection) && (activeSection !== "overview" || isAdminRole) && (
+              {!["alerts", "chat", "settings", "batch_workspace", "batch_files", "review_center", "task_submissions", "at_risk_watchlist", "crm", "pipeline", "sales_commercials", "agreements", "clients", "projects", "smm", "content_calendar", "invoices", "payments", "support"].includes(activeSection) && (activeSection !== "overview" || isAdminRole) && (
                 <div className="space-y-3 w-full max-w-full">
                   {/* Table header meta & horizontal scroll helper */}
                   <div className="flex items-center justify-between gap-2.5 text-[11px] text-gray-500 dark:text-slate-400 px-1 select-none">
@@ -16224,7 +16297,7 @@ function BusinessCommandOverview({
     { label: "Clients", value: clients.length, sub: "Central client accounts", icon: Building2, section: "clients", tone: "text-blue-600 bg-blue-50 dark:bg-blue-500/10 dark:text-blue-400" },
     { label: "Projects", value: projects.length, sub: "Tech delivery pipeline", icon: Layers, section: "projects", tone: "text-purple-600 bg-purple-50 dark:bg-purple-500/10 dark:text-purple-400" },
     { label: "SMM", value: smmClients.length, sub: "Retainers and approvals", icon: Sparkles, section: "smm", tone: "text-pink-600 bg-pink-50 dark:bg-pink-500/10 dark:text-pink-400" },
-    { label: "Finance", value: invoices.length, sub: "Invoices and payments", icon: CreditCard, section: "invoices", tone: "text-amber-600 bg-amber-50 dark:bg-amber-500/10 dark:text-amber-400" },
+    { label: "Sales Billing", value: invoices.length, sub: "Invoices and payments", icon: CreditCard, section: "invoices", tone: "text-amber-600 bg-amber-50 dark:bg-amber-500/10 dark:text-amber-400" },
     { label: "Support", value: openTickets, sub: "Open post-delivery tickets", icon: LifeBuoy, section: "support", tone: "text-cyan-600 bg-cyan-50 dark:bg-cyan-500/10 dark:text-cyan-400" },
   ];
 
@@ -16242,7 +16315,7 @@ function BusinessCommandOverview({
               </h2>
             </div>
             <p className="text-xs sm:text-sm text-gray-500 dark:text-slate-400 mt-2 max-w-3xl leading-relaxed">
-              One login panel for Sales, Tech, HR, SMM, Finance, Support, Chat, and Notifications. Leads move from CRM to Closed Won, then client account, project delivery, client visibility, support, and growth.
+              One login panel for Sales, Tech, HR, SMM, Support, Chat, and Notifications. Leads move from CRM to proposal, agreement, invoice, payment, project delivery, client visibility, support, and growth.
             </p>
           </div>
           <button
