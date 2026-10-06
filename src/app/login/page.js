@@ -171,6 +171,12 @@ import {
   getDeals,
   createDeal,
   updateDealStage,
+  getProposals,
+  createProposal,
+  updateProposal,
+  getQuotations,
+  createQuotation,
+  updateQuotation,
   getProjects,
   createProject,
   updateProject,
@@ -636,6 +642,8 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
   const [leads, setLeads] = useState([]);
   const [clients, setClients] = useState([]);
   const [deals, setDeals] = useState([]);
+  const [proposals, setProposals] = useState([]);
+  const [quotations, setQuotations] = useState([]);
   const [projectsData, setProjectsData] = useState([]);
   const [smmClients, setSmmClients] = useState([]);
   const [contentCalendar, setContentCalendar] = useState([]);
@@ -3729,6 +3737,8 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
         const [
           clientsRes,
           dealsRes,
+          proposalsRes,
+          quotationsRes,
           projectsRes,
           smmRes,
           contentRes,
@@ -3738,6 +3748,8 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
         ] = await Promise.all([
           getClients(),
           getDeals(),
+          getProposals(),
+          getQuotations(),
           getProjects(),
           getSmmClients(),
           getContentCalendar(),
@@ -3747,6 +3759,8 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
         ]);
         setClients(clientsRes || []);
         setDeals(dealsRes || []);
+        setProposals(proposalsRes || []);
+        setQuotations(quotationsRes || []);
         setProjectsData(projectsRes || []);
         setSmmClients(smmRes || []);
         setContentCalendar(contentRes || []);
@@ -12248,7 +12262,10 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
               {(activeSection === "invoices" || activeSection === "payments") && (
                 <FinanceModule
                   invoices={invoicesList}
+                  proposals={proposals}
+                  quotations={quotations}
                   clients={clients}
+                  deals={deals}
                   projects={projectsData}
                   onCreateInvoice={async (inv) => {
                     const res = await createInvoice(inv);
@@ -12257,14 +12274,50 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
                       setToast("Invoice generated.");
                     }
                   }}
-                  onRecordPayment={async (id, amount) => {
-                    const res = await updateInvoice(id, { status: "paid", paid_amount: amount });
+                  onRecordPayment={async (payment) => {
+                    const invoiceId = payment?.invoice_id || payment?.id;
+                    const amount = payment?.amount || 0;
+                    const res = await updateInvoice(invoiceId, { status: "paid", paid_amount: amount });
                     if (res) {
                       setInvoicesList((prev) =>
-                        prev.map((i) => (i.id === id ? { ...i, status: "paid", paid_amount: amount } : i))
+                        prev.map((i) => (i.id === invoiceId ? { ...i, status: "paid", paid_amount: amount } : i))
                       );
                       playNotificationSound("payment");
                       setToast("Payment recorded successfully.");
+                    }
+                  }}
+                  onUpdateInvoice={async (id, updates) => {
+                    const res = await updateInvoice(id, updates);
+                    if (res) {
+                      setInvoicesList((prev) => prev.map((item) => (item.id === id ? { ...item, ...updates, ...res } : item)));
+                    }
+                  }}
+                  onCreateProposal={async (proposal) => {
+                    const res = await createProposal({ ...proposal, created_by: sessionUser?.id || null });
+                    if (res) {
+                      setProposals((prev) => [res, ...prev.filter((item) => item.id !== res.id)]);
+                      setToast("Proposal saved.");
+                    }
+                  }}
+                  onUpdateProposal={async (id, updates) => {
+                    const res = await updateProposal(id, updates);
+                    if (res) {
+                      setProposals((prev) => prev.map((item) => (item.id === id ? { ...item, ...updates, ...res } : item)));
+                      setToast("Proposal updated.");
+                    }
+                  }}
+                  onCreateQuotation={async (quotation) => {
+                    const res = await createQuotation({ ...quotation, created_by: sessionUser?.id || null });
+                    if (res) {
+                      setQuotations((prev) => [res, ...prev.filter((item) => item.id !== res.id)]);
+                      setToast("Quotation saved.");
+                    }
+                  }}
+                  onUpdateQuotation={async (id, updates) => {
+                    const res = await updateQuotation(id, updates);
+                    if (res) {
+                      setQuotations((prev) => prev.map((item) => (item.id === id ? { ...item, ...updates, ...res } : item)));
+                      setToast("Quotation updated.");
                     }
                   }}
                   isDark={isDark}

@@ -20,16 +20,26 @@ import { playNotificationSound } from "@/lib/notificationSound";
 
 export default function FinanceModule({
   invoices = [],
+  proposals = [],
+  quotations = [],
   clients = [],
+  deals = [],
   projects = [],
   isDark = false,
   onCreateInvoice,
   onUpdateInvoice,
   onRecordPayment,
+  onCreateProposal,
+  onUpdateProposal,
+  onCreateQuotation,
+  onUpdateQuotation,
 }) {
+  const [activeView, setActiveView] = useState("invoices");
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [showAddInvoiceModal, setShowAddInvoiceModal] = useState(false);
+  const [showCommercialModal, setShowCommercialModal] = useState(false);
+  const [commercialType, setCommercialType] = useState("proposal");
   const [recordPaymentModal, setRecordPaymentModal] = useState(null); // invoice to pay
   const [paymentForm, setPaymentForm] = useState({
     amount: "",
@@ -50,6 +60,18 @@ export default function FinanceModule({
     payment_terms: "Due upon receipt / Net 15 days",
     notes: "Bank transfer or UPI accepted.",
   });
+  const [commercialForm, setCommercialForm] = useState({
+    title: "Website + CRM Implementation Proposal",
+    quotation_number: `QT-2026-${Math.floor(1000 + Math.random() * 9000)}`,
+    client_id: "",
+    deal_id: "",
+    amount: "120000",
+    valid_until: new Date(Date.now() + 10 * 86400000).toISOString().split("T")[0],
+    scope_of_work: "Discovery, UI/UX, Next.js development, Supabase setup, QA, deployment, and handover.",
+    deliverables: "Admin panel, client portal, responsive website, source handover, and support.",
+    notes: "Advance payment required before project kickoff.",
+    status: "sent",
+  });
 
   const filteredInvoices = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -63,6 +85,27 @@ export default function FinanceModule({
       return matchStatus && matchQuery;
     });
   }, [invoices, query, statusFilter]);
+
+  const filteredCommercialDocs = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    const rows = [
+      ...proposals.map((item) => ({ ...item, docType: "proposal" })),
+      ...quotations.map((item) => ({ ...item, docType: "quotation" })),
+    ];
+    return rows.filter((item) => {
+      const matchStatus = statusFilter === "all" || item.status === statusFilter;
+      const matchQuery =
+        !q ||
+        [
+          item.title,
+          item.quotation_number,
+          item.scope_of_work,
+          item.notes,
+          clients.find((client) => client.id === item.client_id)?.name,
+        ].some((value) => String(value || "").toLowerCase().includes(q));
+      return matchStatus && matchQuery;
+    });
+  }, [clients, proposals, query, quotations, statusFilter]);
 
   // Financial aggregates
   const stats = useMemo(() => {
@@ -86,8 +129,12 @@ export default function FinanceModule({
       }
     });
 
-    return { totalInvoiced, collected, pending, overdue };
-  }, [invoices]);
+    const openCommercialValue = [...proposals, ...quotations]
+      .filter((item) => !["accepted", "rejected", "expired", "declined"].includes(item.status))
+      .reduce((sum, item) => sum + (Number(item.total) || Number(item.amount) || 0), 0);
+
+    return { totalInvoiced, collected, pending, overdue: openCommercialValue, openCommercialValue };
+  }, [invoices, proposals, quotations]);
 
   function handleCreateInvoiceSubmit(e) {
     e.preventDefault();
@@ -102,6 +149,47 @@ export default function FinanceModule({
     };
     onCreateInvoice?.(payload);
     setShowAddInvoiceModal(false);
+  }
+
+  function handleCreateCommercialSubmit(e) {
+    e.preventDefault();
+    if (!commercialForm.client_id || !commercialForm.amount) return;
+    const amount = parseFloat(commercialForm.amount) || 0;
+    if (commercialType === "proposal") {
+      onCreateProposal?.({
+        client_id: commercialForm.client_id,
+        deal_id: commercialForm.deal_id || null,
+        title: commercialForm.title,
+        amount,
+        status: commercialForm.status,
+        scope_of_work: commercialForm.scope_of_work,
+        deliverables: commercialForm.deliverables,
+        sent_at: commercialForm.status === "sent" ? new Date().toISOString() : null,
+        notes: commercialForm.notes,
+      });
+    } else {
+      const tax = Math.round(amount * 0.18);
+      onCreateQuotation?.({
+        quotation_number: commercialForm.quotation_number,
+        client_id: commercialForm.client_id,
+        deal_id: commercialForm.deal_id || null,
+        subtotal: amount,
+        discount: 0,
+        tax,
+        total: amount + tax,
+        status: commercialForm.status === "accepted" ? "accepted" : "sent",
+        valid_until: commercialForm.valid_until,
+        notes: commercialForm.notes,
+        items: [
+          {
+            title: commercialForm.title,
+            description: commercialForm.scope_of_work,
+            amount,
+          },
+        ],
+      });
+    }
+    setShowCommercialModal(false);
   }
 
   function handleRecordPaymentSubmit(e) {
@@ -137,27 +225,46 @@ export default function FinanceModule({
           </p>
         </div>
 
-        <button
-          onClick={() => {
-            setNewInvoiceForm({
-              invoice_number: `TEX-2026-${Math.floor(1000 + Math.random() * 9000)}`,
-              client_id: clients[0]?.id || "",
-              project_id: projects[0]?.id || "",
-              title: "Software Development Sprint Milestone",
-              amount: "50000",
-              due_date: new Date(Date.now() + 14 * 86400000).toISOString().split("T")[0],
-              milestone_type: "milestone",
-              status: "sent",
-              payment_terms: "Due within 15 days",
-              notes: "TexWeb Solution Bank Account Details attached.",
-            });
-            setShowAddInvoiceModal(true);
-          }}
-          className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-orange-600 hover:bg-orange-700 text-white font-semibold text-xs transition shadow-sm self-start sm:self-auto"
-        >
-          <Plus className="w-4 h-4" />
-          <span>Generate New Invoice</span>
-        </button>
+        <div className="flex flex-wrap items-center gap-2 self-start sm:self-auto">
+          <button
+            onClick={() => {
+              setCommercialType("proposal");
+              setCommercialForm((prev) => ({
+                ...prev,
+                client_id: clients[0]?.id || "",
+                deal_id: deals[0]?.id || "",
+                quotation_number: `QT-2026-${Math.floor(1000 + Math.random() * 9000)}`,
+              }));
+              setShowCommercialModal(true);
+            }}
+            className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-orange-200 bg-orange-50 text-orange-700 hover:bg-orange-100 font-semibold text-xs transition shadow-sm"
+          >
+            <FileText className="w-4 h-4" />
+            <span>Proposal / Quote</span>
+          </button>
+
+          <button
+            onClick={() => {
+              setNewInvoiceForm({
+                invoice_number: `TEX-2026-${Math.floor(1000 + Math.random() * 9000)}`,
+                client_id: clients[0]?.id || "",
+                project_id: projects[0]?.id || "",
+                title: "Software Development Sprint Milestone",
+                amount: "50000",
+                due_date: new Date(Date.now() + 14 * 86400000).toISOString().split("T")[0],
+                milestone_type: "milestone",
+                status: "sent",
+                payment_terms: "Due within 15 days",
+                notes: "TexWeb Solution Bank Account Details attached.",
+              });
+              setShowAddInvoiceModal(true);
+            }}
+            className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-orange-600 hover:bg-orange-700 text-white font-semibold text-xs transition shadow-sm"
+          >
+            <Plus className="w-4 h-4" />
+            <span>Generate Invoice</span>
+          </button>
+        </div>
       </div>
 
       {/* 2. Financial Metrics Bar */}
@@ -197,14 +304,36 @@ export default function FinanceModule({
 
         <div className="p-4 rounded-2xl bg-white dark:bg-[#18150f] border border-gray-100 dark:border-[#3a3020] shadow-2xs">
           <div className="flex items-center justify-between text-gray-500 text-xs">
-            <span>Overdue Amount</span>
-            <AlertTriangle className="w-4 h-4 text-red-500" />
+            <span>Open Proposals</span>
+            <Briefcase className="w-4 h-4 text-purple-500" />
           </div>
-          <div className="text-xl sm:text-2xl font-bold mt-2 font-mono text-red-600 dark:text-red-400">
+          <div className="text-xl sm:text-2xl font-bold mt-2 font-mono text-purple-600 dark:text-purple-400">
             ₹{stats.overdue.toLocaleString("en-IN")}
           </div>
-          <div className="text-[11px] text-red-500 mt-1 font-medium">Past due date</div>
+          <div className="text-[11px] text-purple-600 mt-1 font-medium">Proposal and quotation pipeline</div>
         </div>
+      </div>
+
+      <div className="flex items-center gap-1 p-1 rounded-2xl bg-white dark:bg-[#18150f] border border-gray-100 dark:border-[#3a3020] w-full sm:w-fit overflow-x-auto no-scrollbar">
+        {[
+          { id: "invoices", label: "Invoices & Payments" },
+          { id: "commercial", label: "Proposals & Quotations" },
+        ].map((item) => (
+          <button
+            key={item.id}
+            onClick={() => {
+              setActiveView(item.id);
+              setStatusFilter("all");
+            }}
+            className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition ${
+              activeView === item.id
+                ? "bg-orange-600 text-white shadow-2xs"
+                : "text-gray-500 dark:text-neutral-400 hover:text-gray-900 dark:hover:text-white"
+            }`}
+          >
+            {item.label}
+          </button>
+        ))}
       </div>
 
       {/* 3. Search and Status Tabs */}
@@ -242,7 +371,100 @@ export default function FinanceModule({
         </div>
       </div>
 
+      {activeView === "commercial" && (
+        <div className="rounded-2xl bg-white dark:bg-[#18150f] border border-gray-100 dark:border-[#3a3020] overflow-hidden shadow-2xs">
+          {filteredCommercialDocs.length === 0 ? (
+            <div className="p-8 text-center text-sm text-gray-400">
+              No proposal or quotation found for the current filter.
+            </div>
+          ) : (
+            <div className="overflow-x-auto table-scroll">
+              <table className="w-full text-left text-xs sm:text-sm border-collapse min-w-[780px]">
+                <thead>
+                  <tr className="border-b border-gray-100 dark:border-[#3a3020] bg-gray-50/70 dark:bg-[#211d14] text-gray-500 text-[11px] font-semibold uppercase tracking-wider">
+                    <th className="py-3 px-4">Document</th>
+                    <th className="py-3 px-4">Client</th>
+                    <th className="py-3 px-4">Value</th>
+                    <th className="py-3 px-4">Status</th>
+                    <th className="py-3 px-4">Validity</th>
+                    <th className="py-3 px-4 text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100 dark:divide-[#3a3020]/60">
+                  {filteredCommercialDocs.map((doc) => {
+                    const client = clients.find((item) => item.id === doc.client_id);
+                    const amount = Number(doc.total) || Number(doc.amount) || Number(doc.subtotal) || 0;
+                    const docLabel = doc.docType === "quotation" ? doc.quotation_number : doc.title;
+                    const acceptedStatus = doc.docType === "quotation" ? "accepted" : "accepted";
+                    const rejectedStatus = doc.docType === "quotation" ? "declined" : "rejected";
+
+                    return (
+                      <tr key={`${doc.docType}-${doc.id}`} className="hover:bg-gray-50/60 dark:hover:bg-slate-800/40 transition">
+                        <td className="py-3.5 px-4">
+                          <div className="font-bold text-gray-900 dark:text-white">{docLabel || "Commercial Document"}</div>
+                          <div className="text-[11px] text-gray-500 capitalize">{doc.docType}</div>
+                        </td>
+                        <td className="py-3.5 px-4">
+                          <div className="font-semibold text-gray-900 dark:text-white">{client?.name || "Client Account"}</div>
+                          <div className="text-[11px] text-gray-500">{client?.company_name || client?.email || "Central client entity"}</div>
+                        </td>
+                        <td className="py-3.5 px-4 font-mono font-bold text-gray-900 dark:text-white">
+                          Rs. {amount.toLocaleString("en-IN")}
+                        </td>
+                        <td className="py-3.5 px-4">
+                          <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase ${
+                            doc.status === "accepted"
+                              ? "bg-emerald-50 text-emerald-600"
+                              : ["rejected", "declined", "expired"].includes(doc.status)
+                              ? "bg-red-50 text-red-600"
+                              : "bg-amber-50 text-amber-600"
+                          }`}>
+                            {doc.status || "draft"}
+                          </span>
+                        </td>
+                        <td className="py-3.5 px-4 text-gray-500 text-xs">
+                          {doc.valid_until || doc.sent_at?.slice(0, 10) || "-"}
+                        </td>
+                        <td className="py-3.5 px-4 text-right">
+                          <div className="flex items-center justify-end gap-2">
+                            {!["accepted", "declined", "rejected"].includes(doc.status) && (
+                              <button
+                                onClick={() =>
+                                  doc.docType === "quotation"
+                                    ? onUpdateQuotation?.(doc.id, { status: acceptedStatus })
+                                    : onUpdateProposal?.(doc.id, { status: acceptedStatus, accepted_at: new Date().toISOString() })
+                                }
+                                className="px-2.5 py-1 rounded-lg text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white transition shadow-2xs"
+                              >
+                                Accept
+                              </button>
+                            )}
+                            {!["accepted", "declined", "rejected"].includes(doc.status) && (
+                              <button
+                                onClick={() =>
+                                  doc.docType === "quotation"
+                                    ? onUpdateQuotation?.(doc.id, { status: rejectedStatus })
+                                    : onUpdateProposal?.(doc.id, { status: rejectedStatus })
+                                }
+                                className="px-2.5 py-1 rounded-lg text-xs font-bold bg-gray-100 dark:bg-slate-800 text-gray-700 dark:text-neutral-200 transition"
+                              >
+                                Reject
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* 4. Invoices Table */}
+      {activeView === "invoices" && (
       <div className="rounded-2xl bg-white dark:bg-[#18150f] border border-gray-100 dark:border-[#3a3020] overflow-hidden shadow-2xs">
         {filteredInvoices.length === 0 ? (
           <div className="p-8 text-center text-sm text-gray-400">
@@ -347,8 +569,164 @@ export default function FinanceModule({
           </div>
         )}
       </div>
+      )}
 
-      {/* 5. Add Invoice Modal */}
+      {/* 5. Add Proposal / Quotation Modal */}
+      {showCommercialModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
+          <form
+            onSubmit={handleCreateCommercialSubmit}
+            className="w-full max-w-2xl max-h-[90vh] overflow-y-auto no-scrollbar rounded-2xl bg-white dark:bg-[#18150f] border border-gray-200 dark:border-[#3a3020] shadow-2xl p-5 space-y-4"
+          >
+            <div className="flex items-center justify-between border-b border-gray-100 dark:border-[#3a3020] pb-3">
+              <div>
+                <h3 className="font-bold text-base text-gray-900 dark:text-white">Create Commercial Document</h3>
+                <p className="text-[11px] text-gray-400">Proposal or quotation before agreement and invoice.</p>
+              </div>
+              <button type="button" onClick={() => setShowCommercialModal(false)} className="p-1 rounded-lg text-gray-400">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="flex items-center gap-1 p-1 rounded-xl bg-gray-100 dark:bg-slate-800 text-xs">
+              {[
+                ["proposal", "Proposal"],
+                ["quotation", "Quotation"],
+              ].map(([id, label]) => (
+                <button
+                  key={id}
+                  type="button"
+                  onClick={() => setCommercialType(id)}
+                  className={`flex-1 rounded-lg px-3 py-2 font-bold transition ${
+                    commercialType === id ? "bg-white dark:bg-slate-900 text-orange-600 shadow-2xs" : "text-gray-500"
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+              <div>
+                <label className="block font-medium mb-1">Client Account *</label>
+                <select
+                  required
+                  value={commercialForm.client_id}
+                  onChange={(e) => setCommercialForm({ ...commercialForm, client_id: e.target.value })}
+                  className="w-full px-3 py-2 rounded-xl bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 font-semibold"
+                >
+                  <option value="">Select Client...</option>
+                  {clients.map((client) => (
+                    <option key={client.id} value={client.id}>{client.name}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block font-medium mb-1">Linked Deal</label>
+                <select
+                  value={commercialForm.deal_id}
+                  onChange={(e) => setCommercialForm({ ...commercialForm, deal_id: e.target.value })}
+                  className="w-full px-3 py-2 rounded-xl bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700"
+                >
+                  <option value="">No linked deal</option>
+                  {deals.map((deal) => (
+                    <option key={deal.id} value={deal.id}>{deal.title}</option>
+                  ))}
+                </select>
+              </div>
+
+              {commercialType === "quotation" && (
+                <div>
+                  <label className="block font-medium mb-1">Quotation Number</label>
+                  <input
+                    type="text"
+                    value={commercialForm.quotation_number}
+                    onChange={(e) => setCommercialForm({ ...commercialForm, quotation_number: e.target.value })}
+                    className="w-full px-3 py-2 rounded-xl bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 font-mono"
+                  />
+                </div>
+              )}
+
+              <div>
+                <label className="block font-medium mb-1">Commercial Value *</label>
+                <input
+                  type="number"
+                  required
+                  value={commercialForm.amount}
+                  onChange={(e) => setCommercialForm({ ...commercialForm, amount: e.target.value })}
+                  className="w-full px-3 py-2 rounded-xl bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 font-mono"
+                />
+              </div>
+
+              <div>
+                <label className="block font-medium mb-1">Valid Until</label>
+                <input
+                  type="date"
+                  value={commercialForm.valid_until}
+                  onChange={(e) => setCommercialForm({ ...commercialForm, valid_until: e.target.value })}
+                  className="w-full px-3 py-2 rounded-xl bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700"
+                />
+              </div>
+
+              <div>
+                <label className="block font-medium mb-1">Status</label>
+                <select
+                  value={commercialForm.status}
+                  onChange={(e) => setCommercialForm({ ...commercialForm, status: e.target.value })}
+                  className="w-full px-3 py-2 rounded-xl bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700"
+                >
+                  <option value="draft">Draft</option>
+                  <option value="sent">Sent</option>
+                  <option value="accepted">Accepted</option>
+                </select>
+              </div>
+
+              <div className="sm:col-span-2">
+                <label className="block font-medium mb-1">Title *</label>
+                <input
+                  type="text"
+                  required
+                  value={commercialForm.title}
+                  onChange={(e) => setCommercialForm({ ...commercialForm, title: e.target.value })}
+                  className="w-full px-3 py-2 rounded-xl bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700"
+                />
+              </div>
+
+              <div className="sm:col-span-2">
+                <label className="block font-medium mb-1">Scope of Work</label>
+                <textarea
+                  rows={3}
+                  value={commercialForm.scope_of_work}
+                  onChange={(e) => setCommercialForm({ ...commercialForm, scope_of_work: e.target.value })}
+                  className="w-full px-3 py-2 rounded-xl bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700"
+                />
+              </div>
+
+              <div className="sm:col-span-2">
+                <label className="block font-medium mb-1">Deliverables / Notes</label>
+                <textarea
+                  rows={3}
+                  value={commercialForm.deliverables}
+                  onChange={(e) => setCommercialForm({ ...commercialForm, deliverables: e.target.value })}
+                  className="w-full px-3 py-2 rounded-xl bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700"
+                />
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-3 border-t border-gray-100 dark:border-[#3a3020]">
+              <button type="button" onClick={() => setShowCommercialModal(false)} className="px-3.5 py-2 rounded-xl text-xs font-semibold text-gray-500">
+                Cancel
+              </button>
+              <button type="submit" className="px-4 py-2 rounded-xl text-xs font-bold bg-orange-600 hover:bg-orange-700 text-white shadow-sm">
+                Save Document
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
+
+      {/* 6. Add Invoice Modal */}
       {showAddInvoiceModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
           <form
