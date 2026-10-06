@@ -32,11 +32,13 @@ export default function ClientsModule({
   onCreateProjectForClient,
   onCreateInvoiceForClient,
   onCreateTicketForClient,
+  onEnsureClientPortal,
 }) {
   const [query, setQuery] = useState("");
   const [selectedClient, setSelectedClient] = useState(null);
   const [showAddClientModal, setShowAddClientModal] = useState(false);
   const [activeTab, setActiveTab] = useState("overview"); // overview, projects, invoices, tickets, timeline
+  const [portalActionId, setPortalActionId] = useState("");
   const [newClientForm, setNewClientForm] = useState({
     name: "",
     company_name: "",
@@ -73,6 +75,22 @@ export default function ClientsModule({
       status: "active",
       notes: "",
     });
+  }
+
+  async function handlePortalAction(client, action = "open") {
+    if (!client || !onEnsureClientPortal) return;
+    setPortalActionId(client.id);
+    try {
+      const url = await onEnsureClientPortal(client);
+      if (!url) return;
+      if (action === "copy") {
+        await navigator.clipboard?.writeText(url);
+      } else {
+        window.open(url, "_blank", "noopener,noreferrer");
+      }
+    } finally {
+      setPortalActionId("");
+    }
   }
 
   // Linked items for selected client
@@ -213,6 +231,16 @@ export default function ClientsModule({
                 </button>
 
                 <button
+                  onClick={() => handlePortalAction(client, "open")}
+                  disabled={portalActionId === client.id}
+                  className="flex-1 py-1.5 px-2 rounded-xl text-xs font-semibold text-orange-600 bg-orange-50 dark:bg-orange-950/40 hover:bg-orange-100 transition flex items-center justify-center gap-1.5 disabled:opacity-60"
+                  title="Open Client Portal"
+                >
+                  <ExternalLink className="w-3.5 h-3.5" />
+                  <span>Portal</span>
+                </button>
+
+                <button
                   onClick={() => {
                     setSelectedClient(client);
                     setActiveTab("overview");
@@ -321,6 +349,24 @@ export default function ClientsModule({
                   >
                     <MessageSquare className="w-3.5 h-3.5" />
                     <span>Open Team Chat</span>
+                  </button>
+
+                  <button
+                    onClick={() => handlePortalAction(selectedClient, "open")}
+                    disabled={portalActionId === selectedClient.id}
+                    className="px-3 py-2 rounded-xl text-xs font-semibold text-orange-600 bg-orange-50 dark:bg-orange-950/40 hover:bg-orange-100 transition flex items-center gap-1.5 disabled:opacity-60"
+                  >
+                    <ExternalLink className="w-3.5 h-3.5" />
+                    <span>Open Client Portal</span>
+                  </button>
+
+                  <button
+                    onClick={() => handlePortalAction(selectedClient, "copy")}
+                    disabled={portalActionId === selectedClient.id}
+                    className="px-3 py-2 rounded-xl text-xs font-semibold text-gray-700 dark:text-neutral-200 bg-gray-100 dark:bg-slate-800 hover:bg-gray-200 transition flex items-center gap-1.5 disabled:opacity-60"
+                  >
+                    <Share2 className="w-3.5 h-3.5" />
+                    <span>Copy Portal Link</span>
                   </button>
 
                   <button

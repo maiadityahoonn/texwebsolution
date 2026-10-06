@@ -189,6 +189,7 @@ import {
   updateSupportTicket,
   getNotificationPreferences,
   saveNotificationPreferences,
+  createClientPortalToken,
 } from "@/services/supabaseService";
 
 function WhatsAppIcon({ className = "w-3.5 h-3.5" }) {
@@ -505,11 +506,29 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
   }
 
   async function handleCreateNewClient(clientData) {
-    const created = await createClient(clientData);
+    const created = await createClient({
+      portal_token: createClientPortalToken(),
+      portal_enabled: true,
+      ...clientData,
+    });
     if (created) {
       setClients((prev) => [created, ...prev.filter((c) => c.id !== created.id)]);
       setToast("Client account created successfully.");
     }
+  }
+
+  async function handleEnsureClientPortal(client) {
+    if (!client?.id) return "";
+    const token = client.portal_token || createClientPortalToken();
+    const updates = { portal_token: token, portal_enabled: true };
+    if (!client.portal_token || client.portal_enabled === false) {
+      const updated = await updateClient(client.id, updates);
+      setClients((prev) =>
+        prev.map((item) => (item.id === client.id ? { ...item, ...updates, ...(updated || {}) } : item))
+      );
+    }
+    const origin = typeof window !== "undefined" ? window.location.origin : "https://texwebsolution.in";
+    return `${origin}/portal?token=${encodeURIComponent(token)}`;
   }
 
   async function handleCreateNewProject(projectData) {
@@ -524,6 +543,8 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
     let clientMatch = clients.find((c) => c.name?.toLowerCase() === (leadOrDeal.name || leadOrDeal.title)?.toLowerCase());
     if (!clientMatch) {
       clientMatch = await createClient({
+        portal_token: createClientPortalToken(),
+        portal_enabled: true,
         name: leadOrDeal.name || leadOrDeal.title || "Client Account",
         company_name: leadOrDeal.name ? `${leadOrDeal.name} Ventures` : "Client Company",
         phone: leadOrDeal.phone || "",
@@ -12122,8 +12143,20 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
                   invoices={invoicesList}
                   supportTickets={supportTicketsList}
                   onCreateClient={handleCreateNewClient}
-                  onOpenChat={handleOpenClientChat}
-                  onConvertToDeal={handleConvertToClientAndProject}
+                  onOpenClientChat={handleOpenClientChat}
+                  onEnsureClientPortal={handleEnsureClientPortal}
+                  onCreateProjectForClient={(client) => {
+                    setToast(`Create project for ${client.name} from Projects module.`);
+                    selectSection("projects");
+                  }}
+                  onCreateInvoiceForClient={(client) => {
+                    setToast(`Create invoice for ${client.name} from Finance module.`);
+                    selectSection("invoices");
+                  }}
+                  onCreateTicketForClient={(client) => {
+                    setToast(`Create support ticket for ${client.name} from Support module.`);
+                    selectSection("support");
+                  }}
                   isDark={isDark}
                 />
               )}
