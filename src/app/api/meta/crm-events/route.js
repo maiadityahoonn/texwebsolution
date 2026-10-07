@@ -28,9 +28,10 @@ function mapEventName(status) {
   const value = cleanText(status || "Lead", 80).toLowerCase();
   if (value.includes("lost")) return "LeadLost";
   if (value.includes("won") || value.includes("converted")) return "LeadWon";
+  if (value.includes("negotiation")) return "LeadNegotiation";
   if (value.includes("proposal")) return "LeadProposal";
   if (value.includes("meeting") || value.includes("contacted")) return "LeadMeeting";
-  if (value.includes("qualified")) return "QualifiedLead";
+  if (value.includes("qualified") || value.includes("requirement")) return "QualifiedLead";
   return "Lead";
 }
 

@@ -16,6 +16,40 @@ async function sendMetaCrmEvent(lead, status = lead?.status || 'New') {
   }
 }
 
+function mapDealStageToLeadStatus(stage) {
+  const value = String(stage || '').toLowerCase();
+  if (value === 'closed_lost') return 'Lost';
+  if (value === 'closed_won') return 'Closed Won';
+  if (value.includes('negotiation')) return 'Negotiation';
+  if (value.includes('proposal')) return 'Proposal Sent';
+  if (value.includes('qualified') || value.includes('requirement')) return 'Qualified';
+  if (value.includes('contacted') || value.includes('meeting')) return 'Meeting';
+  return 'Lead';
+}
+
+async function sendDealStageMetaEvent(deal, stage) {
+  if (!deal?.lead_id) return;
+  try {
+    const { data: lead, error } = await supabase
+      .from('leads')
+      .select('*')
+      .eq('id', deal.lead_id)
+      .maybeSingle();
+    if (error || !lead) return;
+    sendMetaCrmEvent(
+      {
+        ...lead,
+        service: deal.service || lead.service,
+        notes: [lead.notes, deal.notes].filter(Boolean).join('\n'),
+        status: mapDealStageToLeadStatus(stage),
+      },
+      mapDealStageToLeadStatus(stage)
+    );
+  } catch (err) {
+    console.warn('Meta deal stage event skipped:', err.message);
+  }
+}
+
 export async function getCloudLeads() {
   try {
     const { data, error } = await supabase
@@ -2087,6 +2121,7 @@ export async function createDeal(dealData) {
     const created = { ...dealData, ...(data?.[0] || insertPayload) };
     const current = readLocalCache(LOCAL_DEALS_KEY, []);
     writeLocalCache(LOCAL_DEALS_KEY, [created, ...current]);
+    sendDealStageMetaEvent(created, created.pipeline_stage || dealData.pipeline_stage);
     return created;
   } catch (err) {
     console.warn('Fallback: createDeal in cache:', err.message);
@@ -2098,6 +2133,7 @@ export async function createDeal(dealData) {
     };
     const current = readLocalCache(LOCAL_DEALS_KEY, []);
     writeLocalCache(LOCAL_DEALS_KEY, [fallback, ...current]);
+    sendDealStageMetaEvent(fallback, fallback.pipeline_stage);
     return fallback;
   }
 }
@@ -2116,13 +2152,17 @@ export async function updateDealStage(dealId, newStage, extra = {}) {
       LOCAL_DEALS_KEY,
       current.map((d) => (d.id === dealId ? { ...d, pipeline_stage: newStage, ...extra } : d))
     );
-    return data?.[0] || null;
+    const updatedDeal = data?.[0] || null;
+    if (updatedDeal) sendDealStageMetaEvent(updatedDeal, newStage);
+    return updatedDeal;
   } catch (err) {
     console.warn('Fallback: updateDealStage in cache:', err.message);
     const current = readLocalCache(LOCAL_DEALS_KEY, []);
     const updated = current.map((d) => (d.id === dealId ? { ...d, pipeline_stage: newStage, ...extra } : d));
     writeLocalCache(LOCAL_DEALS_KEY, updated);
-    return updated.find((d) => d.id === dealId) || null;
+    const updatedDeal = updated.find((d) => d.id === dealId) || null;
+    if (updatedDeal) sendDealStageMetaEvent(updatedDeal, newStage);
+    return updatedDeal;
   }
 }
 
