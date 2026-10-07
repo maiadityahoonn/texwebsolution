@@ -53,7 +53,7 @@ const SECTION_CHIPS = {
     { label: "🧠 Private RAG Knowledge Base AI", query: "What is RAG Knowledge Base Chatbot?" },
     { label: "⚡ n8n & Python Workflow Automation", query: "Tell me about n8n & Python Workflow Automation" },
     { label: "🔒 How is business data secured?", query: "How is my business data secured in AI automations?" },
-    { label: "📋 Request Free AI Proposal / Callback", type: "lead" }
+    { label: "📋 Request Free AI Quotation / Callback", type: "lead" }
   ],
   saas: [
     { label: "🛒 Multi-Vendor E-Commerce Marketplace", query: "Tell me about Multi-Vendor E-Commerce Marketplace" },

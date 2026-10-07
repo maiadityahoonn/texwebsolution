@@ -45,8 +45,8 @@ function WhatsAppIcon({ className = "w-4 h-4" }) {
 
 const PIPELINE_STAGES = [
   { id: "contacted", label: "Contacted", color: "bg-cyan-500" },
-  { id: "qualified", label: "Requirement Gathering / Qualified Meeting", color: "bg-indigo-500" },
-  { id: "proposal", label: "Proposal / Quotation", color: "bg-purple-500" },
+  { id: "qualified", label: "Meeting", color: "bg-indigo-500" },
+  { id: "proposal", label: "Quotation", color: "bg-purple-500" },
   { id: "negotiation", label: "Negotiation", color: "bg-amber-500" },
   { id: "closed_won", label: "Closed Won", color: "bg-emerald-500" },
 ];
@@ -151,7 +151,7 @@ function getLeadNextAction(lead, followUps = [], meetings = []) {
   if (!lead?.phone && !lead?.email) return "Capture phone or email before qualification.";
   if (lead?.status === "New") return hasPendingFollowUp ? "Complete first contact follow-up." : "Contact within 5 minutes and qualify budget.";
   if (lead?.status === "Contacted") return hasScheduledMeeting ? "Prepare discovery agenda and confirm attendee." : "Schedule discovery meeting.";
-  if (lead?.status === "Proposal Sent") return hasPendingFollowUp ? "Follow up for proposal approval." : "Create approval follow-up for proposal.";
+  if (lead?.status === "Proposal Sent") return hasPendingFollowUp ? "Follow up for quotation approval." : "Create approval follow-up for quotation.";
   return "Review conversation and move to next pipeline stage.";
 }
 
@@ -230,6 +230,7 @@ export default function CrmModule({
   onOpenDirectWhatsapp,
   onOpenChatWithLead,
   onOpenChat,
+  onNavigateSection,
   onRefresh,
   showViewTabs = false,
   headerActionsSlotId = "",
@@ -316,7 +317,7 @@ export default function CrmModule({
     notes: "",
   });
   const [commercialForm, setCommercialForm] = useState({
-    title: "Website + CRM Implementation Proposal",
+    title: "Website + CRM Implementation Quotation",
     quotation_number: `QT-2026-${Math.floor(1000 + Math.random() * 9000)}`,
     agreement_number: `AGR-2026-${Math.floor(1000 + Math.random() * 9000)}`,
     client_id: "",
@@ -334,7 +335,7 @@ export default function CrmModule({
     notes: "Prepared by Sales Head for client approval.",
   });
   const [followUpForm, setFollowUpForm] = useState({
-    title: "Follow up for proposal approval",
+    title: "Follow up for quotation approval",
     lead_id: "",
     client_id: "",
     deal_id: "",
@@ -816,7 +817,7 @@ export default function CrmModule({
     ).toLowerCase();
 
     const mappedStage =
-      rawStage.includes("meet") ? "meeting" :
+      rawStage.includes("meet") || rawStage.includes("qual") ? "meeting" :
       rawStage.includes("prop") || rawStage.includes("quot") ? "proposal" :
       rawStage.includes("nego") ? "negotiation" : "contacted";
 
@@ -917,6 +918,9 @@ export default function CrmModule({
     if ((created?.pipeline_stage || newDealForm.pipeline_stage) === "contacted") {
       scheduleAutoMeetingForDeal(created || { ...newDealForm, id: null });
     }
+    if ((created?.pipeline_stage || newDealForm.pipeline_stage) === "closed_won") {
+      onConvertToClientAndProject?.(created || { ...newDealForm, pipeline_stage: "closed_won" });
+    }
     setShowAddDealModal(false);
     setNewDealForm({
       title: "",
@@ -931,15 +935,19 @@ export default function CrmModule({
     });
   }
 
-  function handleDealStageChange(deal, nextStage, currentStage) {
+  async function handleDealStageChange(deal, nextStage, currentStage) {
     if (!deal || nextStage === (deal.pipeline_stage || currentStage)) return;
     if (nextStage === "closed_lost") {
       openLostModal({ type: "deal", item: deal, stage: currentStage });
       return;
     }
-    onUpdateDealStage?.(deal.id, nextStage);
+    const updatedDeal = await onUpdateDealStage?.(deal.id, nextStage);
+    const stageDeal = { ...deal, ...(updatedDeal || {}), pipeline_stage: nextStage };
     if (nextStage === "contacted") {
-      scheduleAutoMeetingForDeal({ ...deal, pipeline_stage: nextStage });
+      scheduleAutoMeetingForDeal(stageDeal);
+    }
+    if (nextStage === "closed_won") {
+      onConvertToClientAndProject?.(stageDeal);
     }
   }
 
@@ -978,7 +986,7 @@ export default function CrmModule({
           className="flex shrink-0 items-center gap-1.5 px-3.5 py-2 rounded-xl border border-orange-200 bg-orange-50 text-orange-700 hover:bg-orange-100 font-semibold text-xs transition shadow-sm cursor-pointer"
         >
           <FileText className="w-4 h-4" />
-          <span>Proposal + Agreement</span>
+          <span>Quotation + Agreement</span>
         </button>
       )}
 
@@ -1289,7 +1297,7 @@ export default function CrmModule({
             ["active", "Active"],
             ["New", "New"],
             ["Contacted", "Contacted"],
-            ["Proposal Sent", "Proposal Sent"],
+            ["Proposal Sent", "Quotation Sent"],
             ["archived", "Archive"],
           ].map(([value, label]) => (
             <button
@@ -1511,7 +1519,7 @@ export default function CrmModule({
                           >
                             <option value="New">New</option>
                             <option value="Contacted">Contacted</option>
-                            <option value="Proposal Sent">Proposal Sent</option>
+                            <option value="Proposal Sent">Quotation Sent</option>
                             <option value="Converted">Converted (Won)</option>
                             <option value="Lost">Lost</option>
                           </select>
@@ -1761,8 +1769,8 @@ export default function CrmModule({
                             className="text-[10px] bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded px-1.5 py-0.5 text-gray-700 dark:text-neutral-300 focus:outline-hidden"
                           >
                             <option value="contacted">Contacted</option>
-                            <option value="qualified">Requirement Gathering / Qualified Meeting</option>
-                            <option value="proposal">Proposal</option>
+                            <option value="qualified">Meeting</option>
+                            <option value="proposal">Quotation</option>
                             <option value="negotiation">Negotiation</option>
                             <option value="closed_won">Won</option>
                             <option value="closed_lost">Lost</option>
@@ -1803,14 +1811,41 @@ export default function CrmModule({
                         </button>
                       )}
 
-                      {col.id === "closed_won" && (
+                      {col.id === "proposal" && (
                         <button
-                          onClick={() => onConvertToClientAndProject?.(deal)}
-                          className="w-full mt-2 py-1 rounded-lg text-[10px] font-bold bg-emerald-600 text-white flex items-center justify-center gap-1 shadow-2xs"
+                          type="button"
+                          onClick={() => onNavigateSection?.("sales_commercials")}
+                          className="w-full mt-2 py-1 rounded-lg text-[10px] font-bold bg-orange-600 text-white flex items-center justify-center gap-1 shadow-2xs"
+                          title="Open linked quotation page"
                         >
-                          <Briefcase className="w-3 h-3" />
-                          <span>Create Project</span>
+                          <FileText className="w-3 h-3" />
+                          <span>Open Quotation</span>
                         </button>
+                      )}
+
+                      {col.id === "closed_won" && (
+                        <div className="mt-2 space-y-1.5">
+                          <div className="w-full py-1 px-2 rounded-lg text-[10px] font-bold bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-300 flex items-center justify-center gap-1">
+                            <Briefcase className="w-3 h-3" />
+                            <span>Client + project auto-created</span>
+                          </div>
+                          <div className="grid grid-cols-2 gap-1.5">
+                            <button
+                              type="button"
+                              onClick={() => onNavigateSection?.("agreements")}
+                              className="py-1 rounded-lg text-[10px] font-bold bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 text-gray-700 dark:text-neutral-200"
+                            >
+                              Agreement
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => onNavigateSection?.("invoices")}
+                              className="py-1 rounded-lg text-[10px] font-bold bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 text-gray-700 dark:text-neutral-200"
+                            >
+                              Invoice
+                            </button>
+                          </div>
+                        </div>
                       )}
                     </div>
                     );
@@ -1827,7 +1862,7 @@ export default function CrmModule({
         <div className="space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             {[
-              ["proposal", "New Proposal + Quotation", "Scope, deliverables, price, tax"],
+              ["proposal", "New Quotation", "Scope, deliverables, price, tax"],
               ["agreement", "New Agreement", "Terms, milestones, signature"],
             ].map(([type, title, desc]) => (
               <button
@@ -1847,7 +1882,7 @@ export default function CrmModule({
           <div className="rounded-2xl bg-white dark:bg-[#18150f] border border-gray-100 dark:border-[#3a3020] overflow-hidden shadow-2xs">
             {commercialDocs.length === 0 ? (
               <div className="p-8 text-center text-sm text-gray-500 dark:text-neutral-400">
-                No proposal quotation or agreement found.
+                No quotation or agreement found.
               </div>
             ) : (
               <div className="overflow-x-auto table-scroll">
@@ -2487,8 +2522,8 @@ export default function CrmModule({
                     className="w-full px-3 py-2 rounded-xl bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 font-medium focus:outline-hidden"
                   >
                     <option value="contacted">Contacted</option>
-                    <option value="qualified">Requirement Gathering / Qualified Meeting</option>
-                    <option value="proposal">Proposal / Quotation</option>
+                    <option value="qualified">Meeting</option>
+                    <option value="proposal">Quotation</option>
                     <option value="negotiation">Negotiation</option>
                     <option value="closed_won">Closed Won</option>
                   </select>
@@ -2640,8 +2675,8 @@ export default function CrmModule({
           >
             <div className="flex items-center justify-between border-b border-gray-100 dark:border-[#3a3020] pb-3">
               <div>
-                <h3 className="font-bold text-base text-gray-900 dark:text-white">Sales Commercial Document</h3>
-                <p className="text-[11px] text-gray-400">Proposal + quotation is one Sales document; agreement is final signing before deal won.</p>
+                <h3 className="font-bold text-base text-gray-900 dark:text-white">Sales Quotation / Agreement</h3>
+                <p className="text-[11px] text-gray-400">Quotation is the Sales document; agreement is final signing before deal won.</p>
               </div>
               <button type="button" onClick={() => setShowCommercialModal(false)} className="p-1 rounded-lg text-gray-400">
                 <X className="w-4 h-4" />
@@ -2650,7 +2685,7 @@ export default function CrmModule({
 
             <div className="flex items-center gap-1 p-1 rounded-xl bg-gray-100 dark:bg-slate-800 text-xs">
               {[
-                ["proposal", "Proposal + Quotation"],
+                ["proposal", "Quotation"],
                 ["agreement", "Agreement"],
               ].map(([id, label]) => (
                 <button
@@ -2708,13 +2743,13 @@ export default function CrmModule({
                     />
                   </div>
                   <div>
-                    <label className="block font-medium mb-1 text-gray-700 dark:text-neutral-300">Proposal Ref</label>
+                    <label className="block font-medium mb-1 text-gray-700 dark:text-neutral-300">Quotation Ref</label>
                     <select
                       value={commercialForm.proposal_id}
                       onChange={(e) => setCommercialForm({ ...commercialForm, proposal_id: e.target.value })}
                       className="w-full px-3 py-2 rounded-xl bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700"
                     >
-                      <option value="">No proposal ref</option>
+                      <option value="">No quotation ref</option>
                       {proposals.map((item) => <option key={item.id} value={item.id}>{item.title}</option>)}
                     </select>
                   </div>
@@ -2820,7 +2855,7 @@ export default function CrmModule({
                 Cancel
               </button>
               <button type="submit" className="px-4 py-2 rounded-xl text-xs font-bold bg-orange-600 hover:bg-orange-700 text-white transition shadow-sm">
-                Save {commercialType}
+                Save {commercialType === "agreement" ? "agreement" : "quotation"}
               </button>
             </div>
           </form>
@@ -3000,7 +3035,7 @@ export default function CrmModule({
                 <select value={salesMeetingForm.meeting_type} onChange={(e) => setSalesMeetingForm({ ...salesMeetingForm, meeting_type: e.target.value })} className="w-full px-3 py-2 rounded-xl bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700">
                   <option value="discovery">Discovery</option>
                   <option value="requirement">Requirement</option>
-                  <option value="proposal">Proposal</option>
+                  <option value="proposal">Quotation</option>
                   <option value="negotiation">Negotiation</option>
                   <option value="handover">Handover</option>
                   <option value="other">Other</option>
@@ -3126,7 +3161,7 @@ export default function CrmModule({
                   >
                     <option value="New">New</option>
                     <option value="Contacted">Contacted</option>
-                    <option value="Proposal Sent">Proposal Sent</option>
+                    <option value="Proposal Sent">Quotation Sent</option>
                     <option value="Converted">Converted</option>
                     <option value="Lost">Lost</option>
                   </select>
@@ -3209,7 +3244,7 @@ export default function CrmModule({
                   {[
                     { id: "contacted", label: "📞 Contact", desc: "First Call / Outreach" },
                     { id: "meeting", label: "🤝 Meeting", desc: "Post Discovery / Demo" },
-                    { id: "proposal", label: "📄 Proposal", desc: "Quotation Sent" },
+                    { id: "proposal", label: "Quotation", desc: "Quotation Sent" },
                     { id: "negotiation", label: "⚖️ Negotiation", desc: "Final Terms" },
                   ].map((st) => (
                     <button

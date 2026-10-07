@@ -555,15 +555,21 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
   }
 
   async function handleConvertToClientAndProject(leadOrDeal) {
-    let clientMatch = clients.find((c) => c.name?.toLowerCase() === (leadOrDeal.name || leadOrDeal.title)?.toLowerCase());
+    const existingDealId = leadOrDeal?.deal_value || leadOrDeal?.pipeline_stage ? leadOrDeal.id : null;
+    const linkedLead = leadOrDeal?.lead_id ? leads.find((lead) => lead.id === leadOrDeal.lead_id) : null;
+    const sourceRecord = { ...(linkedLead || {}), ...(leadOrDeal || {}) };
+    let clientMatch = clients.find((c) => c.name?.toLowerCase() === (sourceRecord.name || sourceRecord.title)?.toLowerCase());
+    if (!clientMatch && leadOrDeal.client_id) {
+      clientMatch = clients.find((c) => c.id === leadOrDeal.client_id);
+    }
     if (!clientMatch) {
       clientMatch = await createClient({
         portal_token: createClientPortalToken(),
         portal_enabled: true,
-        name: leadOrDeal.name || leadOrDeal.title || "Client Account",
-        company_name: leadOrDeal.name ? `${leadOrDeal.name} Ventures` : "Client Company",
-        phone: leadOrDeal.phone || "",
-        email: leadOrDeal.email || "",
+        name: sourceRecord.name || sourceRecord.title || "Client Account",
+        company_name: sourceRecord.company_name || (sourceRecord.name ? `${sourceRecord.name} Ventures` : "Client Company"),
+        phone: sourceRecord.phone || "",
+        email: sourceRecord.email || "",
         industry: "Technology",
         status: "active",
       });
@@ -572,35 +578,53 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
       }
     }
 
-    const dealCreated = await createDeal({
-      title: `${clientMatch?.name || "Client"} - ${leadOrDeal.service || "Tech Development"} Delivery`,
-      client_id: clientMatch?.id,
-      deal_value: 120000,
-      service: leadOrDeal.service || "Web Development",
-      pipeline_stage: "closed_won",
-    });
+    let dealCreated = existingDealId ? { ...leadOrDeal, client_id: clientMatch?.id, pipeline_stage: "closed_won" } : null;
+    if (existingDealId && clientMatch?.id && leadOrDeal.client_id !== clientMatch.id) {
+      const linkedDeal = await updateDealStage(existingDealId, "closed_won", { client_id: clientMatch.id });
+      dealCreated = { ...dealCreated, ...(linkedDeal || {}), client_id: clientMatch.id };
+    }
+    if (!existingDealId) {
+      dealCreated = await createDeal({
+        title: `${clientMatch?.name || "Client"} - ${sourceRecord.service || "Tech Development"} Delivery`,
+        client_id: clientMatch?.id,
+        lead_id: sourceRecord.id || null,
+        deal_value: Number(sourceRecord.deal_value) || 120000,
+        service: sourceRecord.service || "Web Development",
+        pipeline_stage: "closed_won",
+      });
+    }
     if (dealCreated) {
-      setDeals((prev) => [dealCreated, ...prev]);
+      setDeals((prev) => {
+        const exists = prev.some((deal) => deal.id === dealCreated.id);
+        if (exists) return prev.map((deal) => (deal.id === dealCreated.id ? { ...deal, ...dealCreated } : deal));
+        return [dealCreated, ...prev];
+      });
     }
 
-    const projectCreated = await createProject({
-      name: `${clientMatch?.name || "Client"} Portal MVP`,
+    const existingProject = projectsData.find((project) => dealCreated?.id && project.deal_id === dealCreated.id);
+    const projectCreated = existingProject || await createProject({
+      name: `${clientMatch?.name || "Client"} ${sourceRecord.service || "Portal"} Project`,
       client_id: clientMatch?.id,
       deal_id: dealCreated?.id,
-      description: `Delivery project for ${clientMatch?.name || "Client"}. Handed over from Closed Won deal.`,
+      description: [sourceRecord.notes, `Delivery project for ${clientMatch?.name || "Client"}. Handed over from Closed Won deal.`].filter(Boolean).join("\n"),
       status: "in_progress",
       priority: "high",
-      budget: 120000,
+      budget: Number(sourceRecord.deal_value) || Number(dealCreated?.deal_value) || 120000,
       start_date: new Date().toISOString().split("T")[0],
     });
     if (projectCreated) {
-      setProjectsData((prev) => [projectCreated, ...prev]);
+      setProjectsData((prev) => {
+        const exists = prev.some((project) => project.id === projectCreated.id);
+        if (exists) return prev.map((project) => (project.id === projectCreated.id ? { ...project, ...projectCreated } : project));
+        return [projectCreated, ...prev];
+      });
     }
 
-    if (leadOrDeal.id && !leadOrDeal.deal_value) {
-      await updateCloudLeadStatus(leadOrDeal.id, "Converted");
+    const sourceLeadId = linkedLead?.id || (!existingDealId ? leadOrDeal.id : null);
+    if (sourceLeadId) {
+      await updateCloudLeadStatus(sourceLeadId, "Converted");
       setLeads((prev) =>
-        prev.map((l) => (l.id === leadOrDeal.id ? { ...l, status: "Converted" } : l))
+        prev.map((l) => (l.id === sourceLeadId ? { ...l, status: "Converted" } : l))
       );
     }
 
@@ -3608,7 +3632,7 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
       { key: "sales_followups", label: "Follow-ups", icon: Phone, section: "sales_followups", show: canUseCrm, badge: overdueFollowUps || salesFollowUps.filter((item) => item.status === "pending").length },
       { key: "sales_meetings", label: "Meetings", icon: Calendar, section: "sales_meetings", show: canUseCrm, badge: salesMeetings.filter((item) => item.status === "scheduled").length },
       { key: "sales_reports", label: "Reports", icon: Activity, section: "sales_reports", show: canUseCrm },
-      { key: "sales_commercials", label: "Proposal", icon: FileText, section: "sales_commercials", show: canUseCrm, badge: proposals.length + quotations.length },
+      { key: "sales_commercials", label: "Quotation", icon: FileText, section: "sales_commercials", show: canUseCrm, badge: proposals.length + quotations.length },
       { key: "agreements", label: "Agreements", icon: ShieldCheck, section: "agreements", show: canUseCrm, badge: agreements.length },
       { key: "clients", label: "Clients", icon: Building2, section: "clients", show: canUseCrm || canUseProjects, badge: clients.length },
       { key: "projects", label: "Projects", icon: Layers, section: "projects", show: canUseProjects, badge: projectsData.length },
@@ -7343,8 +7367,8 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
 
                   <button
                     onClick={() => selectSection("sales_commercials")}
-                    aria-label="Proposal and Quotation"
-                    title="Proposal + Quotation"
+                    aria-label="Quotation"
+                    title="Quotation"
                     className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl transition cursor-pointer ${
                       activeSection === "sales_commercials"
                         ? "text-gray-900 dark:text-white font-semibold bg-gray-100/90 dark:bg-slate-800 shadow-2xs"
@@ -7353,7 +7377,7 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
                   >
                     <div className="flex items-center gap-3.5">
                       <FileText className="w-5 h-5 shrink-0 stroke-[1.75] text-orange-500" />
-                      <span className="admin-sidebar-item-label">Proposal + Quotation</span>
+                      <span className="admin-sidebar-item-label">Quotation</span>
                     </div>
                     {proposals.length + quotations.length > 0 && (
                       <span className="text-[11px] font-bold text-orange-600 bg-orange-50 dark:bg-orange-950/40 px-2 py-0.5 rounded-full">
@@ -8077,7 +8101,7 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
                     {activeSection === "sales_followups" && "Sales Follow-ups"}
                     {activeSection === "sales_meetings" && "Sales Meetings"}
                     {activeSection === "sales_reports" && "Sales Reports"}
-                    {activeSection === "sales_commercials" && "Proposal + Quotation"}
+                    {activeSection === "sales_commercials" && "Quotation"}
                     {activeSection === "agreements" && "Client Agreements"}
                     {activeSection === "clients" && "Client Accounts"}
                     {activeSection === "projects" && "Projects & Delivery"}
@@ -8111,9 +8135,9 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
                     {activeSection === "crm" && "Track website inquiries, lead statuses, WhatsApp outreach, and qualification."}
                     {activeSection === "pipeline" && "Visual Kanban pipeline from Lead to Closed Won agreement and advance payment."}
                     {activeSection === "sales_followups" && "Schedule calls, WhatsApp reminders, and sales next actions."}
-                    {activeSection === "sales_meetings" && "Plan discovery, requirement, proposal, and negotiation meetings."}
+                    {activeSection === "sales_meetings" && "Plan discovery, requirement, quotation, and negotiation meetings."}
                     {activeSection === "sales_reports" && "Review source ROI, stale deals, follow-up performance, and sales AI insights."}
-                    {activeSection === "sales_commercials" && "Create and track combined proposal quotation documents from Sales."}
+                    {activeSection === "sales_commercials" && "Create and track sales quotations linked with pipeline deals."}
                     {activeSection === "agreements" && "Manage final client agreement terms, milestones, and signed status."}
                     {activeSection === "clients" && "Central client directory with connected deals, projects, invoices, and support."}
                     {activeSection === "projects" && "Manage development sprint delivery, QA checklists, and deployment handovers."}
@@ -8156,7 +8180,7 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
                       {activeSection === "sales_followups" && "Sales Follow-ups"}
                       {activeSection === "sales_meetings" && "Sales Meetings"}
                       {activeSection === "sales_reports" && "Sales Reports"}
-                      {activeSection === "sales_commercials" && "Proposal + Quotation"}
+                      {activeSection === "sales_commercials" && "Quotation"}
                       {activeSection === "agreements" && "Client Agreements"}
                       {activeSection === "clients" && "Client Accounts"}
                       {activeSection === "projects" && "Projects & Delivery"}
@@ -8189,7 +8213,7 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
                     <p className="text-xs text-gray-500 dark:text-slate-400 mt-1 max-w-2xl leading-relaxed">
                       {activeSection === "overview" && (isAdminRole ? "Overview of HR managers, training batches, and recent activity." : "Overview of team members, tasks, and updates.")}
                       {activeSection === "crm" && "Track website inquiries, lead qualification, and customer acquisition."}
-                      {activeSection === "pipeline" && "Kanban deal progress: qualification, meetings, proposals, and closed won handover."}
+                      {activeSection === "pipeline" && "Kanban deal progress: meetings, quotations, negotiation, and closed won handover."}
                       {activeSection === "clients" && "Centralized directory of client companies with linked deals, projects, invoices, and tickets."}
                       {activeSection === "projects" && "Monitor technical project delivery, sprints, QA checklists, and deployment handover."}
                       {activeSection === "smm" && "Social media client retainers, platform profiles, and deliverable targets."}
@@ -12493,30 +12517,30 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
                     const res = await createProposal({ ...proposal, created_by: sessionUser?.id || null });
                     if (res) {
                       setProposals((prev) => [res, ...prev.filter((item) => item.id !== res.id)]);
-                      setToast("Sales proposal saved.");
+                      setToast("Sales quotation saved.");
                       await createAutoSalesFollowUp({
                         lead_id: null,
                         client_id: res.client_id || proposal.client_id || null,
                         deal_id: res.deal_id || proposal.deal_id || null,
-                        title: `Follow up for ${res.title || proposal.title || "proposal approval"}`,
+                        title: `Follow up for ${res.title || proposal.title || "quotation approval"}`,
                         due_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
-                        notes: "Auto-created after proposal quotation was sent. Confirm approval, objections, and next step.",
-                      }, "Auto follow-up created after proposal");
+                        notes: "Auto-created after quotation was sent. Confirm approval, objections, and next step.",
+                      }, "Auto follow-up created after quotation");
                     }
                   }}
                   onUpdateProposal={async (id, updates) => {
                     const res = await updateProposal(id, updates);
                     if (res) {
                       setProposals((prev) => prev.map((item) => (item.id === id ? { ...item, ...updates, ...res } : item)));
-                      setToast("Proposal updated.");
+                      setToast("Quotation updated.");
                       if (updates.status === "sent" || updates.status === "viewed") {
                         await createAutoSalesFollowUp({
                           client_id: res.client_id || null,
                           deal_id: res.deal_id || null,
-                          title: `Proposal follow-up: ${res.title || "Client approval"}`,
+                          title: `Quotation follow-up: ${res.title || "Client approval"}`,
                           due_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
-                          notes: `Auto-created after proposal status changed to ${updates.status}.`,
-                        }, "Auto follow-up created for proposal");
+                          notes: `Auto-created after quotation status changed to ${updates.status}.`,
+                        }, "Auto follow-up created for quotation");
                       }
                     }
                   }}
@@ -12592,10 +12616,12 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
                   }}
                   onOpenDirectWhatsapp={handleDirectWhatsapp}
                   onOpenChat={(lead) => handleOpenClientChat(lead)}
+                  onNavigateSection={selectSection}
                   onUpdateDealStage={async (dealId, stage, extra = {}) => {
                     const res = await updateDealStage(dealId, stage, extra);
                     setDeals((prev) => prev.map((d) => (d.id === dealId ? { ...d, pipeline_stage: stage, ...extra, ...res } : d)));
                     setToast(`Deal stage updated to ${stage.replace('_', ' ')}.`);
+                    return res;
                   }}
                   onCreateDeal={async (dealData) => {
                     const res = await createDeal(dealData);
@@ -12770,14 +12796,14 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
                     const res = await createProposal({ ...proposal, created_by: sessionUser?.id || null });
                     if (res) {
                       setProposals((prev) => [res, ...prev.filter((item) => item.id !== res.id)]);
-                      setToast("Proposal saved.");
+                      setToast("Quotation saved.");
                     }
                   }}
                   onUpdateProposal={async (id, updates) => {
                     const res = await updateProposal(id, updates);
                     if (res) {
                       setProposals((prev) => prev.map((item) => (item.id === id ? { ...item, ...updates, ...res } : item)));
-                      setToast("Proposal updated.");
+                      setToast("Quotation updated.");
                     }
                   }}
                   onUpdateQuotation={async (id, updates) => {
@@ -16672,7 +16698,7 @@ function BusinessCommandOverview({
               </h2>
             </div>
             <p className="text-xs sm:text-sm text-gray-500 dark:text-slate-400 mt-2 max-w-3xl leading-relaxed">
-              One login panel for Sales, Tech, HR, SMM, Support, Chat, and Notifications. Leads move from CRM to proposal, agreement, invoice, payment, project delivery, client visibility, support, and growth.
+              One login panel for Sales, Tech, HR, SMM, Support, Chat, and Notifications. Leads move from CRM to quotation, agreement, invoice, payment, project delivery, client visibility, support, and growth.
             </p>
           </div>
           <button

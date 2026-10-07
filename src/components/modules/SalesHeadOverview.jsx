@@ -72,8 +72,8 @@ export default function SalesHeadOverview({
   const STAGES = [
     { key: "new", label: "New", color: "bg-blue-500", count: deals.filter((d) => (d.pipeline_stage || d.stage) === "new").length },
     { key: "contacted", label: "Contacted", color: "bg-cyan-500", count: deals.filter((d) => (d.pipeline_stage || d.stage) === "contacted").length },
-    { key: "qualified", label: "Qualified", color: "bg-indigo-500", count: deals.filter((d) => (d.pipeline_stage || d.stage) === "qualified").length },
-    { key: "proposal", label: "Proposal", color: "bg-purple-500", count: deals.filter((d) => (d.pipeline_stage || d.stage) === "proposal").length },
+    { key: "qualified", label: "Meeting", color: "bg-indigo-500", count: deals.filter((d) => (d.pipeline_stage || d.stage) === "qualified").length },
+    { key: "proposal", label: "Quotation", color: "bg-purple-500", count: deals.filter((d) => (d.pipeline_stage || d.stage) === "proposal").length },
     { key: "negotiation", label: "Negotiation", color: "bg-amber-500", count: deals.filter((d) => (d.pipeline_stage || d.stage) === "negotiation").length },
     { key: "closed_won", label: "Won", color: "bg-emerald-500", count: wonDealsCount },
     { key: "closed_lost", label: "Lost", color: "bg-rose-500", count: lostDealsCount },

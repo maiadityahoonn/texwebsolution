@@ -29,7 +29,7 @@ function mapEventName(status) {
   if (value.includes("lost")) return "LeadLost";
   if (value.includes("won") || value.includes("converted")) return "LeadWon";
   if (value.includes("negotiation")) return "LeadNegotiation";
-  if (value.includes("proposal")) return "LeadProposal";
+  if (value.includes("proposal") || value.includes("quotation")) return "LeadQuotation";
   if (value.includes("meeting") || value.includes("contacted")) return "LeadMeeting";
   if (value.includes("qualified") || value.includes("requirement")) return "QualifiedLead";
   return "Lead";

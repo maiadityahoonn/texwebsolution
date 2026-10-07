@@ -62,7 +62,7 @@ export default function FinanceModule({
     notes: "Bank transfer or UPI accepted.",
   });
   const [commercialForm, setCommercialForm] = useState({
-    title: "Website + CRM Implementation Proposal",
+    title: "Website + CRM Implementation Quotation",
     quotation_number: `QT-2026-${Math.floor(1000 + Math.random() * 9000)}`,
     client_id: "",
     deal_id: "",
@@ -204,7 +204,7 @@ export default function FinanceModule({
             </h1>
           </div>
           <p className="text-xs sm:text-sm text-gray-500 dark:text-neutral-400 mt-1">
-            Proposal + Quotation → Agreement → Advance invoice → Payment → Project handover.
+            Quotation to Agreement to Advance invoice to Payment to Project handover.
           </p>
         </div>
 
@@ -223,7 +223,7 @@ export default function FinanceModule({
               className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-orange-200 bg-orange-50 text-orange-700 hover:bg-orange-100 font-semibold text-xs transition shadow-sm"
             >
               <FileText className="w-4 h-4" />
-              <span>Proposal + Quotation</span>
+              <span>Quotation</span>
             </button>
           )}
 
@@ -288,13 +288,13 @@ export default function FinanceModule({
 
         <div className="p-4 rounded-2xl bg-white dark:bg-[#18150f] border border-gray-100 dark:border-[#3a3020] shadow-2xs">
           <div className="flex items-center justify-between text-gray-500 text-xs">
-            <span>Open Proposals</span>
+            <span>Open Quotations</span>
             <Briefcase className="w-4 h-4 text-purple-500" />
           </div>
           <div className="text-xl sm:text-2xl font-bold mt-2 font-mono text-purple-600 dark:text-purple-400">
             ₹{stats.overdue.toLocaleString("en-IN")}
           </div>
-          <div className="text-[11px] text-purple-600 mt-1 font-medium">Combined proposal quotation pipeline</div>
+          <div className="text-[11px] text-purple-600 mt-1 font-medium">Sales quotation pipeline</div>
         </div>
       </div>
 
@@ -302,7 +302,7 @@ export default function FinanceModule({
       <div className="flex items-center gap-1 p-1 rounded-2xl bg-white dark:bg-[#18150f] border border-gray-100 dark:border-[#3a3020] w-full sm:w-fit overflow-x-auto no-scrollbar">
         {[
           { id: "invoices", label: "Invoices & Payments" },
-          { id: "commercial", label: "Proposal + Quotation" },
+          { id: "commercial", label: "Quotation" },
         ].map((item) => (
           <button
             key={item.id}
@@ -361,7 +361,7 @@ export default function FinanceModule({
         <div className="rounded-2xl bg-white dark:bg-[#18150f] border border-gray-100 dark:border-[#3a3020] overflow-hidden shadow-2xs">
           {filteredCommercialDocs.length === 0 ? (
             <div className="p-8 text-center text-sm text-gray-400">
-              No proposal quotation found for the current filter.
+              No quotation found for the current filter.
             </div>
           ) : (
             <div className="overflow-x-auto table-scroll">
@@ -557,7 +557,7 @@ export default function FinanceModule({
       </div>
       )}
 
-      {/* 5. Add Proposal / Quotation Modal */}
+      {/* 5. Add Quotation Modal */}
       {showCommercialModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
           <form
@@ -567,7 +567,7 @@ export default function FinanceModule({
             <div className="flex items-center justify-between border-b border-gray-100 dark:border-[#3a3020] pb-3">
               <div>
                 <h3 className="font-bold text-base text-gray-900 dark:text-white">Create Commercial Document</h3>
-                <p className="text-[11px] text-gray-400">Combined proposal quotation before agreement and invoice.</p>
+                <p className="text-[11px] text-gray-400">Quotation before agreement and invoice.</p>
               </div>
               <button type="button" onClick={() => setShowCommercialModal(false)} className="p-1 rounded-lg text-gray-400">
                 <X className="w-4 h-4" />
@@ -575,7 +575,7 @@ export default function FinanceModule({
             </div>
 
             <div className="rounded-xl bg-orange-50 dark:bg-orange-950/30 border border-orange-200 dark:border-orange-900/50 px-3 py-2 text-xs font-bold text-orange-700 dark:text-orange-300">
-              Proposal + Quotation is one combined Sales document.
+              Quotation is the Sales document.
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
