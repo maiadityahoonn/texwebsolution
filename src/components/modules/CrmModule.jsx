@@ -44,8 +44,8 @@ function WhatsAppIcon({ className = "w-4 h-4" }) {
 }
 
 const PIPELINE_STAGES = [
-  { id: "contacted", label: "Meeting", color: "bg-cyan-500" },
-  { id: "qualified", label: "Requirement & Qualified", color: "bg-indigo-500" },
+  { id: "contacted", label: "Contacted", color: "bg-cyan-500" },
+  { id: "qualified", label: "Requirement Gathering / Qualified Meeting", color: "bg-indigo-500" },
   { id: "proposal", label: "Proposal / Quotation", color: "bg-purple-500" },
   { id: "negotiation", label: "Negotiation", color: "bg-amber-500" },
   { id: "closed_won", label: "Closed Won", color: "bg-emerald-500" },
@@ -642,7 +642,7 @@ export default function CrmModule({
       scheduled_at: deal.meeting_scheduled_at ? new Date(deal.meeting_scheduled_at).toISOString() : getMeetingStartIso(),
       duration_minutes: 30,
       meeting_link: deal.meeting_link || defaultMeetLink || "https://meet.google.com/new",
-      agenda: "Auto-created when deal entered Meeting stage. Confirm requirements, budget, timeline, and decision maker.",
+      agenda: "Auto-created when deal entered Contacted stage. Confirm requirements, budget, timeline, and decision maker.",
       status: "scheduled",
     });
   }
@@ -1733,8 +1733,8 @@ export default function CrmModule({
                             }}
                             className="text-[10px] bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded px-1.5 py-0.5 text-gray-700 dark:text-neutral-300 focus:outline-hidden"
                           >
-                            <option value="contacted">Meeting</option>
-                            <option value="qualified">Qualified</option>
+                            <option value="contacted">Contacted</option>
+                            <option value="qualified">Requirement Gathering / Qualified Meeting</option>
                             <option value="proposal">Proposal</option>
                             <option value="negotiation">Negotiation</option>
                             <option value="closed_won">Won</option>
@@ -2447,8 +2447,8 @@ export default function CrmModule({
                     required
                     className="w-full px-3 py-2 rounded-xl bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 font-medium focus:outline-hidden"
                   >
-                    <option value="contacted">Meeting</option>
-                    <option value="qualified">Requirement & Qualified</option>
+                    <option value="contacted">Contacted</option>
+                    <option value="qualified">Requirement Gathering / Qualified Meeting</option>
                     <option value="proposal">Proposal / Quotation</option>
                     <option value="negotiation">Negotiation</option>
                     <option value="closed_won">Closed Won</option>
