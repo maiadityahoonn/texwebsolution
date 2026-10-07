@@ -264,6 +264,15 @@ export default function CrmModule({
   const [showCommercialModal, setShowCommercialModal] = useState(false);
   const [showFollowUpModal, setShowFollowUpModal] = useState(false);
   const [showSalesMeetingModal, setShowSalesMeetingModal] = useState(false);
+  const [showMeetingSettingsModal, setShowMeetingSettingsModal] = useState(false);
+  const [defaultMeetLink, setDefaultMeetLink] = useState(() => {
+    if (typeof window === "undefined") return "https://meet.google.com/new";
+    return localStorage.getItem("texweb_sales_default_meet_link") || "https://meet.google.com/new";
+  });
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    localStorage.setItem("texweb_sales_default_meet_link", defaultMeetLink || "https://meet.google.com/new");
+  }, [defaultMeetLink]);
   const [showRescheduleModal, setShowRescheduleModal] = useState(false);
   const [rescheduleTarget, setRescheduleTarget] = useState(null);
   const [salesMeetingRescheduleTarget, setSalesMeetingRescheduleTarget] = useState(null);
@@ -285,7 +294,7 @@ export default function CrmModule({
     deal_value: "100000",
     service: "Web Development",
     meeting_scheduled_at: new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString().slice(0, 16),
-    meeting_link: "https://meet.google.com/new",
+    meeting_link: defaultMeetLink,
     notes: "",
   });
   const [newLeadForm, setNewLeadForm] = useState({
@@ -342,7 +351,7 @@ export default function CrmModule({
     meeting_type: "discovery",
     scheduled_at: new Date(Date.now() + 86400000).toISOString().slice(0, 16),
     duration_minutes: 30,
-    meeting_link: "",
+    meeting_link: defaultMeetLink,
     agenda: "Requirement discovery, budget, timeline, decision maker, and next action.",
   });
   const [copiedScript, setCopiedScript] = useState(false);
@@ -632,7 +641,7 @@ export default function CrmModule({
       meeting_type: "discovery",
       scheduled_at: deal.meeting_scheduled_at ? new Date(deal.meeting_scheduled_at).toISOString() : getMeetingStartIso(),
       duration_minutes: 30,
-      meeting_link: deal.meeting_link || "https://meet.google.com/new",
+      meeting_link: deal.meeting_link || defaultMeetLink || "https://meet.google.com/new",
       agenda: "Auto-created when deal entered Meeting stage. Confirm requirements, budget, timeline, and decision maker.",
       status: "scheduled",
     });
@@ -753,7 +762,7 @@ export default function CrmModule({
     setRescheduleForm({
       due_at: item.scheduled_at ? new Date(item.scheduled_at).toISOString().slice(0, 16) : new Date(Date.now() + 86400000).toISOString().slice(0, 16),
       notes: item.agenda || item.outcome || "",
-      meeting_link: item.meeting_link || "https://meet.google.com/new",
+      meeting_link: item.meeting_link || defaultMeetLink || "https://meet.google.com/new",
     });
     setShowRescheduleModal(true);
   }
@@ -860,7 +869,7 @@ export default function CrmModule({
       deal_value: "100000",
       service: lead?.service || "Web Development",
       meeting_scheduled_at: new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString().slice(0, 16),
-      meeting_link: "https://meet.google.com/new",
+      meeting_link: defaultMeetLink || "https://meet.google.com/new",
       notes: lead ? `Created from lead: ${lead.name} (${lead.phone || ""})` : "",
     });
     setShowAddDealModal(true);
@@ -876,7 +885,6 @@ export default function CrmModule({
       !newDealForm.meeting_scheduled_at ||
       !newDealForm.meeting_link ||
       !newDealForm.lead_id ||
-      !newDealForm.client_id ||
       !newDealForm.notes?.trim()
     ) return;
     const created = await onCreateDeal?.({
@@ -903,7 +911,7 @@ export default function CrmModule({
       deal_value: "100000",
       service: "Web Development",
       meeting_scheduled_at: new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString().slice(0, 16),
-      meeting_link: "https://meet.google.com/new",
+      meeting_link: defaultMeetLink || "https://meet.google.com/new",
       notes: "",
     });
   }
@@ -970,6 +978,15 @@ export default function CrmModule({
       )}
 
       {viewMode === "sales_meetings" && (
+        <>
+        <button
+          type="button"
+          onClick={() => setShowMeetingSettingsModal(true)}
+          className="flex shrink-0 items-center gap-1.5 px-3.5 py-2 rounded-xl border border-gray-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-gray-700 dark:text-neutral-200 hover:bg-gray-50 dark:hover:bg-slate-800 font-semibold text-xs transition shadow-sm cursor-pointer"
+        >
+          <Calendar className="w-4 h-4" />
+          <span>Meet Settings</span>
+        </button>
         <button
           onClick={() => setShowSalesMeetingModal(true)}
           className="flex shrink-0 items-center gap-1.5 px-3.5 py-2 rounded-xl border border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 font-semibold text-xs transition shadow-sm cursor-pointer"
@@ -977,6 +994,7 @@ export default function CrmModule({
           <Calendar className="w-4 h-4" />
           <span>Meeting</span>
         </button>
+        </>
       )}
 
       {viewMode === "pipeline" ? (
@@ -2523,12 +2541,11 @@ export default function CrmModule({
 
                 <div>
                   <label className="block font-medium mb-1 text-gray-700 dark:text-neutral-300">
-                    Link to Client Account *
+                    Link to Client Account (After Won)
                   </label>
                   <select
                     value={newDealForm.client_id}
                     onChange={(e) => setNewDealForm({ ...newDealForm, client_id: e.target.value })}
-                    required
                     className="w-full px-3 py-2 rounded-xl bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 focus:outline-hidden truncate"
                   >
                     <option value="">-- No Linked Client --</option>
@@ -2873,6 +2890,35 @@ export default function CrmModule({
               <button type="submit" className="px-4 py-2 rounded-xl text-xs font-bold bg-blue-600 hover:bg-blue-700 text-white">Reschedule</button>
             </div>
           </form>
+        </div>
+      )}
+
+      {showMeetingSettingsModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
+          <div className="w-full max-w-lg rounded-2xl bg-white dark:bg-[#18150f] border border-gray-200 dark:border-[#3a3020] shadow-2xl p-5 space-y-4">
+            <div className="flex items-center justify-between border-b border-gray-100 dark:border-[#3a3020] pb-3">
+              <div>
+                <h3 className="font-bold text-base text-gray-900 dark:text-white">Meeting Settings</h3>
+                <p className="text-xs text-gray-500 dark:text-neutral-400 mt-0.5">Default Google Meet link used in pipeline meetings.</p>
+              </div>
+              <button type="button" onClick={() => setShowMeetingSettingsModal(false)} className="p-1 rounded-lg text-gray-400"><X className="w-4 h-4" /></button>
+            </div>
+            <div className="space-y-2 text-xs">
+              <label className="block font-medium text-gray-700 dark:text-neutral-300">Default Google Meet Link</label>
+              <input
+                type="url"
+                required
+                value={defaultMeetLink}
+                onChange={(e) => setDefaultMeetLink(e.target.value)}
+                placeholder="https://meet.google.com/..."
+                className="w-full px-3 py-2 rounded-xl bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700"
+              />
+            </div>
+            <div className="flex justify-end gap-2 pt-3 border-t border-gray-100 dark:border-[#3a3020]">
+              <button type="button" onClick={() => setDefaultMeetLink("https://meet.google.com/new")} className="px-3.5 py-2 rounded-xl text-xs font-semibold text-gray-600 dark:text-neutral-300">Reset</button>
+              <button type="button" onClick={() => setShowMeetingSettingsModal(false)} className="px-4 py-2 rounded-xl text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white">Save</button>
+            </div>
+          </div>
         </div>
       )}
 
