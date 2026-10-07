@@ -6,7 +6,6 @@ import {
   Filter,
   Plus,
   RefreshCw,
-  Target,
   TrendingUp,
   Users,
   CheckCircle2,
@@ -679,20 +678,7 @@ export default function CrmModule({
   return (
     <div className="space-y-6">
       {/* 1. Header & Actions */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2">
-            <span className="p-2 rounded-xl bg-orange-500/10 text-orange-600 dark:text-orange-400">
-              <Target className="w-5 h-5" />
-            </span>
-            <h1 className="text-xl sm:text-2xl font-bold tracking-tight">CRM & Sales Operations</h1>
-          </div>
-          <p className="text-xs sm:text-sm text-gray-500 dark:text-neutral-400 mt-1">
-            Capture, qualify, convert leads into clients, and hand over to tech engineering seamlessly.
-          </p>
-        </div>
-
-        <div className="flex items-center gap-2 self-start sm:self-auto">
+      <div className="flex flex-wrap items-center justify-end gap-2">
           {/* View Mode Toggle */}
           {showViewTabs && (
           <div className="flex p-1 rounded-xl bg-gray-100 dark:bg-slate-800 border border-gray-200 dark:border-slate-700">
@@ -817,7 +803,6 @@ export default function CrmModule({
               <span>Add Lead</span>
             </button>
           ) : null}
-        </div>
       </div>
 
       {/* 2. Key Metrics Bar */}
