@@ -356,6 +356,15 @@ export default function CrmModule({
     const time = new Date(rawDate).getTime();
     const now = Date.now();
     if (Number.isNaN(time)) return false;
+    const itemDate = new Date(time);
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+    const tomorrowStart = new Date(todayStart);
+    tomorrowStart.setDate(tomorrowStart.getDate() + 1);
+    const yesterdayStart = new Date(todayStart);
+    yesterdayStart.setDate(yesterdayStart.getDate() - 1);
+    if (dateFilter === "today") return itemDate >= todayStart && itemDate < tomorrowStart;
+    if (dateFilter === "yesterday") return itemDate >= yesterdayStart && itemDate < todayStart;
     if (dateFilter === "day") return time >= now - 86400000;
     if (dateFilter === "week") return time >= now - 7 * 86400000;
     if (dateFilter === "month") return time >= now - 30 * 86400000;
@@ -1174,7 +1183,9 @@ export default function CrmModule({
         <div className="flex flex-wrap items-center gap-2">
           {[
             ["all", "All"],
-            ["day", "Day"],
+            ["today", "Today"],
+            ["yesterday", "Yesterday"],
+            ["day", "24h"],
             ["week", "Week"],
             ["month", "Month"],
             ["year", "Year"],
