@@ -44,7 +44,7 @@ function WhatsAppIcon({ className = "w-4 h-4" }) {
 }
 
 const PIPELINE_STAGES = [
-  { id: "contacted", label: "Contacted", color: "bg-cyan-500" },
+  { id: "contacted", label: "Meeting", color: "bg-cyan-500" },
   { id: "qualified", label: "Requirement & Qualified", color: "bg-indigo-500" },
   { id: "proposal", label: "Proposal / Quotation", color: "bg-purple-500" },
   { id: "negotiation", label: "Negotiation", color: "bg-amber-500" },
@@ -227,6 +227,7 @@ export default function CrmModule({
   onUpdateDealStage,
   onMarkLeadLost,
   onCreateDeal,
+  onOpenDirectWhatsapp,
   onOpenChatWithLead,
   onOpenChat,
   onRefresh,
@@ -342,6 +343,7 @@ export default function CrmModule({
     agenda: "Requirement discovery, budget, timeline, decision maker, and next action.",
   });
   const [copiedScript, setCopiedScript] = useState(false);
+  const [draggedDealId, setDraggedDealId] = useState(null);
   const [lostForm, setLostForm] = useState({
     stage: "contacted",
     reason: "Unresponsive after 3+ Follow-ups (Ghosted)",
@@ -602,6 +604,49 @@ export default function CrmModule({
     window.open(`https://wa.me/${cleanPhone}?text=${text}`, "_blank", "noopener,noreferrer");
   }
 
+  function getDealLead(deal) {
+    return leads.find((lead) => lead.id === deal?.lead_id) || null;
+  }
+
+  function getMeetingStartIso() {
+    const start = new Date(Date.now() + 2 * 60 * 60 * 1000);
+    start.setMinutes(start.getMinutes() < 30 ? 30 : 0, 0, 0);
+    if (start.getMinutes() === 0) start.setHours(start.getHours() + 1);
+    return start.toISOString();
+  }
+
+  function scheduleAutoMeetingForDeal(deal) {
+    if (!deal?.id) return;
+    const alreadyScheduled = salesMeetings.some((item) => item.deal_id === deal.id && !["cancelled", "completed", "no_show"].includes(item.status));
+    if (alreadyScheduled) return;
+    const lead = getDealLead(deal);
+    onCreateSalesMeeting?.({
+      title: `Client meeting: ${deal.title || lead?.name || "Sales deal"}`,
+      lead_id: deal.lead_id || null,
+      client_id: deal.client_id || null,
+      deal_id: deal.id,
+      meeting_type: "discovery",
+      scheduled_at: getMeetingStartIso(),
+      duration_minutes: 30,
+      meeting_link: "",
+      agenda: "Auto-created when deal entered Meeting stage. Confirm requirements, budget, timeline, and decision maker.",
+      status: "scheduled",
+    });
+  }
+
+  function openMeetingWhatsApp(deal) {
+    const lead = getDealLead(deal);
+    const contactName = lead?.name || deal.title || "there";
+    const message = `Hi ${contactName}, thanks for your interest in ${deal.service || lead?.service || "TexWeb Solution services"}. I have scheduled a quick discovery meeting to understand your requirement, budget, and timeline. Please confirm your available time.`;
+    if (onOpenDirectWhatsapp) {
+      onOpenDirectWhatsapp(lead?.phone || deal.phone, contactName, message);
+      return;
+    }
+    if (!lead?.phone) return;
+    const cleanPhone = lead.phone.replace(/[^0-9]/g, "");
+    window.open(`https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`, "_blank", "noopener,noreferrer");
+  }
+
   function openCommercialModal(type = "proposal") {
     setCommercialType(type);
     setCommercialForm((prev) => ({
@@ -792,15 +837,18 @@ export default function CrmModule({
     setShowAddDealModal(true);
   }
 
-  function handleCreateDealSubmit(e) {
+  async function handleCreateDealSubmit(e) {
     e.preventDefault();
     if (!newDealForm.title) return;
-    onCreateDeal?.({
+    const created = await onCreateDeal?.({
       ...newDealForm,
       deal_value: Number(newDealForm.deal_value) || 0,
       client_id: newDealForm.client_id || null,
       lead_id: newDealForm.lead_id || null,
     });
+    if ((created?.pipeline_stage || newDealForm.pipeline_stage) === "contacted") {
+      scheduleAutoMeetingForDeal(created || { ...newDealForm, id: null });
+    }
     setShowAddDealModal(false);
     setNewDealForm({
       title: "",
@@ -812,6 +860,26 @@ export default function CrmModule({
       expected_close_date: new Date(Date.now() + 30 * 86400000).toISOString().split("T")[0],
       notes: "",
     });
+  }
+
+  function handleDealStageChange(deal, nextStage, currentStage) {
+    if (!deal || nextStage === (deal.pipeline_stage || currentStage)) return;
+    if (nextStage === "closed_lost") {
+      openLostModal({ type: "deal", item: deal, stage: currentStage });
+      return;
+    }
+    onUpdateDealStage?.(deal.id, nextStage);
+    if (nextStage === "contacted") {
+      scheduleAutoMeetingForDeal({ ...deal, pipeline_stage: nextStage });
+    }
+  }
+
+  function handleDealDrop(stageId) {
+    if (!draggedDealId) return;
+    const deal = deals.find((item) => item.id === draggedDealId);
+    setDraggedDealId(null);
+    if (!deal) return;
+    handleDealStageChange(deal, stageId, deal.pipeline_stage || "contacted");
   }
 
   const crmActionButtons = (
@@ -1523,7 +1591,11 @@ export default function CrmModule({
             return (
               <div
                 key={col.id}
-                className="flex flex-col rounded-2xl bg-white dark:bg-[#18150f] border border-gray-100 dark:border-[#3a3020] p-3 shadow-2xs min-h-[350px]"
+                onDragOver={(e) => e.preventDefault()}
+                onDrop={() => handleDealDrop(col.id)}
+                className={`flex flex-col rounded-2xl bg-white dark:bg-[#18150f] border border-gray-100 dark:border-[#3a3020] p-3 shadow-2xs min-h-[350px] transition ${
+                  draggedDealId ? "ring-1 ring-orange-400/40" : ""
+                }`}
               >
                 <div className="flex items-center justify-between pb-2 border-b border-gray-100 dark:border-[#3a3020]">
                   <div className="flex items-center gap-2">
@@ -1557,7 +1629,10 @@ export default function CrmModule({
                   {colDeals.map((deal) => (
                     <div
                       key={deal.id}
-                      className="p-3 rounded-xl bg-gray-50 dark:bg-[#211d14] border border-gray-200/80 dark:border-[#3a3020] hover:border-orange-500 transition shadow-2xs space-y-1.5"
+                      draggable
+                      onDragStart={() => setDraggedDealId(deal.id)}
+                      onDragEnd={() => setDraggedDealId(null)}
+                      className="p-3 rounded-xl bg-gray-50 dark:bg-[#211d14] border border-gray-200/80 dark:border-[#3a3020] hover:border-orange-500 transition shadow-2xs space-y-1.5 cursor-grab active:cursor-grabbing"
                     >
                       <div className="font-semibold text-xs text-gray-900 dark:text-white line-clamp-1">
                         {deal.title}
@@ -1577,18 +1652,14 @@ export default function CrmModule({
                       {col.id !== "closed_won" && col.id !== "closed_lost" && (
                         <div className="flex items-center justify-between gap-1 pt-1.5 border-t border-gray-200/60 dark:border-[#3a3020]/60 mt-1.5">
                           <select
-                            value={deal.pipeline_stage || "new"}
+                            value={deal.pipeline_stage || "contacted"}
                             onChange={(e) => {
                               const nextStage = e.target.value;
-                              if (nextStage === "closed_lost") {
-                                openLostModal({ type: "deal", item: deal, stage: col.id });
-                              } else {
-                                onUpdateDealStage?.(deal.id, nextStage);
-                              }
+                              handleDealStageChange(deal, nextStage, col.id);
                             }}
                             className="text-[10px] bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded px-1.5 py-0.5 text-gray-700 dark:text-neutral-300 focus:outline-hidden"
                           >
-                            <option value="contacted">Contacted</option>
+                            <option value="contacted">Meeting</option>
                             <option value="qualified">Qualified</option>
                             <option value="proposal">Proposal</option>
                             <option value="negotiation">Negotiation</option>
@@ -1606,6 +1677,18 @@ export default function CrmModule({
                             <span>Lost</span>
                           </button>
                         </div>
+                      )}
+
+                      {col.id === "contacted" && (
+                        <button
+                          type="button"
+                          onClick={() => openMeetingWhatsApp(deal)}
+                          className="w-full mt-2 py-1 rounded-lg text-[10px] font-bold bg-emerald-600 text-white flex items-center justify-center gap-1 shadow-2xs"
+                          title="Send meeting confirmation on WhatsApp"
+                        >
+                          <WhatsAppIcon className="w-3 h-3" />
+                          <span>Send Meeting WhatsApp</span>
+                        </button>
                       )}
 
                       {col.id === "closed_won" && (
@@ -2269,7 +2352,7 @@ export default function CrmModule({
                     onChange={(e) => setNewDealForm({ ...newDealForm, pipeline_stage: e.target.value })}
                     className="w-full px-3 py-2 rounded-xl bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 font-medium focus:outline-hidden"
                   >
-                    <option value="contacted">Contacted</option>
+                    <option value="contacted">Meeting</option>
                     <option value="qualified">Requirement & Qualified</option>
                     <option value="proposal">Proposal / Quotation</option>
                     <option value="negotiation">Negotiation</option>
