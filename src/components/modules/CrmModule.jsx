@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo, useEffect } from "react";
+import { createPortal } from "react-dom";
 import {
   Search,
   Filter,
@@ -230,13 +231,23 @@ export default function CrmModule({
   onOpenChat,
   onRefresh,
   showViewTabs = false,
+  headerActionsSlotId = "",
 }) {
   const [viewMode, setViewMode] = useState(initialViewMode); // 'leads' or 'pipeline'
+  const [headerActionsTarget, setHeaderActionsTarget] = useState(null);
 
   // Sync viewMode when initialViewMode prop changes (e.g., clicking Leads vs Sales Pipeline in sidebar)
   useEffect(() => {
     if (initialViewMode) setViewMode(initialViewMode);
   }, [initialViewMode]);
+
+  useEffect(() => {
+    if (!headerActionsSlotId) {
+      setHeaderActionsTarget(null);
+      return;
+    }
+    setHeaderActionsTarget(document.getElementById(headerActionsSlotId));
+  }, [headerActionsSlotId, viewMode]);
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("active");
   const [dateFilter, setDateFilter] = useState("all");
@@ -786,10 +797,91 @@ export default function CrmModule({
     });
   }
 
+  const crmActionButtons = (
+    <>
+      <button
+        onClick={() => onRefresh?.()}
+        className="p-2 shrink-0 rounded-xl border border-gray-200 dark:border-slate-800 hover:bg-gray-50 dark:hover:bg-slate-800 text-gray-600 dark:text-neutral-300 transition cursor-pointer"
+        title="Refresh CRM"
+      >
+        <RefreshCw className="w-4 h-4" />
+      </button>
+
+      {viewMode === "leads" && (
+        <button
+          onClick={() => setShowMetaImportModal(true)}
+          className="flex shrink-0 items-center gap-1.5 px-3.5 py-2 rounded-xl bg-gradient-to-r from-purple-600 via-pink-600 to-amber-500 hover:opacity-90 text-white font-semibold text-xs transition shadow-sm cursor-pointer shadow-pink-500/20"
+          title="Import Meta Ads Leads (CSV or Webhook)"
+        >
+          <Sparkles className="w-4 h-4" />
+          <span>Import Meta Leads</span>
+        </button>
+      )}
+
+      {viewMode === "commercials" && (
+        <button
+          onClick={() => openCommercialModal("proposal")}
+          className="flex shrink-0 items-center gap-1.5 px-3.5 py-2 rounded-xl border border-orange-200 bg-orange-50 text-orange-700 hover:bg-orange-100 font-semibold text-xs transition shadow-sm cursor-pointer"
+        >
+          <FileText className="w-4 h-4" />
+          <span>Proposal + Agreement</span>
+        </button>
+      )}
+
+      {viewMode === "followups" && (
+        <button
+          onClick={() => setShowFollowUpModal(true)}
+          className="flex shrink-0 items-center gap-1.5 px-3.5 py-2 rounded-xl border border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100 font-semibold text-xs transition shadow-sm cursor-pointer"
+        >
+          <Phone className="w-4 h-4" />
+          <span>Follow-up</span>
+        </button>
+      )}
+
+      {viewMode === "sales_meetings" && (
+        <button
+          onClick={() => setShowSalesMeetingModal(true)}
+          className="flex shrink-0 items-center gap-1.5 px-3.5 py-2 rounded-xl border border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 font-semibold text-xs transition shadow-sm cursor-pointer"
+        >
+          <Calendar className="w-4 h-4" />
+          <span>Meeting</span>
+        </button>
+      )}
+
+      {viewMode === "pipeline" ? (
+        <button
+          type="button"
+          onClick={() => openAddDealModal("contacted")}
+          className="flex shrink-0 items-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs transition shadow-sm cursor-pointer"
+        >
+          <Plus className="w-4 h-4" />
+          <span>New Deal</span>
+        </button>
+      ) : viewMode === "leads" ? (
+        <button
+          type="button"
+          onClick={() => setShowAddLeadModal(true)}
+          className="flex shrink-0 items-center gap-1.5 px-3.5 py-2 rounded-xl bg-orange-600 hover:bg-orange-700 text-white font-semibold text-xs transition shadow-sm cursor-pointer"
+        >
+          <Plus className="w-4 h-4" />
+          <span>Add Lead</span>
+        </button>
+      ) : null}
+    </>
+  );
+
   return (
     <div className="space-y-6">
+      {headerActionsTarget
+        ? createPortal(
+            <div className="flex items-center justify-end gap-2 shrink-0 flex-nowrap whitespace-nowrap">
+              {crmActionButtons}
+            </div>,
+            headerActionsTarget
+          )
+        : null}
       {/* 1. Header & Actions */}
-      <div className="flex items-center justify-end gap-2 overflow-x-auto no-scrollbar whitespace-nowrap">
+      <div className={`${headerActionsTarget ? "hidden" : "flex"} items-center justify-end gap-2 overflow-x-auto no-scrollbar whitespace-nowrap`}>
           {/* View Mode Toggle */}
           {showViewTabs && (
           <div className="flex shrink-0 p-1 rounded-xl bg-gray-100 dark:bg-slate-800 border border-gray-200 dark:border-slate-700">
@@ -846,74 +938,7 @@ export default function CrmModule({
           </div>
           )}
 
-          <button
-            onClick={() => onRefresh?.()}
-            className="p-2 shrink-0 rounded-xl border border-gray-200 dark:border-slate-800 hover:bg-gray-50 dark:hover:bg-slate-800 text-gray-600 dark:text-neutral-300 transition cursor-pointer"
-            title="Refresh CRM"
-          >
-            <RefreshCw className="w-4 h-4" />
-          </button>
-
-          {viewMode === "leads" && (
-          <button
-            onClick={() => setShowMetaImportModal(true)}
-            className="flex shrink-0 items-center gap-1.5 px-3.5 py-2 rounded-xl bg-gradient-to-r from-purple-600 via-pink-600 to-amber-500 hover:opacity-90 text-white font-semibold text-xs transition shadow-sm cursor-pointer shadow-pink-500/20"
-            title="Import Meta Ads Leads (CSV or Webhook)"
-          >
-            <Sparkles className="w-4 h-4" />
-            <span>Import Meta Leads</span>
-          </button>
-          )}
-
-          {viewMode === "commercials" && (
-          <button
-            onClick={() => openCommercialModal("proposal")}
-            className="flex shrink-0 items-center gap-1.5 px-3.5 py-2 rounded-xl border border-orange-200 bg-orange-50 text-orange-700 hover:bg-orange-100 font-semibold text-xs transition shadow-sm cursor-pointer"
-          >
-            <FileText className="w-4 h-4" />
-            <span>Proposal + Agreement</span>
-          </button>
-          )}
-
-          {viewMode === "followups" && (
-          <button
-            onClick={() => setShowFollowUpModal(true)}
-            className="flex shrink-0 items-center gap-1.5 px-3.5 py-2 rounded-xl border border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100 font-semibold text-xs transition shadow-sm cursor-pointer"
-          >
-            <Phone className="w-4 h-4" />
-            <span>Follow-up</span>
-          </button>
-          )}
-
-          {viewMode === "sales_meetings" && (
-          <button
-            onClick={() => setShowSalesMeetingModal(true)}
-            className="flex shrink-0 items-center gap-1.5 px-3.5 py-2 rounded-xl border border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 font-semibold text-xs transition shadow-sm cursor-pointer"
-          >
-            <Calendar className="w-4 h-4" />
-            <span>Meeting</span>
-          </button>
-          )}
-
-          {viewMode === "pipeline" ? (
-            <button
-              type="button"
-              onClick={() => openAddDealModal("contacted")}
-              className="flex shrink-0 items-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs transition shadow-sm cursor-pointer"
-            >
-              <Plus className="w-4 h-4" />
-              <span>New Deal</span>
-            </button>
-          ) : viewMode === "leads" ? (
-            <button
-              type="button"
-              onClick={() => setShowAddLeadModal(true)}
-              className="flex shrink-0 items-center gap-1.5 px-3.5 py-2 rounded-xl bg-orange-600 hover:bg-orange-700 text-white font-semibold text-xs transition shadow-sm cursor-pointer"
-            >
-              <Plus className="w-4 h-4" />
-              <span>Add Lead</span>
-            </button>
-          ) : null}
+          {crmActionButtons}
       </div>
 
       {viewMode === "reports" && (

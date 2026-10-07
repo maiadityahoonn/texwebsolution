@@ -8177,7 +8177,7 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
                   </div>
 
                   {/* Header Action Buttons (Context-Aware) */}
-                  <div className="flex min-w-0 max-w-[58vw] items-center justify-end gap-2 shrink-0 flex-nowrap overflow-x-auto no-scrollbar whitespace-nowrap">
+                  <div className="flex min-w-0 max-w-[68vw] items-center justify-end gap-2 shrink-0 flex-nowrap overflow-x-auto no-scrollbar whitespace-nowrap">
                     <button
                       onClick={() => setNotificationModalOpen(true)}
                       className="relative shrink-0 p-2.5 rounded-xl text-gray-500 hover:text-gray-900 dark:text-slate-400 dark:hover:text-white bg-gray-100/80 hover:bg-gray-200/80 dark:bg-slate-800 dark:hover:bg-slate-700 border border-gray-200 dark:border-slate-700 shadow-2xs transition cursor-pointer"
@@ -8202,6 +8202,9 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
                         Ctrl K
                       </kbd>
                     </button>
+                    {(activeSection === "crm" || activeSection === "pipeline" || activeSection === "sales_followups" || activeSection === "sales_meetings" || activeSection === "sales_reports" || activeSection === "sales_commercials" || activeSection === "agreements") && (
+                      <div id="crm-header-actions" className="flex items-center justify-end gap-2 shrink-0 flex-nowrap whitespace-nowrap" />
+                    )}
                     {activeSection === "overview" && isAdminRole && (
                       <>
                         <button
@@ -12401,6 +12404,7 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
                   agreements={agreements}
                   followUps={salesFollowUps}
                   salesMeetings={salesMeetings}
+                  headerActionsSlotId="crm-header-actions"
                   onUpdateLeadStatus={async (id, status) => {
                     await updateCloudLeadStatus(id, status);
                     setLeads((prev) => prev.map((l) => (l.id === id ? { ...l, status } : l)));
