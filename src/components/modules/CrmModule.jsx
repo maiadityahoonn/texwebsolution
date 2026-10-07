@@ -203,6 +203,7 @@ export default function CrmModule({
   proposals = [],
   quotations = [],
   agreements = [],
+  invoices = [],
   followUps = [],
   salesMeetings = [],
   initialViewMode = "leads",
@@ -459,6 +460,25 @@ export default function CrmModule({
       );
     });
   }, [agreements, clients, commercialScope, customDateRange.from, customDateRange.to, dateFilter, proposals, query, quotations, selectedDate]);
+
+  function getLatestLinkedDoc(items, deal) {
+    if (!deal) return null;
+    return items
+      .filter((item) => item.deal_id === deal.id || (deal.client_id && item.client_id === deal.client_id))
+      .sort((a, b) => new Date(b.sent_at || b.signed_at || b.paid_at || b.created_at || 0).getTime() - new Date(a.sent_at || a.signed_at || a.paid_at || a.created_at || 0).getTime())[0] || null;
+  }
+
+  function getDocStatusBadge(label, doc) {
+    const status = String(doc?.status || "").toLowerCase();
+    if (!doc || !status || status === "draft") return null;
+    const displayStatus = status.replace(/_/g, " ");
+    const tone = ["paid", "signed", "accepted"].includes(status)
+      ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-300"
+      : ["rejected", "declined", "cancelled", "overdue"].includes(status)
+      ? "bg-rose-50 text-rose-700 dark:bg-rose-950/30 dark:text-rose-300"
+      : "bg-blue-50 text-blue-700 dark:bg-blue-950/30 dark:text-blue-300";
+    return { label: `${label} ${displayStatus}`, tone };
+  }
 
   const filteredFollowUps = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -1718,6 +1738,14 @@ export default function CrmModule({
                       .filter((item) => item.deal_id === deal.id && item.status === "pending")
                       .sort((a, b) => new Date(a.due_at || 0).getTime() - new Date(b.due_at || 0).getTime());
                     const nextFollowUp = dealFollowUps[0];
+                    const latestQuotation = getLatestLinkedDoc([...proposals, ...quotations], deal);
+                    const latestAgreement = getLatestLinkedDoc(agreements, deal);
+                    const latestInvoice = getLatestLinkedDoc(invoices, deal);
+                    const docBadges = [
+                      getDocStatusBadge("Quotation", latestQuotation),
+                      getDocStatusBadge("Agreement", latestAgreement),
+                      getDocStatusBadge("Invoice", latestInvoice),
+                    ].filter(Boolean);
 
                     return (
                     <div
@@ -1754,6 +1782,18 @@ export default function CrmModule({
                       {deal.loss_reason && col.id === "closed_lost" && (
                         <div className="text-[10px] text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/40 p-1.5 rounded-lg border border-red-200/50 mt-1 line-clamp-2">
                           {deal.loss_reason}
+                        </div>
+                      )}
+                      {docBadges.length > 0 && (
+                        <div className="flex flex-wrap gap-1">
+                          {docBadges.map((badge) => (
+                            <span
+                              key={badge.label}
+                              className={`px-1.5 py-0.5 rounded-full text-[9px] font-bold capitalize ${badge.tone}`}
+                            >
+                              {badge.label}
+                            </span>
+                          ))}
                         </div>
                       )}
 

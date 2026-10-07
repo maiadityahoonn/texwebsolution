@@ -12468,6 +12468,7 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
                   proposals={proposals}
                   quotations={quotations}
                   agreements={agreements}
+                  invoices={invoicesList}
                   followUps={salesFollowUps}
                   salesMeetings={salesMeetings}
                   headerActionsSlotId="crm-header-actions"
