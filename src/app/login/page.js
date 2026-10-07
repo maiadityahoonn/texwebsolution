@@ -4240,6 +4240,48 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
   }, [salesFollowUps, sessionUser?.id]);
 
   useEffect(() => {
+    if (!sessionUser?.id) return undefined;
+
+    const storageKey = `texweb_sales_meeting_10min_alerted_${sessionUser.id}`;
+    const checkUpcomingSalesMeetings = () => {
+      const now = Date.now();
+      const upcoming = salesMeetings.filter((item) => {
+        if (item.status !== "scheduled" || !item.scheduled_at) return false;
+        const startsAt = new Date(item.scheduled_at).getTime();
+        const diff = startsAt - now;
+        return diff <= 10 * 60 * 1000 && diff > 0;
+      });
+      if (!upcoming.length) return;
+
+      let alerted = [];
+      try {
+        alerted = JSON.parse(localStorage.getItem(storageKey) || "[]");
+      } catch {
+        alerted = [];
+      }
+      const alertedSet = new Set(alerted);
+      const fresh = upcoming.filter((item) => !alertedSet.has(`${item.id}:${item.scheduled_at}`));
+      if (!fresh.length) return;
+
+      const first = fresh[0];
+      const title = fresh.length === 1 ? "Client meeting in 10 minutes" : `${fresh.length} client meetings soon`;
+      const message = fresh.length === 1
+        ? `${first.title || "Sales meeting"} starts at ${new Date(first.scheduled_at).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })}. Send WhatsApp or call the client now.`
+        : "Open Sales Meetings and confirm clients on WhatsApp/call.";
+      pushLiveSalesNotification(title, message, "meeting", "/login?section=sales_meetings");
+
+      const nextAlerted = Array.from(new Set([...alerted, ...fresh.map((item) => `${item.id}:${item.scheduled_at}`)])).slice(-300);
+      try {
+        localStorage.setItem(storageKey, JSON.stringify(nextAlerted));
+      } catch {}
+    };
+
+    checkUpcomingSalesMeetings();
+    const timer = setInterval(checkUpcomingSalesMeetings, 60_000);
+    return () => clearInterval(timer);
+  }, [salesMeetings, sessionUser?.id]);
+
+  useEffect(() => {
     if (!sessionUser || !selectedBatch?.id) return undefined;
     let cancelled = false;
     async function loadSelectedBatchWorkspace() {

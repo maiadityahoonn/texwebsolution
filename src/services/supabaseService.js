@@ -2006,8 +2006,14 @@ export async function getDeals() {
       .order('created_at', { ascending: false });
 
     if (error) throw error;
-    writeLocalCache(LOCAL_DEALS_KEY, data || []);
-    return data || [];
+    const localDeals = readLocalCache(LOCAL_DEALS_KEY, []);
+    const cloudDeals = data || [];
+    const mergedDeals = [
+      ...cloudDeals,
+      ...localDeals.filter((localDeal) => !cloudDeals.some((cloudDeal) => cloudDeal.id === localDeal.id)),
+    ];
+    writeLocalCache(LOCAL_DEALS_KEY, mergedDeals);
+    return mergedDeals;
   } catch (err) {
     console.warn('Fallback: getDeals from cache:', err.message);
     return readLocalCache(LOCAL_DEALS_KEY, [
@@ -2039,13 +2045,25 @@ export async function getDeals() {
 
 export async function createDeal(dealData) {
   try {
+    const insertPayload = {
+      title: dealData.title,
+      client_id: dealData.client_id || null,
+      lead_id: dealData.lead_id || null,
+      pipeline_stage: dealData.pipeline_stage || 'contacted',
+      deal_value: Number(dealData.deal_value || dealData.value) || 0,
+      service: dealData.service || 'Web Development',
+      assigned_to: dealData.assigned_to || null,
+      expected_close_date: dealData.expected_close_date || null,
+      loss_reason: dealData.loss_reason || null,
+      notes: dealData.notes || '',
+    };
     const { data, error } = await supabase
       .from('deals')
-      .insert([dealData])
+      .insert([insertPayload])
       .select();
 
     if (error) throw error;
-    const created = data?.[0] || dealData;
+    const created = { ...dealData, ...(data?.[0] || insertPayload) };
     const current = readLocalCache(LOCAL_DEALS_KEY, []);
     writeLocalCache(LOCAL_DEALS_KEY, [created, ...current]);
     return created;

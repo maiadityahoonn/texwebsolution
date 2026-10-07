@@ -266,9 +266,11 @@ export default function CrmModule({
   const [showSalesMeetingModal, setShowSalesMeetingModal] = useState(false);
   const [showRescheduleModal, setShowRescheduleModal] = useState(false);
   const [rescheduleTarget, setRescheduleTarget] = useState(null);
+  const [salesMeetingRescheduleTarget, setSalesMeetingRescheduleTarget] = useState(null);
   const [rescheduleForm, setRescheduleForm] = useState({
     due_at: new Date(Date.now() + 86400000).toISOString().slice(0, 16),
     notes: "",
+    meeting_link: "",
   });
   const [showLostModal, setShowLostModal] = useState(false);
   const [lostTarget, setLostTarget] = useState(null);
@@ -282,7 +284,8 @@ export default function CrmModule({
     pipeline_stage: "contacted",
     deal_value: "100000",
     service: "Web Development",
-    expected_close_date: new Date(Date.now() + 30 * 86400000).toISOString().split("T")[0],
+    meeting_scheduled_at: new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString().slice(0, 16),
+    meeting_link: "https://meet.google.com/new",
     notes: "",
   });
   const [newLeadForm, setNewLeadForm] = useState({
@@ -608,7 +611,8 @@ export default function CrmModule({
     return leads.find((lead) => lead.id === deal?.lead_id) || null;
   }
 
-  function getMeetingStartIso() {
+  function getMeetingStartIso(rawValue = "") {
+    if (rawValue) return new Date(rawValue).toISOString();
     const start = new Date(Date.now() + 2 * 60 * 60 * 1000);
     start.setMinutes(start.getMinutes() < 30 ? 30 : 0, 0, 0);
     if (start.getMinutes() === 0) start.setHours(start.getHours() + 1);
@@ -626,9 +630,9 @@ export default function CrmModule({
       client_id: deal.client_id || null,
       deal_id: deal.id,
       meeting_type: "discovery",
-      scheduled_at: getMeetingStartIso(),
+      scheduled_at: deal.meeting_scheduled_at ? new Date(deal.meeting_scheduled_at).toISOString() : getMeetingStartIso(),
       duration_minutes: 30,
-      meeting_link: "",
+      meeting_link: deal.meeting_link || "https://meet.google.com/new",
       agenda: "Auto-created when deal entered Meeting stage. Confirm requirements, budget, timeline, and decision maker.",
       status: "scheduled",
     });
@@ -734,15 +738,39 @@ export default function CrmModule({
 
   function openRescheduleModal(item) {
     setRescheduleTarget(item);
+    setSalesMeetingRescheduleTarget(null);
     setRescheduleForm({
       due_at: new Date(Date.now() + 86400000).toISOString().slice(0, 16),
       notes: item.notes || "",
+      meeting_link: "",
+    });
+    setShowRescheduleModal(true);
+  }
+
+  function openSalesMeetingRescheduleModal(item) {
+    setSalesMeetingRescheduleTarget(item);
+    setRescheduleTarget(null);
+    setRescheduleForm({
+      due_at: item.scheduled_at ? new Date(item.scheduled_at).toISOString().slice(0, 16) : new Date(Date.now() + 86400000).toISOString().slice(0, 16),
+      notes: item.agenda || item.outcome || "",
+      meeting_link: item.meeting_link || "https://meet.google.com/new",
     });
     setShowRescheduleModal(true);
   }
 
   function handleRescheduleSubmit(e) {
     e.preventDefault();
+    if (salesMeetingRescheduleTarget) {
+      onUpdateSalesMeeting?.(salesMeetingRescheduleTarget.id, {
+        status: "scheduled",
+        scheduled_at: new Date(rescheduleForm.due_at).toISOString(),
+        meeting_link: rescheduleForm.meeting_link || salesMeetingRescheduleTarget.meeting_link || "",
+        agenda: rescheduleForm.notes || salesMeetingRescheduleTarget.agenda || "",
+      });
+      setShowRescheduleModal(false);
+      setSalesMeetingRescheduleTarget(null);
+      return;
+    }
     if (!rescheduleTarget || !rescheduleForm.due_at) return;
     onUpdateFollowUp?.(rescheduleTarget.id, {
       status: "pending",
@@ -831,7 +859,8 @@ export default function CrmModule({
       pipeline_stage: initialStage,
       deal_value: "100000",
       service: lead?.service || "Web Development",
-      expected_close_date: new Date(Date.now() + 30 * 86400000).toISOString().split("T")[0],
+      meeting_scheduled_at: new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString().slice(0, 16),
+      meeting_link: "https://meet.google.com/new",
       notes: lead ? `Created from lead: ${lead.name} (${lead.phone || ""})` : "",
     });
     setShowAddDealModal(true);
@@ -845,6 +874,12 @@ export default function CrmModule({
       deal_value: Number(newDealForm.deal_value) || 0,
       client_id: newDealForm.client_id || null,
       lead_id: newDealForm.lead_id || null,
+      expected_close_date: newDealForm.meeting_scheduled_at ? newDealForm.meeting_scheduled_at.slice(0, 10) : null,
+      notes: [
+        newDealForm.notes,
+        newDealForm.meeting_scheduled_at ? `Meeting scheduled: ${new Date(newDealForm.meeting_scheduled_at).toLocaleString("en-IN")}` : null,
+        newDealForm.meeting_link ? `Google Meet: ${newDealForm.meeting_link}` : null,
+      ].filter(Boolean).join("\n"),
     });
     if ((created?.pipeline_stage || newDealForm.pipeline_stage) === "contacted") {
       scheduleAutoMeetingForDeal(created || { ...newDealForm, id: null });
@@ -857,7 +892,8 @@ export default function CrmModule({
       pipeline_stage: "contacted",
       deal_value: "100000",
       service: "Web Development",
-      expected_close_date: new Date(Date.now() + 30 * 86400000).toISOString().split("T")[0],
+      meeting_scheduled_at: new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString().slice(0, 16),
+      meeting_link: "https://meet.google.com/new",
       notes: "",
     });
   }
@@ -1643,6 +1679,16 @@ export default function CrmModule({
                       <div className="text-[10px] text-gray-500 dark:text-neutral-400">
                         {deal.service || "Tech Development"}
                       </div>
+                      {deal.notes && (
+                        <div className="text-[10px] text-gray-500 dark:text-neutral-400 bg-white/60 dark:bg-slate-900/40 p-1.5 rounded-lg line-clamp-3">
+                          {deal.notes}
+                        </div>
+                      )}
+                      {col.id === "contacted" && (
+                        <div className="text-[10px] text-blue-600 dark:text-blue-300 bg-blue-50 dark:bg-blue-950/30 p-1.5 rounded-lg">
+                          Meeting: {deal.meeting_scheduled_at ? new Date(deal.meeting_scheduled_at).toLocaleString("en-IN") : deal.expected_close_date || "Scheduled automatically"}
+                        </div>
+                      )}
                       {deal.loss_reason && col.id === "closed_lost" && (
                         <div className="text-[10px] text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/40 p-1.5 rounded-lg border border-red-200/50 mt-1 line-clamp-2">
                           {deal.loss_reason}
@@ -1974,6 +2020,20 @@ export default function CrmModule({
                         </td>
                         <td className="py-3.5 px-4 text-right">
                           <div className="flex justify-end gap-2">
+                            {lead?.phone && (
+                              <>
+                                <button
+                                  type="button"
+                                  onClick={() => handleWhatsAppClick(lead)}
+                                  className="px-2.5 py-1 rounded-lg text-xs font-bold bg-emerald-50 text-emerald-700 hover:bg-emerald-100 transition"
+                                >
+                                  WhatsApp
+                                </button>
+                                <a href={`tel:${lead.phone}`} className="px-2.5 py-1 rounded-lg text-xs font-bold bg-orange-50 text-orange-700 hover:bg-orange-100 transition">
+                                  Call
+                                </a>
+                              </>
+                            )}
                             {item.meeting_link && (
                               <a href={item.meeting_link} target="_blank" rel="noreferrer" className="px-2.5 py-1 rounded-lg text-xs font-bold bg-blue-600 hover:bg-blue-700 text-white transition">
                                 Join
@@ -1995,6 +2055,12 @@ export default function CrmModule({
                             </a>
                             {item.status === "scheduled" && (
                               <>
+                                <button
+                                  onClick={() => openSalesMeetingRescheduleModal(item)}
+                                  className="px-2.5 py-1 rounded-lg text-xs font-bold bg-amber-50 text-amber-700 hover:bg-amber-100 transition"
+                                >
+                                  Reschedule
+                                </button>
                                 <button
                                   onClick={() => onUpdateSalesMeeting?.(item.id, { status: "completed", outcome: item.outcome || "Meeting completed. Follow-up required." })}
                                   className="px-2.5 py-1 rounded-lg text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white transition"
@@ -2327,10 +2393,10 @@ export default function CrmModule({
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block font-bold mb-1 text-gray-700 dark:text-neutral-300">
-                    Deal Value (₹ INR) *
+                    Average Deal Value (INR) *
                   </label>
                   <div className="relative">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 font-bold">₹</span>
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 font-bold">Rs.</span>
                     <input
                       type="number"
                       required
@@ -2338,7 +2404,7 @@ export default function CrmModule({
                       value={newDealForm.deal_value}
                       onChange={(e) => setNewDealForm({ ...newDealForm, deal_value: e.target.value })}
                       placeholder="100000"
-                      className="w-full pl-7 pr-3 py-2 rounded-xl bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 font-mono font-bold text-gray-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-emerald-500"
+                      className="w-full pl-10 pr-3 py-2 rounded-xl bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 font-mono font-bold text-gray-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-emerald-500"
                     />
                   </div>
                 </div>
@@ -2372,52 +2438,72 @@ export default function CrmModule({
                     className="w-full px-3 py-2 rounded-xl bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 focus:outline-hidden"
                   >
                     <option value="Web Development">Web Development</option>
-                    <option value="Customized Software">Customized Software</option>
-                    <option value="Prebuilt SaaS">Prebuilt SaaS</option>
-                    <option value="AI Automation">AI Automation</option>
-                    <option value="Digital Marketing">Digital Marketing</option>
-                    <option value="Mobile App">Mobile App</option>
+                    <option value="App Development">App Development</option>
+                    <option value="SEO">SEO</option>
+                    <option value="GMB">GMB</option>
+                    <option value="Meta Ads">Meta Ads</option>
+                    <option value="Google Ads">Google Ads</option>
+                    <option value="SMM">SMM</option>
+                    <option value="Custom">Custom</option>
                   </select>
                 </div>
 
                 <div>
                   <label className="block font-medium mb-1 text-gray-700 dark:text-neutral-300">
-                    Expected Close Date
+                    Meeting Date & Time
                   </label>
                   <input
-                    type="date"
-                    value={newDealForm.expected_close_date}
-                    onChange={(e) => setNewDealForm({ ...newDealForm, expected_close_date: e.target.value })}
+                    type="datetime-local"
+                    value={newDealForm.meeting_scheduled_at}
+                    onChange={(e) => setNewDealForm({ ...newDealForm, meeting_scheduled_at: e.target.value })}
                     className="w-full px-3 py-2 rounded-xl bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 focus:outline-hidden"
                   />
                 </div>
               </div>
 
+              <div>
+                <label className="block font-medium mb-1 text-gray-700 dark:text-neutral-300">
+                  Google Meet Link
+                </label>
+                <input
+                  type="url"
+                  value={newDealForm.meeting_link}
+                  onChange={(e) => setNewDealForm({ ...newDealForm, meeting_link: e.target.value })}
+                  placeholder="https://meet.google.com/..."
+                  className="w-full px-3 py-2 rounded-xl bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 focus:outline-hidden"
+                />
+              </div>
+
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="block font-medium mb-1 text-gray-700 dark:text-neutral-300">
-                    Link to Inbound Lead (Optional)
-                  </label>
-                  <select
-                    value={newDealForm.lead_id}
-                    onChange={(e) => {
-                      const selId = e.target.value;
-                      const matchedLead = leads.find((l) => l.id === selId);
-                      setNewDealForm({
-                        ...newDealForm,
-                        lead_id: selId,
-                        title: newDealForm.title || (matchedLead ? `${matchedLead.name} - ${matchedLead.service || "Project"}` : ""),
-                      });
-                    }}
-                    className="w-full px-3 py-2 rounded-xl bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 focus:outline-hidden truncate"
-                  >
-                    <option value="">-- No Linked Lead --</option>
-                    {leads.map((l) => (
-                      <option key={l.id} value={l.id}>
-                        {l.name} ({l.service || "Inquiry"})
-                      </option>
-                    ))}
-                  </select>
+                  <label className="block font-medium mb-1 text-gray-700 dark:text-neutral-300">Linked Lead</label>
+                  {newDealForm.lead_id ? (
+                    <div className="px-3 py-2 rounded-xl bg-gray-100 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 text-gray-700 dark:text-neutral-200 font-semibold">
+                      {leads.find((l) => l.id === newDealForm.lead_id)?.name || "Selected lead"} · read only
+                    </div>
+                  ) : (
+                    <select
+                      value={newDealForm.lead_id}
+                      onChange={(e) => {
+                        const selId = e.target.value;
+                        const matchedLead = leads.find((l) => l.id === selId);
+                        setNewDealForm({
+                          ...newDealForm,
+                          lead_id: selId,
+                          title: newDealForm.title || (matchedLead ? `${matchedLead.name} - ${matchedLead.service || "Project"}` : ""),
+                          service: matchedLead?.service || newDealForm.service,
+                        });
+                      }}
+                      className="w-full px-3 py-2 rounded-xl bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 focus:outline-hidden truncate"
+                    >
+                      <option value="">-- No Linked Lead --</option>
+                      {leads.map((l) => (
+                        <option key={l.id} value={l.id}>
+                          {l.name} ({l.service || "Inquiry"})
+                        </option>
+                      ))}
+                    </select>
+                  )}
                 </div>
 
                 <div>
@@ -2721,19 +2807,21 @@ export default function CrmModule({
         </div>
       )}
 
-      {showRescheduleModal && rescheduleTarget && (
+      {showRescheduleModal && (rescheduleTarget || salesMeetingRescheduleTarget) && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
           <form onSubmit={handleRescheduleSubmit} className="w-full max-w-lg rounded-2xl bg-white dark:bg-[#18150f] border border-gray-200 dark:border-[#3a3020] shadow-2xl p-5 space-y-4">
             <div className="flex items-center justify-between border-b border-gray-100 dark:border-[#3a3020] pb-3">
               <div>
-                <h3 className="font-bold text-base text-gray-900 dark:text-white">Reschedule Follow-up</h3>
-                <p className="text-xs text-gray-500 dark:text-neutral-400 mt-0.5">{rescheduleTarget.title}</p>
+                <h3 className="font-bold text-base text-gray-900 dark:text-white">
+                  {salesMeetingRescheduleTarget ? "Reschedule Meeting" : "Reschedule Follow-up"}
+                </h3>
+                <p className="text-xs text-gray-500 dark:text-neutral-400 mt-0.5">{(salesMeetingRescheduleTarget || rescheduleTarget)?.title}</p>
               </div>
               <button type="button" onClick={() => setShowRescheduleModal(false)} className="p-1 rounded-lg text-gray-400"><X className="w-4 h-4" /></button>
             </div>
             <div className="space-y-3 text-xs">
               <div>
-                <label className="block font-medium mb-1">New Due Date & Time *</label>
+                <label className="block font-medium mb-1">{salesMeetingRescheduleTarget ? "New Meeting Date & Time *" : "New Due Date & Time *"}</label>
                 <input
                   type="datetime-local"
                   required
@@ -2742,6 +2830,17 @@ export default function CrmModule({
                   className="w-full px-3 py-2 rounded-xl bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700"
                 />
               </div>
+              {salesMeetingRescheduleTarget && (
+                <div>
+                  <label className="block font-medium mb-1">Google Meet Link</label>
+                  <input
+                    type="url"
+                    value={rescheduleForm.meeting_link}
+                    onChange={(e) => setRescheduleForm({ ...rescheduleForm, meeting_link: e.target.value })}
+                    className="w-full px-3 py-2 rounded-xl bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700"
+                  />
+                </div>
+              )}
               <div>
                 <label className="block font-medium mb-1">Notes</label>
                 <textarea
@@ -3177,3 +3276,4 @@ export default function CrmModule({
     </div>
   );
 }
+
