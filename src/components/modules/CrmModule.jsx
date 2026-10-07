@@ -255,6 +255,7 @@ export default function CrmModule({
     from: "",
     to: "",
   });
+  const [selectedDate, setSelectedDate] = useState(() => new Date().toISOString().split("T")[0]);
   const [selectedLead, setSelectedLead] = useState(null);
   const [showAddLeadModal, setShowAddLeadModal] = useState(false);
   const [showAddDealModal, setShowAddDealModal] = useState(false);
@@ -365,6 +366,13 @@ export default function CrmModule({
     yesterdayStart.setDate(yesterdayStart.getDate() - 1);
     if (dateFilter === "today") return itemDate >= todayStart && itemDate < tomorrowStart;
     if (dateFilter === "yesterday") return itemDate >= yesterdayStart && itemDate < todayStart;
+    if (dateFilter === "date") {
+      if (!selectedDate) return true;
+      const selectedStart = new Date(`${selectedDate}T00:00:00`);
+      const selectedEnd = new Date(selectedStart);
+      selectedEnd.setDate(selectedEnd.getDate() + 1);
+      return itemDate >= selectedStart && itemDate < selectedEnd;
+    }
     if (dateFilter === "day") return time >= now - 86400000;
     if (dateFilter === "week") return time >= now - 7 * 86400000;
     if (dateFilter === "month") return time >= now - 30 * 86400000;
@@ -396,7 +404,7 @@ export default function CrmModule({
         );
       return matchStatus && matchQuery && matchDate;
     });
-  }, [customDateRange.from, customDateRange.to, dateFilter, deals, leads, query, statusFilter]);
+  }, [customDateRange.from, customDateRange.to, dateFilter, deals, leads, query, selectedDate, statusFilter]);
 
   // Aggregate Metrics
   const stats = useMemo(() => {
@@ -435,7 +443,7 @@ export default function CrmModule({
           .some((value) => String(value || "").toLowerCase().includes(q))
       );
     });
-  }, [agreements, clients, commercialScope, customDateRange.from, customDateRange.to, dateFilter, proposals, query, quotations]);
+  }, [agreements, clients, commercialScope, customDateRange.from, customDateRange.to, dateFilter, proposals, query, quotations, selectedDate]);
 
   const filteredFollowUps = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -446,7 +454,7 @@ export default function CrmModule({
       return !q || [item.title, item.channel, item.status, item.notes, lead?.name, client?.name]
         .some((value) => String(value || "").toLowerCase().includes(q));
     });
-  }, [clients, customDateRange.from, customDateRange.to, dateFilter, followUps, leads, query]);
+  }, [clients, customDateRange.from, customDateRange.to, dateFilter, followUps, leads, query, selectedDate]);
 
   const filteredSalesMeetings = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -457,7 +465,7 @@ export default function CrmModule({
       return !q || [item.title, item.meeting_type, item.status, item.agenda, lead?.name, client?.name]
         .some((value) => String(value || "").toLowerCase().includes(q));
     });
-  }, [clients, customDateRange.from, customDateRange.to, dateFilter, leads, query, salesMeetings]);
+  }, [clients, customDateRange.from, customDateRange.to, dateFilter, leads, query, salesMeetings, selectedDate]);
 
   const archivedDeals = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -467,7 +475,7 @@ export default function CrmModule({
         .some((value) => String(value || "").toLowerCase().includes(q));
       return isArchived && matchQuery && matchesDateFilter(deal, "updated_at");
     });
-  }, [customDateRange.from, customDateRange.to, dateFilter, deals, query]);
+  }, [customDateRange.from, customDateRange.to, dateFilter, deals, query, selectedDate]);
 
   const aiInsights = useMemo(() => {
     const openLeads = leads.filter((lead) => !["Converted", "Lost"].includes(lead.status) && !deals.some((deal) => deal.lead_id === lead.id));
@@ -517,7 +525,7 @@ export default function CrmModule({
       conversionRate,
       sourceRows: Array.from(sourceMap.values()).sort((a, b) => b.value - a.value).slice(0, 5),
     };
-  }, [customDateRange.from, customDateRange.to, dateFilter, deals, followUps, leads]);
+  }, [customDateRange.from, customDateRange.to, dateFilter, deals, followUps, leads, selectedDate]);
 
   const selectedLeadActivity = useMemo(() => {
     if (!selectedLead?.id) return { followUps: [], meetings: [], deals: [], summary: "" };
@@ -1185,6 +1193,7 @@ export default function CrmModule({
             ["all", "All"],
             ["today", "Today"],
             ["yesterday", "Yesterday"],
+            ["date", "Date"],
             ["day", "24h"],
             ["week", "Week"],
             ["month", "Month"],
@@ -1204,6 +1213,15 @@ export default function CrmModule({
               {label}
             </button>
           ))}
+          {dateFilter === "date" && (
+            <input
+              type="date"
+              value={selectedDate}
+              onChange={(e) => setSelectedDate(e.target.value)}
+              className="px-2.5 py-1.5 rounded-xl text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700"
+              aria-label="Select exact date"
+            />
+          )}
           {dateFilter === "custom" && (
             <div className="flex items-center gap-2">
               <input
