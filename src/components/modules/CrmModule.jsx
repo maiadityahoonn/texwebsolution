@@ -868,7 +868,17 @@ export default function CrmModule({
 
   async function handleCreateDealSubmit(e) {
     e.preventDefault();
-    if (!newDealForm.title) return;
+    if (
+      !newDealForm.title ||
+      !newDealForm.deal_value ||
+      !newDealForm.pipeline_stage ||
+      !newDealForm.service ||
+      !newDealForm.meeting_scheduled_at ||
+      !newDealForm.meeting_link ||
+      !newDealForm.lead_id ||
+      !newDealForm.client_id ||
+      !newDealForm.notes?.trim()
+    ) return;
     const created = await onCreateDeal?.({
       ...newDealForm,
       deal_value: Number(newDealForm.deal_value) || 0,
@@ -2416,6 +2426,7 @@ export default function CrmModule({
                   <select
                     value={newDealForm.pipeline_stage}
                     onChange={(e) => setNewDealForm({ ...newDealForm, pipeline_stage: e.target.value })}
+                    required
                     className="w-full px-3 py-2 rounded-xl bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 font-medium focus:outline-hidden"
                   >
                     <option value="contacted">Meeting</option>
@@ -2435,6 +2446,7 @@ export default function CrmModule({
                   <select
                     value={newDealForm.service}
                     onChange={(e) => setNewDealForm({ ...newDealForm, service: e.target.value })}
+                    required
                     className="w-full px-3 py-2 rounded-xl bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 focus:outline-hidden"
                   >
                     <option value="Web Development">Web Development</option>
@@ -2454,6 +2466,7 @@ export default function CrmModule({
                   </label>
                   <input
                     type="datetime-local"
+                    required
                     value={newDealForm.meeting_scheduled_at}
                     onChange={(e) => setNewDealForm({ ...newDealForm, meeting_scheduled_at: e.target.value })}
                     className="w-full px-3 py-2 rounded-xl bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 focus:outline-hidden"
@@ -2467,10 +2480,11 @@ export default function CrmModule({
                 </label>
                 <input
                   type="url"
+                  required
+                  readOnly
                   value={newDealForm.meeting_link}
-                  onChange={(e) => setNewDealForm({ ...newDealForm, meeting_link: e.target.value })}
                   placeholder="https://meet.google.com/..."
-                  className="w-full px-3 py-2 rounded-xl bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 focus:outline-hidden"
+                  className="w-full px-3 py-2 rounded-xl bg-gray-100 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 text-gray-500 dark:text-neutral-400 cursor-not-allowed"
                 />
               </div>
 
@@ -2494,6 +2508,7 @@ export default function CrmModule({
                           service: matchedLead?.service || newDealForm.service,
                         });
                       }}
+                      required
                       className="w-full px-3 py-2 rounded-xl bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 focus:outline-hidden truncate"
                     >
                       <option value="">-- No Linked Lead --</option>
@@ -2508,11 +2523,12 @@ export default function CrmModule({
 
                 <div>
                   <label className="block font-medium mb-1 text-gray-700 dark:text-neutral-300">
-                    Link to Client Account (Optional)
+                    Link to Client Account *
                   </label>
                   <select
                     value={newDealForm.client_id}
                     onChange={(e) => setNewDealForm({ ...newDealForm, client_id: e.target.value })}
+                    required
                     className="w-full px-3 py-2 rounded-xl bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 focus:outline-hidden truncate"
                   >
                     <option value="">-- No Linked Client --</option>
@@ -2531,6 +2547,7 @@ export default function CrmModule({
                 </label>
                 <textarea
                   rows={2}
+                  required
                   value={newDealForm.notes}
                   onChange={(e) => setNewDealForm({ ...newDealForm, notes: e.target.value })}
                   placeholder="Key deliverables, client expectations, stakeholders involved..."
