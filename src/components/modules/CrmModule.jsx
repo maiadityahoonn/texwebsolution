@@ -730,6 +730,21 @@ export default function CrmModule({
     setShowFollowUpModal(false);
   }
 
+  function openPipelineFollowUpModal(deal) {
+    const lead = getDealLead(deal);
+    setFollowUpForm({
+      title: `Follow up: ${deal.title || lead?.name || "Pipeline deal"}`,
+      lead_id: deal.lead_id || "",
+      client_id: deal.client_id || "",
+      deal_id: deal.id || "",
+      channel: "whatsapp",
+      due_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().slice(0, 16),
+      priority: "medium",
+      notes: `Manual follow-up from ${PIPELINE_STAGES.find((stage) => stage.id === (deal.pipeline_stage || "contacted"))?.label || "pipeline"} stage.`,
+    });
+    setShowFollowUpModal(true);
+  }
+
   function handleCreateSalesMeetingSubmit(e) {
     e.preventDefault();
     if (!salesMeetingForm.title || !salesMeetingForm.scheduled_at) return;
@@ -1690,7 +1705,13 @@ export default function CrmModule({
                 </div>
 
                 <div className="flex-1 space-y-2 overflow-y-auto no-scrollbar">
-                  {colDeals.map((deal) => (
+                  {colDeals.map((deal) => {
+                    const dealFollowUps = followUps
+                      .filter((item) => item.deal_id === deal.id && item.status === "pending")
+                      .sort((a, b) => new Date(a.due_at || 0).getTime() - new Date(b.due_at || 0).getTime());
+                    const nextFollowUp = dealFollowUps[0];
+
+                    return (
                     <div
                       key={deal.id}
                       draggable
@@ -1717,6 +1738,11 @@ export default function CrmModule({
                           Meeting: {deal.meeting_scheduled_at ? new Date(deal.meeting_scheduled_at).toLocaleString("en-IN") : deal.expected_close_date || "Scheduled automatically"}
                         </div>
                       )}
+                      {nextFollowUp && (
+                        <div className="text-[10px] text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/30 p-1.5 rounded-lg">
+                          Next follow-up: {new Date(nextFollowUp.due_at).toLocaleString("en-IN")}
+                        </div>
+                      )}
                       {deal.loss_reason && col.id === "closed_lost" && (
                         <div className="text-[10px] text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/40 p-1.5 rounded-lg border border-red-200/50 mt-1 line-clamp-2">
                           {deal.loss_reason}
@@ -1724,7 +1750,8 @@ export default function CrmModule({
                       )}
 
                       {col.id !== "closed_won" && col.id !== "closed_lost" && (
-                        <div className="flex items-center justify-between gap-1 pt-1.5 border-t border-gray-200/60 dark:border-[#3a3020]/60 mt-1.5">
+                        <div className="space-y-1.5 pt-1.5 border-t border-gray-200/60 dark:border-[#3a3020]/60 mt-1.5">
+                        <div className="flex items-center justify-between gap-1">
                           <select
                             value={deal.pipeline_stage || "contacted"}
                             onChange={(e) => {
@@ -1751,6 +1778,25 @@ export default function CrmModule({
                             <span>Lost</span>
                           </button>
                         </div>
+                        <div className="grid grid-cols-2 gap-1">
+                          <button
+                            type="button"
+                            onClick={() => openPipelineFollowUpModal(deal)}
+                            className="py-1 rounded-lg text-[10px] font-bold bg-blue-50 text-blue-700 dark:bg-blue-950/30 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-950/50 transition"
+                            title="Create manual follow-up with date and time"
+                          >
+                            Add Follow-up
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => nextFollowUp ? openRescheduleModal(nextFollowUp) : openPipelineFollowUpModal(deal)}
+                            className="py-1 rounded-lg text-[10px] font-bold bg-amber-50 text-amber-700 dark:bg-amber-950/30 dark:text-amber-300 hover:bg-amber-100 dark:hover:bg-amber-950/50 transition"
+                            title={nextFollowUp ? "Reschedule next follow-up" : "Create follow-up first"}
+                          >
+                            {nextFollowUp ? "Reschedule" : "Set Due"}
+                          </button>
+                        </div>
+                        </div>
                       )}
 
                       {col.id === "contacted" && (
@@ -1775,7 +1821,8 @@ export default function CrmModule({
                         </button>
                       )}
                     </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             );
@@ -2814,6 +2861,14 @@ export default function CrmModule({
                   {clients.map((client) => <option key={client.id} value={client.id}>{client.name}</option>)}
                 </select>
               </div>
+              {followUpForm.deal_id && (
+                <div className="sm:col-span-2">
+                  <label className="block font-medium mb-1">Linked Pipeline Deal</label>
+                  <div className="px-3 py-2 rounded-xl bg-gray-100 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 text-gray-700 dark:text-neutral-200 font-semibold">
+                    {deals.find((deal) => deal.id === followUpForm.deal_id)?.title || "Selected pipeline deal"} · read only
+                  </div>
+                </div>
+              )}
               <div>
                 <label className="block font-medium mb-1">Channel</label>
                 <select value={followUpForm.channel} onChange={(e) => setFollowUpForm({ ...followUpForm, channel: e.target.value })} className="w-full px-3 py-2 rounded-xl bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700">
