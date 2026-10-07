@@ -15,6 +15,19 @@ function getAdminClient() {
   });
 }
 
+async function sendMetaCrmEvent(request, lead, status = "New") {
+  try {
+    const url = new URL("/api/meta/crm-events", request.url);
+    await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ lead, status }),
+    });
+  } catch (err) {
+    console.warn("Meta CRM CAPI event skipped:", err?.message || err);
+  }
+}
+
 export async function POST(request) {
   const ip = getClientIp(request);
   const limited = await checkApiRateLimit(`lead-create:${ip}`, { limit: 8, windowMs: 60_000 });
@@ -58,10 +71,11 @@ export async function POST(request) {
     return NextResponse.json({ error: "Valid email is required." }, { status: 400 });
   }
 
-  const { error } = await admin.from("leads").insert([payload]);
+  const { data, error } = await admin.from("leads").insert([payload]).select().single();
   if (error) {
     return NextResponse.json({ error: "Unable to submit inquiry right now." }, { status: 400 });
   }
 
+  if (data) await sendMetaCrmEvent(request, data, data.status || "New");
   return NextResponse.json({ ok: true });
 }

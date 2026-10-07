@@ -41,6 +41,19 @@ function sanitizeMetaPhone(phone) {
   return cleanPhone(clean) || clean;
 }
 
+async function sendMetaCrmEvent(request, lead, status = "New") {
+  try {
+    const url = new URL("/api/meta/crm-events", request.url);
+    await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ lead, status }),
+    });
+  } catch (err) {
+    console.warn("Meta CRM CAPI event skipped:", err?.message || err);
+  }
+}
+
 /**
  * 1. META WEBHOOK VERIFICATION (GET HANDSHAKE)
  * Meta calls this when you configure your Webhook URL in Meta Developer App:
@@ -114,6 +127,7 @@ export async function POST(request) {
         return NextResponse.json({ error: error.message }, { status: 400 });
       }
 
+      await sendMetaCrmEvent(request, data, data.status || "New");
       return NextResponse.json({ ok: true, lead: data });
     }
 
@@ -159,7 +173,7 @@ export async function POST(request) {
                     `Meta ID: ${leadgenId}`,
                   ].filter(Boolean).join(" | ");
 
-                  await admin.from("leads").insert([
+                  const { data: insertedLead } = await admin.from("leads").insert([
                     {
                       name: cleanText(fullName, 120) || "Meta Lead",
                       phone: cleanPhone(phone) || phone || "Not provided",
@@ -169,14 +183,15 @@ export async function POST(request) {
                       status: "New",
                       notes: notes || "Direct Meta Leadgen Form submission",
                     },
-                  ]);
+                  ]).select().single();
+                  if (insertedLead) await sendMetaCrmEvent(request, insertedLead, insertedLead.status || "New");
                 }
               } catch (fetchErr) {
                 console.error("Meta Graph API error:", fetchErr);
               }
             } else if (leadgenId) {
               // Store placeholder if Access Token not set yet
-              await admin.from("leads").insert([
+              const { data: insertedLead } = await admin.from("leads").insert([
                 {
                   name: `Meta Lead (${leadgenId})`,
                   phone: "Check Meta Ads Manager",
@@ -185,7 +200,8 @@ export async function POST(request) {
                   status: "New",
                   notes: `Leadgen ID: ${leadgenId} | Form ID: ${formId || "N/A"} | Ad ID: ${adId || "N/A"}. Please configure META_PAGE_ACCESS_TOKEN for automatic field decoding.`,
                 },
-              ]);
+              ]).select().single();
+              if (insertedLead) await sendMetaCrmEvent(request, insertedLead, insertedLead.status || "New");
             }
           }
         }

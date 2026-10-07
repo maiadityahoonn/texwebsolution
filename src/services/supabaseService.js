@@ -3,6 +3,19 @@ import { supabase } from '@/lib/supabase';
 // ==========================================
 // 1. LEADS & CRM MANAGEMENT
 // ==========================================
+async function sendMetaCrmEvent(lead, status = lead?.status || 'New') {
+  if (!lead || typeof fetch === 'undefined') return;
+  try {
+    await fetch('/api/meta/crm-events', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ lead, status }),
+    });
+  } catch (err) {
+    console.warn('Meta CRM event skipped:', err.message);
+  }
+}
+
 export async function getCloudLeads() {
   try {
     const { data, error } = await supabase
@@ -36,6 +49,7 @@ export async function createCloudLead(leadData) {
       .select();
 
     if (!error && data?.[0]) {
+      sendMetaCrmEvent(data[0], data[0].status);
       return data[0];
     }
 
@@ -49,7 +63,9 @@ export async function createCloudLead(leadData) {
       const result = await response.json().catch(() => ({}));
       throw new Error(result.error || 'Lead submission failed');
     }
-    return { ...payload, id: `local-${Date.now()}`, created_at: new Date().toISOString() };
+    const fallbackLead = { ...payload, id: `local-${Date.now()}`, created_at: new Date().toISOString() };
+    sendMetaCrmEvent(fallbackLead, fallbackLead.status);
+    return fallbackLead;
   } catch (err) {
     console.error('Error creating cloud lead:', err.message);
     return null;
@@ -75,6 +91,7 @@ export async function createCloudLeadsBatch(leadsArray) {
       .select();
 
     if (!error && Array.isArray(data)) {
+      data.forEach((lead) => sendMetaCrmEvent(lead, lead.status));
       return data;
     }
 
@@ -99,7 +116,9 @@ export async function updateCloudLeadStatus(leadId, newStatus) {
       .select();
 
     if (error) throw error;
-    return data?.[0] || null;
+    const updatedLead = data?.[0] || null;
+    if (updatedLead) sendMetaCrmEvent(updatedLead, newStatus);
+    return updatedLead;
   } catch (err) {
     console.error('Error updating lead status:', err.message);
     return null;
@@ -115,7 +134,9 @@ export async function updateCloudLead(leadId, updates) {
       .select();
 
     if (error) throw error;
-    return data?.[0] || null;
+    const updatedLead = data?.[0] || null;
+    if (updatedLead && updates?.status) sendMetaCrmEvent(updatedLead, updates.status);
+    return updatedLead;
   } catch (err) {
     console.error('Error updating lead:', err.message);
     return null;
