@@ -1823,28 +1823,29 @@ export default function CrmModule({
                         </button>
                       )}
 
+                      {col.id === "negotiation" && (
+                        <div className="grid grid-cols-2 gap-1.5 mt-2">
+                          <button
+                            type="button"
+                            onClick={() => onNavigateSection?.("agreements")}
+                            className="py-1 rounded-lg text-[10px] font-bold bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 text-gray-700 dark:text-neutral-200"
+                          >
+                            Agreement
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => onNavigateSection?.("invoices")}
+                            className="py-1 rounded-lg text-[10px] font-bold bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 text-gray-700 dark:text-neutral-200"
+                          >
+                            Invoice
+                          </button>
+                        </div>
+                      )}
+
                       {col.id === "closed_won" && (
-                        <div className="mt-2 space-y-1.5">
-                          <div className="w-full py-1 px-2 rounded-lg text-[10px] font-bold bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-300 flex items-center justify-center gap-1">
-                            <Briefcase className="w-3 h-3" />
-                            <span>Client + project auto-created</span>
-                          </div>
-                          <div className="grid grid-cols-2 gap-1.5">
-                            <button
-                              type="button"
-                              onClick={() => onNavigateSection?.("agreements")}
-                              className="py-1 rounded-lg text-[10px] font-bold bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 text-gray-700 dark:text-neutral-200"
-                            >
-                              Agreement
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => onNavigateSection?.("invoices")}
-                              className="py-1 rounded-lg text-[10px] font-bold bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 text-gray-700 dark:text-neutral-200"
-                            >
-                              Invoice
-                            </button>
-                          </div>
+                        <div className="w-full mt-2 py-1 px-2 rounded-lg text-[10px] font-bold bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-300 flex items-center justify-center gap-1">
+                          <Briefcase className="w-3 h-3" />
+                          <span>Client + project auto-created</span>
                         </div>
                       )}
                     </div>
