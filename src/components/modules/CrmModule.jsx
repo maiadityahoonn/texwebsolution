@@ -1778,22 +1778,14 @@ export default function CrmModule({
                             <span>Lost</span>
                           </button>
                         </div>
-                        <div className="grid grid-cols-2 gap-1">
+                        <div>
                           <button
                             type="button"
                             onClick={() => openPipelineFollowUpModal(deal)}
-                            className="py-1 rounded-lg text-[10px] font-bold bg-blue-50 text-blue-700 dark:bg-blue-950/30 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-950/50 transition"
+                            className="w-full py-1 rounded-lg text-[10px] font-bold bg-blue-50 text-blue-700 dark:bg-blue-950/30 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-950/50 transition"
                             title="Create manual follow-up with date and time"
                           >
                             Add Follow-up
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => nextFollowUp ? openRescheduleModal(nextFollowUp) : openPipelineFollowUpModal(deal)}
-                            className="py-1 rounded-lg text-[10px] font-bold bg-amber-50 text-amber-700 dark:bg-amber-950/30 dark:text-amber-300 hover:bg-amber-100 dark:hover:bg-amber-950/50 transition"
-                            title={nextFollowUp ? "Reschedule next follow-up" : "Create follow-up first"}
-                          >
-                            {nextFollowUp ? "Reschedule" : "Set Due"}
                           </button>
                         </div>
                         </div>
