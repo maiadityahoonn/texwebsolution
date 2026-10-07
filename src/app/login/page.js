@@ -12358,6 +12358,25 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
                   }}
                   onOpenDirectWhatsapp={handleDirectWhatsapp}
                   onOpenChat={(lead) => handleOpenClientChat(lead)}
+                  onUpdateDealStage={async (dealId, stage, extra = {}) => {
+                    const res = await updateDealStage(dealId, stage, extra);
+                    setDeals((prev) => prev.map((d) => (d.id === dealId ? { ...d, pipeline_stage: stage, ...extra, ...res } : d)));
+                    setToast(`Deal stage updated to ${stage.replace('_', ' ')}.`);
+                  }}
+                  onCreateDeal={async (dealData) => {
+                    const res = await createDeal(dealData);
+                    if (res) {
+                      setDeals((prev) => [res, ...prev]);
+                      setToast("New deal added to sales pipeline.");
+                    }
+                    return res;
+                  }}
+                  onMarkLeadLost={async (id, { status, loss_reason, notes, lost_at_stage }) => {
+                    const updates = { status: "Lost", notes };
+                    await updateCloudLead(id, updates);
+                    setLeads((prev) => prev.map((l) => (l.id === id ? { ...l, ...updates, loss_reason, lost_at_stage } : l)));
+                    setToast("Lead marked as Lost with reason captured.");
+                  }}
                   onRefresh={async () => {
                     const fresh = await getCloudLeads();
                     if (fresh) setLeads(fresh);

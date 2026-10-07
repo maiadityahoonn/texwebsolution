@@ -45,11 +45,19 @@ export default function SalesHeadOverview({
   ).length;
 
   const wonDealsCount = deals.filter(
-    (d) => d.stage === "closed_won"
+    (d) => (d.pipeline_stage || d.stage) === "closed_won"
+  ).length;
+
+  const lostDealsCount = deals.filter(
+    (d) => (d.pipeline_stage || d.stage) === "closed_lost"
+  ).length;
+
+  const lostLeadsCount = leads.filter(
+    (l) => (l.status || "").toLowerCase() === "lost"
   ).length;
 
   const totalPipelineValue = deals.reduce((sum, d) => {
-    const val = Number(d.value) || 0;
+    const val = Number(d.deal_value || d.value) || 0;
     return sum + val;
   }, 0);
 
@@ -62,12 +70,13 @@ export default function SalesHeadOverview({
   const recentLeads = leads.slice(0, 5);
 
   const STAGES = [
-    { key: "new", label: "New", color: "bg-blue-500", count: deals.filter((d) => d.stage === "new").length },
-    { key: "contacted", label: "Contacted", color: "bg-cyan-500", count: deals.filter((d) => d.stage === "contacted").length },
-    { key: "qualified", label: "Qualified", color: "bg-indigo-500", count: deals.filter((d) => d.stage === "qualified").length },
-    { key: "proposal", label: "Proposal", color: "bg-purple-500", count: deals.filter((d) => d.stage === "proposal").length },
-    { key: "negotiation", label: "Negotiation", color: "bg-amber-500", count: deals.filter((d) => d.stage === "negotiation").length },
+    { key: "new", label: "New", color: "bg-blue-500", count: deals.filter((d) => (d.pipeline_stage || d.stage) === "new").length },
+    { key: "contacted", label: "Contacted", color: "bg-cyan-500", count: deals.filter((d) => (d.pipeline_stage || d.stage) === "contacted").length },
+    { key: "qualified", label: "Qualified", color: "bg-indigo-500", count: deals.filter((d) => (d.pipeline_stage || d.stage) === "qualified").length },
+    { key: "proposal", label: "Proposal", color: "bg-purple-500", count: deals.filter((d) => (d.pipeline_stage || d.stage) === "proposal").length },
+    { key: "negotiation", label: "Negotiation", color: "bg-amber-500", count: deals.filter((d) => (d.pipeline_stage || d.stage) === "negotiation").length },
     { key: "closed_won", label: "Won", color: "bg-emerald-500", count: wonDealsCount },
+    { key: "closed_lost", label: "Lost", color: "bg-rose-500", count: lostDealsCount },
   ];
 
   return (
@@ -178,7 +187,7 @@ export default function SalesHeadOverview({
             </div>
           </div>
           <div className="mt-3 flex items-center justify-between text-[11px] text-gray-400 border-t border-gray-100 dark:border-slate-800/80 pt-2.5">
-            <span>{wonDealsCount} Won</span>
+            <span>{wonDealsCount} Won · {lostDealsCount} Lost</span>
             <span className="text-emerald-600 font-bold group-hover:underline flex items-center gap-0.5">
               Kanban <ChevronRight className="w-3 h-3" />
             </span>
