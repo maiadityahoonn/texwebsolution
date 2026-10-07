@@ -8455,8 +8455,8 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
                 />
               )}
 
-              {/* 3. Search & Filter Bar (Only for tables, not alerts, chat, settings, batch files, or non-admin overview) */}
-              {activeSection !== "alerts" && activeSection !== "chat" && activeSection !== "settings" && activeSection !== "batch_workspace" && activeSection !== "batch_files" && activeSection !== "review_center" && activeSection !== "task_submissions" && activeSection !== "at_risk_watchlist" && (activeSection !== "overview" || isAdminRole) && (
+              {/* 3. Search & Filter Bar (Only for legacy list/table sections that need it) */}
+              {["overview", "batches", "members", "hr_mentors", "hr_interns", "classes", "attendance", "certificates", "tasks", "daily_updates", "cms", "audit"].includes(activeSection) && (activeSection !== "overview" || isAdminRole) && (
                 <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
                   <div className="relative flex-1">
                     <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-500 pointer-events-none" />
@@ -8478,7 +8478,7 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
                       className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-gray-200 dark:border-slate-700 bg-transparent dark:bg-transparent text-xs text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-600 transition shadow-none"
                     />
                   </div>
-                  {activeSection !== "audit" && (
+                  {["overview", "batches", "members", "hr_mentors", "hr_interns", "classes", "attendance", "certificates", "tasks", "daily_updates"].includes(activeSection) && (
                     <div className="sm:w-60 relative">
                       <select
                         value={memberFilter}
