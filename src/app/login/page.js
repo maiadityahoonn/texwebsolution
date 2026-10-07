@@ -8105,8 +8105,8 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
 
               {/* 1. Header Banner of the Card with Title + Contextual Actions (Desktop only; hidden on all mobile pages) */}
               {activeSection !== "chat" && (
-                <div className="hidden md:flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-3 pb-1 md:pb-3 border-b-0 border-transparent shrink-0">
-                  <div>
+                <div className="hidden md:flex flex-row items-center justify-between gap-3 pb-1 md:pb-3 border-b-0 border-transparent shrink-0 min-w-0">
+                  <div className="min-w-0 flex-1">
                     <h1 className="text-2xl sm:text-3xl font-extrabold text-gray-900 dark:text-white tracking-tight font-[Matter]">
                       {activeSection === "overview" && "Dashboard"}
                       {activeSection === "crm" && "CRM & Leads"}
@@ -8177,10 +8177,10 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
                   </div>
 
                   {/* Header Action Buttons (Context-Aware) */}
-                  <div className="flex items-center gap-2 shrink-0">
+                  <div className="flex min-w-0 max-w-[58vw] items-center justify-end gap-2 shrink-0 flex-nowrap overflow-x-auto no-scrollbar whitespace-nowrap">
                     <button
                       onClick={() => setNotificationModalOpen(true)}
-                      className="relative p-2.5 rounded-xl text-gray-500 hover:text-gray-900 dark:text-slate-400 dark:hover:text-white bg-gray-100/80 hover:bg-gray-200/80 dark:bg-slate-800 dark:hover:bg-slate-700 border border-gray-200 dark:border-slate-700 shadow-2xs transition cursor-pointer"
+                      className="relative shrink-0 p-2.5 rounded-xl text-gray-500 hover:text-gray-900 dark:text-slate-400 dark:hover:text-white bg-gray-100/80 hover:bg-gray-200/80 dark:bg-slate-800 dark:hover:bg-slate-700 border border-gray-200 dark:border-slate-700 shadow-2xs transition cursor-pointer"
                       title="Open Notification Center"
                       aria-label="Notifications"
                     >
@@ -8193,7 +8193,7 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
                     </button>
                     <button
                       onClick={() => setGlobalSearchOpen(true)}
-                      className="hidden md:inline-flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold bg-gray-100/80 hover:bg-gray-200/80 dark:bg-slate-800 dark:hover:bg-slate-700 text-gray-500 dark:text-slate-400 border border-gray-200 dark:border-slate-700 shadow-2xs transition cursor-pointer"
+                      className="hidden md:inline-flex shrink-0 items-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold bg-gray-100/80 hover:bg-gray-200/80 dark:bg-slate-800 dark:hover:bg-slate-700 text-gray-500 dark:text-slate-400 border border-gray-200 dark:border-slate-700 shadow-2xs transition cursor-pointer"
                       title="Global Search (Ctrl + K)"
                     >
                       <Search className="w-3.5 h-3.5 text-gray-400" />
