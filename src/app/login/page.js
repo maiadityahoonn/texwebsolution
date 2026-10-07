@@ -3476,7 +3476,7 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
   const allowedSections = useMemo(() => {
     const sections = ["overview", "settings"];
     if (canUseCrm) {
-      sections.push("crm", "pipeline", "sales_followups", "sales_meetings", "sales_commercials", "agreements", "invoices", "payments", "clients");
+      sections.push("crm", "pipeline", "sales_followups", "sales_meetings", "sales_reports", "sales_commercials", "agreements", "invoices", "payments", "clients");
     }
     if (canUseProjects) {
       sections.push("projects");
@@ -3607,6 +3607,7 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
       { key: "pipeline", label: "Pipeline", icon: TrendingUp, section: "pipeline", show: canUseCrm, badge: deals.length },
       { key: "sales_followups", label: "Follow-ups", icon: Phone, section: "sales_followups", show: canUseCrm, badge: overdueFollowUps || salesFollowUps.filter((item) => item.status === "pending").length },
       { key: "sales_meetings", label: "Meetings", icon: Calendar, section: "sales_meetings", show: canUseCrm, badge: salesMeetings.filter((item) => item.status === "scheduled").length },
+      { key: "sales_reports", label: "Reports", icon: Activity, section: "sales_reports", show: canUseCrm },
       { key: "sales_commercials", label: "Proposal", icon: FileText, section: "sales_commercials", show: canUseCrm, badge: proposals.length + quotations.length },
       { key: "agreements", label: "Agreements", icon: ShieldCheck, section: "agreements", show: canUseCrm, badge: agreements.length },
       { key: "clients", label: "Clients", icon: Building2, section: "clients", show: canUseCrm || canUseProjects, badge: clients.length },
@@ -7283,6 +7284,22 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
                   </button>
 
                   <button
+                    onClick={() => selectSection("sales_reports")}
+                    aria-label="Sales Reports"
+                    title="Sales Reports"
+                    className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl transition cursor-pointer ${
+                      activeSection === "sales_reports"
+                        ? "text-gray-900 dark:text-white font-semibold bg-gray-100/90 dark:bg-slate-800 shadow-2xs"
+                        : "text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-50 dark:hover:bg-slate-800/60"
+                    }`}
+                  >
+                    <div className="flex items-center gap-3.5">
+                      <Activity className="w-5 h-5 shrink-0 stroke-[1.75] text-violet-500" />
+                      <span className="admin-sidebar-item-label">Sales Reports</span>
+                    </div>
+                  </button>
+
+                  <button
                     onClick={() => selectSection("sales_commercials")}
                     aria-label="Proposal and Quotation"
                     title="Proposal + Quotation"
@@ -8017,6 +8034,7 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
                     {activeSection === "pipeline" && "Sales Pipeline"}
                     {activeSection === "sales_followups" && "Sales Follow-ups"}
                     {activeSection === "sales_meetings" && "Sales Meetings"}
+                    {activeSection === "sales_reports" && "Sales Reports"}
                     {activeSection === "sales_commercials" && "Proposal + Quotation"}
                     {activeSection === "agreements" && "Client Agreements"}
                     {activeSection === "clients" && "Client Accounts"}
@@ -8052,6 +8070,7 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
                     {activeSection === "pipeline" && "Visual Kanban pipeline from Lead to Closed Won agreement and advance payment."}
                     {activeSection === "sales_followups" && "Schedule calls, WhatsApp reminders, and sales next actions."}
                     {activeSection === "sales_meetings" && "Plan discovery, requirement, proposal, and negotiation meetings."}
+                    {activeSection === "sales_reports" && "Review source ROI, stale deals, follow-up performance, and sales AI insights."}
                     {activeSection === "sales_commercials" && "Create and track combined proposal quotation documents from Sales."}
                     {activeSection === "agreements" && "Manage final client agreement terms, milestones, and signed status."}
                     {activeSection === "clients" && "Central client directory with connected deals, projects, invoices, and support."}
@@ -8094,6 +8113,7 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
                       {activeSection === "pipeline" && "Sales Pipeline"}
                       {activeSection === "sales_followups" && "Sales Follow-ups"}
                       {activeSection === "sales_meetings" && "Sales Meetings"}
+                      {activeSection === "sales_reports" && "Sales Reports"}
                       {activeSection === "sales_commercials" && "Proposal + Quotation"}
                       {activeSection === "agreements" && "Client Agreements"}
                       {activeSection === "clients" && "Client Accounts"}
@@ -12357,7 +12377,7 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
               )}
 
               {/* 4.7. CRM & SALES PIPELINE MODULE */}
-              {(activeSection === "crm" || activeSection === "pipeline" || activeSection === "sales_followups" || activeSection === "sales_meetings" || activeSection === "sales_commercials" || activeSection === "agreements") && (
+              {(activeSection === "crm" || activeSection === "pipeline" || activeSection === "sales_followups" || activeSection === "sales_meetings" || activeSection === "sales_reports" || activeSection === "sales_commercials" || activeSection === "agreements") && (
                 <CrmModule
                   initialViewMode={
                     activeSection === "pipeline"
@@ -12366,6 +12386,8 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
                       ? "followups"
                       : activeSection === "sales_meetings"
                       ? "sales_meetings"
+                      : activeSection === "sales_reports"
+                      ? "reports"
                       : activeSection === "sales_commercials" || activeSection === "agreements"
                       ? "commercials"
                       : "leads"
@@ -12751,7 +12773,7 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
               )}
 
               {/* 5. Main Data Table (for all list sections, plus admin overview) */}
-              {!["alerts", "chat", "settings", "batch_workspace", "batch_files", "review_center", "task_submissions", "at_risk_watchlist", "crm", "pipeline", "sales_followups", "sales_meetings", "sales_commercials", "agreements", "clients", "projects", "smm", "content_calendar", "invoices", "payments", "support"].includes(activeSection) && (activeSection !== "overview" || isAdminRole) && (
+              {!["alerts", "chat", "settings", "batch_workspace", "batch_files", "review_center", "task_submissions", "at_risk_watchlist", "crm", "pipeline", "sales_followups", "sales_meetings", "sales_reports", "sales_commercials", "agreements", "clients", "projects", "smm", "content_calendar", "invoices", "payments", "support"].includes(activeSection) && (activeSection !== "overview" || isAdminRole) && (
                 <div className="space-y-3 w-full max-w-full">
                   {/* Table header meta & horizontal scroll helper */}
                   <div className="flex items-center justify-between gap-2.5 text-[11px] text-gray-500 dark:text-slate-400 px-1 select-none">

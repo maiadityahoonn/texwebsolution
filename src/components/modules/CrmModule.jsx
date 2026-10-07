@@ -916,6 +916,8 @@ export default function CrmModule({
           ) : null}
       </div>
 
+      {viewMode === "reports" && (
+      <>
       {/* 2. Key Metrics Bar */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         <div className="p-4 rounded-2xl bg-white dark:bg-[#18150f] border border-gray-100 dark:border-[#3a3020] shadow-2xs">
@@ -1075,8 +1077,11 @@ export default function CrmModule({
           </div>
         )}
       </div>
+      </>
+      )}
 
       {/* 3. Filter & Search Controls */}
+      {viewMode !== "pipeline" && viewMode !== "reports" && (
       <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 p-3 rounded-2xl bg-white dark:bg-[#18150f] border border-gray-100 dark:border-[#3a3020]">
         <div className="relative flex-1">
           <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
@@ -1133,7 +1138,9 @@ export default function CrmModule({
         </div>
         )}
       </div>
+      )}
 
+      {viewMode !== "pipeline" && (
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 p-3 rounded-2xl bg-white dark:bg-[#18150f] border border-gray-100 dark:border-[#3a3020]">
         <div className="flex items-center gap-2 text-xs font-bold text-gray-500 dark:text-neutral-400">
           <Calendar className="w-4 h-4" />
@@ -1179,6 +1186,7 @@ export default function CrmModule({
           )}
         </div>
       </div>
+      )}
 
       {/* 4. Leads List View */}
       {viewMode === "leads" && (
