@@ -789,10 +789,10 @@ export default function CrmModule({
   return (
     <div className="space-y-6">
       {/* 1. Header & Actions */}
-      <div className="flex flex-wrap items-center justify-end gap-2">
+      <div className="flex items-center justify-end gap-2 overflow-x-auto no-scrollbar whitespace-nowrap">
           {/* View Mode Toggle */}
           {showViewTabs && (
-          <div className="flex p-1 rounded-xl bg-gray-100 dark:bg-slate-800 border border-gray-200 dark:border-slate-700">
+          <div className="flex shrink-0 p-1 rounded-xl bg-gray-100 dark:bg-slate-800 border border-gray-200 dark:border-slate-700">
             <button
               onClick={() => setViewMode("leads")}
               className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition ${
@@ -848,7 +848,7 @@ export default function CrmModule({
 
           <button
             onClick={() => onRefresh?.()}
-            className="p-2 rounded-xl border border-gray-200 dark:border-slate-800 hover:bg-gray-50 dark:hover:bg-slate-800 text-gray-600 dark:text-neutral-300 transition cursor-pointer"
+            className="p-2 shrink-0 rounded-xl border border-gray-200 dark:border-slate-800 hover:bg-gray-50 dark:hover:bg-slate-800 text-gray-600 dark:text-neutral-300 transition cursor-pointer"
             title="Refresh CRM"
           >
             <RefreshCw className="w-4 h-4" />
@@ -857,7 +857,7 @@ export default function CrmModule({
           {viewMode === "leads" && (
           <button
             onClick={() => setShowMetaImportModal(true)}
-            className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-gradient-to-r from-purple-600 via-pink-600 to-amber-500 hover:opacity-90 text-white font-semibold text-xs transition shadow-sm cursor-pointer shadow-pink-500/20"
+            className="flex shrink-0 items-center gap-1.5 px-3.5 py-2 rounded-xl bg-gradient-to-r from-purple-600 via-pink-600 to-amber-500 hover:opacity-90 text-white font-semibold text-xs transition shadow-sm cursor-pointer shadow-pink-500/20"
             title="Import Meta Ads Leads (CSV or Webhook)"
           >
             <Sparkles className="w-4 h-4" />
@@ -868,7 +868,7 @@ export default function CrmModule({
           {viewMode === "commercials" && (
           <button
             onClick={() => openCommercialModal("proposal")}
-            className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-orange-200 bg-orange-50 text-orange-700 hover:bg-orange-100 font-semibold text-xs transition shadow-sm cursor-pointer"
+            className="flex shrink-0 items-center gap-1.5 px-3.5 py-2 rounded-xl border border-orange-200 bg-orange-50 text-orange-700 hover:bg-orange-100 font-semibold text-xs transition shadow-sm cursor-pointer"
           >
             <FileText className="w-4 h-4" />
             <span>Proposal + Agreement</span>
@@ -878,7 +878,7 @@ export default function CrmModule({
           {viewMode === "followups" && (
           <button
             onClick={() => setShowFollowUpModal(true)}
-            className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100 font-semibold text-xs transition shadow-sm cursor-pointer"
+            className="flex shrink-0 items-center gap-1.5 px-3.5 py-2 rounded-xl border border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100 font-semibold text-xs transition shadow-sm cursor-pointer"
           >
             <Phone className="w-4 h-4" />
             <span>Follow-up</span>
@@ -888,7 +888,7 @@ export default function CrmModule({
           {viewMode === "sales_meetings" && (
           <button
             onClick={() => setShowSalesMeetingModal(true)}
-            className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 font-semibold text-xs transition shadow-sm cursor-pointer"
+            className="flex shrink-0 items-center gap-1.5 px-3.5 py-2 rounded-xl border border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 font-semibold text-xs transition shadow-sm cursor-pointer"
           >
             <Calendar className="w-4 h-4" />
             <span>Meeting</span>
@@ -899,7 +899,7 @@ export default function CrmModule({
             <button
               type="button"
               onClick={() => openAddDealModal("contacted")}
-              className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs transition shadow-sm cursor-pointer"
+              className="flex shrink-0 items-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs transition shadow-sm cursor-pointer"
             >
               <Plus className="w-4 h-4" />
               <span>New Deal</span>
@@ -908,7 +908,7 @@ export default function CrmModule({
             <button
               type="button"
               onClick={() => setShowAddLeadModal(true)}
-              className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-orange-600 hover:bg-orange-700 text-white font-semibold text-xs transition shadow-sm cursor-pointer"
+              className="flex shrink-0 items-center gap-1.5 px-3.5 py-2 rounded-xl bg-orange-600 hover:bg-orange-700 text-white font-semibold text-xs transition shadow-sm cursor-pointer"
             >
               <Plus className="w-4 h-4" />
               <span>Add Lead</span>
