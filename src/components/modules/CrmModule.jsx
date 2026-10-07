@@ -43,13 +43,11 @@ function WhatsAppIcon({ className = "w-4 h-4" }) {
 }
 
 const PIPELINE_STAGES = [
-  { id: "new", label: "New Leads", color: "bg-blue-500" },
   { id: "contacted", label: "Contacted", color: "bg-cyan-500" },
   { id: "qualified", label: "Requirement & Qualified", color: "bg-indigo-500" },
   { id: "proposal", label: "Proposal / Quotation", color: "bg-purple-500" },
   { id: "negotiation", label: "Negotiation", color: "bg-amber-500" },
   { id: "closed_won", label: "Closed Won", color: "bg-emerald-500" },
-  { id: "closed_lost", label: "Closed Lost", color: "bg-red-500" },
 ];
 
 const STAGE_LOSS_REASONS = {
@@ -208,6 +206,7 @@ export default function CrmModule({
   onOpenChatWithLead,
   onOpenChat,
   onRefresh,
+  showViewTabs = false,
 }) {
   const [viewMode, setViewMode] = useState(initialViewMode); // 'leads' or 'pipeline'
 
@@ -216,7 +215,12 @@ export default function CrmModule({
     if (initialViewMode) setViewMode(initialViewMode);
   }, [initialViewMode]);
   const [query, setQuery] = useState("");
-  const [statusFilter, setStatusFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = useState("active");
+  const [dateFilter, setDateFilter] = useState("all");
+  const [customDateRange, setCustomDateRange] = useState({
+    from: "",
+    to: "",
+  });
   const [selectedLead, setSelectedLead] = useState(null);
   const [showAddLeadModal, setShowAddLeadModal] = useState(false);
   const [showAddDealModal, setShowAddDealModal] = useState(false);
@@ -233,7 +237,7 @@ export default function CrmModule({
     title: "",
     client_id: "",
     lead_id: "",
-    pipeline_stage: "new",
+    pipeline_stage: "contacted",
     deal_value: "100000",
     service: "Web Development",
     expected_close_date: new Date(Date.now() + 30 * 86400000).toISOString().split("T")[0],
@@ -305,18 +309,45 @@ export default function CrmModule({
     re_nurture_days: "30",
   });
 
+  function matchesDateFilter(item, field = "created_at") {
+    if (dateFilter === "all") return true;
+    const rawDate = item?.[field] || item?.created_at || item?.updated_at;
+    if (!rawDate) return false;
+    const time = new Date(rawDate).getTime();
+    const now = Date.now();
+    if (Number.isNaN(time)) return false;
+    if (dateFilter === "day") return time >= now - 86400000;
+    if (dateFilter === "week") return time >= now - 7 * 86400000;
+    if (dateFilter === "month") return time >= now - 30 * 86400000;
+    if (dateFilter === "year") return time >= now - 365 * 86400000;
+    if (dateFilter === "custom") {
+      const from = customDateRange.from ? new Date(customDateRange.from).getTime() : null;
+      const to = customDateRange.to ? new Date(`${customDateRange.to}T23:59:59`).getTime() : null;
+      return (!from || time >= from) && (!to || time <= to);
+    }
+    return true;
+  }
+
   const filteredLeads = useMemo(() => {
     const q = query.trim().toLowerCase();
     return leads.filter((lead) => {
-      const matchStatus = statusFilter === "all" || lead.status === statusFilter;
+      const isInPipeline = deals.some((deal) => deal.lead_id === lead.id);
+      const isArchived = ["Converted", "Lost", "Archived"].includes(lead.status) || isInPipeline;
+      const matchStatus =
+        statusFilter === "active"
+          ? !isArchived
+          : statusFilter === "archived"
+          ? isArchived
+          : lead.status === statusFilter;
+      const matchDate = matchesDateFilter(lead);
       const matchQuery =
         !q ||
         [lead.name, lead.phone, lead.email, lead.service, lead.source].some((val) =>
           String(val || "").toLowerCase().includes(q)
         );
-      return matchStatus && matchQuery;
+      return matchStatus && matchQuery && matchDate;
     });
-  }, [leads, query, statusFilter]);
+  }, [customDateRange.from, customDateRange.to, dateFilter, deals, leads, query, statusFilter]);
 
   // Aggregate Metrics
   const stats = useMemo(() => {
@@ -347,6 +378,7 @@ export default function CrmModule({
     return rows.filter((item) => {
       if (commercialScope === "proposal_quote" && item.docType !== "proposal_quote") return false;
       if (commercialScope === "agreement" && item.docType !== "agreement") return false;
+      if (!matchesDateFilter(item, item.docType === "agreement" ? "start_date" : "created_at")) return false;
       const client = clients.find((c) => c.id === item.client_id);
       return (
         !q ||
@@ -354,30 +386,42 @@ export default function CrmModule({
           .some((value) => String(value || "").toLowerCase().includes(q))
       );
     });
-  }, [agreements, clients, commercialScope, proposals, query, quotations]);
+  }, [agreements, clients, commercialScope, customDateRange.from, customDateRange.to, dateFilter, proposals, query, quotations]);
 
   const filteredFollowUps = useMemo(() => {
     const q = query.trim().toLowerCase();
     return followUps.filter((item) => {
       const lead = leads.find((l) => l.id === item.lead_id);
       const client = clients.find((c) => c.id === item.client_id);
+      if (!matchesDateFilter(item, "due_at")) return false;
       return !q || [item.title, item.channel, item.status, item.notes, lead?.name, client?.name]
         .some((value) => String(value || "").toLowerCase().includes(q));
     });
-  }, [clients, followUps, leads, query]);
+  }, [clients, customDateRange.from, customDateRange.to, dateFilter, followUps, leads, query]);
 
   const filteredSalesMeetings = useMemo(() => {
     const q = query.trim().toLowerCase();
     return salesMeetings.filter((item) => {
       const lead = leads.find((l) => l.id === item.lead_id);
       const client = clients.find((c) => c.id === item.client_id);
+      if (!matchesDateFilter(item, "scheduled_at")) return false;
       return !q || [item.title, item.meeting_type, item.status, item.agenda, lead?.name, client?.name]
         .some((value) => String(value || "").toLowerCase().includes(q));
     });
-  }, [clients, leads, query, salesMeetings]);
+  }, [clients, customDateRange.from, customDateRange.to, dateFilter, leads, query, salesMeetings]);
+
+  const archivedDeals = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    return deals.filter((deal) => {
+      const isArchived = (deal.pipeline_stage || deal.stage) === "closed_lost";
+      const matchQuery = !q || [deal.title, deal.service, deal.loss_reason, deal.notes]
+        .some((value) => String(value || "").toLowerCase().includes(q));
+      return isArchived && matchQuery && matchesDateFilter(deal, "updated_at");
+    });
+  }, [customDateRange.from, customDateRange.to, dateFilter, deals, query]);
 
   const aiInsights = useMemo(() => {
-    const openLeads = leads.filter((lead) => !["Converted", "Lost"].includes(lead.status));
+    const openLeads = leads.filter((lead) => !["Converted", "Lost"].includes(lead.status) && !deals.some((deal) => deal.lead_id === lead.id));
     const rankedLeads = openLeads
       .map((lead) => ({
         lead,
@@ -596,7 +640,7 @@ export default function CrmModule({
     setLostTarget(null);
   }
 
-  function openAddDealModal(initialStage = "new", lead = null) {
+  function openAddDealModal(initialStage = "contacted", lead = null) {
     setNewDealForm({
       title: lead ? `${lead.name} - ${lead.service || "Tech Development"}` : "",
       client_id: "",
@@ -624,7 +668,7 @@ export default function CrmModule({
       title: "",
       client_id: "",
       lead_id: "",
-      pipeline_stage: "new",
+      pipeline_stage: "contacted",
       deal_value: "100000",
       service: "Web Development",
       expected_close_date: new Date(Date.now() + 30 * 86400000).toISOString().split("T")[0],
@@ -650,6 +694,7 @@ export default function CrmModule({
 
         <div className="flex items-center gap-2 self-start sm:self-auto">
           {/* View Mode Toggle */}
+          {showViewTabs && (
           <div className="flex p-1 rounded-xl bg-gray-100 dark:bg-slate-800 border border-gray-200 dark:border-slate-700">
             <button
               onClick={() => setViewMode("leads")}
@@ -702,6 +747,7 @@ export default function CrmModule({
               Meetings
             </button>
           </div>
+          )}
 
           <button
             onClick={() => onRefresh?.()}
@@ -711,6 +757,7 @@ export default function CrmModule({
             <RefreshCw className="w-4 h-4" />
           </button>
 
+          {viewMode === "leads" && (
           <button
             onClick={() => setShowMetaImportModal(true)}
             className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-gradient-to-r from-purple-600 via-pink-600 to-amber-500 hover:opacity-90 text-white font-semibold text-xs transition shadow-sm cursor-pointer shadow-pink-500/20"
@@ -719,7 +766,9 @@ export default function CrmModule({
             <Sparkles className="w-4 h-4" />
             <span>Import Meta Leads</span>
           </button>
+          )}
 
+          {viewMode === "commercials" && (
           <button
             onClick={() => openCommercialModal("proposal")}
             className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-orange-200 bg-orange-50 text-orange-700 hover:bg-orange-100 font-semibold text-xs transition shadow-sm cursor-pointer"
@@ -727,7 +776,9 @@ export default function CrmModule({
             <FileText className="w-4 h-4" />
             <span>Proposal + Agreement</span>
           </button>
+          )}
 
+          {viewMode === "followups" && (
           <button
             onClick={() => setShowFollowUpModal(true)}
             className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100 font-semibold text-xs transition shadow-sm cursor-pointer"
@@ -735,7 +786,9 @@ export default function CrmModule({
             <Phone className="w-4 h-4" />
             <span>Follow-up</span>
           </button>
+          )}
 
+          {viewMode === "sales_meetings" && (
           <button
             onClick={() => setShowSalesMeetingModal(true)}
             className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 font-semibold text-xs transition shadow-sm cursor-pointer"
@@ -743,17 +796,18 @@ export default function CrmModule({
             <Calendar className="w-4 h-4" />
             <span>Meeting</span>
           </button>
+          )}
 
           {viewMode === "pipeline" ? (
             <button
               type="button"
-              onClick={() => openAddDealModal("new")}
+              onClick={() => openAddDealModal("contacted")}
               className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs transition shadow-sm cursor-pointer"
             >
               <Plus className="w-4 h-4" />
               <span>New Deal</span>
             </button>
-          ) : (
+          ) : viewMode === "leads" ? (
             <button
               type="button"
               onClick={() => setShowAddLeadModal(true)}
@@ -762,7 +816,7 @@ export default function CrmModule({
               <Plus className="w-4 h-4" />
               <span>Add Lead</span>
             </button>
-          )}
+          ) : null}
         </div>
       </div>
 
@@ -868,20 +922,94 @@ export default function CrmModule({
           />
         </div>
 
+        {viewMode === "leads" && (
         <div className="flex items-center gap-2 overflow-x-auto no-scrollbar">
-          {["all", "New", "Contacted", "Proposal Sent", "Converted", "Lost"].map((st) => (
+          {[
+            ["active", "Active"],
+            ["New", "New"],
+            ["Contacted", "Contacted"],
+            ["Proposal Sent", "Proposal Sent"],
+            ["archived", "Archive"],
+          ].map(([value, label]) => (
             <button
-              key={st}
-              onClick={() => setStatusFilter(st)}
+              key={value}
+              onClick={() => setStatusFilter(value)}
               className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition ${
-                statusFilter === st
+                statusFilter === value
                   ? "bg-orange-600 text-white shadow-2xs"
                   : "bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-neutral-400 hover:text-gray-900 dark:hover:text-white"
               }`}
             >
-              {st === "all" ? "All Statuses" : st}
+              {label}
             </button>
           ))}
+        </div>
+        )}
+        {viewMode === "pipeline" && (
+        <div className="flex items-center gap-2 overflow-x-auto no-scrollbar">
+          {[
+            ["active", "Active Pipeline"],
+            ["archived", "Archive"],
+          ].map(([value, label]) => (
+            <button
+              key={value}
+              onClick={() => setStatusFilter(value)}
+              className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition ${
+                statusFilter === value
+                  ? "bg-orange-600 text-white shadow-2xs"
+                  : "bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-neutral-400 hover:text-gray-900 dark:hover:text-white"
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+        )}
+      </div>
+
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 p-3 rounded-2xl bg-white dark:bg-[#18150f] border border-gray-100 dark:border-[#3a3020]">
+        <div className="flex items-center gap-2 text-xs font-bold text-gray-500 dark:text-neutral-400">
+          <Calendar className="w-4 h-4" />
+          <span>Date Filter</span>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          {[
+            ["all", "All"],
+            ["day", "Day"],
+            ["week", "Week"],
+            ["month", "Month"],
+            ["year", "Year"],
+            ["custom", "Custom"],
+          ].map(([value, label]) => (
+            <button
+              key={value}
+              type="button"
+              onClick={() => setDateFilter(value)}
+              className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition ${
+                dateFilter === value
+                  ? "bg-slate-900 text-white dark:bg-white dark:text-slate-900"
+                  : "bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-neutral-400"
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+          {dateFilter === "custom" && (
+            <div className="flex items-center gap-2">
+              <input
+                type="date"
+                value={customDateRange.from}
+                onChange={(e) => setCustomDateRange({ ...customDateRange, from: e.target.value })}
+                className="px-2.5 py-1.5 rounded-xl text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700"
+              />
+              <input
+                type="date"
+                value={customDateRange.to}
+                onChange={(e) => setCustomDateRange({ ...customDateRange, to: e.target.value })}
+                className="px-2.5 py-1.5 rounded-xl text-xs bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700"
+              />
+            </div>
+          )}
         </div>
       </div>
 
@@ -1034,11 +1162,11 @@ export default function CrmModule({
                           </button>
 
                           <button
-                            onClick={() => onConvertToClientAndProject?.(lead)}
+                            onClick={() => openAddDealModal("contacted", lead)}
                             className="px-2.5 py-1 rounded-lg text-xs font-semibold text-orange-600 bg-orange-50 dark:bg-orange-950/40 hover:bg-orange-100 transition flex items-center gap-1"
-                            title="Convert to Client & Project"
+                            title="Move qualified lead to pipeline"
                           >
-                            <span>Convert</span>
+                            <span>Pipeline</span>
                             <ArrowRight className="w-3 h-3" />
                           </button>
 
@@ -1054,7 +1182,7 @@ export default function CrmModule({
 
                           <button
                             type="button"
-                            onClick={() => openAddDealModal("qualified", lead)}
+                            onClick={() => openAddDealModal("contacted", lead)}
                             className="p-1.5 rounded-lg text-emerald-600 bg-emerald-50 dark:bg-emerald-950/40 hover:bg-emerald-100 transition cursor-pointer"
                             title="Add as Deal to Pipeline"
                           >
@@ -1124,9 +1252,43 @@ export default function CrmModule({
 
       {/* 5. Sales Pipeline Kanban View */}
       {viewMode === "pipeline" && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3">
+        statusFilter === "archived" ? (
+          <div className="rounded-2xl bg-white dark:bg-[#18150f] border border-gray-100 dark:border-[#3a3020] overflow-hidden shadow-2xs">
+            {archivedDeals.length === 0 ? (
+              <div className="p-8 text-center text-sm text-gray-500 dark:text-neutral-400">No archived lost deals found.</div>
+            ) : (
+              <div className="overflow-x-auto table-scroll">
+                <table className="w-full text-left text-xs sm:text-sm border-collapse min-w-[760px]">
+                  <thead>
+                    <tr className="border-b border-gray-100 dark:border-[#3a3020] bg-gray-50/70 dark:bg-[#211d14] text-gray-500 dark:text-neutral-400 text-[11px] font-semibold uppercase tracking-wider">
+                      <th className="py-3 px-4">Deal</th>
+                      <th className="py-3 px-4">Value</th>
+                      <th className="py-3 px-4">Service</th>
+                      <th className="py-3 px-4">Loss Reason</th>
+                      <th className="py-3 px-4">Archived</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100 dark:divide-[#3a3020]/60">
+                    {archivedDeals.map((deal) => (
+                      <tr key={deal.id} className="hover:bg-gray-50/60 dark:hover:bg-slate-800/40 transition">
+                        <td className="py-3.5 px-4 font-bold text-gray-900 dark:text-white">{deal.title}</td>
+                        <td className="py-3.5 px-4 font-mono font-bold text-orange-600">Rs. {(Number(deal.deal_value) || 0).toLocaleString("en-IN")}</td>
+                        <td className="py-3.5 px-4 text-gray-600 dark:text-neutral-300">{deal.service || "Tech Development"}</td>
+                        <td className="py-3.5 px-4 text-red-600 dark:text-red-400 max-w-[320px]">
+                          <span className="line-clamp-2">{deal.loss_reason || deal.notes || "Closed lost"}</span>
+                        </td>
+                        <td className="py-3.5 px-4 text-gray-500">{deal.updated_at?.slice(0, 10) || deal.created_at?.slice(0, 10) || "-"}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3">
           {PIPELINE_STAGES.map((col) => {
-            const colDeals = deals.filter((d) => (d.pipeline_stage || "new") === col.id);
+            const colDeals = deals.filter((d) => (d.pipeline_stage || "contacted") === col.id && matchesDateFilter(d, "created_at"));
             const colTotal = colDeals.reduce((sum, d) => sum + (Number(d.deal_value) || 0), 0);
 
             return (
@@ -1197,7 +1359,6 @@ export default function CrmModule({
                             }}
                             className="text-[10px] bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded px-1.5 py-0.5 text-gray-700 dark:text-neutral-300 focus:outline-hidden"
                           >
-                            <option value="new">New</option>
                             <option value="contacted">Contacted</option>
                             <option value="qualified">Qualified</option>
                             <option value="proposal">Proposal</option>
@@ -1234,6 +1395,7 @@ export default function CrmModule({
             );
           })}
         </div>
+        )
       )}
 
       {viewMode === "commercials" && (
@@ -1783,7 +1945,6 @@ export default function CrmModule({
                     onChange={(e) => setNewDealForm({ ...newDealForm, pipeline_stage: e.target.value })}
                     className="w-full px-3 py-2 rounded-xl bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 font-medium focus:outline-hidden"
                   >
-                    <option value="new">New Leads</option>
                     <option value="contacted">Contacted</option>
                     <option value="qualified">Requirement & Qualified</option>
                     <option value="proposal">Proposal / Quotation</option>
