@@ -178,6 +178,23 @@ function getFollowUpWhatsappMessage(item, lead, client) {
   return `Hi ${name}, quick follow-up from TexWeb Solution regarding ${context}. Please let me know a good time to close the next step.`;
 }
 
+function formatCalendarDate(value) {
+  return new Date(value).toISOString().replace(/[-:]/g, "").split(".")[0] + "Z";
+}
+
+function createGoogleCalendarUrl({ title, start, durationMinutes = 30, details = "", location = "" }) {
+  const startDate = new Date(start);
+  const endDate = new Date(startDate.getTime() + Number(durationMinutes || 30) * 60000);
+  const params = new URLSearchParams({
+    action: "TEMPLATE",
+    text: title || "TexWeb Sales Follow-up",
+    dates: `${formatCalendarDate(startDate)}/${formatCalendarDate(endDate)}`,
+    details,
+    location,
+  });
+  return `https://calendar.google.com/calendar/render?${params.toString()}`;
+}
+
 export default function CrmModule({
   leads = [],
   deals = [],
@@ -443,9 +460,67 @@ export default function CrmModule({
       .sort((a, b) => b.score - a.score)
       .slice(0, 3);
     const overdueFollowUps = followUps.filter((item) => item.status === "pending" && new Date(item.due_at).getTime() < Date.now()).length;
-    const staleDeals = deals.filter((deal) => !["closed_won", "closed_lost"].includes(deal.pipeline_stage) && new Date(deal.updated_at || deal.created_at || Date.now()).getTime() < Date.now() - 7 * 86400000).length;
-    return { rankedLeads, overdueFollowUps, staleDeals };
+    const staleDeals = deals.filter((deal) => !["closed_won", "closed_lost"].includes(deal.pipeline_stage) && new Date(deal.updated_at || deal.created_at || Date.now()).getTime() < Date.now() - 7 * 86400000);
+    const warmStaleDeals = deals.filter((deal) => !["closed_won", "closed_lost"].includes(deal.pipeline_stage) && new Date(deal.updated_at || deal.created_at || Date.now()).getTime() < Date.now() - 3 * 86400000);
+    return { rankedLeads, overdueFollowUps, staleDeals, warmStaleDeals };
   }, [deals, followUps, leads, salesMeetings]);
+
+  const salesReport = useMemo(() => {
+    const completedFollowUps = followUps.filter((item) => item.status === "done" && matchesDateFilter(item, "completed_at")).length;
+    const missedFollowUps = followUps.filter((item) => item.status === "missed" && matchesDateFilter(item, "updated_at")).length;
+    const overdueFollowUps = followUps.filter((item) => item.status === "pending" && new Date(item.due_at).getTime() < Date.now()).length;
+    const wonDeals = deals.filter((deal) => (deal.pipeline_stage || deal.stage) === "closed_won" && matchesDateFilter(deal, "updated_at")).length;
+    const lostDeals = deals.filter((deal) => (deal.pipeline_stage || deal.stage) === "closed_lost" && matchesDateFilter(deal, "updated_at")).length;
+    const activeLeads = leads.filter((lead) => matchesDateFilter(lead, "created_at")).length;
+    const conversionRate = activeLeads > 0 ? Math.round((wonDeals / activeLeads) * 100) : 0;
+    const sourceMap = new Map();
+    leads.forEach((lead) => {
+      const source = lead.source || "Unknown";
+      const row = sourceMap.get(source) || { source, leads: 0, won: 0, lost: 0, value: 0 };
+      row.leads += 1;
+      if (lead.status === "Lost") row.lost += 1;
+      sourceMap.set(source, row);
+    });
+    deals.forEach((deal) => {
+      const lead = leads.find((item) => item.id === deal.lead_id);
+      const source = lead?.source || "Direct / Client";
+      const row = sourceMap.get(source) || { source, leads: 0, won: 0, lost: 0, value: 0 };
+      if ((deal.pipeline_stage || deal.stage) === "closed_won") row.won += 1;
+      if ((deal.pipeline_stage || deal.stage) === "closed_lost") row.lost += 1;
+      row.value += Number(deal.deal_value || deal.value) || 0;
+      sourceMap.set(source, row);
+    });
+    return {
+      completedFollowUps,
+      missedFollowUps,
+      overdueFollowUps,
+      conversionRate,
+      sourceRows: Array.from(sourceMap.values()).sort((a, b) => b.value - a.value).slice(0, 5),
+    };
+  }, [customDateRange.from, customDateRange.to, dateFilter, deals, followUps, leads]);
+
+  const selectedLeadActivity = useMemo(() => {
+    if (!selectedLead?.id) return { followUps: [], meetings: [], deals: [], summary: "" };
+    const linkedDeals = deals.filter((deal) => deal.lead_id === selectedLead.id);
+    const dealIds = new Set(linkedDeals.map((deal) => deal.id));
+    const linkedFollowUps = followUps
+      .filter((item) => item.lead_id === selectedLead.id || dealIds.has(item.deal_id))
+      .sort((a, b) => new Date(b.completed_at || b.due_at || b.created_at || 0) - new Date(a.completed_at || a.due_at || a.created_at || 0));
+    const linkedMeetings = salesMeetings
+      .filter((item) => item.lead_id === selectedLead.id || dealIds.has(item.deal_id))
+      .sort((a, b) => new Date(b.scheduled_at || b.created_at || 0) - new Date(a.scheduled_at || a.created_at || 0));
+    const lastFollowUp = linkedFollowUps[0];
+    const lastMeeting = linkedMeetings[0];
+    const openFollowUps = linkedFollowUps.filter((item) => item.status === "pending").length;
+    const summary = [
+      `${selectedLead.name || "Client"} came from ${selectedLead.source || "unknown source"} for ${selectedLead.service || "a TexWeb service"}.`,
+      selectedLead.status ? `Current lead status is ${selectedLead.status}.` : "",
+      lastMeeting ? `Latest meeting: ${lastMeeting.title} (${lastMeeting.status}).` : "No meeting completed yet.",
+      lastFollowUp ? `Latest follow-up: ${lastFollowUp.title} (${lastFollowUp.status}).` : "No follow-up history yet.",
+      openFollowUps ? `${openFollowUps} pending follow-up(s) need action.` : "No pending follow-up currently.",
+    ].filter(Boolean).join(" ");
+    return { followUps: linkedFollowUps, meetings: linkedMeetings, deals: linkedDeals, summary };
+  }, [deals, followUps, salesMeetings, selectedLead]);
 
   function handleAddLeadSubmit(e) {
     e.preventDefault();
@@ -890,6 +965,53 @@ export default function CrmModule({
         </div>
       </div>
 
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+        <div className="rounded-2xl bg-white dark:bg-[#18150f] border border-gray-100 dark:border-[#3a3020] p-4 shadow-2xs">
+          <div className="flex items-center justify-between gap-3 mb-3">
+            <div>
+              <div className="text-sm font-bold text-gray-900 dark:text-white">Sales Report</div>
+              <p className="text-xs text-gray-500 dark:text-neutral-400 mt-0.5">Follow-up performance and conversion for selected date filter.</p>
+            </div>
+            <span className="px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-600 text-[11px] font-black">{salesReport.conversionRate}% conversion</span>
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+            {[
+              ["Completed", salesReport.completedFollowUps, "text-emerald-600"],
+              ["Missed", salesReport.missedFollowUps, "text-red-600"],
+              ["Overdue", salesReport.overdueFollowUps, "text-amber-600"],
+              ["Conversion", `${salesReport.conversionRate}%`, "text-blue-600"],
+            ].map(([label, value, tone]) => (
+              <div key={label} className="rounded-xl bg-gray-50 dark:bg-[#211d14] border border-gray-100 dark:border-[#3a3020] p-3">
+                <div className={`text-lg font-black ${tone}`}>{value}</div>
+                <div className="text-[11px] text-gray-500 dark:text-neutral-400 font-semibold">{label}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="rounded-2xl bg-white dark:bg-[#18150f] border border-gray-100 dark:border-[#3a3020] p-4 shadow-2xs">
+          <div className="flex items-center justify-between gap-3 mb-3">
+            <div>
+              <div className="text-sm font-bold text-gray-900 dark:text-white">Lead Source ROI</div>
+              <p className="text-xs text-gray-500 dark:text-neutral-400 mt-0.5">Meta, Google, referral, and direct source quality.</p>
+            </div>
+            <DollarSign className="w-4 h-4 text-orange-500" />
+          </div>
+          <div className="space-y-2">
+            {salesReport.sourceRows.length === 0 ? (
+              <div className="text-xs text-gray-500 dark:text-neutral-400">No source data available.</div>
+            ) : salesReport.sourceRows.map((row) => (
+              <div key={row.source} className="grid grid-cols-[1fr_auto_auto_auto] gap-2 items-center text-xs rounded-xl bg-gray-50 dark:bg-[#211d14] border border-gray-100 dark:border-[#3a3020] px-3 py-2">
+                <div className="font-bold text-gray-900 dark:text-white truncate">{row.source}</div>
+                <div className="text-gray-500">{row.leads} leads</div>
+                <div className="text-emerald-600 font-bold">{row.won} won</div>
+                <div className="font-mono text-orange-600 font-bold">Rs. {row.value.toLocaleString("en-IN")}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
       <div className="rounded-2xl bg-white dark:bg-[#18150f] border border-gray-100 dark:border-[#3a3020] p-4 shadow-2xs">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-3">
           <div>
@@ -928,6 +1050,30 @@ export default function CrmModule({
             ))
           )}
         </div>
+        {aiInsights.warmStaleDeals.length > 0 && (
+          <div className="mt-3 rounded-xl border border-amber-200 dark:border-amber-900/50 bg-amber-50/70 dark:bg-amber-950/20 p-3">
+            <div className="flex items-center gap-2 text-xs font-black text-amber-700 dark:text-amber-300 mb-2">
+              <AlertCircle className="w-4 h-4" />
+              <span>Stale Deal Alerts</span>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+              {aiInsights.warmStaleDeals.slice(0, 4).map((deal) => {
+                const ageDays = Math.floor((Date.now() - new Date(deal.updated_at || deal.created_at || Date.now()).getTime()) / 86400000);
+                return (
+                  <div key={deal.id} className="flex items-center justify-between gap-3 rounded-lg bg-white dark:bg-[#211d14] px-3 py-2 text-xs">
+                    <div className="min-w-0">
+                      <div className="font-bold text-gray-900 dark:text-white truncate">{deal.title}</div>
+                      <div className="text-gray-500">{deal.pipeline_stage || "pipeline"} · {ageDays} days idle</div>
+                    </div>
+                    <span className={`px-2 py-0.5 rounded-full font-black ${ageDays >= 7 ? "bg-red-50 text-red-600" : "bg-amber-100 text-amber-700"}`}>
+                      {ageDays >= 7 ? "7d+" : "3d+"}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* 3. Filter & Search Controls */}
@@ -1592,6 +1738,20 @@ export default function CrmModule({
                                 WhatsApp
                               </button>
                             )}
+                            <a
+                              href={createGoogleCalendarUrl({
+                                title: item.title,
+                                start: item.due_at,
+                                durationMinutes: 15,
+                                details: item.notes || "Sales follow-up",
+                              })}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="px-2.5 py-1 rounded-lg text-xs font-bold bg-gray-100 dark:bg-slate-800 text-gray-700 dark:text-neutral-200 hover:bg-gray-200 dark:hover:bg-slate-700 transition flex items-center gap-1"
+                            >
+                              <ExternalLink className="w-3 h-3" />
+                              Calendar
+                            </a>
                             {item.status === "pending" && (
                               <>
                                 <button
@@ -1674,6 +1834,20 @@ export default function CrmModule({
                                 Join
                               </a>
                             )}
+                            <a
+                              href={createGoogleCalendarUrl({
+                                title: item.title,
+                                start: item.scheduled_at,
+                                durationMinutes: item.duration_minutes || 30,
+                                details: item.agenda || item.next_action || "Sales meeting",
+                                location: item.meeting_link || item.location || "",
+                              })}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="px-2.5 py-1 rounded-lg text-xs font-bold bg-gray-100 dark:bg-slate-800 text-gray-700 dark:text-neutral-200 hover:bg-gray-200 dark:hover:bg-slate-700 transition"
+                            >
+                              Calendar
+                            </a>
                             {item.status === "scheduled" && (
                               <>
                                 <button
@@ -1767,6 +1941,14 @@ export default function CrmModule({
               </div>
             )}
 
+            <div className="p-3 rounded-xl bg-orange-50/70 dark:bg-orange-950/20 border border-orange-100 dark:border-orange-900/50 text-xs">
+              <div className="flex items-center gap-2 font-black text-orange-700 dark:text-orange-300 mb-1">
+                <Sparkles className="w-3.5 h-3.5" />
+                <span>AI Client Summary</span>
+              </div>
+              <p className="text-gray-700 dark:text-neutral-300 leading-relaxed">{selectedLeadActivity.summary}</p>
+            </div>
+
             <div>
               <h4 className="text-xs font-bold text-gray-900 dark:text-white mb-2 uppercase tracking-wider">
                 Activity History
@@ -1786,6 +1968,18 @@ export default function CrmModule({
                     description: "Lead status set to " + (selectedLead.status || "New"),
                     time: "Recent",
                   },
+                  ...selectedLeadActivity.meetings.map((item) => ({
+                    type: "meeting",
+                    title: `Meeting: ${item.title}`,
+                    description: `${item.status || "scheduled"} · ${item.outcome || item.agenda || "Sales meeting"}`,
+                    time: new Date(item.scheduled_at || item.created_at || Date.now()).toLocaleString("en-IN"),
+                  })),
+                  ...selectedLeadActivity.followUps.map((item) => ({
+                    type: "followup",
+                    title: `Follow-up: ${item.title}`,
+                    description: `${item.status || "pending"} · ${item.notes || item.channel || "Sales follow-up"}`,
+                    time: new Date(item.completed_at || item.due_at || item.created_at || Date.now()).toLocaleString("en-IN"),
+                  })),
                 ]}
               />
             </div>
