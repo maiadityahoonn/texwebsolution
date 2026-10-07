@@ -28,6 +28,7 @@ import {
   Check,
   AlertCircle,
   ShieldAlert,
+  RotateCcw,
 } from "lucide-react";
 import ActivityTimeline from "./ActivityTimeline";
 import MetaLeadsImportModal from "./MetaLeadsImportModal";
@@ -171,6 +172,12 @@ function getLeadLocation(lead) {
   return match ? match[1].trim() : "—";
 }
 
+function getFollowUpWhatsappMessage(item, lead, client) {
+  const name = client?.name || lead?.name || "there";
+  const context = item?.notes || item?.title || "your project discussion";
+  return `Hi ${name}, quick follow-up from TexWeb Solution regarding ${context}. Please let me know a good time to close the next step.`;
+}
+
 export default function CrmModule({
   leads = [],
   deals = [],
@@ -227,6 +234,12 @@ export default function CrmModule({
   const [showCommercialModal, setShowCommercialModal] = useState(false);
   const [showFollowUpModal, setShowFollowUpModal] = useState(false);
   const [showSalesMeetingModal, setShowSalesMeetingModal] = useState(false);
+  const [showRescheduleModal, setShowRescheduleModal] = useState(false);
+  const [rescheduleTarget, setRescheduleTarget] = useState(null);
+  const [rescheduleForm, setRescheduleForm] = useState({
+    due_at: new Date(Date.now() + 86400000).toISOString().slice(0, 16),
+    notes: "",
+  });
   const [showLostModal, setShowLostModal] = useState(false);
   const [lostTarget, setLostTarget] = useState(null);
   const [commercialType, setCommercialType] = useState("proposal");
@@ -569,6 +582,29 @@ export default function CrmModule({
       status: "scheduled",
     });
     setShowSalesMeetingModal(false);
+  }
+
+  function openRescheduleModal(item) {
+    setRescheduleTarget(item);
+    setRescheduleForm({
+      due_at: new Date(Date.now() + 86400000).toISOString().slice(0, 16),
+      notes: item.notes || "",
+    });
+    setShowRescheduleModal(true);
+  }
+
+  function handleRescheduleSubmit(e) {
+    e.preventDefault();
+    if (!rescheduleTarget || !rescheduleForm.due_at) return;
+    onUpdateFollowUp?.(rescheduleTarget.id, {
+      status: "pending",
+      due_at: new Date(rescheduleForm.due_at).toISOString(),
+      notes: [rescheduleForm.notes, `Rescheduled from ${new Date(rescheduleTarget.due_at).toLocaleString("en-IN")}`]
+        .filter(Boolean)
+        .join("\n"),
+    });
+    setShowRescheduleModal(false);
+    setRescheduleTarget(null);
   }
 
   function openLostModal(target) {
@@ -1517,10 +1553,17 @@ export default function CrmModule({
                   {filteredFollowUps.map((item) => {
                     const lead = leads.find((leadItem) => leadItem.id === item.lead_id);
                     const client = clients.find((clientItem) => clientItem.id === item.client_id);
+                    const contactPhone = client?.phone || lead?.phone || "";
+                    const isOverdue = item.status === "pending" && new Date(item.due_at).getTime() < Date.now();
                     return (
-                      <tr key={item.id} className="hover:bg-gray-50/60 dark:hover:bg-slate-800/40 transition">
+                      <tr key={item.id} className={`hover:bg-gray-50/60 dark:hover:bg-slate-800/40 transition ${isOverdue ? "bg-red-50/40 dark:bg-red-950/10" : ""}`}>
                         <td className="py-3.5 px-4">
-                          <div className="font-bold text-gray-900 dark:text-white">{item.title}</div>
+                          <div className="flex items-center gap-2">
+                            <div className="font-bold text-gray-900 dark:text-white">{item.title}</div>
+                            {isOverdue && (
+                              <span className="px-2 py-0.5 rounded-full bg-red-100 text-red-600 text-[10px] font-black uppercase">Overdue</span>
+                            )}
+                          </div>
                           <div className="text-[11px] text-gray-500 line-clamp-1">{item.notes || "Sales follow-up"}</div>
                         </td>
                         <td className="py-3.5 px-4">
@@ -1531,18 +1574,50 @@ export default function CrmModule({
                         <td className="py-3.5 px-4 text-gray-500 text-xs">{new Date(item.due_at).toLocaleString("en-IN")}</td>
                         <td className="py-3.5 px-4">
                           <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase ${
-                            item.status === "done" ? "bg-emerald-50 text-emerald-600" : item.status === "missed" ? "bg-red-50 text-red-600" : "bg-amber-50 text-amber-600"
+                            item.status === "done" ? "bg-emerald-50 text-emerald-600" : item.status === "missed" || isOverdue ? "bg-red-50 text-red-600" : "bg-amber-50 text-amber-600"
                           }`}>{item.status}</span>
                         </td>
                         <td className="py-3.5 px-4 text-right">
-                          {item.status === "pending" && (
-                            <button
-                              onClick={() => onUpdateFollowUp?.(item.id, { status: "done", completed_at: new Date().toISOString() })}
-                              className="px-2.5 py-1 rounded-lg text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white transition"
-                            >
-                              Mark Done
-                            </button>
-                          )}
+                          <div className="flex items-center justify-end gap-2">
+                            {contactPhone && (
+                              <button
+                                onClick={() => {
+                                  const cleanPhone = contactPhone.replace(/[^0-9]/g, "");
+                                  const text = encodeURIComponent(getFollowUpWhatsappMessage(item, lead, client));
+                                  window.open(`https://wa.me/${cleanPhone}?text=${text}`, "_blank", "noopener,noreferrer");
+                                }}
+                                className="px-2.5 py-1 rounded-lg text-xs font-bold bg-emerald-50 text-emerald-700 hover:bg-emerald-100 transition flex items-center gap-1"
+                              >
+                                <WhatsAppIcon className="w-3.5 h-3.5" />
+                                WhatsApp
+                              </button>
+                            )}
+                            {item.status === "pending" && (
+                              <>
+                                <button
+                                  onClick={() => onUpdateFollowUp?.(item.id, { status: "done", completed_at: new Date().toISOString() })}
+                                  className="px-2.5 py-1 rounded-lg text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white transition"
+                                >
+                                  Done
+                                </button>
+                                <button
+                                  onClick={() => onUpdateFollowUp?.(item.id, { status: "missed", notes: [item.notes, `Missed at ${new Date().toLocaleString("en-IN")}`].filter(Boolean).join("\n") })}
+                                  className="px-2.5 py-1 rounded-lg text-xs font-bold bg-red-50 text-red-600 hover:bg-red-100 transition"
+                                >
+                                  Missed
+                                </button>
+                              </>
+                            )}
+                            {["pending", "missed"].includes(item.status) && (
+                              <button
+                                onClick={() => openRescheduleModal(item)}
+                                className="px-2.5 py-1 rounded-lg text-xs font-bold bg-blue-50 text-blue-600 hover:bg-blue-100 transition flex items-center gap-1"
+                              >
+                                <RotateCcw className="w-3 h-3" />
+                                Reschedule
+                              </button>
+                            )}
+                          </div>
                         </td>
                       </tr>
                     );
@@ -1600,12 +1675,20 @@ export default function CrmModule({
                               </a>
                             )}
                             {item.status === "scheduled" && (
-                              <button
-                                onClick={() => onUpdateSalesMeeting?.(item.id, { status: "completed" })}
-                                className="px-2.5 py-1 rounded-lg text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white transition"
-                              >
-                                Complete
-                              </button>
+                              <>
+                                <button
+                                  onClick={() => onUpdateSalesMeeting?.(item.id, { status: "completed", outcome: item.outcome || "Meeting completed. Follow-up required." })}
+                                  className="px-2.5 py-1 rounded-lg text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white transition"
+                                >
+                                  Complete
+                                </button>
+                                <button
+                                  onClick={() => onUpdateSalesMeeting?.(item.id, { status: "no_show", outcome: "Client did not join. Reschedule follow-up required." })}
+                                  className="px-2.5 py-1 rounded-lg text-xs font-bold bg-red-50 text-red-600 hover:bg-red-100 transition"
+                                >
+                                  No Show
+                                </button>
+                              </>
                             )}
                           </div>
                         </td>
@@ -2294,6 +2377,45 @@ export default function CrmModule({
             <div className="flex justify-end gap-2 pt-3 border-t border-gray-100 dark:border-[#3a3020]">
               <button type="button" onClick={() => setShowFollowUpModal(false)} className="px-3.5 py-2 rounded-xl text-xs font-semibold text-gray-600 dark:text-neutral-300">Cancel</button>
               <button type="submit" className="px-4 py-2 rounded-xl text-xs font-bold bg-blue-600 hover:bg-blue-700 text-white">Save Follow-up</button>
+            </div>
+          </form>
+        </div>
+      )}
+
+      {showRescheduleModal && rescheduleTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
+          <form onSubmit={handleRescheduleSubmit} className="w-full max-w-lg rounded-2xl bg-white dark:bg-[#18150f] border border-gray-200 dark:border-[#3a3020] shadow-2xl p-5 space-y-4">
+            <div className="flex items-center justify-between border-b border-gray-100 dark:border-[#3a3020] pb-3">
+              <div>
+                <h3 className="font-bold text-base text-gray-900 dark:text-white">Reschedule Follow-up</h3>
+                <p className="text-xs text-gray-500 dark:text-neutral-400 mt-0.5">{rescheduleTarget.title}</p>
+              </div>
+              <button type="button" onClick={() => setShowRescheduleModal(false)} className="p-1 rounded-lg text-gray-400"><X className="w-4 h-4" /></button>
+            </div>
+            <div className="space-y-3 text-xs">
+              <div>
+                <label className="block font-medium mb-1">New Due Date & Time *</label>
+                <input
+                  type="datetime-local"
+                  required
+                  value={rescheduleForm.due_at}
+                  onChange={(e) => setRescheduleForm({ ...rescheduleForm, due_at: e.target.value })}
+                  className="w-full px-3 py-2 rounded-xl bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700"
+                />
+              </div>
+              <div>
+                <label className="block font-medium mb-1">Notes</label>
+                <textarea
+                  rows={3}
+                  value={rescheduleForm.notes}
+                  onChange={(e) => setRescheduleForm({ ...rescheduleForm, notes: e.target.value })}
+                  className="w-full px-3 py-2 rounded-xl bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700"
+                />
+              </div>
+            </div>
+            <div className="flex justify-end gap-2 pt-3 border-t border-gray-100 dark:border-[#3a3020]">
+              <button type="button" onClick={() => setShowRescheduleModal(false)} className="px-3.5 py-2 rounded-xl text-xs font-semibold text-gray-600 dark:text-neutral-300">Cancel</button>
+              <button type="submit" className="px-4 py-2 rounded-xl text-xs font-bold bg-blue-600 hover:bg-blue-700 text-white">Reschedule</button>
             </div>
           </form>
         </div>

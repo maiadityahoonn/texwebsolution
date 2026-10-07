@@ -716,6 +716,54 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
   const [escalationResolutionText, setEscalationResolutionText] = useState("");
   const [batchTransferForm, setBatchTransferForm] = useState({ member_id: "", to_batch_id: "", note: "" });
 
+  function pushLiveSalesNotification(title, message, type = "lead", linkUrl = "/login?section=sales_followups") {
+    const notification = {
+      id: `local-sales-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+      user_id: sessionUser?.id || userProfile?.id || "local",
+      title,
+      message,
+      type,
+      link_url: linkUrl,
+      is_read: false,
+      created_at: new Date().toISOString(),
+      delivery_channels: ["in_app"],
+    };
+    setNotifications((prev) => [notification, ...prev]);
+    setToast(title);
+    playNotificationSound(type === "alert" ? "task" : type);
+
+    if (typeof window !== "undefined" && "Notification" in window) {
+      const showBrowserNotification = () => {
+        try {
+          new Notification(title, { body: message, tag: notification.id });
+        } catch {}
+      };
+      if (window.Notification.permission === "granted") {
+        showBrowserNotification();
+      } else if (window.Notification.permission === "default") {
+        window.Notification.requestPermission().then((permission) => {
+          if (permission === "granted") showBrowserNotification();
+        }).catch(() => {});
+      }
+    }
+  }
+
+  async function createAutoSalesFollowUp(followUp, notificationTitle) {
+    const res = await createSalesFollowUp({
+      channel: "whatsapp",
+      priority: "high",
+      status: "pending",
+      created_by: sessionUser?.id || null,
+      assigned_to: sessionUser?.id || null,
+      ...followUp,
+    });
+    if (res) {
+      setSalesFollowUps((prev) => [res, ...prev.filter((item) => item.id !== res.id)]);
+      pushLiveSalesNotification(notificationTitle, res.title, "lead", "/login?section=sales_followups");
+    }
+    return res;
+  }
+
   // Batch Announcement Attachments & Pagination
   const [announcementAttachment, setAnnouncementAttachment] = useState({
     file: null,
@@ -3550,11 +3598,14 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
   const metrics = dashboardMetrics;
 
   const mobileNavItems = useMemo(() => {
+    const overdueFollowUps = salesFollowUps.filter((item) => (
+      item.status === "pending" && item.due_at && new Date(item.due_at).getTime() < Date.now()
+    )).length;
     const items = [
       { key: "overview", label: "Dashboard", icon: Home, section: "overview", show: true },
       { key: "crm", label: "CRM", icon: Target, section: "crm", show: canUseCrm, badge: leads.length },
       { key: "pipeline", label: "Pipeline", icon: TrendingUp, section: "pipeline", show: canUseCrm, badge: deals.length },
-      { key: "sales_followups", label: "Follow-ups", icon: Phone, section: "sales_followups", show: canUseCrm, badge: salesFollowUps.filter((item) => item.status === "pending").length },
+      { key: "sales_followups", label: "Follow-ups", icon: Phone, section: "sales_followups", show: canUseCrm, badge: overdueFollowUps || salesFollowUps.filter((item) => item.status === "pending").length },
       { key: "sales_meetings", label: "Meetings", icon: Calendar, section: "sales_meetings", show: canUseCrm, badge: salesMeetings.filter((item) => item.status === "scheduled").length },
       { key: "sales_commercials", label: "Proposal", icon: FileText, section: "sales_commercials", show: canUseCrm, badge: proposals.length + quotations.length },
       { key: "agreements", label: "Agreements", icon: ShieldCheck, section: "agreements", show: canUseCrm, badge: agreements.length },
@@ -4148,6 +4199,46 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
   }, [toast]);
 
   useEffect(() => {
+    if (!sessionUser?.id) return undefined;
+
+    const storageKey = `texweb_overdue_followup_alerted_${sessionUser.id}`;
+    const checkOverdueFollowUps = () => {
+      const overdue = salesFollowUps.filter((item) => (
+        item.status === "pending"
+        && item.due_at
+        && new Date(item.due_at).getTime() < Date.now()
+      ));
+      if (!overdue.length) return;
+
+      let alerted = [];
+      try {
+        alerted = JSON.parse(localStorage.getItem(storageKey) || "[]");
+      } catch {
+        alerted = [];
+      }
+      const alertedSet = new Set(alerted);
+      const fresh = overdue.filter((item) => !alertedSet.has(`${item.id}:${item.due_at}`));
+      if (!fresh.length) return;
+
+      const first = fresh[0];
+      const title = fresh.length === 1 ? "Overdue sales follow-up" : `${fresh.length} overdue sales follow-ups`;
+      const message = fresh.length === 1
+        ? `${first.title} was due at ${new Date(first.due_at).toLocaleString("en-IN")}.`
+        : `${fresh.length} follow-ups are overdue. Open Sales Follow-ups to clear them.`;
+      pushLiveSalesNotification(title, message, "alert", "/login?section=sales_followups");
+
+      const nextAlerted = Array.from(new Set([...alerted, ...fresh.map((item) => `${item.id}:${item.due_at}`)])).slice(-300);
+      try {
+        localStorage.setItem(storageKey, JSON.stringify(nextAlerted));
+      } catch {}
+    };
+
+    checkOverdueFollowUps();
+    const timer = setInterval(checkOverdueFollowUps, 60_000);
+    return () => clearInterval(timer);
+  }, [salesFollowUps, sessionUser?.id]);
+
+  useEffect(() => {
     if (!sessionUser || !selectedBatch?.id) return undefined;
     let cancelled = false;
     async function loadSelectedBatchWorkspace() {
@@ -4202,6 +4293,43 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
       supabase.removeChannel(notifChannel);
     };
   }, [sessionUser?.id]);
+
+  useEffect(() => {
+    if (!sessionUser?.id || !canUseCrm) return undefined;
+    const channel = supabase
+      .channel("sales-followups-meetings-live")
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "sales_followups" }, (payload) => {
+        const item = payload.new;
+        if (!item?.id) return;
+        setSalesFollowUps((prev) => [item, ...prev.filter((row) => row.id !== item.id)]);
+        if (item.created_by !== sessionUser.id) {
+          pushLiveSalesNotification("New sales follow-up", item.title || "Follow-up scheduled", "lead", "/login?section=sales_followups");
+        }
+      })
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "sales_followups" }, (payload) => {
+        const item = payload.new;
+        if (!item?.id) return;
+        setSalesFollowUps((prev) => prev.map((row) => (row.id === item.id ? { ...row, ...item } : row)));
+      })
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "sales_meetings" }, (payload) => {
+        const item = payload.new;
+        if (!item?.id) return;
+        setSalesMeetings((prev) => [item, ...prev.filter((row) => row.id !== item.id)]);
+        if (item.created_by !== sessionUser.id) {
+          pushLiveSalesNotification("New sales meeting", item.title || "Meeting scheduled", "meeting", "/login?section=sales_meetings");
+        }
+      })
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "sales_meetings" }, (payload) => {
+        const item = payload.new;
+        if (!item?.id) return;
+        setSalesMeetings((prev) => prev.map((row) => (row.id === item.id ? { ...row, ...item } : row)));
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [canUseCrm, sessionUser?.id]);
 
   useEffect(() => {
     if (!sessionUser?.id) return undefined;
@@ -12298,6 +12426,14 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
                     if (res) {
                       setProposals((prev) => [res, ...prev.filter((item) => item.id !== res.id)]);
                       setToast("Sales proposal saved.");
+                      await createAutoSalesFollowUp({
+                        lead_id: null,
+                        client_id: res.client_id || proposal.client_id || null,
+                        deal_id: res.deal_id || proposal.deal_id || null,
+                        title: `Follow up for ${res.title || proposal.title || "proposal approval"}`,
+                        due_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+                        notes: "Auto-created after proposal quotation was sent. Confirm approval, objections, and next step.",
+                      }, "Auto follow-up created after proposal");
                     }
                   }}
                   onUpdateProposal={async (id, updates) => {
@@ -12305,6 +12441,15 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
                     if (res) {
                       setProposals((prev) => prev.map((item) => (item.id === id ? { ...item, ...updates, ...res } : item)));
                       setToast("Proposal updated.");
+                      if (updates.status === "sent" || updates.status === "viewed") {
+                        await createAutoSalesFollowUp({
+                          client_id: res.client_id || null,
+                          deal_id: res.deal_id || null,
+                          title: `Proposal follow-up: ${res.title || "Client approval"}`,
+                          due_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+                          notes: `Auto-created after proposal status changed to ${updates.status}.`,
+                        }, "Auto follow-up created for proposal");
+                      }
                     }
                   }}
                   onUpdateQuotation={async (id, updates) => {
@@ -12332,21 +12477,22 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
                     const res = await createSalesFollowUp({ ...followUp, created_by: sessionUser?.id || null, assigned_to: sessionUser?.id || null });
                     if (res) {
                       setSalesFollowUps((prev) => [res, ...prev.filter((item) => item.id !== res.id)]);
-                      setToast("Sales follow-up scheduled.");
+                      pushLiveSalesNotification("Sales follow-up scheduled", res.title || "New follow-up", "lead", "/login?section=sales_followups");
                     }
                   }}
                   onUpdateFollowUp={async (id, updates) => {
                     const res = await updateSalesFollowUp(id, updates);
                     if (res) {
                       setSalesFollowUps((prev) => prev.map((item) => (item.id === id ? { ...item, ...updates, ...res } : item)));
-                      setToast("Follow-up updated.");
+                      const statusText = updates.status === "done" ? "Follow-up completed." : updates.status === "missed" ? "Follow-up marked missed." : updates.due_at ? "Follow-up rescheduled." : "Follow-up updated.";
+                      pushLiveSalesNotification(statusText, res.title || "Sales follow-up", updates.status === "missed" ? "alert" : "lead", "/login?section=sales_followups");
                     }
                   }}
                   onCreateSalesMeeting={async (meeting) => {
                     const res = await createSalesMeeting({ ...meeting, created_by: sessionUser?.id || null, host_id: sessionUser?.id || null });
                     if (res) {
                       setSalesMeetings((prev) => [res, ...prev.filter((item) => item.id !== res.id)]);
-                      setToast("Sales meeting scheduled.");
+                      pushLiveSalesNotification("Sales meeting scheduled", res.title || "Client meeting", "meeting", "/login?section=sales_meetings");
                     }
                   }}
                   onUpdateSalesMeeting={async (id, updates) => {
@@ -12354,6 +12500,26 @@ export default function LoginPage({ defaultSection = "overview" } = {}) {
                     if (res) {
                       setSalesMeetings((prev) => prev.map((item) => (item.id === id ? { ...item, ...updates, ...res } : item)));
                       setToast("Sales meeting updated.");
+                      if (updates.status === "completed") {
+                        await createAutoSalesFollowUp({
+                          lead_id: res.lead_id || null,
+                          client_id: res.client_id || null,
+                          deal_id: res.deal_id || null,
+                          title: `Post-meeting next action: ${res.title || "Client meeting"}`,
+                          due_at: new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString(),
+                          notes: "Auto-created after meeting completion. Send summary, confirm requirements, and move pipeline forward.",
+                        }, "Auto follow-up created after meeting");
+                      }
+                      if (updates.status === "no_show") {
+                        await createAutoSalesFollowUp({
+                          lead_id: res.lead_id || null,
+                          client_id: res.client_id || null,
+                          deal_id: res.deal_id || null,
+                          title: `Reschedule missed meeting: ${res.title || "Client meeting"}`,
+                          due_at: new Date(Date.now() + 3 * 60 * 60 * 1000).toISOString(),
+                          notes: "Auto-created after client no-show. Send reschedule message and confirm new slot.",
+                        }, "Auto follow-up created for no-show meeting");
+                      }
                     }
                   }}
                   onOpenDirectWhatsapp={handleDirectWhatsapp}
