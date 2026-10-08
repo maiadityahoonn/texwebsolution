@@ -41,6 +41,26 @@ function sanitizeMetaPhone(phone) {
   return cleanPhone(clean) || clean;
 }
 
+async function insertMetaPlaceholderLead(admin, { leadgenId, formId, adId, reason }) {
+  const notes = [
+    `Leadgen ID: ${leadgenId}`,
+    `Form ID: ${formId || "N/A"}`,
+    `Ad ID: ${adId || "N/A"}`,
+    reason ? `Reason: ${cleanText(reason, 220)}` : null,
+  ].filter(Boolean).join(" | ");
+
+  return admin.from("leads").insert([
+    {
+      name: `Meta Lead (${leadgenId})`,
+      phone: "Check Meta Ads Manager",
+      service: "Meta Inbound Lead",
+      source: "Meta Ads",
+      status: "New",
+      notes,
+    },
+  ]).select().single();
+}
+
 async function sendMetaCrmEvent(request, lead, status = "New") {
   try {
     const url = new URL("/api/meta/crm-events", request.url);
@@ -145,8 +165,9 @@ export async function POST(request) {
             if (leadgenId && pageAccessToken) {
               try {
                 // Fetch lead details from Meta Graph API
+                const apiVersion = process.env.META_CAPI_API_VERSION || "v26.0";
                 const metaRes = await fetch(
-                  `https://graph.facebook.com/v20.0/${leadgenId}?access_token=${pageAccessToken}`
+                  `https://graph.facebook.com/${apiVersion}/${leadgenId}?access_token=${pageAccessToken}`
                 );
                 if (metaRes.ok) {
                   const leadData = await metaRes.json();
@@ -185,22 +206,35 @@ export async function POST(request) {
                     },
                   ]).select().single();
                   if (insertedLead) await sendMetaCrmEvent(request, insertedLead, insertedLead.status || "New");
+                } else {
+                  const errorBody = await metaRes.json().catch(() => ({}));
+                  const reason = errorBody?.error?.message || `Meta Graph returned ${metaRes.status}`;
+                  const { data: insertedLead } = await insertMetaPlaceholderLead(admin, {
+                    leadgenId,
+                    formId,
+                    adId,
+                    reason,
+                  });
+                  if (insertedLead) await sendMetaCrmEvent(request, insertedLead, insertedLead.status || "New");
                 }
               } catch (fetchErr) {
                 console.error("Meta Graph API error:", fetchErr);
+                const { data: insertedLead } = await insertMetaPlaceholderLead(admin, {
+                  leadgenId,
+                  formId,
+                  adId,
+                  reason: fetchErr?.message || "Meta Graph fetch failed",
+                });
+                if (insertedLead) await sendMetaCrmEvent(request, insertedLead, insertedLead.status || "New");
               }
             } else if (leadgenId) {
               // Store placeholder if Access Token not set yet
-              const { data: insertedLead } = await admin.from("leads").insert([
-                {
-                  name: `Meta Lead (${leadgenId})`,
-                  phone: "Check Meta Ads Manager",
-                  service: "Meta Inbound Lead",
-                  source: "Meta Ads",
-                  status: "New",
-                  notes: `Leadgen ID: ${leadgenId} | Form ID: ${formId || "N/A"} | Ad ID: ${adId || "N/A"}. Please configure META_PAGE_ACCESS_TOKEN for automatic field decoding.`,
-                },
-              ]).select().single();
+              const { data: insertedLead } = await insertMetaPlaceholderLead(admin, {
+                leadgenId,
+                formId,
+                adId,
+                reason: "META_PAGE_ACCESS_TOKEN missing. Configure it for automatic field decoding.",
+              });
               if (insertedLead) await sendMetaCrmEvent(request, insertedLead, insertedLead.status || "New");
             }
           }
