@@ -27,6 +27,26 @@ function mapDealStageToLeadStatus(stage) {
   return 'Lead';
 }
 
+function extractMetaLeadKey(lead) {
+  const notes = String(lead?.notes || "");
+  const match = notes.match(/(?:Meta Lead ID|Meta ID|Leadgen ID)\s*:\s*(l:)?(\d{10,25})/i);
+  if (match) return `l:${match[2]}`;
+  const direct = lead?.meta_lead_id || lead?.leadgen_id || lead?.lead_id;
+  if (!direct) return "";
+  const digits = String(direct).replace(/\D/g, "");
+  return digits ? `l:${digits}` : "";
+}
+
+function escapeSupabaseLike(value) {
+  return String(value || "").replace(/[%_,]/g, (match) => `\\${match}`);
+}
+
+function clampPageSize(value, fallback = 50, max = 200) {
+  const parsed = Number.parseInt(value, 10);
+  if (!Number.isFinite(parsed) || parsed <= 0) return fallback;
+  return Math.min(parsed, max);
+}
+
 async function sendDealStageMetaEvent(deal, stage) {
   if (!deal?.lead_id) return;
   try {
@@ -50,18 +70,71 @@ async function sendDealStageMetaEvent(deal, stage) {
   }
 }
 
-export async function getCloudLeads() {
+export async function getCloudLeads(options = null) {
   try {
-    const { data, error } = await supabase
+    const useOptions = options && typeof options === 'object';
+    const pageSize = clampPageSize(options?.pageSize, useOptions ? 50 : 200);
+    const page = Math.max(Number.parseInt(options?.page || 1, 10) || 1, 1);
+    const from = (page - 1) * pageSize;
+    const to = from + pageSize - 1;
+    const withCount = Boolean(options?.withCount);
+
+    let query = supabase
       .from('leads')
-      .select('*')
+      .select('*', withCount ? { count: 'exact' } : undefined)
       .order('created_at', { ascending: false });
 
+    if (options?.status && !['all', 'active', 'archived'].includes(options.status)) {
+      query = query.eq('status', options.status);
+    }
+
+    if (options?.source) {
+      query = query.eq('source', options.source);
+    }
+
+    if (options?.service) {
+      query = query.eq('service', options.service);
+    }
+
+    if (options?.dateFrom) {
+      query = query.gte('created_at', options.dateFrom);
+    }
+
+    if (options?.dateTo) {
+      query = query.lte('created_at', options.dateTo);
+    }
+
+    const search = String(options?.search || '').trim();
+    if (search) {
+      const like = `%${escapeSupabaseLike(search)}%`;
+      query = query.or([
+        `name.ilike.${like}`,
+        `phone.ilike.${like}`,
+        `email.ilike.${like}`,
+        `service.ilike.${like}`,
+        `source.ilike.${like}`,
+        `city.ilike.${like}`,
+        `state.ilike.${like}`,
+      ].join(','));
+    }
+
+    query = useOptions ? query.range(from, to) : query.limit(pageSize);
+
+    const { data, error, count } = await query;
+
     if (error) throw error;
+    if (withCount) {
+      return {
+        data: data || [],
+        count: count || 0,
+        page,
+        pageSize,
+      };
+    }
     return data || [];
   } catch (err) {
     console.warn('Fallback: Error fetching cloud leads:', err.message);
-    return null;
+    return options?.withCount ? { data: [], count: 0, page: 1, pageSize: clampPageSize(options?.pageSize) } : null;
   }
 }
 
@@ -109,7 +182,7 @@ export async function createCloudLead(leadData) {
 export async function createCloudLeadsBatch(leadsArray) {
   try {
     if (!Array.isArray(leadsArray) || leadsArray.length === 0) return [];
-    const payloads = leadsArray.map((l) => ({
+    const incomingPayloads = leadsArray.map((l) => ({
       name: l.name || "Meta Lead",
       phone: l.phone || "",
       email: l.email || "",
@@ -118,6 +191,31 @@ export async function createCloudLeadsBatch(leadsArray) {
       status: l.status || "New",
       notes: l.notes || "",
     }));
+
+    const { data: existingLeads } = await supabase
+      .from('leads')
+      .select('email,phone,notes');
+
+    const existingMetaIds = new Set((existingLeads || []).map(extractMetaLeadKey).filter(Boolean));
+    const existingContacts = new Set(
+      (existingLeads || [])
+        .map((lead) => `${String(lead.email || "").toLowerCase()}|${String(lead.phone || "").replace(/\D/g, "")}`)
+        .filter((key) => key !== "|")
+    );
+    const seenMetaIds = new Set();
+    const seenContacts = new Set();
+    const payloads = incomingPayloads.filter((lead) => {
+      const metaId = extractMetaLeadKey(lead);
+      const contactKey = `${String(lead.email || "").toLowerCase()}|${String(lead.phone || "").replace(/\D/g, "")}`;
+      const hasContact = contactKey !== "|";
+      if (metaId && (existingMetaIds.has(metaId) || seenMetaIds.has(metaId))) return false;
+      if (!metaId && hasContact && (existingContacts.has(contactKey) || seenContacts.has(contactKey))) return false;
+      if (metaId) seenMetaIds.add(metaId);
+      if (hasContact) seenContacts.add(contactKey);
+      return true;
+    });
+
+    if (!payloads.length) return [];
 
     const { data, error } = await supabase
       .from('leads')
@@ -1792,10 +1890,12 @@ export async function markNotificationRead(notificationId) {
 
 export async function markAllNotificationsRead(userId) {
   try {
+    const resolvedUserId = typeof userId === 'string' ? userId : userId?.id || userId?.user_id || userId?.target?.dataset?.userId || '';
+    if (!resolvedUserId || typeof resolvedUserId !== 'string') return [];
     const { data, error } = await supabase
       .from('notifications')
       .update({ is_read: true })
-      .eq('user_id', userId)
+      .eq('user_id', resolvedUserId)
       .eq('is_read', false)
       .select();
 
@@ -1953,6 +2053,33 @@ function writeLocalCache(key, data) {
   } catch {}
 }
 
+function mergeCloudAndLocal(cloudRows = [], localRows = []) {
+  const seen = new Set();
+  const merged = [];
+  [...(cloudRows || []), ...(localRows || [])].forEach((row) => {
+    if (!row) return;
+    const key = row.id || `${row.created_at || ''}-${row.title || row.name || row.invoice_number || ''}`;
+    if (seen.has(key)) return;
+    seen.add(key);
+    merged.push(row);
+  });
+  return merged;
+}
+
+function pickPayload(source = {}, allowed = []) {
+  return allowed.reduce((payload, key) => {
+    if (source[key] !== undefined) payload[key] = source[key];
+    return payload;
+  }, {});
+}
+
+const PROPOSAL_COLUMNS = ['deal_id', 'title', 'amount', 'status', 'scope_of_work', 'deliverables', 'document_url', 'sent_at', 'accepted_at', 'created_by'];
+const QUOTATION_COLUMNS = ['quotation_number', 'deal_id', 'subtotal', 'discount', 'tax', 'total', 'status', 'items', 'valid_until', 'notes', 'created_by'];
+const AGREEMENT_COLUMNS = ['agreement_number', 'deal_id', 'proposal_id', 'quotation_id', 'title', 'scope_of_work', 'deliverables', 'commercial_terms', 'payment_milestones', 'start_date', 'end_date', 'status', 'document_url', 'signed_at', 'notes', 'created_by'];
+const SALES_FOLLOWUP_COLUMNS = ['lead_id', 'deal_id', 'assigned_to', 'title', 'channel', 'due_at', 'status', 'priority', 'notes', 'completed_at', 'created_by'];
+const SALES_MEETING_COLUMNS = ['lead_id', 'deal_id', 'host_id', 'title', 'meeting_type', 'scheduled_at', 'duration_minutes', 'meeting_link', 'location', 'status', 'agenda', 'outcome', 'next_action', 'created_by'];
+const INVOICE_COLUMNS = ['invoice_number', 'deal_id', 'project_id', 'title', 'amount', 'tax_amount', 'total_amount', 'due_date', 'status', 'milestone_type', 'payment_terms', 'notes', 'pdf_url', 'created_by'];
+
 export function createClientPortalToken() {
   const bytes = new Uint8Array(24);
   if (typeof crypto !== 'undefined' && crypto.getRandomValues) {
@@ -1968,7 +2095,8 @@ export async function getClients() {
     const { data, error } = await supabase
       .from('clients')
       .select('*')
-      .order('created_at', { ascending: false });
+      .order('created_at', { ascending: false })
+      .limit(100);
 
     if (error) throw error;
     writeLocalCache(LOCAL_CLIENTS_KEY, data || []);
@@ -2053,16 +2181,47 @@ export async function updateClient(clientId, updates) {
   }
 }
 
-export async function getDeals() {
+export async function getDeals(options = null) {
   try {
-    const { data, error } = await supabase
+    const useOptions = options && typeof options === 'object';
+    const pageSize = clampPageSize(options?.pageSize, useOptions ? 50 : 200);
+    const page = Math.max(Number.parseInt(options?.page || 1, 10) || 1, 1);
+    const from = (page - 1) * pageSize;
+    const to = from + pageSize - 1;
+    const withCount = Boolean(options?.withCount);
+
+    let query = supabase
       .from('deals')
-      .select('*')
+      .select('*', withCount ? { count: 'exact' } : undefined)
       .order('created_at', { ascending: false });
+
+    if (options?.stage && options.stage !== 'all') {
+      query = query.eq('pipeline_stage', options.stage);
+    }
+    if (options?.dateFrom) query = query.gte('created_at', options.dateFrom);
+    if (options?.dateTo) query = query.lte('created_at', options.dateTo);
+    const search = String(options?.search || '').trim();
+    if (search) {
+      const like = `%${escapeSupabaseLike(search)}%`;
+      query = query.or([
+        `title.ilike.${like}`,
+        `service.ilike.${like}`,
+        `notes.ilike.${like}`,
+        `loss_reason.ilike.${like}`,
+      ].join(','));
+    }
+
+    query = useOptions ? query.range(from, to) : query.limit(pageSize);
+
+    const { data, error, count } = await query;
 
     if (error) throw error;
     const localDeals = readLocalCache(LOCAL_DEALS_KEY, []);
     const cloudDeals = data || [];
+    if (withCount) {
+      writeLocalCache(LOCAL_DEALS_KEY, mergeCloudAndLocal(cloudDeals, localDeals));
+      return { data: cloudDeals, count: count || 0, page, pageSize };
+    }
     const mergedDeals = [
       ...cloudDeals,
       ...localDeals.filter((localDeal) => !cloudDeals.some((cloudDeal) => cloudDeal.id === localDeal.id)),
@@ -2071,6 +2230,10 @@ export async function getDeals() {
     return mergedDeals;
   } catch (err) {
     console.warn('Fallback: getDeals from cache:', err.message);
+    if (options?.withCount) {
+      const cached = readLocalCache(LOCAL_DEALS_KEY, []);
+      return { data: cached.slice(0, clampPageSize(options?.pageSize)), count: cached.length, page: 1, pageSize: clampPageSize(options?.pageSize) };
+    }
     return readLocalCache(LOCAL_DEALS_KEY, [
       {
         id: 'deal-001',
@@ -2171,11 +2334,13 @@ export async function getProposals() {
     const { data, error } = await supabase
       .from('proposals')
       .select('*')
-      .order('created_at', { ascending: false });
+      .order('created_at', { ascending: false })
+      .limit(100);
 
     if (error) throw error;
-    writeLocalCache(LOCAL_PROPOSALS_KEY, data || []);
-    return data || [];
+    const merged = mergeCloudAndLocal(data || [], readLocalCache(LOCAL_PROPOSALS_KEY, []));
+    writeLocalCache(LOCAL_PROPOSALS_KEY, merged);
+    return merged;
   } catch (err) {
     console.warn('Fallback: getProposals from cache:', err.message);
     return readLocalCache(LOCAL_PROPOSALS_KEY, []);
@@ -2184,13 +2349,14 @@ export async function getProposals() {
 
 export async function createProposal(proposalData) {
   try {
+    const insertPayload = pickPayload(proposalData, PROPOSAL_COLUMNS);
     const { data, error } = await supabase
       .from('proposals')
-      .insert([proposalData])
+      .insert([insertPayload])
       .select();
 
     if (error) throw error;
-    const created = data?.[0] || proposalData;
+    const created = { ...proposalData, ...(data?.[0] || insertPayload) };
     const current = readLocalCache(LOCAL_PROPOSALS_KEY, []);
     writeLocalCache(LOCAL_PROPOSALS_KEY, [created, ...current]);
     return created;
@@ -2210,9 +2376,10 @@ export async function createProposal(proposalData) {
 
 export async function updateProposal(proposalId, updates) {
   try {
+    const updatePayload = pickPayload(updates, PROPOSAL_COLUMNS);
     const { data, error } = await supabase
       .from('proposals')
-      .update({ ...updates, updated_at: new Date().toISOString() })
+      .update({ ...updatePayload, updated_at: new Date().toISOString() })
       .eq('id', proposalId)
       .select();
 
@@ -2235,11 +2402,13 @@ export async function getQuotations() {
     const { data, error } = await supabase
       .from('quotations')
       .select('*')
-      .order('created_at', { ascending: false });
+      .order('created_at', { ascending: false })
+      .limit(100);
 
     if (error) throw error;
-    writeLocalCache(LOCAL_QUOTATIONS_KEY, data || []);
-    return data || [];
+    const merged = mergeCloudAndLocal(data || [], readLocalCache(LOCAL_QUOTATIONS_KEY, []));
+    writeLocalCache(LOCAL_QUOTATIONS_KEY, merged);
+    return merged;
   } catch (err) {
     console.warn('Fallback: getQuotations from cache:', err.message);
     return readLocalCache(LOCAL_QUOTATIONS_KEY, []);
@@ -2248,13 +2417,23 @@ export async function getQuotations() {
 
 export async function createQuotation(quotationData) {
   try {
+    const subtotal = Number(quotationData.subtotal ?? quotationData.amount ?? quotationData.total) || 0;
+    const tax = Number(quotationData.tax ?? quotationData.tax_amount) || 0;
+    const total = Number(quotationData.total ?? quotationData.total_amount ?? subtotal + tax) || subtotal;
+    const insertPayload = pickPayload({
+      ...quotationData,
+      subtotal,
+      tax,
+      total,
+      notes: quotationData.notes || quotationData.title || '',
+    }, QUOTATION_COLUMNS);
     const { data, error } = await supabase
       .from('quotations')
-      .insert([quotationData])
+      .insert([insertPayload])
       .select();
 
     if (error) throw error;
-    const created = data?.[0] || quotationData;
+    const created = { ...quotationData, ...(data?.[0] || insertPayload) };
     const current = readLocalCache(LOCAL_QUOTATIONS_KEY, []);
     writeLocalCache(LOCAL_QUOTATIONS_KEY, [created, ...current]);
     return created;
@@ -2274,9 +2453,16 @@ export async function createQuotation(quotationData) {
 
 export async function updateQuotation(quotationId, updates) {
   try {
+    const updatePayload = pickPayload({
+      ...updates,
+      notes: updates.notes || updates.title,
+      subtotal: updates.subtotal ?? updates.amount,
+      tax: updates.tax ?? updates.tax_amount,
+      total: updates.total ?? updates.total_amount ?? updates.amount,
+    }, QUOTATION_COLUMNS);
     const { data, error } = await supabase
       .from('quotations')
-      .update({ ...updates, updated_at: new Date().toISOString() })
+      .update({ ...updatePayload, updated_at: new Date().toISOString() })
       .eq('id', quotationId)
       .select();
 
@@ -2299,11 +2485,13 @@ export async function getAgreements() {
     const { data, error } = await supabase
       .from('agreements')
       .select('*')
-      .order('created_at', { ascending: false });
+      .order('created_at', { ascending: false })
+      .limit(100);
 
     if (error) throw error;
-    writeLocalCache(LOCAL_AGREEMENTS_KEY, data || []);
-    return data || [];
+    const merged = mergeCloudAndLocal(data || [], readLocalCache(LOCAL_AGREEMENTS_KEY, []));
+    writeLocalCache(LOCAL_AGREEMENTS_KEY, merged);
+    return merged;
   } catch (err) {
     console.warn('Fallback: getAgreements from cache:', err.message);
     return readLocalCache(LOCAL_AGREEMENTS_KEY, []);
@@ -2312,13 +2500,14 @@ export async function getAgreements() {
 
 export async function createAgreement(agreementData) {
   try {
+    const insertPayload = pickPayload(agreementData, AGREEMENT_COLUMNS);
     const { data, error } = await supabase
       .from('agreements')
-      .insert([agreementData])
+      .insert([insertPayload])
       .select();
 
     if (error) throw error;
-    const created = data?.[0] || agreementData;
+    const created = { ...agreementData, ...(data?.[0] || insertPayload) };
     const current = readLocalCache(LOCAL_AGREEMENTS_KEY, []);
     writeLocalCache(LOCAL_AGREEMENTS_KEY, [created, ...current]);
     return created;
@@ -2338,9 +2527,10 @@ export async function createAgreement(agreementData) {
 
 export async function updateAgreement(agreementId, updates) {
   try {
+    const updatePayload = pickPayload(updates, AGREEMENT_COLUMNS);
     const { data, error } = await supabase
       .from('agreements')
-      .update({ ...updates, updated_at: new Date().toISOString() })
+      .update({ ...updatePayload, updated_at: new Date().toISOString() })
       .eq('id', agreementId)
       .select();
 
@@ -2358,31 +2548,67 @@ export async function updateAgreement(agreementId, updates) {
   }
 }
 
-export async function getSalesFollowUps() {
+export async function getSalesFollowUps(options = null) {
   try {
-    const { data, error } = await supabase
+    const useOptions = options && typeof options === 'object';
+    const pageSize = clampPageSize(options?.pageSize, useOptions ? 50 : 200);
+    const page = Math.max(Number.parseInt(options?.page || 1, 10) || 1, 1);
+    const from = (page - 1) * pageSize;
+    const to = from + pageSize - 1;
+    const withCount = Boolean(options?.withCount);
+
+    let query = supabase
       .from('sales_followups')
-      .select('*')
+      .select('*', withCount ? { count: 'exact' } : undefined)
       .order('due_at', { ascending: true });
 
+    if (options?.status && options.status !== 'all') query = query.eq('status', options.status);
+    if (options?.dateFrom) query = query.gte('due_at', options.dateFrom);
+    if (options?.dateTo) query = query.lte('due_at', options.dateTo);
+    const search = String(options?.search || '').trim();
+    if (search) {
+      const like = `%${escapeSupabaseLike(search)}%`;
+      query = query.or([
+        `title.ilike.${like}`,
+        `channel.ilike.${like}`,
+        `status.ilike.${like}`,
+        `notes.ilike.${like}`,
+      ].join(','));
+    }
+
+    query = useOptions ? query.range(from, to) : query.limit(pageSize);
+
+    const { data, error, count } = await query;
+
     if (error) throw error;
-    writeLocalCache(LOCAL_SALES_FOLLOWUPS_KEY, data || []);
-    return data || [];
+    if (withCount) {
+      writeLocalCache(LOCAL_SALES_FOLLOWUPS_KEY, mergeCloudAndLocal(data || [], readLocalCache(LOCAL_SALES_FOLLOWUPS_KEY, [])));
+      return { data: data || [], count: count || 0, page, pageSize };
+    }
+    const merged = mergeCloudAndLocal(data || [], readLocalCache(LOCAL_SALES_FOLLOWUPS_KEY, []))
+      .sort((a, b) => new Date(a.due_at || a.created_at || 0).getTime() - new Date(b.due_at || b.created_at || 0).getTime());
+    writeLocalCache(LOCAL_SALES_FOLLOWUPS_KEY, merged);
+    return merged;
   } catch (err) {
     console.warn('Fallback: getSalesFollowUps from cache:', err.message);
+    if (options?.withCount) {
+      const cached = readLocalCache(LOCAL_SALES_FOLLOWUPS_KEY, []);
+      return { data: cached.slice(0, clampPageSize(options?.pageSize)), count: cached.length, page: 1, pageSize: clampPageSize(options?.pageSize) };
+    }
     return readLocalCache(LOCAL_SALES_FOLLOWUPS_KEY, []);
   }
 }
 
 export async function createSalesFollowUp(followUpData) {
   try {
+    const insertPayload = pickPayload(followUpData, SALES_FOLLOWUP_COLUMNS);
     const { data, error } = await supabase
       .from('sales_followups')
-      .insert([followUpData])
+      .insert([insertPayload])
       .select();
 
     if (error) throw error;
-    const created = data?.[0] || followUpData;
+    const created = { ...followUpData, ...(data?.[0] || insertPayload) };
     const current = readLocalCache(LOCAL_SALES_FOLLOWUPS_KEY, []);
     writeLocalCache(LOCAL_SALES_FOLLOWUPS_KEY, [created, ...current]);
     return created;
@@ -2397,9 +2623,10 @@ export async function createSalesFollowUp(followUpData) {
 
 export async function updateSalesFollowUp(followUpId, updates) {
   try {
+    const updatePayload = pickPayload(updates, SALES_FOLLOWUP_COLUMNS);
     const { data, error } = await supabase
       .from('sales_followups')
-      .update({ ...updates, updated_at: new Date().toISOString() })
+      .update({ ...updatePayload, updated_at: new Date().toISOString() })
       .eq('id', followUpId)
       .select();
 
@@ -2417,31 +2644,69 @@ export async function updateSalesFollowUp(followUpId, updates) {
   }
 }
 
-export async function getSalesMeetings() {
+export async function getSalesMeetings(options = null) {
   try {
-    const { data, error } = await supabase
+    const useOptions = options && typeof options === 'object';
+    const pageSize = clampPageSize(options?.pageSize, useOptions ? 50 : 200);
+    const page = Math.max(Number.parseInt(options?.page || 1, 10) || 1, 1);
+    const from = (page - 1) * pageSize;
+    const to = from + pageSize - 1;
+    const withCount = Boolean(options?.withCount);
+
+    let query = supabase
       .from('sales_meetings')
-      .select('*')
+      .select('*', withCount ? { count: 'exact' } : undefined)
       .order('scheduled_at', { ascending: true });
 
+    if (options?.status && options.status !== 'all') query = query.eq('status', options.status);
+    if (options?.dateFrom) query = query.gte('scheduled_at', options.dateFrom);
+    if (options?.dateTo) query = query.lte('scheduled_at', options.dateTo);
+    const search = String(options?.search || '').trim();
+    if (search) {
+      const like = `%${escapeSupabaseLike(search)}%`;
+      query = query.or([
+        `title.ilike.${like}`,
+        `meeting_type.ilike.${like}`,
+        `status.ilike.${like}`,
+        `agenda.ilike.${like}`,
+        `outcome.ilike.${like}`,
+        `next_action.ilike.${like}`,
+      ].join(','));
+    }
+
+    query = useOptions ? query.range(from, to) : query.limit(pageSize);
+
+    const { data, error, count } = await query;
+
     if (error) throw error;
-    writeLocalCache(LOCAL_SALES_MEETINGS_KEY, data || []);
-    return data || [];
+    if (withCount) {
+      writeLocalCache(LOCAL_SALES_MEETINGS_KEY, mergeCloudAndLocal(data || [], readLocalCache(LOCAL_SALES_MEETINGS_KEY, [])));
+      return { data: data || [], count: count || 0, page, pageSize };
+    }
+    const merged = mergeCloudAndLocal(data || [], readLocalCache(LOCAL_SALES_MEETINGS_KEY, []))
+      .sort((a, b) => new Date(a.scheduled_at || a.created_at || 0).getTime() - new Date(b.scheduled_at || b.created_at || 0).getTime());
+    writeLocalCache(LOCAL_SALES_MEETINGS_KEY, merged);
+    return merged;
   } catch (err) {
     console.warn('Fallback: getSalesMeetings from cache:', err.message);
+    if (options?.withCount) {
+      const cached = readLocalCache(LOCAL_SALES_MEETINGS_KEY, []);
+      return { data: cached.slice(0, clampPageSize(options?.pageSize)), count: cached.length, page: 1, pageSize: clampPageSize(options?.pageSize) };
+    }
     return readLocalCache(LOCAL_SALES_MEETINGS_KEY, []);
   }
 }
 
 export async function createSalesMeeting(meetingData) {
   try {
+    const insertPayload = pickPayload(meetingData, SALES_MEETING_COLUMNS);
     const { data, error } = await supabase
       .from('sales_meetings')
-      .insert([meetingData])
+      .insert([insertPayload])
       .select();
 
     if (error) throw error;
-    const created = data?.[0] || meetingData;
+    const created = { ...meetingData, ...(data?.[0] || insertPayload) };
     const current = readLocalCache(LOCAL_SALES_MEETINGS_KEY, []);
     writeLocalCache(LOCAL_SALES_MEETINGS_KEY, [created, ...current]);
     return created;
@@ -2456,9 +2721,10 @@ export async function createSalesMeeting(meetingData) {
 
 export async function updateSalesMeeting(meetingId, updates) {
   try {
+    const updatePayload = pickPayload(updates, SALES_MEETING_COLUMNS);
     const { data, error } = await supabase
       .from('sales_meetings')
-      .update({ ...updates, updated_at: new Date().toISOString() })
+      .update({ ...updatePayload, updated_at: new Date().toISOString() })
       .eq('id', meetingId)
       .select();
 
@@ -2488,13 +2754,15 @@ export async function getProjects() {
         tech_lead:profiles!projects_tech_lead_id_fkey(id, full_name, role, designation),
         members:project_members(id, user_id, role_in_project, profile:profiles(id, full_name, role, designation))
       `)
-      .order('created_at', { ascending: false });
+      .order('created_at', { ascending: false })
+      .limit(100);
 
     if (error) {
       const fallback = await supabase
         .from('projects')
         .select('*')
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false })
+        .limit(100);
       if (fallback.error) throw fallback.error;
       data = fallback.data;
     }
@@ -2608,7 +2876,8 @@ export async function getSmmClients() {
     const { data, error } = await supabase
       .from('smm_clients')
       .select('*')
-      .order('created_at', { ascending: false });
+      .order('created_at', { ascending: false })
+      .limit(100);
 
     if (error) throw error;
     writeLocalCache(LOCAL_SMM_KEY, data || []);
@@ -2660,7 +2929,8 @@ export async function getContentCalendar() {
     const { data, error } = await supabase
       .from('content_calendar')
       .select('*')
-      .order('scheduled_at', { ascending: true });
+      .order('scheduled_at', { ascending: true })
+      .limit(150);
 
     if (error) throw error;
     writeLocalCache(LOCAL_CONTENT_KEY, data || []);
@@ -2752,11 +3022,13 @@ export async function getInvoices() {
     const { data, error } = await supabase
       .from('invoices')
       .select('*')
-      .order('created_at', { ascending: false });
+      .order('created_at', { ascending: false })
+      .limit(150);
 
     if (error) throw error;
-    writeLocalCache(LOCAL_INVOICES_KEY, data || []);
-    return data || [];
+    const merged = mergeCloudAndLocal(data || [], readLocalCache(LOCAL_INVOICES_KEY, []));
+    writeLocalCache(LOCAL_INVOICES_KEY, merged);
+    return merged;
   } catch (err) {
     console.warn('Fallback: getInvoices from cache:', err.message);
     return readLocalCache(LOCAL_INVOICES_KEY, [
@@ -2794,13 +3066,14 @@ export async function getInvoices() {
 
 export async function createInvoice(invoiceData) {
   try {
+    const insertPayload = pickPayload(invoiceData, INVOICE_COLUMNS);
     const { data, error } = await supabase
       .from('invoices')
-      .insert([invoiceData])
+      .insert([insertPayload])
       .select();
 
     if (error) throw error;
-    const created = data?.[0] || invoiceData;
+    const created = { ...invoiceData, ...(data?.[0] || insertPayload) };
     const current = readLocalCache(LOCAL_INVOICES_KEY, []);
     writeLocalCache(LOCAL_INVOICES_KEY, [created, ...current]);
     return created;
@@ -2820,9 +3093,13 @@ export async function createInvoice(invoiceData) {
 
 export async function updateInvoice(invoiceId, updates) {
   try {
+    const paymentNote = updates.paid_amount !== undefined && !updates.notes
+      ? `Payment recorded: Rs. ${Number(updates.paid_amount) || 0}`
+      : updates.notes;
+    const updatePayload = pickPayload({ ...updates, notes: paymentNote }, INVOICE_COLUMNS);
     const { data, error } = await supabase
       .from('invoices')
-      .update({ ...updates, updated_at: new Date().toISOString() })
+      .update({ ...updatePayload, updated_at: new Date().toISOString() })
       .eq('id', invoiceId)
       .select();
 
@@ -2850,7 +3127,8 @@ export async function getSupportTickets() {
     const { data, error } = await supabase
       .from('support_tickets')
       .select('*')
-      .order('created_at', { ascending: false });
+      .order('created_at', { ascending: false })
+      .limit(150);
 
     if (error) throw error;
     writeLocalCache(LOCAL_TICKETS_KEY, data || []);

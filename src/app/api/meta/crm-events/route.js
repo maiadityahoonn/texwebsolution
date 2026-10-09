@@ -20,7 +20,7 @@ function extractMetaLeadId(lead) {
   const direct = lead?.meta_lead_id || lead?.leadgen_id || lead?.lead_id;
   if (direct) return String(direct).replace(/\D/g, "");
   const notes = String(lead?.notes || "");
-  const match = notes.match(/(?:Meta Lead ID|Meta ID|Leadgen ID)\s*:\s*(\d{10,25})/i);
+  const match = notes.match(/(?:Meta Lead ID|Meta ID|Leadgen ID)\s*:\s*(?:l:)?(\d{10,25})/i);
   return match?.[1] || "";
 }
 

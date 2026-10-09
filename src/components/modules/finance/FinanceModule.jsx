@@ -107,11 +107,11 @@ export default function FinanceModule({
           item.quotation_number,
           item.scope_of_work,
           item.notes,
-          clients.find((client) => client.id === item.client_id)?.name,
+          deals.find((deal) => deal.id === item.deal_id)?.title,
         ].some((value) => String(value || "").toLowerCase().includes(q));
       return matchStatus && matchQuery;
     });
-  }, [clients, proposals, query, quotations, statusFilter]);
+  }, [deals, proposals, query, quotations, statusFilter]);
 
   // Financial aggregates
   const stats = useMemo(() => {
@@ -144,7 +144,7 @@ export default function FinanceModule({
 
   function handleCreateInvoiceSubmit(e) {
     e.preventDefault();
-    if (!newInvoiceForm.client_id || !newInvoiceForm.amount) return;
+    if (!newInvoiceForm.deal_id || !newInvoiceForm.amount) return;
     const baseAmt = parseFloat(newInvoiceForm.amount) || 0;
     const taxAmt = Math.round(baseAmt * 0.18); // 18% GST standard
     const payload = {
@@ -159,10 +159,9 @@ export default function FinanceModule({
 
   function handleCreateCommercialSubmit(e) {
     e.preventDefault();
-    if (!commercialForm.client_id || !commercialForm.amount) return;
+    if (!commercialForm.deal_id || !commercialForm.amount) return;
     const amount = parseFloat(commercialForm.amount) || 0;
     onCreateProposal?.({
-      client_id: commercialForm.client_id,
       deal_id: commercialForm.deal_id || null,
       title: commercialForm.title,
       amount,
@@ -181,7 +180,7 @@ export default function FinanceModule({
     const amt = parseFloat(paymentForm.amount) || recordPaymentModal.total_amount;
     onRecordPayment?.({
       invoice_id: recordPaymentModal.id,
-      client_id: recordPaymentModal.client_id,
+      deal_id: recordPaymentModal.deal_id || null,
       amount: amt,
       ...paymentForm,
     });
@@ -214,7 +213,6 @@ export default function FinanceModule({
               onClick={() => {
                 setCommercialForm((prev) => ({
                   ...prev,
-                  client_id: clients[0]?.id || "",
                   deal_id: deals[0]?.id || "",
                   quotation_number: `QT-2026-${Math.floor(1000 + Math.random() * 9000)}`,
                 }));
@@ -231,7 +229,8 @@ export default function FinanceModule({
             onClick={() => {
               setNewInvoiceForm({
                 invoice_number: `TEX-2026-${Math.floor(1000 + Math.random() * 9000)}`,
-                client_id: clients[0]?.id || "",
+                client_id: "",
+                deal_id: deals[0]?.id || "",
                 project_id: projects[0]?.id || "",
                 title: "Software Development Sprint Milestone",
                 amount: "50000",
@@ -330,7 +329,7 @@ export default function FinanceModule({
             type="text"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search by invoice number, client title, milestone type..."
+            placeholder="Search by invoice number, deal title, milestone type..."
             className="w-full pl-9 pr-4 py-2 rounded-xl text-xs sm:text-sm bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700"
           />
         </div>
@@ -369,7 +368,7 @@ export default function FinanceModule({
                 <thead>
                   <tr className="border-b border-gray-100 dark:border-[#3a3020] bg-gray-50/70 dark:bg-[#211d14] text-gray-500 text-[11px] font-semibold uppercase tracking-wider">
                     <th className="py-3 px-4">Document</th>
-                    <th className="py-3 px-4">Client</th>
+                    <th className="py-3 px-4">Deal</th>
                     <th className="py-3 px-4">Value</th>
                     <th className="py-3 px-4">Status</th>
                     <th className="py-3 px-4">Validity</th>
@@ -378,7 +377,7 @@ export default function FinanceModule({
                 </thead>
                 <tbody className="divide-y divide-gray-100 dark:divide-[#3a3020]/60">
                   {filteredCommercialDocs.map((doc) => {
-                    const client = clients.find((item) => item.id === doc.client_id);
+                    const deal = deals.find((item) => item.id === doc.deal_id);
                     const amount = Number(doc.total) || Number(doc.amount) || Number(doc.subtotal) || 0;
                     const docLabel = doc.quotation_number || doc.title;
                     const acceptedStatus = "accepted";
@@ -391,8 +390,8 @@ export default function FinanceModule({
                           <div className="text-[11px] text-gray-500 capitalize">{doc.docType}</div>
                         </td>
                         <td className="py-3.5 px-4">
-                          <div className="font-semibold text-gray-900 dark:text-white">{client?.name || "Client Account"}</div>
-                          <div className="text-[11px] text-gray-500">{client?.company_name || client?.email || "Central client entity"}</div>
+                          <div className="font-semibold text-gray-900 dark:text-white">{deal?.title || "Linked Deal"}</div>
+                          <div className="text-[11px] text-gray-500">{deal?.pipeline_stage || "Pipeline deal"}</div>
                         </td>
                         <td className="py-3.5 px-4 font-mono font-bold text-gray-900 dark:text-white">
                           Rs. {amount.toLocaleString("en-IN")}
@@ -462,7 +461,7 @@ export default function FinanceModule({
               <thead>
                 <tr className="border-b border-gray-100 dark:border-[#3a3020] bg-gray-50/70 dark:bg-[#211d14] text-gray-500 text-[11px] font-semibold uppercase tracking-wider">
                   <th className="py-3 px-4">Invoice #</th>
-                  <th className="py-3 px-4">Client & Project</th>
+                  <th className="py-3 px-4">Deal & Project</th>
                   <th className="py-3 px-4">Milestone</th>
                   <th className="py-3 px-4">Total (Inc. GST)</th>
                   <th className="py-3 px-4">Due Date</th>
@@ -472,7 +471,7 @@ export default function FinanceModule({
               </thead>
               <tbody className="divide-y divide-gray-100 dark:divide-[#3a3020]/60">
                 {filteredInvoices.map((inv) => {
-                  const client = clients.find((c) => c.id === inv.client_id);
+                  const deal = deals.find((d) => d.id === inv.deal_id);
                   const project = projects.find((p) => p.id === inv.project_id);
                   const isPaid = inv.status === "paid";
 
@@ -487,7 +486,7 @@ export default function FinanceModule({
 
                       <td className="py-3.5 px-4">
                         <div className="font-semibold text-gray-900 dark:text-white">
-                          {client?.name || "Client Account"}
+                          {deal?.title || "Linked Deal"}
                         </div>
                         <div className="text-[11px] text-gray-500">
                           {project?.name || inv.title}
@@ -580,32 +579,10 @@ export default function FinanceModule({
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
               <div>
-                <label className="block font-medium mb-1">Client Account *</label>
-                <select
-                  required
-                  value={commercialForm.client_id}
-                  onChange={(e) => setCommercialForm({ ...commercialForm, client_id: e.target.value })}
-                  className="w-full px-3 py-2 rounded-xl bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 font-semibold"
-                >
-                  <option value="">Select Client...</option>
-                  {clients.map((client) => (
-                    <option key={client.id} value={client.id}>{client.name}</option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="block font-medium mb-1">Linked Deal</label>
-                <select
-                  value={commercialForm.deal_id}
-                  onChange={(e) => setCommercialForm({ ...commercialForm, deal_id: e.target.value })}
-                  className="w-full px-3 py-2 rounded-xl bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700"
-                >
-                  <option value="">No linked deal</option>
-                  {deals.map((deal) => (
-                    <option key={deal.id} value={deal.id}>{deal.title}</option>
-                  ))}
-                </select>
+                <label className="block font-medium mb-1">Linked Deal *</label>
+                <div className="w-full px-3 py-2 rounded-xl bg-gray-100 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 text-gray-700 dark:text-neutral-200 font-semibold">
+                  {deals.find((deal) => deal.id === commercialForm.deal_id)?.title || "No deal available"}
+                </div>
               </div>
 
               <div>
@@ -737,20 +714,10 @@ export default function FinanceModule({
               </div>
 
               <div>
-                <label className="block font-medium mb-1">Client Account *</label>
-                <select
-                  required
-                  value={newInvoiceForm.client_id}
-                  onChange={(e) => setNewInvoiceForm({ ...newInvoiceForm, client_id: e.target.value })}
-                  className="w-full px-3 py-2 rounded-xl bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 font-semibold"
-                >
-                  <option value="">Select Client...</option>
-                  {clients.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.name}
-                    </option>
-                  ))}
-                </select>
+                <label className="block font-medium mb-1">Linked Deal *</label>
+                <div className="w-full px-3 py-2 rounded-xl bg-gray-100 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 text-gray-700 dark:text-neutral-200 font-semibold">
+                  {deals.find((deal) => deal.id === newInvoiceForm.deal_id)?.title || "No deal available"}
+                </div>
               </div>
 
               <div>

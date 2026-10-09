@@ -38,13 +38,7 @@ function cleanMetaPhone(val) {
 
 function cleanMetaService(val) {
   if (!val) return "Website Development";
-  const s = String(val).toLowerCase().replace(/_/g, " ").replace(/-/g, " ").trim();
-  if (s.includes("website") || s.includes("web")) return "Website Development";
-  if (s.includes("ai") || s.includes("bot") || s.includes("automation")) return "AI Automation & Bots";
-  if (s.includes("mobile") || s.includes("app")) return "Mobile App Development";
-  if (s.includes("marketing") || s.includes("digital")) return "Digital Marketing & Ads";
-  if (s.includes("software") || s.includes("custom")) return "Custom Software";
-  return val.replace(/_/g, " ");
+  return String(val).trim();
 }
 
 function cleanMetaBudget(val) {
@@ -55,6 +49,46 @@ function cleanMetaBudget(val) {
   if (b.includes("40") && b.includes("80")) return "₹40,000 - ₹80,000";
   if (b.includes("above") || b.includes("100")) return "Above ₹1,00,000";
   return val.replace(/_/g, " ");
+}
+
+function normalizeHeader(value) {
+  return String(value || "")
+    .toLowerCase()
+    .replace(/^\uFEFF/, "")
+    .replace(/[\s_-]+/g, "")
+    .replace(/[?().]/g, "")
+    .trim();
+}
+
+function splitDelimitedLine(line, delimiter) {
+  const tokens = [];
+  let current = "";
+  let inQuotes = false;
+  for (let i = 0; i < line.length; i++) {
+    const char = line[i];
+    if (char === '"') {
+      if (inQuotes && line[i + 1] === '"') {
+        current += '"';
+        i += 1;
+      } else {
+        inQuotes = !inQuotes;
+      }
+    } else if (char === delimiter && !inQuotes) {
+      tokens.push(current.trim());
+      current = "";
+    } else {
+      current += char;
+    }
+  }
+  tokens.push(current.trim());
+  return tokens;
+}
+
+function decodeLeadFile(buffer) {
+  const bytes = new Uint8Array(buffer);
+  if (bytes[0] === 0xff && bytes[1] === 0xfe) return new TextDecoder("utf-16le").decode(buffer.slice(2));
+  if (bytes[0] === 0xfe && bytes[1] === 0xff) return new TextDecoder("utf-16be").decode(buffer.slice(2));
+  return new TextDecoder("utf-8").decode(buffer).replace(/^\uFEFF/, "");
 }
 
 export default function MetaLeadsImportModal({ isOpen, onClose, onImport, isDark = false }) {
@@ -71,9 +105,9 @@ export default function MetaLeadsImportModal({ isOpen, onClose, onImport, isDark
   function parseDelimitedData(text) {
     setParseError("");
     const lines = text
-      .split("\n")
-      .map((l) => l.trim())
-      .filter(Boolean);
+      .split(/\r?\n/)
+      .map((l) => l.replace(/\r$/, ""))
+      .filter((line) => line.trim());
 
     if (lines.length < 2) {
       setParseError("Please provide at least a header row and one lead row.");
@@ -81,47 +115,26 @@ export default function MetaLeadsImportModal({ isOpen, onClose, onImport, isDark
       return;
     }
 
-    // Detect delimiter: tab or comma
     const headerLine = lines[0];
     const delimiter = headerLine.includes("\t") ? "\t" : ",";
-
-    // Helper to split CSV line safely handling quotes
-    const splitLine = (line) => {
-      if (delimiter === "\t") return line.split("\t").map((c) => c.trim());
-      // Simple CSV split
-      const tokens = [];
-      let current = "";
-      let inQuotes = false;
-      for (let i = 0; i < line.length; i++) {
-        const char = line[i];
-        if (char === '"') {
-          inQuotes = !inQuotes;
-        } else if (char === "," && !inQuotes) {
-          tokens.push(current.trim());
-          current = "";
-        } else {
-          current += char;
-        }
-      }
-      tokens.push(current.trim());
-      return tokens;
-    };
-
-    const headers = splitLine(headerLine).map((h) => h.toLowerCase().trim());
-
-    // Map column index
+    const headers = splitDelimitedLine(headerLine, delimiter);
+    const normalizedHeaders = headers.map(normalizeHeader);
     const findIdx = (patterns) => {
-      return headers.findIndex((h) => patterns.some((p) => h.includes(p)));
+      const normalizedPatterns = patterns.map(normalizeHeader);
+      return normalizedHeaders.findIndex((h) => normalizedPatterns.some((p) => h.includes(p)));
     };
 
-    const nameIdx = findIdx(["full_name", "name", "customer"]);
-    const emailIdx = findIdx(["email", "mail"]);
-    const phoneIdx = findIdx(["phone_number", "phone", "mobile"]);
+    const nameIdx = findIdx(["full_name", "full name", "name", "customer", "पूरा_नाम"]);
+    const emailIdx = findIdx(["email", "mail", "ईमेल"]);
+    const phoneIdx = findIdx(["phone_number", "phone", "mobile", "मोबाइल"]);
     const serviceIdx = findIdx(["what_service_are_you_looking_for", "service"]);
     const budgetIdx = findIdx(["choose_your_budget_range", "budget"]);
     const platformIdx = findIdx(["platform"]);
     const campaignIdx = findIdx(["campaign_name", "campaign"]);
     const adIdx = findIdx(["ad_name", "ad"]);
+    const formIdx = findIdx(["form_name", "form"]);
+    const createdIdx = findIdx(["created_time", "created"]);
+    const leadStatusIdx = findIdx(["lead_status", "lead status"]);
     const cityIdx = findIdx(["city"]);
     const stateIdx = findIdx(["state"]);
     const idIdx = findIdx(["id"]);
@@ -129,7 +142,7 @@ export default function MetaLeadsImportModal({ isOpen, onClose, onImport, isDark
     const results = [];
 
     for (let i = 1; i < lines.length; i++) {
-      const cols = splitLine(lines[i]);
+      const cols = splitDelimitedLine(lines[i], delimiter);
       if (cols.length < 2) continue;
 
       const rawName = nameIdx !== -1 ? cols[nameIdx] : "";
@@ -140,6 +153,9 @@ export default function MetaLeadsImportModal({ isOpen, onClose, onImport, isDark
       const rawPlatform = platformIdx !== -1 ? cols[platformIdx] : "ig";
       const rawCampaign = campaignIdx !== -1 ? cols[campaignIdx] : "";
       const rawAd = adIdx !== -1 ? cols[adIdx] : "";
+      const rawForm = formIdx !== -1 ? cols[formIdx] : "";
+      const rawCreated = createdIdx !== -1 ? cols[createdIdx] : "";
+      const rawLeadStatus = leadStatusIdx !== -1 ? cols[leadStatusIdx] : "";
       const rawCity = cityIdx !== -1 ? cols[cityIdx] : "";
       const rawState = stateIdx !== -1 ? cols[stateIdx] : "";
       const rawMetaId = idIdx !== -1 ? cols[idIdx] : "";
@@ -150,14 +166,17 @@ export default function MetaLeadsImportModal({ isOpen, onClose, onImport, isDark
       const cleanedService = cleanMetaService(rawService);
       const cleanedBudget = cleanMetaBudget(rawBudget);
 
-      const platformLabel = rawPlatform === "fb" ? "Facebook" : "Instagram";
+      const platformLabel = rawPlatform === "fb" ? "Facebook" : rawPlatform === "ig" ? "Instagram" : "Meta Ads";
 
       const notesParts = [
         rawCampaign ? `Campaign: ${rawCampaign}` : null,
         rawAd ? `Ad: ${rawAd}` : null,
+        rawForm ? `Form: ${rawForm}` : null,
         cleanedBudget ? `Budget: ${cleanedBudget}` : null,
         rawCity || rawState ? `Location: ${[rawCity, rawState].filter(Boolean).join(", ")}` : null,
         rawMetaId ? `Meta Lead ID: ${rawMetaId}` : null,
+        rawCreated ? `Meta Created: ${rawCreated}` : null,
+        rawLeadStatus ? `Meta Status: ${rawLeadStatus}` : null,
       ].filter(Boolean);
 
       results.push({
@@ -190,13 +209,18 @@ export default function MetaLeadsImportModal({ isOpen, onClose, onImport, isDark
     const reader = new FileReader();
     reader.onload = (event) => {
       const content = event.target?.result;
-      if (typeof content === "string") {
+      if (content instanceof ArrayBuffer) {
+        const decoded = decodeLeadFile(content);
+        setRawText(decoded);
+        parseDelimitedData(decoded);
+        setTab("paste");
+      } else if (typeof content === "string") {
         setRawText(content);
         parseDelimitedData(content);
         setTab("paste");
       }
     };
-    reader.readAsText(file);
+    reader.readAsArrayBuffer(file);
   }
 
   async function handleConfirmImport() {
@@ -228,13 +252,13 @@ export default function MetaLeadsImportModal({ isOpen, onClose, onImport, isDark
             </div>
             <div>
               <h2 className="text-lg font-black text-gray-900 dark:text-white flex items-center gap-2">
-                <span>Meta Ads Lead Ingestion</span>
+                <span>Excel / Meta Leads Import</span>
                 <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-pink-100 dark:bg-pink-950/60 text-pink-700 dark:text-pink-300">
                   Instagram & Facebook
                 </span>
               </h2>
               <p className="text-xs text-gray-500 dark:text-slate-400">
-                Directly import Meta Ads Manager exports or setup automated real-time webhooks.
+                Excel, Google Sheet, or Meta exports ko CRM me import karo; CRM save ke baad Meta CAPI event auto-send hota hai.
               </p>
             </div>
           </div>
@@ -257,7 +281,7 @@ export default function MetaLeadsImportModal({ isOpen, onClose, onImport, isDark
             }`}
           >
             <FileSpreadsheet className="w-4 h-4" />
-            <span>Paste Export (CSV / TSV)</span>
+            <span>Paste Excel / Sheet Rows</span>
           </button>
           <button
             onClick={() => setTab("upload")}
@@ -268,7 +292,7 @@ export default function MetaLeadsImportModal({ isOpen, onClose, onImport, isDark
             }`}
           >
             <Upload className="w-4 h-4" />
-            <span>Upload CSV File</span>
+            <span>Upload CSV / TSV File</span>
           </button>
           <button
             onClick={() => setTab("webhook")}
@@ -289,7 +313,7 @@ export default function MetaLeadsImportModal({ isOpen, onClose, onImport, isDark
             <div className="space-y-4">
               <div>
                 <label className="block text-xs font-bold text-gray-700 dark:text-slate-300 mb-1.5">
-                  Paste Raw Export Text from Meta Ads Manager (CSV or TSV rows):
+                  Paste Excel / Google Sheet / Meta export rows:
                 </label>
                 <textarea
                   rows={6}
@@ -303,7 +327,7 @@ export default function MetaLeadsImportModal({ isOpen, onClose, onImport, isDark
                       setParseError("");
                     }
                   }}
-                  placeholder="Paste headers and rows here (e.g. id, created_time, ad_name, full_name, email, phone_number, what_service_are_you_looking_for?...)"
+                  placeholder="Paste headers and rows here, e.g. id, created_time, form_name, what_service_are_you_looking_for?, पूरा_नाम, ईमेल, मोबाइल, city, state..."
                   className="w-full p-3 rounded-2xl text-xs font-mono bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 focus:outline-none focus:border-pink-500 text-gray-900 dark:text-white"
                 />
               </div>
@@ -321,7 +345,7 @@ export default function MetaLeadsImportModal({ isOpen, onClose, onImport, isDark
                   <div className="flex items-center justify-between">
                     <span className="text-xs font-black text-gray-900 dark:text-white flex items-center gap-1.5">
                       <CheckCircle2 className="w-4 h-4 text-emerald-500" />
-                      <span>{parsedLeads.length} Leads Detected & Ready to Import</span>
+                    <span>{parsedLeads.length} leads ready for CRM + Meta CAPI</span>
                     </span>
                     <button
                       type="button"
@@ -389,10 +413,10 @@ export default function MetaLeadsImportModal({ isOpen, onClose, onImport, isDark
                 <Upload className="w-10 h-10 text-pink-500" />
                 <div className="space-y-1">
                   <div className="text-sm font-bold text-gray-900 dark:text-white">
-                    Drop Meta Leads CSV here, or click to browse
+                    Drop Excel/Google Sheet export here, or click to browse
                   </div>
                   <div className="text-xs text-gray-400">
-                    Supports exports directly from Meta Ads Manager Lead Center (.csv, .tsv)
+                    Supports CSV/TSV/Text exports. Native .xlsx should be saved/exported as CSV first.
                   </div>
                 </div>
                 <input
@@ -516,7 +540,7 @@ export default function MetaLeadsImportModal({ isOpen, onClose, onImport, isDark
                 onClick={handleConfirmImport}
                 className="px-5 py-2 rounded-xl bg-gradient-to-r from-pink-600 via-rose-600 to-orange-600 hover:opacity-90 text-white text-xs font-bold shadow-md shadow-pink-500/20 transition active:scale-95 cursor-pointer disabled:opacity-50"
               >
-                {isImporting ? "Importing..." : `Import ${parsedLeads.length} Leads`}
+                {isImporting ? "Importing..." : `Import ${parsedLeads.length} Leads to CRM`}
               </button>
             )}
           </div>

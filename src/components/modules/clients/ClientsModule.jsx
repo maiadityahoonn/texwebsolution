@@ -19,7 +19,7 @@ import {
   X,
   Share2,
 } from "lucide-react";
-import ActivityTimeline from "./ActivityTimeline";
+import ActivityTimeline from "../shared/ActivityTimeline";
 
 export default function ClientsModule({
   clients = [],

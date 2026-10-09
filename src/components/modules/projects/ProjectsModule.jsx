@@ -21,7 +21,7 @@ import {
   UserPlus,
   Trash2,
 } from "lucide-react";
-import ActivityTimeline from "./ActivityTimeline";
+import ActivityTimeline from "../shared/ActivityTimeline";
 
 function GithubIcon({ className = "w-4 h-4" }) {
   return (

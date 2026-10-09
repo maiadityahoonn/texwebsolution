@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useMemo, useEffect } from "react";
 import { createPortal } from "react-dom";
@@ -14,7 +14,6 @@ import {
   Phone,
   Mail,
   Calendar,
-  ArrowRight,
   MessageSquare,
   Building2,
   Briefcase,
@@ -31,7 +30,7 @@ import {
   ShieldAlert,
   RotateCcw,
 } from "lucide-react";
-import ActivityTimeline from "./ActivityTimeline";
+import ActivityTimeline from "../shared/ActivityTimeline";
 import MetaLeadsImportModal from "./MetaLeadsImportModal";
 import { playNotificationSound } from "@/lib/notificationSound";
 
@@ -40,6 +39,50 @@ function WhatsAppIcon({ className = "w-4 h-4" }) {
     <svg className={className} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
       <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z" />
     </svg>
+  );
+}
+
+function TableSkeleton({ rows = 5, columns = 6 }) {
+  return (
+    <div className="overflow-hidden">
+      {Array.from({ length: rows }).map((_, rowIndex) => (
+        <div key={rowIndex} className="grid gap-3 px-4 py-3 border-b border-gray-100 dark:border-[#3a3020]/60" style={{ gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))` }}>
+          {Array.from({ length: columns }).map((__, colIndex) => (
+            <div
+              key={`${rowIndex}-${colIndex}`}
+              className={`h-3 rounded-full bg-gray-100 dark:bg-slate-800 animate-pulse ${colIndex === 0 ? "w-4/5" : colIndex === columns - 1 ? "w-2/3 justify-self-end" : "w-full"}`}
+            />
+          ))}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function PipelineSkeleton() {
+  return (
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3">
+      {PIPELINE_STAGES.map((stage) => (
+        <div key={stage.id} className="rounded-2xl bg-white dark:bg-[#18150f] border border-gray-100 dark:border-[#3a3020] p-3 shadow-2xs min-h-[350px]">
+          <div className="flex items-center justify-between pb-2 border-b border-gray-100 dark:border-[#3a3020]">
+            <div className="flex items-center gap-2">
+              <span className={`w-2 h-2 rounded-full ${stage.color}`} />
+              <div className="h-3 w-20 rounded-full bg-gray-100 dark:bg-slate-800 animate-pulse" />
+            </div>
+            <div className="h-5 w-8 rounded-full bg-gray-100 dark:bg-slate-800 animate-pulse" />
+          </div>
+          <div className="mt-3 space-y-2">
+            {[0, 1, 2].map((item) => (
+              <div key={item} className="rounded-xl border border-gray-200/80 dark:border-[#3a3020] bg-gray-50 dark:bg-[#211d14] p-3 space-y-2">
+                <div className="h-3 w-4/5 rounded-full bg-gray-200 dark:bg-slate-800 animate-pulse" />
+                <div className="h-3 w-1/2 rounded-full bg-gray-200 dark:bg-slate-800 animate-pulse" />
+                <div className="h-12 rounded-lg bg-gray-200/70 dark:bg-slate-800 animate-pulse" />
+              </div>
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
   );
 }
 
@@ -111,7 +154,7 @@ const AI_OBJECTION_HANDLERS = {
   },
   "Unresponsive after 3+ Follow-ups (Ghosted)": {
     counter: "Send a polite 'Breakup / File Closing' message. This psychologically triggers response in 45%+ cases.",
-    whatsapp_draft: "Hi {NAME}, haven't heard back so assuming your tech project is on hold for now. Closing this inquiry file to keep your inbox clean—feel free to ping anytime you're ready to restart!",
+    whatsapp_draft: "Hi {NAME}, haven't heard back so assuming your tech project is on hold for now. Closing this inquiry file to keep your inbox clean - feel free to ping anytime you're ready to restart!",
   },
   "Client Postponed Project (3-6 Months)": {
     counter: "Schedule automated re-touch notification for 45-60 days before their new planned launch quarter.",
@@ -119,7 +162,7 @@ const AI_OBJECTION_HANDLERS = {
   },
   "Meeting No-Show / Client Didn't Join": {
     counter: "Send a gentle rescheduled calendar link with zero pressure.",
-    whatsapp_draft: "Hi {NAME}, missed you on our call today! Tech emergencies happen—here's our quick booking link whenever you have 15 mins to reschedule: https://texweb.in/meet",
+    whatsapp_draft: "Hi {NAME}, missed you on our call today! Tech emergencies happen - here's our quick booking link whenever you have 15 mins to reschedule: https://texweb.in/meet",
   },
   "Tech Stack / Scope Mismatch": {
     counter: "Check if TexWeb's custom full-stack, AI, or mobile team can architect a customized alternative.",
@@ -130,18 +173,6 @@ const AI_OBJECTION_HANDLERS = {
     whatsapp_draft: "Hi {NAME}, we can restructure the payment plan to 3 milestones linked to clear deliverables so you only pay as you see tangible progress. Let's finalize this today!",
   },
 };
-
-function getLeadScore(lead) {
-  let score = 35;
-  if (lead?.phone) score += 15;
-  if (lead?.email) score += 10;
-  if (lead?.service && lead.service !== "General Inquiry") score += 10;
-  if (getLeadBudget(lead) !== "â€”") score += 15;
-  if (getLeadLocation(lead) !== "â€”") score += 5;
-  if (["Contacted", "Proposal Sent", "Converted"].includes(lead?.status)) score += 10;
-  if (lead?.status === "Lost") score = Math.min(score, 20);
-  return Math.max(0, Math.min(score, 100));
-}
 
 function getLeadNextAction(lead, followUps = [], meetings = []) {
   if (lead?.status === "Lost") return "Archive with loss reason and create nurture reminder after 30 days.";
@@ -156,21 +187,96 @@ function getLeadNextAction(lead, followUps = [], meetings = []) {
 }
 
 function getLeadBudget(lead) {
-  if (!lead) return "—";
+  if (!lead) return "-";
   if (lead.budget_range) return lead.budget_range;
-  if (!lead.notes) return "—";
+  if (!lead.notes) return "-";
   const match = lead.notes.match(/Budget:\s*([^|]+)/i);
-  return match ? match[1].trim() : "—";
+  return match ? match[1].trim() : "-";
 }
 
 function getLeadLocation(lead) {
-  if (!lead) return "—";
+  if (!lead) return "-";
   if (lead.city || lead.state) {
     return [lead.city, lead.state].filter(Boolean).join(", ");
   }
-  if (!lead.notes) return "—";
+  if (!lead.notes) return "-";
   const match = lead.notes.match(/Location:\s*([^|]+)/i);
-  return match ? match[1].trim() : "—";
+  return match ? match[1].trim() : "-";
+}
+
+function formatLeadAnswer(value) {
+  const text = String(value || "").trim();
+  if (!text || text === "-" || text === "—" || /[\u0080-\u009f\u00c2\u00c3\u00e2\u201a]/u.test(text)) return "-";
+  return text;
+}
+
+function parseLeadNoteFields(lead) {
+  const fields = [];
+  String(lead?.notes || "")
+    .split(/[|\n]+/)
+    .map((part) => part.trim())
+    .filter(Boolean)
+    .forEach((part) => {
+      const separatorIndex = part.indexOf(":");
+      if (separatorIndex === -1) return;
+      const label = part.slice(0, separatorIndex).trim();
+      const value = part.slice(separatorIndex + 1).trim();
+      if (!label) return;
+      fields.push({
+        key: label.toLowerCase(),
+        label,
+        value,
+      });
+    });
+  return fields;
+}
+
+function getLeadNoteValue(fields, labels) {
+  const wanted = labels.map((label) => label.toLowerCase());
+  return fields.find((field) => wanted.includes(field.key))?.value || "";
+}
+
+function getLeadFormAnswers(lead) {
+  const noteFields = parseLeadNoteFields(lead);
+  const baseFields = [
+    { label: "Service Looking For", value: lead?.service || getLeadNoteValue(noteFields, ["Service"]) },
+    { label: "Budget Range", value: getLeadNoteValue(noteFields, ["Budget"]) || getLeadBudget(lead) },
+    { label: "City / State", value: getLeadNoteValue(noteFields, ["Location"]) || getLeadLocation(lead) },
+  ];
+  const reserved = new Set([
+    "service",
+    "budget",
+    "location",
+    "form",
+    "form name",
+    "campaign",
+    "campaign name",
+    "ad",
+    "ad name",
+    "meta lead id",
+    "lead id",
+    "leadgen id",
+    "meta created",
+    "created time",
+    "meta status",
+    "lead status",
+    "source",
+    "platform",
+    "is organic",
+    "is_organic",
+    "page id",
+    "form id",
+    "ad id",
+    "adset id",
+    "campaign id",
+  ]);
+  const extraFields = noteFields
+    .filter((field) => !reserved.has(field.key))
+    .map((field) => ({ label: field.label, value: field.value }));
+  return [...baseFields, ...extraFields].map((field) => ({
+    ...field,
+    value: formatLeadAnswer(field.value),
+  })).filter((field) => field.value !== "-");
 }
 
 function getFollowUpWhatsappMessage(item, lead, client) {
@@ -199,14 +305,18 @@ function createGoogleCalendarUrl({ title, start, durationMinutes = 30, details =
 export default function CrmModule({
   leads = [],
   deals = [],
+  dealPagination = null,
   clients = [],
   proposals = [],
   quotations = [],
   agreements = [],
   invoices = [],
   followUps = [],
+  followUpPagination = null,
   salesMeetings = [],
+  meetingPagination = null,
   initialViewMode = "leads",
+  leadPagination = null,
   commercialScope = "all",
   isDark = false,
   onUpdateLeadStatus,
@@ -233,6 +343,10 @@ export default function CrmModule({
   onOpenChat,
   onNavigateSection,
   onRefresh,
+  onFetchLeadsPage,
+  onFetchDealsPage,
+  onFetchFollowUpsPage,
+  onFetchMeetingsPage,
   showViewTabs = false,
   headerActionsSlotId = "",
 }) {
@@ -245,6 +359,13 @@ export default function CrmModule({
   }, [initialViewMode]);
 
   useEffect(() => {
+    setQuery("");
+    setStatusFilter("active");
+    setDateFilter("all");
+    setLeadPage(1);
+  }, [viewMode]);
+
+  useEffect(() => {
     if (!headerActionsSlotId) {
       setHeaderActionsTarget(null);
       return;
@@ -253,6 +374,14 @@ export default function CrmModule({
   }, [headerActionsSlotId, viewMode]);
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("active");
+  const [leadPage, setLeadPage] = useState(1);
+  const [leadsPerPage, setLeadsPerPage] = useState(10);
+  const [pipelinePage, setPipelinePage] = useState(1);
+  const [pipelinePageSize, setPipelinePageSize] = useState(100);
+  const [followUpPage, setFollowUpPage] = useState(1);
+  const [followUpPageSize, setFollowUpPageSize] = useState(50);
+  const [meetingPage, setMeetingPage] = useState(1);
+  const [meetingPageSize, setMeetingPageSize] = useState(50);
   const [dateFilter, setDateFilter] = useState("all");
   const [customDateRange, setCustomDateRange] = useState({
     from: "",
@@ -401,6 +530,103 @@ export default function CrmModule({
     return true;
   }
 
+  function getLeadServerDateRange() {
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+    const tomorrowStart = new Date(todayStart);
+    tomorrowStart.setDate(tomorrowStart.getDate() + 1);
+    const toIso = (date) => date.toISOString();
+    if (dateFilter === "today") return { dateFrom: toIso(todayStart), dateTo: toIso(tomorrowStart) };
+    if (dateFilter === "yesterday") {
+      const yesterdayStart = new Date(todayStart);
+      yesterdayStart.setDate(yesterdayStart.getDate() - 1);
+      return { dateFrom: toIso(yesterdayStart), dateTo: toIso(todayStart) };
+    }
+    if (dateFilter === "date" && selectedDate) {
+      const selectedStart = new Date(`${selectedDate}T00:00:00`);
+      const selectedEnd = new Date(selectedStart);
+      selectedEnd.setDate(selectedEnd.getDate() + 1);
+      return { dateFrom: toIso(selectedStart), dateTo: toIso(selectedEnd) };
+    }
+    if (dateFilter === "day") return { dateFrom: toIso(new Date(Date.now() - 86400000)), dateTo: "" };
+    if (dateFilter === "week") return { dateFrom: toIso(new Date(Date.now() - 7 * 86400000)), dateTo: "" };
+    if (dateFilter === "month") return { dateFrom: toIso(new Date(Date.now() - 30 * 86400000)), dateTo: "" };
+    if (dateFilter === "year") return { dateFrom: toIso(new Date(Date.now() - 365 * 86400000)), dateTo: "" };
+    if (dateFilter === "custom") {
+      return {
+        dateFrom: customDateRange.from ? new Date(`${customDateRange.from}T00:00:00`).toISOString() : "",
+        dateTo: customDateRange.to ? new Date(`${customDateRange.to}T23:59:59`).toISOString() : "",
+      };
+    }
+    return { dateFrom: "", dateTo: "" };
+  }
+
+  function getServerDateRange(fieldMode = "created") {
+    return getLeadServerDateRange(fieldMode);
+  }
+
+  useEffect(() => {
+    if (!onFetchLeadsPage || viewMode !== "leads") return;
+    const timer = setTimeout(() => {
+      const range = getLeadServerDateRange();
+      onFetchLeadsPage({
+        page: leadPage,
+        pageSize: leadsPerPage,
+        search: query,
+        status: statusFilter,
+        ...range,
+      });
+    }, 350);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [customDateRange.from, customDateRange.to, dateFilter, leadPage, leadsPerPage, onFetchLeadsPage, query, selectedDate, statusFilter, viewMode]);
+
+  useEffect(() => {
+    if (!onFetchDealsPage || viewMode !== "pipeline") return;
+    const timer = setTimeout(() => {
+      const range = getServerDateRange();
+      onFetchDealsPage({
+        page: pipelinePage,
+        pageSize: pipelinePageSize,
+        search: query,
+        stage: statusFilter === "archived" ? "closed_lost" : "",
+        ...range,
+      });
+    }, 350);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [customDateRange.from, customDateRange.to, dateFilter, onFetchDealsPage, pipelinePage, pipelinePageSize, query, selectedDate, statusFilter, viewMode]);
+
+  useEffect(() => {
+    if (!onFetchFollowUpsPage || viewMode !== "followups") return;
+    const timer = setTimeout(() => {
+      const range = getServerDateRange();
+      onFetchFollowUpsPage({
+        page: followUpPage,
+        pageSize: followUpPageSize,
+        search: query,
+        ...range,
+      });
+    }, 350);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [customDateRange.from, customDateRange.to, dateFilter, followUpPage, followUpPageSize, onFetchFollowUpsPage, query, selectedDate, viewMode]);
+
+  useEffect(() => {
+    if (!onFetchMeetingsPage || viewMode !== "sales_meetings") return;
+    const timer = setTimeout(() => {
+      const range = getServerDateRange();
+      onFetchMeetingsPage({
+        page: meetingPage,
+        pageSize: meetingPageSize,
+        search: query,
+        ...range,
+      });
+    }, 350);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [customDateRange.from, customDateRange.to, dateFilter, meetingPage, meetingPageSize, onFetchMeetingsPage, query, selectedDate, viewMode]);
+
   const filteredLeads = useMemo(() => {
     const q = query.trim().toLowerCase();
     return leads.filter((lead) => {
@@ -421,6 +647,25 @@ export default function CrmModule({
       return matchStatus && matchQuery && matchDate;
     });
   }, [customDateRange.from, customDateRange.to, dateFilter, deals, leads, query, selectedDate, statusFilter]);
+
+  useEffect(() => {
+    setLeadPage(1);
+    setPipelinePage(1);
+    setFollowUpPage(1);
+    setMeetingPage(1);
+  }, [customDateRange.from, customDateRange.to, dateFilter, followUpPageSize, leadsPerPage, meetingPageSize, pipelinePageSize, query, selectedDate, statusFilter, viewMode]);
+
+  const serverLeadTotal = leadPagination?.count ?? filteredLeads.length;
+  const leadTotalForPagination = onFetchLeadsPage ? Math.max(serverLeadTotal, filteredLeads.length) : filteredLeads.length;
+  const leadPageCount = Math.max(1, Math.ceil(leadTotalForPagination / leadsPerPage));
+  const safeLeadPage = Math.min(leadPage, leadPageCount);
+  const paginatedLeads = useMemo(() => {
+    if (onFetchLeadsPage) return filteredLeads;
+    const start = (safeLeadPage - 1) * leadsPerPage;
+    return filteredLeads.slice(start, start + leadsPerPage);
+  }, [filteredLeads, leadsPerPage, onFetchLeadsPage, safeLeadPage]);
+  const leadPageStart = leadTotalForPagination === 0 ? 0 : (safeLeadPage - 1) * leadsPerPage + 1;
+  const leadPageEnd = Math.min(leadTotalForPagination, safeLeadPage * leadsPerPage);
 
   // Aggregate Metrics
   const stats = useMemo(() => {
@@ -502,6 +747,20 @@ export default function CrmModule({
     });
   }, [clients, customDateRange.from, customDateRange.to, dateFilter, leads, query, salesMeetings, selectedDate]);
 
+  const pipelineTotal = dealPagination?.count ?? deals.length;
+  const pipelinePageCount = Math.max(1, Math.ceil(Math.max(pipelineTotal, deals.length) / pipelinePageSize));
+  const safePipelinePage = Math.min(pipelinePage, pipelinePageCount);
+  const followUpTotal = followUpPagination?.count ?? filteredFollowUps.length;
+  const followUpPageCount = Math.max(1, Math.ceil(Math.max(followUpTotal, filteredFollowUps.length) / followUpPageSize));
+  const safeFollowUpPage = Math.min(followUpPage, followUpPageCount);
+  const meetingTotal = meetingPagination?.count ?? filteredSalesMeetings.length;
+  const meetingPageCount = Math.max(1, Math.ceil(Math.max(meetingTotal, filteredSalesMeetings.length) / meetingPageSize));
+  const safeMeetingPage = Math.min(meetingPage, meetingPageCount);
+  const isLeadsLoading = Boolean(leadPagination?.loading);
+  const isPipelineLoading = Boolean(dealPagination?.loading);
+  const isFollowUpsLoading = Boolean(followUpPagination?.loading);
+  const isMeetingsLoading = Boolean(meetingPagination?.loading);
+
   const archivedDeals = useMemo(() => {
     const q = query.trim().toLowerCase();
     return deals.filter((deal) => {
@@ -517,10 +776,8 @@ export default function CrmModule({
     const rankedLeads = openLeads
       .map((lead) => ({
         lead,
-        score: getLeadScore(lead),
         action: getLeadNextAction(lead, followUps, salesMeetings),
       }))
-      .sort((a, b) => b.score - a.score)
       .slice(0, 3);
     const overdueFollowUps = followUps.filter((item) => item.status === "pending" && new Date(item.due_at).getTime() < Date.now()).length;
     const staleDeals = deals.filter((deal) => !["closed_won", "closed_lost"].includes(deal.pipeline_stage) && new Date(deal.updated_at || deal.created_at || Date.now()).getTime() < Date.now() - 7 * 86400000);
@@ -577,7 +834,6 @@ export default function CrmModule({
     const openFollowUps = linkedFollowUps.filter((item) => item.status === "pending").length;
     const summary = [
       `${selectedLead.name || "Client"} came from ${selectedLead.source || "unknown source"} for ${selectedLead.service || "a TexWeb service"}.`,
-      selectedLead.status ? `Current lead status is ${selectedLead.status}.` : "",
       lastMeeting ? `Latest meeting: ${lastMeeting.title} (${lastMeeting.status}).` : "No meeting completed yet.",
       lastFollowUp ? `Latest follow-up: ${lastFollowUp.title} (${lastFollowUp.status}).` : "No follow-up history yet.",
       openFollowUps ? `${openFollowUps} pending follow-up(s) need action.` : "No pending follow-up currently.",
@@ -649,12 +905,12 @@ export default function CrmModule({
     return start.toISOString();
   }
 
-  function scheduleAutoMeetingForDeal(deal) {
+  async function scheduleAutoMeetingForDeal(deal) {
     if (!deal?.id) return;
     const alreadyScheduled = salesMeetings.some((item) => item.deal_id === deal.id && !["cancelled", "completed", "no_show"].includes(item.status));
     if (alreadyScheduled) return;
     const lead = getDealLead(deal);
-    onCreateSalesMeeting?.({
+    await onCreateSalesMeeting?.({
       title: `Client meeting: ${deal.title || lead?.name || "Sales deal"}`,
       lead_id: deal.lead_id || null,
       client_id: deal.client_id || null,
@@ -663,7 +919,7 @@ export default function CrmModule({
       scheduled_at: deal.meeting_scheduled_at ? new Date(deal.meeting_scheduled_at).toISOString() : getMeetingStartIso(),
       duration_minutes: 30,
       meeting_link: deal.meeting_link || defaultMeetLink || "https://meet.google.com/new",
-      agenda: "Auto-created when deal entered Contacted stage. Confirm requirements, budget, timeline, and decision maker.",
+      agenda: "Auto-created when lead was moved into sales pipeline. Confirm requirements, budget, timeline, and decision maker.",
       status: "scheduled",
     });
   }
@@ -681,12 +937,14 @@ export default function CrmModule({
     window.open(`https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`, "_blank", "noopener,noreferrer");
   }
 
-  function openCommercialModal(type = "proposal") {
+  function openCommercialModal(type = "proposal", deal = null) {
+    const linkedDeal = deal || deals.find((item) => item.id === commercialForm.deal_id) || deals[0];
     setCommercialType(type);
     setCommercialForm((prev) => ({
       ...prev,
-      client_id: clients[0]?.id || "",
-      deal_id: deals[0]?.id || "",
+      deal_id: linkedDeal?.id || "",
+      title: linkedDeal ? `${linkedDeal.title} ${type === "agreement" ? "Agreement" : "Quotation"}` : prev.title,
+      amount: linkedDeal?.deal_value ? String(linkedDeal.deal_value) : prev.amount,
       proposal_id: proposals[0]?.id || "",
       quotation_id: quotations[0]?.id || "",
       quotation_number: `QT-2026-${Math.floor(1000 + Math.random() * 9000)}`,
@@ -697,11 +955,10 @@ export default function CrmModule({
 
   function handleCreateCommercialSubmit(e) {
     e.preventDefault();
-    if (!commercialForm.client_id) return;
+    if (!commercialForm.deal_id) return;
     const amount = parseFloat(commercialForm.amount) || 0;
     if (commercialType !== "agreement") {
       onCreateProposal?.({
-        client_id: commercialForm.client_id,
         deal_id: commercialForm.deal_id || null,
         title: commercialForm.title,
         amount,
@@ -714,7 +971,6 @@ export default function CrmModule({
     } else {
       onCreateAgreement?.({
         agreement_number: commercialForm.agreement_number,
-        client_id: commercialForm.client_id,
         deal_id: commercialForm.deal_id || null,
         proposal_id: commercialForm.proposal_id || null,
         quotation_id: commercialForm.quotation_id || null,
@@ -743,7 +999,6 @@ export default function CrmModule({
     onCreateFollowUp?.({
       ...followUpForm,
       lead_id: followUpForm.lead_id || null,
-      client_id: followUpForm.client_id || null,
       deal_id: followUpForm.deal_id || null,
       due_at: new Date(followUpForm.due_at).toISOString(),
       status: "pending",
@@ -756,12 +1011,26 @@ export default function CrmModule({
     setFollowUpForm({
       title: `Follow up: ${deal.title || lead?.name || "Pipeline deal"}`,
       lead_id: deal.lead_id || "",
-      client_id: deal.client_id || "",
+      client_id: "",
       deal_id: deal.id || "",
       channel: "whatsapp",
       due_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().slice(0, 16),
       priority: "medium",
       notes: `Manual follow-up from ${PIPELINE_STAGES.find((stage) => stage.id === (deal.pipeline_stage || "contacted"))?.label || "pipeline"} stage.`,
+    });
+    setShowFollowUpModal(true);
+  }
+
+  function openLeadFollowUpModal(lead) {
+    setFollowUpForm({
+      title: `Follow up: ${lead?.name || "Lead"}`,
+      lead_id: lead?.id || "",
+      client_id: "",
+      deal_id: "",
+      channel: lead?.phone ? "whatsapp" : "phone",
+      due_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().slice(0, 16),
+      priority: "medium",
+      notes: `Manual follow-up from lead page for ${lead?.service || "inquiry"}.`,
     });
     setShowFollowUpModal(true);
   }
@@ -772,7 +1041,6 @@ export default function CrmModule({
     onCreateSalesMeeting?.({
       ...salesMeetingForm,
       lead_id: salesMeetingForm.lead_id || null,
-      client_id: salesMeetingForm.client_id || null,
       deal_id: salesMeetingForm.deal_id || null,
       duration_minutes: Number(salesMeetingForm.duration_minutes) || 30,
       scheduled_at: new Date(salesMeetingForm.scheduled_at).toISOString(),
@@ -901,7 +1169,7 @@ export default function CrmModule({
       title: lead ? `${lead.name} - ${lead.service || "Tech Development"}` : "",
       client_id: "",
       lead_id: lead ? lead.id : "",
-      pipeline_stage: initialStage,
+      pipeline_stage: "contacted",
       deal_value: "100000",
       service: lead?.service || "Web Development",
       meeting_scheduled_at: new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString().slice(0, 16),
@@ -925,8 +1193,9 @@ export default function CrmModule({
     ) return;
     const created = await onCreateDeal?.({
       ...newDealForm,
+      pipeline_stage: "contacted",
       deal_value: Number(newDealForm.deal_value) || 0,
-      client_id: newDealForm.client_id || null,
+      client_id: null,
       lead_id: newDealForm.lead_id || null,
       expected_close_date: newDealForm.meeting_scheduled_at ? newDealForm.meeting_scheduled_at.slice(0, 10) : null,
       notes: [
@@ -935,10 +1204,15 @@ export default function CrmModule({
         newDealForm.meeting_link ? `Google Meet: ${newDealForm.meeting_link}` : null,
       ].filter(Boolean).join("\n"),
     });
-    if ((created?.pipeline_stage || newDealForm.pipeline_stage) === "contacted") {
-      scheduleAutoMeetingForDeal(created || { ...newDealForm, id: null });
+    if (created?.id && newDealForm.meeting_scheduled_at) {
+      await scheduleAutoMeetingForDeal({
+        ...newDealForm,
+        ...created,
+        meeting_scheduled_at: newDealForm.meeting_scheduled_at,
+        meeting_link: newDealForm.meeting_link,
+      });
     }
-    if ((created?.pipeline_stage || newDealForm.pipeline_stage) === "closed_won") {
+    if ((created?.pipeline_stage || "contacted") === "closed_won") {
       onConvertToClientAndProject?.(created || { ...newDealForm, pipeline_stage: "closed_won" });
     }
     setShowAddDealModal(false);
@@ -964,7 +1238,7 @@ export default function CrmModule({
     const updatedDeal = await onUpdateDealStage?.(deal.id, nextStage);
     const stageDeal = { ...deal, ...(updatedDeal || {}), pipeline_stage: nextStage };
     if (nextStage === "contacted") {
-      scheduleAutoMeetingForDeal(stageDeal);
+      await scheduleAutoMeetingForDeal(stageDeal);
     }
     if (nextStage === "closed_won") {
       onConvertToClientAndProject?.(stageDeal);
@@ -993,10 +1267,10 @@ export default function CrmModule({
         <button
           onClick={() => setShowMetaImportModal(true)}
           className="flex shrink-0 items-center gap-1.5 px-3.5 py-2 rounded-xl bg-gradient-to-r from-purple-600 via-pink-600 to-amber-500 hover:opacity-90 text-white font-semibold text-xs transition shadow-sm cursor-pointer shadow-pink-500/20"
-          title="Import Meta Ads Leads (CSV or Webhook)"
+          title="Import Excel, Google Sheet, or Meta Ads leads into CRM"
         >
           <Sparkles className="w-4 h-4" />
-          <span>Import Meta Leads</span>
+          <span>Import Excel Leads</span>
         </button>
       )}
 
@@ -1165,7 +1439,7 @@ export default function CrmModule({
             <DollarSign className="w-4 h-4 text-amber-500" />
           </div>
           <div className="text-xl sm:text-2xl font-bold mt-2">
-            ₹{stats.totalPipelineValue.toLocaleString("en-IN")}
+            Rs. {stats.totalPipelineValue.toLocaleString("en-IN")}
           </div>
           <div className="text-[11px] text-gray-400 mt-1">Across open proposals</div>
         </div>
@@ -1176,7 +1450,7 @@ export default function CrmModule({
             <CheckCircle2 className="w-4 h-4 text-emerald-500" />
           </div>
           <div className="text-xl sm:text-2xl font-bold mt-2">
-            ₹{stats.wonValue.toLocaleString("en-IN")}
+            Rs. {stats.wonValue.toLocaleString("en-IN")}
           </div>
           <div className="text-[11px] text-emerald-600 dark:text-emerald-400 mt-1 font-medium">
             Transferred to project execution
@@ -1252,17 +1526,14 @@ export default function CrmModule({
           {aiInsights.rankedLeads.length === 0 ? (
             <div className="md:col-span-3 text-xs text-gray-500 dark:text-neutral-400">No active lead needs AI action right now.</div>
           ) : (
-            aiInsights.rankedLeads.map(({ lead, score, action }) => (
+            aiInsights.rankedLeads.map(({ lead, action }) => (
               <div key={lead.id} className="rounded-xl border border-gray-100 dark:border-[#3a3020] bg-gray-50 dark:bg-[#211d14] p-3">
                 <div className="flex items-center justify-between gap-2">
                   <span className="font-bold text-sm text-gray-900 dark:text-white line-clamp-1">{lead.name}</span>
-                  <span className={`text-[11px] font-black ${score >= 75 ? "text-emerald-600" : score >= 50 ? "text-amber-600" : "text-red-600"}`}>{score}/100</span>
                 </div>
                 <p className="text-[11px] text-gray-500 dark:text-neutral-400 mt-1 line-clamp-2">{action}</p>
                 <div className="flex gap-2 mt-3">
-                  {lead.status === "New" && (
-                    <button onClick={() => onUpdateLeadStatus?.(lead.id, "Contacted")} className="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-blue-600 text-white">Contacted</button>
-                  )}
+                  <button onClick={() => openAddDealModal("contacted", lead)} className="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-orange-600 text-white">Pipeline</button>
                   <button onClick={() => openLostModal({ type: "lead", item: lead })} className="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-red-50 text-red-600">Lost</button>
                 </div>
               </div>
@@ -1282,7 +1553,7 @@ export default function CrmModule({
                   <div key={deal.id} className="flex items-center justify-between gap-3 rounded-lg bg-white dark:bg-[#211d14] px-3 py-2 text-xs">
                     <div className="min-w-0">
                       <div className="font-bold text-gray-900 dark:text-white truncate">{deal.title}</div>
-                      <div className="text-gray-500">{deal.pipeline_stage || "pipeline"} · {ageDays} days idle</div>
+                      <div className="text-gray-500">{deal.pipeline_stage || "pipeline"} - {ageDays} days idle</div>
                     </div>
                     <span className={`px-2 py-0.5 rounded-full font-black ${ageDays >= 7 ? "bg-red-50 text-red-600" : "bg-amber-100 text-amber-700"}`}>
                       {ageDays >= 7 ? "7d+" : "3d+"}
@@ -1315,9 +1586,6 @@ export default function CrmModule({
         <div className="flex items-center gap-2 overflow-x-auto no-scrollbar">
           {[
             ["active", "Active"],
-            ["New", "New"],
-            ["Contacted", "Contacted"],
-            ["Proposal Sent", "Quotation Sent"],
             ["archived", "Archive"],
           ].map(([value, label]) => (
             <button
@@ -1369,10 +1637,6 @@ export default function CrmModule({
             ["today", "Today"],
             ["yesterday", "Yesterday"],
             ["date", "Date"],
-            ["day", "24h"],
-            ["week", "Week"],
-            ["month", "Month"],
-            ["year", "Year"],
             ["custom", "Custom"],
           ].map(([value, label]) => (
             <button
@@ -1420,13 +1684,16 @@ export default function CrmModule({
       {/* 4. Leads List View */}
       {viewMode === "leads" && (
         <div className="rounded-2xl bg-white dark:bg-[#18150f] border border-gray-100 dark:border-[#3a3020] overflow-hidden shadow-2xs">
-          {filteredLeads.length === 0 ? (
+          {isLeadsLoading && paginatedLeads.length === 0 ? (
+            <TableSkeleton rows={6} columns={6} />
+          ) : filteredLeads.length === 0 ? (
             <div className="p-8 text-center text-sm text-gray-500 dark:text-neutral-400">
               No leads found matching your search and filter criteria.
             </div>
           ) : (
+            <>
             <div className="overflow-x-auto table-scroll">
-              <table className="w-full text-left text-xs sm:text-sm border-collapse min-w-[880px]">
+              <table className="w-full text-left text-xs sm:text-sm border-collapse min-w-[980px]">
                 <thead>
                   <tr className="border-b border-gray-100 dark:border-[#3a3020] bg-gray-50/70 dark:bg-[#211d14] text-gray-500 dark:text-neutral-400 text-[11px] font-semibold uppercase tracking-wider">
                     <th className="py-3 px-4">Full Name</th>
@@ -1434,17 +1701,13 @@ export default function CrmModule({
                     <th className="py-3 px-4">Service Needed</th>
                     <th className="py-3 px-4">Budget Range</th>
                     <th className="py-3 px-4">City / State</th>
-                    <th className="py-3 px-4">AI Score</th>
-                    <th className="py-3 px-4">Status</th>
-                    <th className="py-3 px-4 text-right">Quick Actions</th>
+                    <th className="py-3 px-4 text-right min-w-[300px]">Quick Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100 dark:divide-[#3a3020]/60">
-                  {filteredLeads.map((lead) => {
+                  {paginatedLeads.map((lead) => {
                     const budget = getLeadBudget(lead);
                     const location = getLeadLocation(lead);
-                    const leadScore = getLeadScore(lead);
-                    const nextAction = getLeadNextAction(lead, followUps, salesMeetings);
 
                     return (
                       <tr
@@ -1495,62 +1758,33 @@ export default function CrmModule({
 
                         {/* 4. Budget Range (choose_your_budget_range?) */}
                         <td className="py-3.5 px-4">
-                          {budget !== "—" ? (
+                          {budget !== "-" ? (
                             <span className="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-bold bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 border border-emerald-200/60 dark:border-emerald-800/40">
                               {budget}
                             </span>
                           ) : (
-                            <span className="text-gray-400 text-xs">—</span>
+                            <span className="text-gray-400 text-xs">-</span>
                           )}
                         </td>
 
                         {/* 5. City & State */}
                         <td className="py-3.5 px-4 text-xs font-medium text-gray-700 dark:text-slate-300">
-                          {location !== "—" ? (
+                          {location !== "-" ? (
                             <div className="flex items-center gap-1">
                               <Building2 className="w-3 h-3 text-blue-500 shrink-0" />
                               <span>{location}</span>
                             </div>
                           ) : (
-                            <span className="text-gray-400">—</span>
+                            <span className="text-gray-400">-</span>
                           )}
                         </td>
 
-                        <td className="py-3.5 px-4">
-                          <div className={`font-black text-xs ${leadScore >= 75 ? "text-emerald-600" : leadScore >= 50 ? "text-amber-600" : "text-red-600"}`}>
-                            {leadScore}/100
-                          </div>
-                          <div className="text-[10px] text-gray-500 dark:text-neutral-400 line-clamp-1 max-w-[170px]">{nextAction}</div>
-                        </td>
-
-                        {/* 6. Lead Status */}
-                        <td className="py-3.5 px-4">
-                          <select
-                            value={lead.status || "New"}
-                            onChange={(e) => {
-                              const nextStatus = e.target.value;
-                              if (nextStatus === "Lost") {
-                                openLostModal({ type: "lead", item: lead, stage: lead.status || "Contacted" });
-                              } else {
-                                onUpdateLeadStatus?.(lead.id, nextStatus);
-                              }
-                            }}
-                            className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 text-gray-800 dark:text-neutral-200 focus:outline-hidden"
-                          >
-                            <option value="New">New</option>
-                            <option value="Contacted">Contacted</option>
-                            <option value="Proposal Sent">Quotation Sent</option>
-                            <option value="Converted">Converted (Won)</option>
-                            <option value="Lost">Lost</option>
-                          </select>
-                        </td>
-
-                      <td className="py-3.5 px-4 text-right">
-                        <div className="flex items-center justify-end gap-1.5">
+                      <td className="py-3.5 px-4 text-right min-w-[300px]">
+                        <div className="flex items-center justify-end gap-1.5 flex-nowrap whitespace-nowrap">
                           {lead.phone && (
                             <button
                               onClick={() => handleWhatsAppClick(lead)}
-                              className="p-1.5 rounded-lg text-emerald-600 bg-emerald-50 dark:bg-emerald-950/40 hover:bg-emerald-100 transition"
+                              className="p-1.5 rounded-lg text-emerald-600 bg-emerald-50 dark:bg-emerald-950/40 hover:bg-emerald-100 transition shrink-0"
                               title="Chat on WhatsApp"
                             >
                               <WhatsAppIcon className="w-3.5 h-3.5" />
@@ -1558,26 +1792,27 @@ export default function CrmModule({
                           )}
 
                           <button
-                            onClick={() => onOpenChatWithLead?.(lead)}
-                            className="p-1.5 rounded-lg text-blue-600 bg-blue-50 dark:bg-blue-950/40 hover:bg-blue-100 transition"
-                            title="Open Sales Team Chat"
+                            onClick={() => openAddDealModal("contacted", lead)}
+                            className="px-2.5 py-1 rounded-lg text-xs font-semibold text-orange-600 bg-orange-50 dark:bg-orange-950/40 hover:bg-orange-100 transition inline-flex items-center gap-1 shrink-0"
+                            title="Move qualified lead to pipeline"
                           >
-                            <MessageSquare className="w-3.5 h-3.5" />
+                            <TrendingUp className="w-3 h-3" />
+                            <span>Pipeline</span>
                           </button>
 
                           <button
-                            onClick={() => openAddDealModal("contacted", lead)}
-                            className="px-2.5 py-1 rounded-lg text-xs font-semibold text-orange-600 bg-orange-50 dark:bg-orange-950/40 hover:bg-orange-100 transition flex items-center gap-1"
-                            title="Move qualified lead to pipeline"
+                            onClick={() => openLeadFollowUpModal(lead)}
+                            className="px-2.5 py-1 rounded-lg text-xs font-semibold text-blue-600 bg-blue-50 dark:bg-blue-950/40 hover:bg-blue-100 transition inline-flex items-center gap-1 shrink-0"
+                            title="Create follow-up for this lead"
                           >
-                            <span>Pipeline</span>
-                            <ArrowRight className="w-3 h-3" />
+                            <Calendar className="w-3 h-3" />
+                            <span>Follow-up</span>
                           </button>
 
                           {lead.status !== "Lost" && lead.status !== "Converted" && (
                             <button
                               onClick={() => openLostModal({ type: "lead", item: lead })}
-                              className="px-2.5 py-1 rounded-lg text-xs font-semibold text-red-600 bg-red-50 dark:bg-red-950/40 hover:bg-red-100 transition"
+                              className="px-2.5 py-1 rounded-lg text-xs font-semibold text-red-600 bg-red-50 dark:bg-red-950/40 hover:bg-red-100 transition shrink-0"
                               title="Mark lead lost with reason"
                             >
                               Lost
@@ -1585,59 +1820,8 @@ export default function CrmModule({
                           )}
 
                           <button
-                            type="button"
-                            onClick={() => openAddDealModal("contacted", lead)}
-                            className="p-1.5 rounded-lg text-emerald-600 bg-emerald-50 dark:bg-emerald-950/40 hover:bg-emerald-100 transition cursor-pointer"
-                            title="Add as Deal to Pipeline"
-                          >
-                            <TrendingUp className="w-3.5 h-3.5" />
-                          </button>
-
-                          <button
-                            onClick={() => openLostModal({ type: "lead", item: lead, stage: lead.status || "Contacted" })}
-                            className="p-1.5 rounded-lg text-rose-600 bg-rose-50 dark:bg-rose-950/40 hover:bg-rose-100 transition"
-                            title="Mark as Lost / Log Reason"
-                          >
-                            <XCircle className="w-3.5 h-3.5" />
-                          </button>
-
-                          <button
-                            onClick={() => handleOpenEdit(lead)}
-                            className="p-1.5 rounded-lg text-amber-600 bg-amber-50 dark:bg-amber-950/40 hover:bg-amber-100 transition"
-                            title="Edit Lead"
-                          >
-                            <Pencil className="w-3.5 h-3.5" />
-                          </button>
-
-                          {deleteConfirmId === lead.id ? (
-                            <div className="flex items-center gap-1 bg-red-50 dark:bg-red-950/50 p-1 rounded-lg border border-red-200 dark:border-red-800">
-                              <span className="text-[10px] text-red-600 dark:text-red-400 font-bold px-1">Delete?</span>
-                              <button
-                                onClick={() => handleDelete(lead.id)}
-                                className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-red-600 text-white hover:bg-red-700"
-                              >
-                                Yes
-                              </button>
-                              <button
-                                onClick={() => setDeleteConfirmId(null)}
-                                className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-gray-200 dark:bg-slate-700 text-gray-700 dark:text-slate-300"
-                              >
-                                No
-                              </button>
-                            </div>
-                          ) : (
-                            <button
-                              onClick={() => setDeleteConfirmId(lead.id)}
-                              className="p-1.5 rounded-lg text-red-500 bg-red-50 dark:bg-red-950/40 hover:bg-red-100 transition"
-                              title="Delete Lead"
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
-                          )}
-
-                          <button
                             onClick={() => setSelectedLead(lead)}
-                            className="p-1.5 rounded-lg text-gray-500 hover:bg-gray-100 dark:hover:bg-slate-800 transition"
+                            className="p-1.5 rounded-lg text-gray-500 hover:bg-gray-100 dark:hover:bg-slate-800 transition shrink-0"
                             title="View Timeline & Details"
                           >
                             <Calendar className="w-3.5 h-3.5" />
@@ -1650,6 +1834,46 @@ export default function CrmModule({
                 </tbody>
               </table>
             </div>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-4 py-3 border-t border-gray-100 dark:border-[#3a3020] bg-gray-50/40 dark:bg-[#211d14]/40 text-xs">
+              <div className="text-gray-500 dark:text-neutral-400">
+                {leadPagination?.loading ? "Loading leads..." : (
+                  <>
+                    Showing <span className="font-bold text-gray-800 dark:text-white">{leadPageStart}</span>-<span className="font-bold text-gray-800 dark:text-white">{leadPageEnd}</span> of <span className="font-bold text-gray-800 dark:text-white">{leadTotalForPagination}</span> leads
+                  </>
+                )}
+              </div>
+              <div className="flex items-center gap-2 justify-between sm:justify-end">
+                <select
+                  value={leadsPerPage}
+                  onChange={(e) => setLeadsPerPage(Number(e.target.value))}
+                  className="px-2.5 py-1.5 rounded-lg bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 font-semibold text-gray-700 dark:text-neutral-200"
+                  aria-label="Leads per page"
+                >
+                  <option value={10}>10 per page</option>
+                  <option value={20}>20 per page</option>
+                </select>
+                <button
+                  type="button"
+                  onClick={() => setLeadPage((page) => Math.max(1, page - 1))}
+                  disabled={safeLeadPage <= 1}
+                  className="px-3 py-1.5 rounded-lg font-bold bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 text-gray-700 dark:text-neutral-200 disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  Prev
+                </button>
+                <span className="font-bold text-gray-700 dark:text-neutral-200">
+                  {safeLeadPage}/{leadPageCount}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setLeadPage((page) => Math.min(leadPageCount, page + 1))}
+                  disabled={safeLeadPage >= leadPageCount}
+                  className="px-3 py-1.5 rounded-lg font-bold bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 text-gray-700 dark:text-neutral-200 disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  Next
+                </button>
+              </div>
+            </div>
+            </>
           )}
         </div>
       )}
@@ -1658,7 +1882,9 @@ export default function CrmModule({
       {viewMode === "pipeline" && (
         statusFilter === "archived" ? (
           <div className="rounded-2xl bg-white dark:bg-[#18150f] border border-gray-100 dark:border-[#3a3020] overflow-hidden shadow-2xs">
-            {archivedDeals.length === 0 ? (
+            {isPipelineLoading && archivedDeals.length === 0 ? (
+              <TableSkeleton rows={5} columns={5} />
+            ) : archivedDeals.length === 0 ? (
               <div className="p-8 text-center text-sm text-gray-500 dark:text-neutral-400">No archived lost deals found.</div>
             ) : (
               <div className="overflow-x-auto table-scroll">
@@ -1689,6 +1915,10 @@ export default function CrmModule({
               </div>
             )}
           </div>
+        ) : (
+        <>
+        {isPipelineLoading && deals.length === 0 ? (
+          <PipelineSkeleton />
         ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3">
           {PIPELINE_STAGES.map((col) => {
@@ -1729,7 +1959,7 @@ export default function CrmModule({
                 </div>
 
                 <div className="text-[10px] text-gray-400 mt-1 mb-2 font-mono">
-                  ₹{colTotal.toLocaleString("en-IN")}
+                  Rs. {colTotal.toLocaleString("en-IN")}
                 </div>
 
                 <div className="flex-1 space-y-2 overflow-y-auto no-scrollbar">
@@ -1738,6 +1968,9 @@ export default function CrmModule({
                       .filter((item) => item.deal_id === deal.id && item.status === "pending")
                       .sort((a, b) => new Date(a.due_at || 0).getTime() - new Date(b.due_at || 0).getTime());
                     const nextFollowUp = dealFollowUps[0];
+                    const nextMeeting = salesMeetings
+                      .filter((item) => item.deal_id === deal.id && !["cancelled", "completed", "no_show"].includes(item.status))
+                      .sort((a, b) => new Date(a.scheduled_at || 0).getTime() - new Date(b.scheduled_at || 0).getTime())[0];
                     const latestQuotation = getLatestLinkedDoc([...proposals, ...quotations], deal);
                     const latestAgreement = getLatestLinkedDoc(agreements, deal);
                     const latestInvoice = getLatestLinkedDoc(invoices, deal);
@@ -1758,8 +1991,13 @@ export default function CrmModule({
                       <div className="font-semibold text-xs text-gray-900 dark:text-white line-clamp-1">
                         {deal.title}
                       </div>
+                      {deal._optimistic && (
+                        <div className="inline-flex w-fit px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300">
+                          Saving...
+                        </div>
+                      )}
                       <div className="text-[11px] font-bold text-orange-600 dark:text-orange-400">
-                        ₹{(Number(deal.deal_value) || 0).toLocaleString("en-IN")}
+                        Rs. {(Number(deal.deal_value) || 0).toLocaleString("en-IN")}
                       </div>
                       <div className="text-[10px] text-gray-500 dark:text-neutral-400">
                         {deal.service || "Tech Development"}
@@ -1769,9 +2007,9 @@ export default function CrmModule({
                           {deal.notes}
                         </div>
                       )}
-                      {col.id === "contacted" && (
+                      {nextMeeting && (
                         <div className="text-[10px] text-blue-600 dark:text-blue-300 bg-blue-50 dark:bg-blue-950/30 p-1.5 rounded-lg">
-                          Meeting: {deal.meeting_scheduled_at ? new Date(deal.meeting_scheduled_at).toLocaleString("en-IN") : deal.expected_close_date || "Scheduled automatically"}
+                          Meeting: {new Date(nextMeeting.scheduled_at).toLocaleString("en-IN")}
                         </div>
                       )}
                       {nextFollowUp && (
@@ -1854,7 +2092,7 @@ export default function CrmModule({
                       {col.id === "proposal" && (
                         <button
                           type="button"
-                          onClick={() => onNavigateSection?.("sales_commercials")}
+                          onClick={() => openCommercialModal("proposal", deal)}
                           className="w-full mt-2 py-1 rounded-lg text-[10px] font-bold bg-orange-600 text-white flex items-center justify-center gap-1 shadow-2xs"
                           title="Open linked quotation page"
                         >
@@ -1867,7 +2105,7 @@ export default function CrmModule({
                         <div className="grid grid-cols-2 gap-1.5 mt-2">
                           <button
                             type="button"
-                            onClick={() => onNavigateSection?.("agreements")}
+                            onClick={() => openCommercialModal("agreement", deal)}
                             className="py-1 rounded-lg text-[10px] font-bold bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 text-gray-700 dark:text-neutral-200"
                           >
                             Agreement
@@ -1896,6 +2134,32 @@ export default function CrmModule({
             );
           })}
         </div>
+        )}
+        <div className="mt-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-4 py-3 rounded-2xl border border-gray-100 dark:border-[#3a3020] bg-white dark:bg-[#18150f] text-xs">
+          <div className="text-gray-500 dark:text-neutral-400">
+            {dealPagination?.loading ? "Loading pipeline..." : (
+              <>Showing pipeline page <span className="font-bold text-gray-800 dark:text-white">{safePipelinePage}</span> of <span className="font-bold text-gray-800 dark:text-white">{pipelinePageCount}</span> ({pipelineTotal} deals)</>
+            )}
+          </div>
+          <div className="flex items-center gap-2 justify-end">
+            <select
+              value={pipelinePageSize}
+              onChange={(e) => setPipelinePageSize(Number(e.target.value))}
+              className="px-2.5 py-1.5 rounded-lg bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 font-semibold text-gray-700 dark:text-neutral-200"
+              aria-label="Pipeline deals per page"
+            >
+              <option value={50}>50 per page</option>
+              <option value={100}>100 per page</option>
+            </select>
+            <button type="button" onClick={() => setPipelinePage((page) => Math.max(1, page - 1))} disabled={safePipelinePage <= 1} className="px-3 py-1.5 rounded-lg font-bold bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 text-gray-700 dark:text-neutral-200 disabled:opacity-40 disabled:cursor-not-allowed">
+              Prev
+            </button>
+            <button type="button" onClick={() => setPipelinePage((page) => Math.min(pipelinePageCount, page + 1))} disabled={safePipelinePage >= pipelinePageCount} className="px-3 py-1.5 rounded-lg font-bold bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 text-gray-700 dark:text-neutral-200 disabled:opacity-40 disabled:cursor-not-allowed">
+              Next
+            </button>
+          </div>
+        </div>
+        </>
         )
       )}
 
@@ -1931,7 +2195,7 @@ export default function CrmModule({
                   <thead>
                     <tr className="border-b border-gray-100 dark:border-[#3a3020] bg-gray-50/70 dark:bg-[#211d14] text-gray-500 dark:text-neutral-400 text-[11px] font-semibold uppercase tracking-wider">
                       <th className="py-3 px-4">Document</th>
-                      <th className="py-3 px-4">Client</th>
+                      <th className="py-3 px-4">Deal</th>
                       <th className="py-3 px-4">Value / Terms</th>
                       <th className="py-3 px-4">Status</th>
                       <th className="py-3 px-4">Date</th>
@@ -1940,7 +2204,7 @@ export default function CrmModule({
                   </thead>
                   <tbody className="divide-y divide-gray-100 dark:divide-[#3a3020]/60">
                     {commercialDocs.map((doc) => {
-                      const client = clients.find((item) => item.id === doc.client_id);
+                      const deal = deals.find((item) => item.id === doc.deal_id);
                       const amount = Number(doc.total) || Number(doc.amount) || Number(doc.subtotal) || 0;
                       const label = doc.agreement_number || doc.quotation_number || doc.title;
                       const isFinal = ["accepted", "signed", "rejected", "declined", "cancelled"].includes(doc.status);
@@ -1952,8 +2216,8 @@ export default function CrmModule({
                             <div className="text-[11px] text-gray-500 capitalize">{doc.docType}</div>
                           </td>
                           <td className="py-3.5 px-4">
-                            <div className="font-semibold text-gray-900 dark:text-white">{client?.name || "Client Account"}</div>
-                            <div className="text-[11px] text-gray-500">{client?.company_name || client?.email || "Central client entity"}</div>
+                            <div className="font-semibold text-gray-900 dark:text-white">{deal?.title || "Linked Deal"}</div>
+                            <div className="text-[11px] text-gray-500">{deal?.pipeline_stage || "Pipeline deal"}</div>
                           </td>
                           <td className="py-3.5 px-4">
                             <div className="font-mono font-bold text-gray-900 dark:text-white">
@@ -2014,7 +2278,9 @@ export default function CrmModule({
 
       {viewMode === "followups" && (
         <div className="rounded-2xl bg-white dark:bg-[#18150f] border border-gray-100 dark:border-[#3a3020] overflow-hidden shadow-2xs">
-          {filteredFollowUps.length === 0 ? (
+          {isFollowUpsLoading && filteredFollowUps.length === 0 ? (
+            <TableSkeleton rows={6} columns={6} />
+          ) : filteredFollowUps.length === 0 ? (
             <div className="p-8 text-center text-sm text-gray-500 dark:text-neutral-400">No sales follow-up found.</div>
           ) : (
             <div className="overflow-x-auto table-scroll">
@@ -2118,6 +2384,25 @@ export default function CrmModule({
                   })}
                 </tbody>
               </table>
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-4 py-3 border-t border-gray-100 dark:border-[#3a3020] bg-gray-50/40 dark:bg-[#211d14]/40 text-xs">
+                <div className="text-gray-500 dark:text-neutral-400">
+                  {followUpPagination?.loading ? "Loading follow-ups..." : (
+                    <>Showing follow-up page <span className="font-bold text-gray-800 dark:text-white">{safeFollowUpPage}</span> of <span className="font-bold text-gray-800 dark:text-white">{followUpPageCount}</span> ({followUpTotal} follow-ups)</>
+                  )}
+                </div>
+                <div className="flex items-center gap-2 justify-end">
+                  <select value={followUpPageSize} onChange={(e) => setFollowUpPageSize(Number(e.target.value))} className="px-2.5 py-1.5 rounded-lg bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 font-semibold text-gray-700 dark:text-neutral-200" aria-label="Follow-ups per page">
+                    <option value={25}>25 per page</option>
+                    <option value={50}>50 per page</option>
+                  </select>
+                  <button type="button" onClick={() => setFollowUpPage((page) => Math.max(1, page - 1))} disabled={safeFollowUpPage <= 1} className="px-3 py-1.5 rounded-lg font-bold bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 text-gray-700 dark:text-neutral-200 disabled:opacity-40 disabled:cursor-not-allowed">
+                    Prev
+                  </button>
+                  <button type="button" onClick={() => setFollowUpPage((page) => Math.min(followUpPageCount, page + 1))} disabled={safeFollowUpPage >= followUpPageCount} className="px-3 py-1.5 rounded-lg font-bold bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 text-gray-700 dark:text-neutral-200 disabled:opacity-40 disabled:cursor-not-allowed">
+                    Next
+                  </button>
+                </div>
+              </div>
             </div>
           )}
         </div>
@@ -2125,7 +2410,9 @@ export default function CrmModule({
 
       {viewMode === "sales_meetings" && (
         <div className="rounded-2xl bg-white dark:bg-[#18150f] border border-gray-100 dark:border-[#3a3020] overflow-hidden shadow-2xs">
-          {filteredSalesMeetings.length === 0 ? (
+          {isMeetingsLoading && filteredSalesMeetings.length === 0 ? (
+            <TableSkeleton rows={6} columns={6} />
+          ) : filteredSalesMeetings.length === 0 ? (
             <div className="p-8 text-center text-sm text-gray-500 dark:text-neutral-400">No sales meeting scheduled.</div>
           ) : (
             <div className="overflow-x-auto table-scroll">
@@ -2155,7 +2442,7 @@ export default function CrmModule({
                           <div className="text-[11px] text-gray-500">{client ? "Client" : lead ? "Lead" : "General"}</div>
                         </td>
                         <td className="py-3.5 px-4 capitalize font-semibold text-gray-700 dark:text-neutral-200">{item.meeting_type}</td>
-                        <td className="py-3.5 px-4 text-gray-500 text-xs">{new Date(item.scheduled_at).toLocaleString("en-IN")} · {item.duration_minutes || 30}m</td>
+                        <td className="py-3.5 px-4 text-gray-500 text-xs">{new Date(item.scheduled_at).toLocaleString("en-IN")} - {item.duration_minutes || 30}m</td>
                         <td className="py-3.5 px-4">
                           <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase ${
                             item.status === "completed" ? "bg-emerald-50 text-emerald-600" : item.status === "cancelled" || item.status === "no_show" ? "bg-red-50 text-red-600" : "bg-blue-50 text-blue-600"
@@ -2225,6 +2512,25 @@ export default function CrmModule({
                   })}
                 </tbody>
               </table>
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-4 py-3 border-t border-gray-100 dark:border-[#3a3020] bg-gray-50/40 dark:bg-[#211d14]/40 text-xs">
+                <div className="text-gray-500 dark:text-neutral-400">
+                  {meetingPagination?.loading ? "Loading meetings..." : (
+                    <>Showing meeting page <span className="font-bold text-gray-800 dark:text-white">{safeMeetingPage}</span> of <span className="font-bold text-gray-800 dark:text-white">{meetingPageCount}</span> ({meetingTotal} meetings)</>
+                  )}
+                </div>
+                <div className="flex items-center gap-2 justify-end">
+                  <select value={meetingPageSize} onChange={(e) => setMeetingPageSize(Number(e.target.value))} className="px-2.5 py-1.5 rounded-lg bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 font-semibold text-gray-700 dark:text-neutral-200" aria-label="Meetings per page">
+                    <option value={25}>25 per page</option>
+                    <option value={50}>50 per page</option>
+                  </select>
+                  <button type="button" onClick={() => setMeetingPage((page) => Math.max(1, page - 1))} disabled={safeMeetingPage <= 1} className="px-3 py-1.5 rounded-lg font-bold bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 text-gray-700 dark:text-neutral-200 disabled:opacity-40 disabled:cursor-not-allowed">
+                    Prev
+                  </button>
+                  <button type="button" onClick={() => setMeetingPage((page) => Math.min(meetingPageCount, page + 1))} disabled={safeMeetingPage >= meetingPageCount} className="px-3 py-1.5 rounded-lg font-bold bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 text-gray-700 dark:text-neutral-200 disabled:opacity-40 disabled:cursor-not-allowed">
+                    Next
+                  </button>
+                </div>
+              </div>
             </div>
           )}
         </div>
@@ -2232,9 +2538,9 @@ export default function CrmModule({
 
       {/* 6. Lead Detail Drawer / Modal with Activity Timeline */}
       {selectedLead && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
-          <div className="w-full max-w-lg rounded-2xl bg-white dark:bg-[#18150f] border border-gray-200 dark:border-[#3a3020] shadow-2xl p-5 space-y-4">
-            <div className="flex items-center justify-between border-b border-gray-100 dark:border-[#3a3020] pb-3">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-xs">
+          <div className="w-full max-w-lg max-h-[92vh] rounded-2xl bg-white dark:bg-[#18150f] border border-gray-200 dark:border-[#3a3020] shadow-2xl flex flex-col overflow-hidden">
+            <div className="flex items-center justify-between border-b border-gray-100 dark:border-[#3a3020] p-5 pb-3 shrink-0">
               <div>
                 <h3 className="font-bold text-base text-gray-900 dark:text-white">{selectedLead.name}</h3>
                 <span className="text-xs text-gray-500 dark:text-neutral-400">Lead Details & Timeline</span>
@@ -2247,6 +2553,7 @@ export default function CrmModule({
               </button>
             </div>
 
+            <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
             <div className="grid grid-cols-2 gap-3 text-xs">
               <div className="p-2.5 rounded-xl bg-gray-50 dark:bg-slate-800/60">
                 <span className="text-gray-400 text-[10px] block">Phone Number</span>
@@ -2286,6 +2593,34 @@ export default function CrmModule({
               </div>
             </div>
 
+            <div className="p-3 rounded-xl bg-gray-50 dark:bg-slate-800/60 text-xs">
+              <span className="text-gray-400 text-[10px] block font-semibold uppercase mb-2">
+                Form Answers
+              </span>
+              {getLeadFormAnswers(selectedLead).length > 0 ? (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  {getLeadFormAnswers(selectedLead).map((answer) => (
+                    <div
+                      key={answer.label}
+                      className="rounded-lg border border-gray-100 dark:border-slate-700 bg-white/70 dark:bg-slate-900/40 p-2 min-w-0"
+                    >
+                      <span className="text-[10px] text-gray-400 block truncate" title={answer.label}>
+                        {answer.label}
+                      </span>
+                      <span
+                        className="font-semibold text-gray-800 dark:text-white block truncate"
+                        title={answer.value}
+                      >
+                        {answer.value}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <span className="font-semibold text-gray-800 dark:text-white">-</span>
+              )}
+            </div>
+
             {selectedLead.notes && (
               <div className="p-3 rounded-xl bg-gray-50 dark:bg-slate-800/60 text-xs">
                 <span className="text-gray-400 text-[10px] block font-semibold uppercase mb-1">
@@ -2316,29 +2651,25 @@ export default function CrmModule({
                     description: `Captured via ${selectedLead.source || "Website"} inquiry form.`,
                     time: new Date(selectedLead.created_at || Date.now()).toLocaleDateString(),
                   },
-                  {
-                    type: "contacted",
-                    title: "Initial Qualification Contact",
-                    description: "Lead status set to " + (selectedLead.status || "New"),
-                    time: "Recent",
-                  },
                   ...selectedLeadActivity.meetings.map((item) => ({
                     type: "meeting",
                     title: `Meeting: ${item.title}`,
-                    description: `${item.status || "scheduled"} · ${item.outcome || item.agenda || "Sales meeting"}`,
+                    description: `${item.status || "scheduled"} - ${item.outcome || item.agenda || "Sales meeting"}`,
                     time: new Date(item.scheduled_at || item.created_at || Date.now()).toLocaleString("en-IN"),
                   })),
                   ...selectedLeadActivity.followUps.map((item) => ({
                     type: "followup",
                     title: `Follow-up: ${item.title}`,
-                    description: `${item.status || "pending"} · ${item.notes || item.channel || "Sales follow-up"}`,
+                    description: `${item.status || "pending"} - ${item.notes || item.channel || "Sales follow-up"}`,
                     time: new Date(item.completed_at || item.due_at || item.created_at || Date.now()).toLocaleString("en-IN"),
                   })),
                 ]}
               />
             </div>
 
-            <div className="flex items-center justify-end gap-2 pt-3 border-t border-gray-100 dark:border-[#3a3020]">
+            </div>
+
+            <div className="flex items-center justify-end gap-2 p-4 border-t border-gray-100 dark:border-[#3a3020] bg-white dark:bg-[#18150f] shrink-0">
               <button
                 onClick={() => handleWhatsAppClick(selectedLead)}
                 className="px-3 py-1.5 rounded-xl text-xs font-semibold text-emerald-600 bg-emerald-50 dark:bg-emerald-950/40 hover:bg-emerald-100 transition flex items-center gap-1.5"
@@ -2426,18 +2757,13 @@ export default function CrmModule({
                   <label className="block font-medium mb-1 text-gray-700 dark:text-neutral-300">
                     Service
                   </label>
-                  <select
+                  <input
+                    type="text"
                     value={newLeadForm.service}
                     onChange={(e) => setNewLeadForm({ ...newLeadForm, service: e.target.value })}
+                    placeholder="Customer filled service"
                     className="w-full px-3 py-2 rounded-xl bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 focus:outline-hidden"
-                  >
-                    <option value="Web Development">Web Development</option>
-                    <option value="Customized Software">Customized Software</option>
-                    <option value="Prebuilt SaaS">Prebuilt SaaS</option>
-                    <option value="AI Automation">AI Automation</option>
-                    <option value="Digital Marketing">Digital Marketing</option>
-                    <option value="Mobile App">Mobile App</option>
-                  </select>
+                  />
                 </div>
 
                 <div>
@@ -2556,18 +2882,9 @@ export default function CrmModule({
                   <label className="block font-bold mb-1 text-gray-700 dark:text-neutral-300">
                     Pipeline Stage *
                   </label>
-                  <select
-                    value={newDealForm.pipeline_stage}
-                    onChange={(e) => setNewDealForm({ ...newDealForm, pipeline_stage: e.target.value })}
-                    required
-                    className="w-full px-3 py-2 rounded-xl bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 font-medium focus:outline-hidden"
-                  >
-                    <option value="contacted">Contacted</option>
-                    <option value="qualified">Meeting</option>
-                    <option value="proposal">Quotation</option>
-                    <option value="negotiation">Negotiation</option>
-                    <option value="closed_won">Closed Won</option>
-                  </select>
+                  <div className="w-full px-3 py-2 rounded-xl bg-gray-100 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 font-semibold text-gray-700 dark:text-neutral-200">
+                    Contacted
+                  </div>
                 </div>
               </div>
 
@@ -2576,21 +2893,14 @@ export default function CrmModule({
                   <label className="block font-medium mb-1 text-gray-700 dark:text-neutral-300">
                     Service
                   </label>
-                  <select
+                  <input
+                    type="text"
                     value={newDealForm.service}
                     onChange={(e) => setNewDealForm({ ...newDealForm, service: e.target.value })}
                     required
+                    placeholder="Customer filled service"
                     className="w-full px-3 py-2 rounded-xl bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 focus:outline-hidden"
-                  >
-                    <option value="Web Development">Web Development</option>
-                    <option value="App Development">App Development</option>
-                    <option value="SEO">SEO</option>
-                    <option value="GMB">GMB</option>
-                    <option value="Meta Ads">Meta Ads</option>
-                    <option value="Google Ads">Google Ads</option>
-                    <option value="SMM">SMM</option>
-                    <option value="Custom">Custom</option>
-                  </select>
+                  />
                 </div>
 
                 <div>
@@ -2621,12 +2931,12 @@ export default function CrmModule({
                 />
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
                 <div>
                   <label className="block font-medium mb-1 text-gray-700 dark:text-neutral-300">Linked Lead</label>
                   {newDealForm.lead_id ? (
                     <div className="px-3 py-2 rounded-xl bg-gray-100 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 text-gray-700 dark:text-neutral-200 font-semibold">
-                      {leads.find((l) => l.id === newDealForm.lead_id)?.name || "Selected lead"} · read only
+                      {leads.find((l) => l.id === newDealForm.lead_id)?.name || "Selected lead"} - read only
                     </div>
                   ) : (
                     <select
@@ -2652,24 +2962,6 @@ export default function CrmModule({
                       ))}
                     </select>
                   )}
-                </div>
-
-                <div>
-                  <label className="block font-medium mb-1 text-gray-700 dark:text-neutral-300">
-                    Link to Client Account (After Won)
-                  </label>
-                  <select
-                    value={newDealForm.client_id}
-                    onChange={(e) => setNewDealForm({ ...newDealForm, client_id: e.target.value })}
-                    className="w-full px-3 py-2 rounded-xl bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 focus:outline-hidden truncate"
-                  >
-                    <option value="">-- No Linked Client --</option>
-                    {clients.map((c) => (
-                      <option key={c.id} value={c.id}>
-                        {c.name} {c.company_name ? `(${c.company_name})` : ""}
-                      </option>
-                    ))}
-                  </select>
                 </div>
               </div>
 
@@ -2744,32 +3036,10 @@ export default function CrmModule({
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
               <div>
-                <label className="block font-medium mb-1 text-gray-700 dark:text-neutral-300">Client Account *</label>
-                <select
-                  required
-                  value={commercialForm.client_id}
-                  onChange={(e) => setCommercialForm({ ...commercialForm, client_id: e.target.value })}
-                  className="w-full px-3 py-2 rounded-xl bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 font-semibold"
-                >
-                  <option value="">Select Client...</option>
-                  {clients.map((client) => (
-                    <option key={client.id} value={client.id}>{client.name}</option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="block font-medium mb-1 text-gray-700 dark:text-neutral-300">Linked Deal</label>
-                <select
-                  value={commercialForm.deal_id}
-                  onChange={(e) => setCommercialForm({ ...commercialForm, deal_id: e.target.value })}
-                  className="w-full px-3 py-2 rounded-xl bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700"
-                >
-                  <option value="">No linked deal</option>
-                  {deals.map((deal) => (
-                    <option key={deal.id} value={deal.id}>{deal.title}</option>
-                  ))}
-                </select>
+                <label className="block font-medium mb-1 text-gray-700 dark:text-neutral-300">Linked Deal *</label>
+                <div className="w-full px-3 py-2 rounded-xl bg-gray-100 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 text-gray-700 dark:text-neutral-200 font-semibold">
+                  {deals.find((deal) => deal.id === commercialForm.deal_id)?.title || "No deal available"}
+                </div>
               </div>
 
               {commercialType === "agreement" && (
@@ -2922,18 +3192,11 @@ export default function CrmModule({
                   {leads.map((lead) => <option key={lead.id} value={lead.id}>{lead.name}</option>)}
                 </select>
               </div>
-              <div>
-                <label className="block font-medium mb-1">Client</label>
-                <select value={followUpForm.client_id} onChange={(e) => setFollowUpForm({ ...followUpForm, client_id: e.target.value })} className="w-full px-3 py-2 rounded-xl bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700">
-                  <option value="">No client</option>
-                  {clients.map((client) => <option key={client.id} value={client.id}>{client.name}</option>)}
-                </select>
-              </div>
               {followUpForm.deal_id && (
                 <div className="sm:col-span-2">
                   <label className="block font-medium mb-1">Linked Pipeline Deal</label>
                   <div className="px-3 py-2 rounded-xl bg-gray-100 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 text-gray-700 dark:text-neutral-200 font-semibold">
-                    {deals.find((deal) => deal.id === followUpForm.deal_id)?.title || "Selected pipeline deal"} · read only
+                    {deals.find((deal) => deal.id === followUpForm.deal_id)?.title || "Selected pipeline deal"} - read only
                   </div>
                 </div>
               )}
@@ -3065,13 +3328,6 @@ export default function CrmModule({
                 </select>
               </div>
               <div>
-                <label className="block font-medium mb-1">Client</label>
-                <select value={salesMeetingForm.client_id} onChange={(e) => setSalesMeetingForm({ ...salesMeetingForm, client_id: e.target.value })} className="w-full px-3 py-2 rounded-xl bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700">
-                  <option value="">No client</option>
-                  {clients.map((client) => <option key={client.id} value={client.id}>{client.name}</option>)}
-                </select>
-              </div>
-              <div>
                 <label className="block font-medium mb-1">Meeting Type</label>
                 <select value={salesMeetingForm.meeting_type} onChange={(e) => setSalesMeetingForm({ ...salesMeetingForm, meeting_type: e.target.value })} className="w-full px-3 py-2 rounded-xl bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700">
                   <option value="discovery">Discovery</option>
@@ -3177,36 +3433,15 @@ export default function CrmModule({
                   <label className="block font-medium mb-1 text-gray-700 dark:text-neutral-300">
                     Service
                   </label>
-                  <select
+                  <input
+                    type="text"
                     value={editLeadForm.service}
                     onChange={(e) => setEditLeadForm({ ...editLeadForm, service: e.target.value })}
+                    placeholder="Customer filled service"
                     className="w-full px-3 py-2 rounded-xl bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 focus:outline-hidden"
-                  >
-                    <option value="Web Development">Web Development</option>
-                    <option value="Customized Software">Customized Software</option>
-                    <option value="Prebuilt SaaS">Prebuilt SaaS</option>
-                    <option value="AI Automation">AI Automation</option>
-                    <option value="Digital Marketing">Digital Marketing</option>
-                    <option value="Mobile App">Mobile App</option>
-                  </select>
+                  />
                 </div>
 
-                <div>
-                  <label className="block font-medium mb-1 text-gray-700 dark:text-neutral-300">
-                    Status
-                  </label>
-                  <select
-                    value={editLeadForm.status}
-                    onChange={(e) => setEditLeadForm({ ...editLeadForm, status: e.target.value })}
-                    className="w-full px-3 py-2 rounded-xl bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 focus:outline-hidden"
-                  >
-                    <option value="New">New</option>
-                    <option value="Contacted">Contacted</option>
-                    <option value="Proposal Sent">Quotation Sent</option>
-                    <option value="Converted">Converted</option>
-                    <option value="Lost">Lost</option>
-                  </select>
-                </div>
               </div>
 
               <div>
@@ -3283,10 +3518,10 @@ export default function CrmModule({
                 </label>
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
                   {[
-                    { id: "contacted", label: "📞 Contact", desc: "First Call / Outreach" },
-                    { id: "meeting", label: "🤝 Meeting", desc: "Post Discovery / Demo" },
+                    { id: "contacted", label: "Contact", desc: "First Call / Outreach" },
+                    { id: "meeting", label: "Meeting", desc: "Post Discovery / Demo" },
                     { id: "proposal", label: "Quotation", desc: "Quotation Sent" },
-                    { id: "negotiation", label: "⚖️ Negotiation", desc: "Final Terms" },
+                    { id: "negotiation", label: "Negotiation", desc: "Final Terms" },
                   ].map((st) => (
                     <button
                       key={st.id}

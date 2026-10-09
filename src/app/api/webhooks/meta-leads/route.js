@@ -110,10 +110,10 @@ export async function POST(request) {
     const body = await request.json().catch(() => ({}));
 
     // Option A: Direct Lead JSON (from Zapier / Make / Internal Importer)
-    if (body.name || body.full_name || body.phone || body.phone_number) {
-      const name = cleanText(body.name || body.full_name, 120);
-      const phone = sanitizeMetaPhone(body.phone || body.phone_number);
-      const email = normalizeEmail(body.email);
+    if (body.name || body.full_name || body.phone || body.phone_number || body["पूरा_नाम"] || body["मोबाइल"] || body["ईमेल"]) {
+      const name = cleanText(body.name || body.full_name || body["पूरा_नाम"], 120);
+      const phone = sanitizeMetaPhone(body.phone || body.phone_number || body["मोबाइल"]);
+      const email = normalizeEmail(body.email || body["ईमेल"]);
       const service = normalizeServiceName(body.service || body["what_service_are_you_looking_for?"]);
       const budget = normalizeBudgetName(body.budget || body.budget_range || body["choose_your_budget_range?"]);
       const city = cleanText(body.city, 80);
@@ -121,14 +121,18 @@ export async function POST(request) {
       const platform = (body.platform === "fb" ? "Facebook" : body.platform === "ig" ? "Instagram" : "Meta Ads");
       const campaignName = cleanText(body.campaign_name || body.campaign, 120);
       const adName = cleanText(body.ad_name || body.ad, 120);
-      const metaLeadId = cleanText(body.meta_lead_id || body.id, 80);
+      const formName = cleanText(body.form_name || body.form, 120);
+      const metaLeadId = cleanText(body.meta_lead_id || body.leadgen_id || body.id, 80);
 
       const notesParts = [
         campaignName ? `Campaign: ${campaignName}` : null,
         adName ? `Ad: ${adName}` : null,
+        formName ? `Form: ${formName}` : null,
         budget ? `Budget: ${budget}` : null,
         city || state ? `Location: ${[city, state].filter(Boolean).join(", ")}` : null,
         metaLeadId ? `Meta Lead ID: ${metaLeadId}` : null,
+        body.created_time ? `Meta Created: ${cleanText(body.created_time, 80)}` : null,
+        body.lead_status ? `Meta Status: ${cleanText(body.lead_status, 80)}` : null,
         body.notes ? `Note: ${body.notes}` : null,
       ].filter(Boolean);
 

@@ -1,7 +1,7 @@
 "use client";
 
-import LoginPage from "../login/page";
+import AuthenticatedWorkspace from "@/components/workspace/AuthenticatedWorkspace";
 
 export default function CrmPage() {
-  return <LoginPage defaultSection="crm" />;
+  return <AuthenticatedWorkspace defaultSection="crm" />;
 }

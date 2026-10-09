@@ -618,7 +618,7 @@ export async function POST(request) {
           title: `📢 Announcement: ${payload.title}`,
           message: payload.body.length > 220 ? `${payload.body.slice(0, 217)}...` : payload.body,
           type: "announcement",
-          link_url: `/login?section=batch_workspace&batch_id=${batch.id}&tab=announcements`,
+          link_url: `/workspace?section=batch_workspace&batch_id=${batch.id}&tab=announcements`,
           delivery_channels: ["in_app"],
           metadata: {
             creator_name: requester.profile.full_name || "Workspace Manager",
