@@ -12717,7 +12717,9 @@ export default function AuthenticatedWorkspace({ defaultSection = "overview" } =
                   quotations={quotations}
                   clients={clients}
                   deals={deals}
+                  leads={leads}
                   projects={projectsData}
+                  onOpenDirectWhatsapp={handleDirectWhatsapp}
                   initialViewMode="invoices"
                   initialStatusFilter={activeSection === "payments" ? "paid" : "all"}
                   onCreateInvoice={async (inv) => {

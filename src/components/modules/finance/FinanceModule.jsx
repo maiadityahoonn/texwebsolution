@@ -18,12 +18,21 @@ import {
 } from "lucide-react";
 import { playNotificationSound } from "@/lib/notificationSound";
 
+function WhatsAppIcon({ className = "w-4 h-4" }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+      <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z" />
+    </svg>
+  );
+}
+
 export default function FinanceModule({
   invoices = [],
   proposals = [],
   quotations = [],
   clients = [],
   deals = [],
+  leads = [],
   projects = [],
   initialViewMode = "invoices",
   initialStatusFilter = "all",
@@ -35,6 +44,7 @@ export default function FinanceModule({
   onCreateProposal,
   onUpdateProposal,
   onUpdateQuotation,
+  onOpenDirectWhatsapp,
 }) {
   const [activeView, setActiveView] = useState("invoices");
   const [query, setQuery] = useState("");
@@ -142,8 +152,61 @@ export default function FinanceModule({
     return { totalInvoiced, collected, pending, overdue: openCommercialValue, openCommercialValue };
   }, [invoices, proposals, quotations]);
 
-  function handleCreateInvoiceSubmit(e) {
-    e.preventDefault();
+  function handleSendInvoiceWhatsApp(inv) {
+    const deal = deals.find((d) => d.id === inv.deal_id);
+    const lead = leads?.find((l) => l.id === deal?.lead_id || l.id === inv.lead_id);
+    const client = clients.find((c) => c.id === deal?.client_id || c.id === inv.client_id);
+    const contactName = lead?.name || client?.name || deal?.title || "there";
+    const rawPhone = lead?.phone || client?.phone || deal?.phone || "";
+
+    if (!rawPhone) {
+      alert(`Client phone number not found for ${contactName}.`);
+      return;
+    }
+
+    const invNum = inv.invoice_number || "INV-2026";
+    const totalAmt = Number(inv.total_amount || inv.amount || 0).toLocaleString("en-IN");
+    const dueDate = inv.due_date || "Within 7 days";
+    const title = inv.title || deal?.title || "Project Development";
+    const message = `Hi ${contactName}, greetings from TexWeb Solution! Invoice *#${invNum}* for *${title}* has been generated for *₹${totalAmt}* (Due Date: ${dueDate}). Please find the invoice details and proceed with the payment. Thank you!`;
+
+    if (onOpenDirectWhatsapp) {
+      onOpenDirectWhatsapp(rawPhone, contactName, message);
+      return;
+    }
+    const digits = rawPhone.replace(/[^0-9]/g, "");
+    const cleanPhone = digits.length === 10 ? `91${digits}` : digits;
+    window.open(`https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`, "_blank", "noopener,noreferrer");
+  }
+
+  function handleSendCommercialWhatsApp(doc) {
+    const deal = deals.find((d) => d.id === doc.deal_id);
+    const lead = leads?.find((l) => l.id === deal?.lead_id || l.id === doc.lead_id);
+    const client = clients.find((c) => c.id === deal?.client_id || c.id === doc.client_id);
+    const contactName = lead?.name || client?.name || deal?.title || "there";
+    const rawPhone = lead?.phone || client?.phone || deal?.phone || "";
+
+    if (!rawPhone) {
+      alert(`Client phone number not found for ${contactName}.`);
+      return;
+    }
+
+    const quotNum = doc.quotation_number || "QT-2026";
+    const totalAmt = Number(doc.total || doc.amount || 0).toLocaleString("en-IN");
+    const title = doc.title || deal?.title || "your project";
+    const message = `Hi ${contactName}, greetings from TexWeb Solution! We have prepared the official Quotation *#${quotNum}* for *${title}* with total value *₹${totalAmt}*. Please review and let us know your confirmation or feedback. Thank you!`;
+
+    if (onOpenDirectWhatsapp) {
+      onOpenDirectWhatsapp(rawPhone, contactName, message);
+      return;
+    }
+    const digits = rawPhone.replace(/[^0-9]/g, "");
+    const cleanPhone = digits.length === 10 ? `91${digits}` : digits;
+    window.open(`https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`, "_blank", "noopener,noreferrer");
+  }
+
+  function handleCreateInvoiceSubmit(e, sendWhatsApp = false) {
+    if (e && e.preventDefault) e.preventDefault();
     if (!newInvoiceForm.deal_id || !newInvoiceForm.amount) return;
     const baseAmt = parseFloat(newInvoiceForm.amount) || 0;
     const taxAmt = Math.round(baseAmt * 0.18); // 18% GST standard
@@ -155,13 +218,16 @@ export default function FinanceModule({
     };
     onCreateInvoice?.(payload);
     setShowAddInvoiceModal(false);
+    if (sendWhatsApp) {
+      handleSendInvoiceWhatsApp(payload);
+    }
   }
 
-  function handleCreateCommercialSubmit(e) {
-    e.preventDefault();
+  function handleCreateCommercialSubmit(e, sendWhatsApp = false) {
+    if (e && e.preventDefault) e.preventDefault();
     if (!commercialForm.deal_id || !commercialForm.amount) return;
     const amount = parseFloat(commercialForm.amount) || 0;
-    onCreateProposal?.({
+    const payload = {
       deal_id: commercialForm.deal_id || null,
       title: commercialForm.title,
       amount,
@@ -170,8 +236,12 @@ export default function FinanceModule({
       deliverables: commercialForm.deliverables,
       sent_at: commercialForm.status === "sent" ? new Date().toISOString() : null,
       notes: commercialForm.notes,
-    });
+    };
+    onCreateProposal?.(payload);
     setShowCommercialModal(false);
+    if (sendWhatsApp) {
+      handleSendCommercialWhatsApp(payload);
+    }
   }
 
   function handleRecordPaymentSubmit(e) {
@@ -412,6 +482,15 @@ export default function FinanceModule({
                         </td>
                         <td className="py-3.5 px-4 text-right">
                           <div className="flex items-center justify-end gap-2">
+                            <button
+                              type="button"
+                              onClick={() => handleSendCommercialWhatsApp(doc)}
+                              className="px-2.5 py-1 rounded-lg text-xs font-bold bg-emerald-50 text-emerald-700 hover:bg-emerald-100 dark:bg-emerald-950/40 dark:text-emerald-300 border border-emerald-200/50 dark:border-emerald-800/40 transition flex items-center gap-1 cursor-pointer"
+                              title="Send Quotation on WhatsApp"
+                            >
+                              <WhatsAppIcon className="w-3.5 h-3.5" />
+                              <span>WhatsApp</span>
+                            </button>
                             {!["accepted", "declined", "rejected"].includes(doc.status) && (
                               <button
                                 onClick={() =>
@@ -419,7 +498,7 @@ export default function FinanceModule({
                                     ? onUpdateQuotation?.(doc.id, { status: acceptedStatus })
                                     : onUpdateProposal?.(doc.id, { status: acceptedStatus, accepted_at: new Date().toISOString() })
                                 }
-                                className="px-2.5 py-1 rounded-lg text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white transition shadow-2xs"
+                                className="px-2.5 py-1 rounded-lg text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white transition shadow-2xs cursor-pointer"
                               >
                                 Accept
                               </button>
@@ -431,7 +510,7 @@ export default function FinanceModule({
                                     ? onUpdateQuotation?.(doc.id, { status: rejectedStatus })
                                     : onUpdateProposal?.(doc.id, { status: rejectedStatus })
                                 }
-                                className="px-2.5 py-1 rounded-lg text-xs font-bold bg-gray-100 dark:bg-slate-800 text-gray-700 dark:text-neutral-200 transition"
+                                className="px-2.5 py-1 rounded-lg text-xs font-bold bg-gray-100 dark:bg-slate-800 text-gray-700 dark:text-neutral-200 transition cursor-pointer"
                               >
                                 Reject
                               </button>
@@ -523,6 +602,15 @@ export default function FinanceModule({
 
                       <td className="py-3.5 px-4 text-right">
                         <div className="flex items-center justify-end gap-2">
+                          <button
+                            type="button"
+                            onClick={() => handleSendInvoiceWhatsApp(inv)}
+                            className="px-2.5 py-1 rounded-lg text-xs font-bold bg-emerald-50 text-emerald-700 hover:bg-emerald-100 dark:bg-emerald-950/40 dark:text-emerald-300 border border-emerald-200/50 dark:border-emerald-800/40 transition flex items-center gap-1 cursor-pointer"
+                            title="Send Invoice on WhatsApp"
+                          >
+                            <WhatsAppIcon className="w-3.5 h-3.5" />
+                            <span>WhatsApp</span>
+                          </button>
                           {!isPaid ? (
                             <button
                               onClick={() => {
@@ -534,7 +622,7 @@ export default function FinanceModule({
                                   payment_date: new Date().toISOString().split("T")[0],
                                 });
                               }}
-                              className="px-2.5 py-1 rounded-lg text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white transition shadow-2xs"
+                              className="px-2.5 py-1 rounded-lg text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white transition shadow-2xs cursor-pointer"
                             >
                               Record Payment
                             </button>
@@ -652,11 +740,19 @@ export default function FinanceModule({
             </div>
 
             <div className="flex items-center justify-end gap-2 pt-3 border-t border-gray-100 dark:border-[#3a3020]">
-              <button type="button" onClick={() => setShowCommercialModal(false)} className="px-3.5 py-2 rounded-xl text-xs font-semibold text-gray-500">
+              <button type="button" onClick={() => setShowCommercialModal(false)} className="px-3.5 py-2 rounded-xl text-xs font-semibold text-gray-500 cursor-pointer">
                 Cancel
               </button>
-              <button type="submit" className="px-4 py-2 rounded-xl text-xs font-bold bg-orange-600 hover:bg-orange-700 text-white shadow-sm">
+              <button type="submit" className="px-4 py-2 rounded-xl text-xs font-bold bg-orange-600 hover:bg-orange-700 text-white shadow-sm cursor-pointer">
                 Save Document
+              </button>
+              <button
+                type="button"
+                onClick={(e) => handleCreateCommercialSubmit(e, true)}
+                className="px-4 py-2 rounded-xl text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm flex items-center gap-1.5 cursor-pointer"
+              >
+                <WhatsAppIcon className="w-3.5 h-3.5" />
+                <span>Save & Send on WhatsApp</span>
               </button>
             </div>
           </form>
@@ -761,15 +857,23 @@ export default function FinanceModule({
               <button
                 type="button"
                 onClick={() => setShowAddInvoiceModal(false)}
-                className="px-3.5 py-2 rounded-xl text-xs font-semibold text-gray-500"
+                className="px-3.5 py-2 rounded-xl text-xs font-semibold text-gray-500 cursor-pointer"
               >
                 Cancel
               </button>
               <button
                 type="submit"
-                className="px-4 py-2 rounded-xl text-xs font-bold bg-orange-600 hover:bg-orange-700 text-white shadow-sm"
+                className="px-4 py-2 rounded-xl text-xs font-bold bg-orange-600 hover:bg-orange-700 text-white shadow-sm cursor-pointer"
               >
                 Issue Invoice
+              </button>
+              <button
+                type="button"
+                onClick={(e) => handleCreateInvoiceSubmit(e, true)}
+                className="px-4 py-2 rounded-xl text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm flex items-center gap-1.5 cursor-pointer"
+              >
+                <WhatsAppIcon className="w-3.5 h-3.5" />
+                <span>Issue & Send on WhatsApp</span>
               </button>
             </div>
           </form>
