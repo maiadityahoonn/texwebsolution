@@ -514,6 +514,7 @@ export default function CrmModule({
   onCreateSalesMeeting,
   onUpdateSalesMeeting,
   onUpdateDealStage,
+  onUpdateDeal,
   onMarkLeadLost,
   onCreateDeal,
   onOpenDirectWhatsapp,
@@ -611,6 +612,17 @@ export default function CrmModule({
   const [lostTarget, setLostTarget] = useState(null);
   const [commercialType, setCommercialType] = useState("proposal");
   const [editingLead, setEditingLead] = useState(null);
+  const [selectedDeal, setSelectedDeal] = useState(null);
+  const [editingDeal, setEditingDeal] = useState(null);
+  const [editDealForm, setEditDealForm] = useState({
+    title: "",
+    deal_value: 0,
+    pipeline_stage: "contacted",
+    service: "Web Development",
+    expected_close_date: "",
+    loss_reason: "",
+    notes: "",
+  });
   const [deleteConfirmId, setDeleteConfirmId] = useState(null);
   const [newDealForm, setNewDealForm] = useState({
     title: "",
@@ -1611,6 +1623,46 @@ export default function CrmModule({
     if (!editingLead) return;
     onUpdateLead?.(editingLead.id, editLeadForm);
     setEditingLead(null);
+  }
+
+  function handleOpenEditDeal(deal) {
+    if (!deal) return;
+    setEditingDeal(deal);
+    setEditDealForm({
+      title: deal.title || "",
+      deal_value: deal.deal_value || deal.value || 0,
+      pipeline_stage: deal.pipeline_stage || deal.stage || "contacted",
+      service: deal.service || "Web Development",
+      expected_close_date: deal.expected_close_date ? deal.expected_close_date.split("T")[0] : "",
+      loss_reason: deal.loss_reason || "",
+      notes: deal.notes || "",
+    });
+  }
+
+  async function handleSaveEditDeal(e) {
+    e.preventDefault();
+    if (!editingDeal) return;
+    const updates = {
+      title: editDealForm.title.trim() || editingDeal.title,
+      deal_value: Number(editDealForm.deal_value) || 0,
+      pipeline_stage: editDealForm.pipeline_stage,
+      service: editDealForm.service || "Web Development",
+      expected_close_date: editDealForm.expected_close_date || null,
+      loss_reason: editDealForm.pipeline_stage === "closed_lost" ? editDealForm.loss_reason : null,
+      notes: editDealForm.notes || "",
+    };
+
+    if (onUpdateDeal) {
+      await onUpdateDeal(editingDeal.id, updates);
+    } else if (onUpdateDealStage) {
+      await onUpdateDealStage(editingDeal.id, updates.pipeline_stage, updates);
+    }
+
+    if (selectedDeal?.id === editingDeal.id) {
+      setSelectedDeal((prev) => (prev ? { ...prev, ...updates } : null));
+    }
+
+    setEditingDeal(null);
   }
 
   function handleDelete(leadId) {
@@ -3260,28 +3312,43 @@ export default function CrmModule({
                       draggable
                       onDragStart={() => setDraggedDealId(deal.id)}
                       onDragEnd={() => setDraggedDealId(null)}
-                      className="group relative p-2.5 rounded-xl bg-white dark:bg-[#1a1711] border border-gray-200/90 dark:border-[#382f20] hover:border-orange-500/80 hover:shadow-xs transition-all duration-150 space-y-2 cursor-grab active:cursor-grabbing"
+                      onClick={() => setSelectedDeal(deal)}
+                      className="group relative p-2.5 rounded-xl bg-white dark:bg-[#1a1711] border border-gray-200/90 dark:border-[#382f20] hover:border-orange-500/80 hover:shadow-md transition-all duration-150 space-y-2 cursor-pointer select-none"
                     >
-                      {/* 1. Header: Avatar + Client Name + Value */}
+                      {/* 1. Header: Avatar + Client Name + Value + Edit button */}
                       <div className="flex items-center justify-between gap-2">
                         <div className="flex items-center gap-1.5 min-w-0">
                           <span className="w-5 h-5 rounded-md bg-gradient-to-br from-orange-500 to-amber-500 text-white text-[9px] font-black flex items-center justify-center shrink-0 uppercase tracking-tighter shadow-2xs">
                             {dealInitials}
                           </span>
-                          <span className="font-bold text-xs text-gray-900 dark:text-white truncate" title={clientName}>
+                          <span className="font-bold text-xs text-gray-900 dark:text-white truncate group-hover:text-orange-600 transition" title={clientName}>
                             {clientName}
                           </span>
                           {deal._optimistic && (
                             <span className="text-[8px] font-bold text-amber-600 animate-pulse shrink-0">●</span>
                           )}
                         </div>
-                        <span className={`px-1.5 py-0.5 rounded-md text-[11px] font-black shrink-0 tracking-tight ${
-                          col.id === "closed_won"
-                            ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-400 border border-emerald-200/50 dark:border-emerald-800/40"
-                            : "bg-orange-50 text-orange-600 dark:bg-orange-950/50 dark:text-orange-400 border border-orange-200/50 dark:border-orange-800/40"
-                        }`}>
-                          ₹{(Number(deal.deal_value) || 0).toLocaleString("en-IN")}
-                        </span>
+                        <div className="flex items-center gap-1 shrink-0">
+                          <span className={`px-1.5 py-0.5 rounded-md text-[11px] font-black tracking-tight ${
+                            col.id === "closed_won"
+                              ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-400 border border-emerald-200/50 dark:border-emerald-800/40"
+                              : "bg-orange-50 text-orange-600 dark:bg-orange-950/50 dark:text-orange-400 border border-orange-200/50 dark:border-orange-800/40"
+                          }`}>
+                            ₹{(Number(deal.deal_value) || 0).toLocaleString("en-IN")}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleOpenEditDeal(deal);
+                            }}
+                            className="p-1 rounded-md text-gray-400 hover:text-orange-600 hover:bg-orange-50 dark:hover:bg-slate-800 transition cursor-pointer"
+                            title="Edit Deal Details"
+                            aria-label="Edit Deal Details"
+                          >
+                            <Pencil className="w-3 h-3" />
+                          </button>
+                        </div>
                       </div>
 
                       {/* 2. Service & Badges */}
@@ -3338,7 +3405,11 @@ export default function CrmModule({
                             <div className="flex items-center justify-between gap-1 min-w-0">
                               <select
                                 value={deal.pipeline_stage || "contacted"}
-                                onChange={(e) => handleDealStageChange(deal, e.target.value, col.id)}
+                                onClick={(e) => e.stopPropagation()}
+                                onChange={(e) => {
+                                  e.stopPropagation();
+                                  handleDealStageChange(deal, e.target.value, col.id);
+                                }}
                                 className="text-[9.5px] font-semibold bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-md px-1 py-0.5 text-gray-700 dark:text-neutral-300 focus:outline-hidden cursor-pointer max-w-[76px] shrink truncate"
                               >
                                 <option value="contacted">Contacted</option>
@@ -3352,7 +3423,10 @@ export default function CrmModule({
                               <div className="flex items-center gap-0.5 shrink-0">
                                 <button
                                   type="button"
-                                  onClick={() => openPipelineFollowUpModal(deal)}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    openPipelineFollowUpModal(deal);
+                                  }}
                                   className="p-1 rounded-md text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/40 hover:bg-blue-100 border border-blue-200/40 shrink-0 transition cursor-pointer"
                                   title="Add Follow-up"
                                 >
@@ -3362,7 +3436,10 @@ export default function CrmModule({
                                 {col.id === "contacted" && (
                                   <button
                                     type="button"
-                                    onClick={() => openMeetingWhatsApp(deal)}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      openMeetingWhatsApp(deal);
+                                    }}
                                     className="p-1 rounded-md text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 hover:bg-emerald-100 border border-emerald-200/40 shrink-0 transition cursor-pointer"
                                     title="Send WhatsApp confirmation"
                                   >
@@ -3374,7 +3451,10 @@ export default function CrmModule({
                                   <>
                                     <button
                                       type="button"
-                                      onClick={() => openCommercialModal("proposal", deal)}
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        openCommercialModal("proposal", deal);
+                                      }}
                                       className="p-1 rounded-md text-orange-600 dark:text-orange-400 bg-orange-50 dark:bg-orange-950/40 hover:bg-orange-100 border border-orange-200/40 shrink-0 transition cursor-pointer"
                                       title="Open Quotation"
                                     >
@@ -3382,7 +3462,10 @@ export default function CrmModule({
                                     </button>
                                     <button
                                       type="button"
-                                      onClick={() => sendDealDocWhatsApp(deal)}
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        sendDealDocWhatsApp(deal);
+                                      }}
                                       className="p-1 rounded-md text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 hover:bg-emerald-100 border border-emerald-200/40 shrink-0 transition cursor-pointer"
                                       title="Share Quotation on WhatsApp"
                                     >
@@ -3395,7 +3478,10 @@ export default function CrmModule({
                                   <>
                                     <button
                                       type="button"
-                                      onClick={() => openCommercialModal("agreement", deal)}
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        openCommercialModal("agreement", deal);
+                                      }}
                                       className="p-1 rounded-md text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/40 hover:bg-indigo-100 border border-indigo-200/40 shrink-0 transition cursor-pointer"
                                       title="Create / Open Agreement"
                                     >
@@ -3403,7 +3489,10 @@ export default function CrmModule({
                                     </button>
                                     <button
                                       type="button"
-                                      onClick={() => openInvoiceModal(deal)}
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        openInvoiceModal(deal);
+                                      }}
                                       className="p-1 rounded-md text-purple-600 dark:text-purple-400 bg-purple-50 dark:bg-purple-950/40 hover:bg-purple-100 border border-purple-200/40 shrink-0 transition cursor-pointer"
                                       title="Generate / Open Invoice"
                                     >
@@ -3411,7 +3500,10 @@ export default function CrmModule({
                                     </button>
                                     <button
                                       type="button"
-                                      onClick={() => sendDealDocWhatsApp(deal)}
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        sendDealDocWhatsApp(deal);
+                                      }}
                                       className="p-1 rounded-md text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 hover:bg-emerald-100 border border-emerald-200/40 shrink-0 transition cursor-pointer"
                                       title="Share Agreement / Invoice on WhatsApp"
                                     >
@@ -3430,7 +3522,10 @@ export default function CrmModule({
                             </span>
                             <button
                               type="button"
-                              onClick={() => onNavigateSection?.("projects")}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onNavigateSection?.("projects");
+                              }}
                               className="text-[9.5px] font-bold text-gray-500 hover:text-emerald-600 dark:text-neutral-400 flex items-center gap-0.5 transition cursor-pointer"
                             >
                               <span>View Project</span>
@@ -3445,7 +3540,10 @@ export default function CrmModule({
                             </span>
                             <button
                               type="button"
-                              onClick={() => handleDealStageChange(deal, "contacted", col.id)}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDealStageChange(deal, "contacted", col.id);
+                              }}
                               className="text-[9.5px] font-bold text-blue-600 hover:underline transition cursor-pointer"
                             >
                               Re-open
@@ -5178,6 +5276,559 @@ export default function CrmModule({
               <button
                 type="submit"
                 className="px-4 py-2 rounded-xl text-xs font-bold bg-amber-600 hover:bg-amber-700 text-white transition shadow-sm"
+              >
+                Save Changes
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
+
+      {/* 9. Deal Details Modal */}
+      {selectedDeal && (() => {
+        const lead = leads.find((l) => l.id === selectedDeal.lead_id);
+        const client = clients.find((c) => c.id === selectedDeal.client_id);
+        const contactName = client?.name || lead?.name || selectedDeal.title?.split(" - ")[0] || "Client";
+        const contactPhone = lead?.phone || client?.phone || "";
+        const contactEmail = lead?.email || client?.email || "";
+        const contactCompany = client?.company_name || lead?.company_name || "";
+        const dealStage = selectedDeal.pipeline_stage || selectedDeal.stage || "contacted";
+        const isLost = dealStage === "closed_lost";
+        const isWon = dealStage === "closed_won";
+        const dealValue = Number(selectedDeal.deal_value || selectedDeal.value || 0);
+
+        const dealProposals = [...proposals, ...quotations].filter(
+          (p) => p.deal_id === selectedDeal.id || (selectedDeal.lead_id && p.lead_id === selectedDeal.lead_id)
+        );
+        const dealAgreements = agreements.filter(
+          (a) => a.deal_id === selectedDeal.id || (selectedDeal.client_id && a.client_id === selectedDeal.client_id)
+        );
+        const dealInvoices = invoices.filter(
+          (i) => i.deal_id === selectedDeal.id || (selectedDeal.client_id && i.client_id === selectedDeal.client_id)
+        );
+        const dealMeetings = salesMeetings.filter(
+          (m) => m.deal_id === selectedDeal.id || (selectedDeal.lead_id && m.lead_id === selectedDeal.lead_id)
+        );
+        const dealFollowUps = followUps.filter(
+          (f) => f.deal_id === selectedDeal.id || (selectedDeal.lead_id && f.lead_id === selectedDeal.lead_id)
+        );
+
+        const STAGES = [
+          { id: "contacted", label: "Contacted" },
+          { id: "qualified", label: "Meeting" },
+          { id: "proposal", label: "Quotation" },
+          { id: "negotiation", label: "Negotiation" },
+          { id: "closed_won", label: "Won" },
+        ];
+        const currentStageIndex = isLost ? -1 : STAGES.findIndex((s) => s.id === dealStage);
+
+        return (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-xs">
+            <div className="w-full max-w-2xl max-h-[92vh] rounded-2xl bg-white dark:bg-[#18150f] border border-gray-200 dark:border-[#3a3020] shadow-2xl flex flex-col overflow-hidden">
+              {/* Header */}
+              <div className="flex items-center justify-between border-b border-gray-100 dark:border-[#3a3020] p-5 pb-3.5 shrink-0 bg-gray-50/50 dark:bg-[#1f1a13]/50">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-orange-500 to-amber-500 text-white font-black text-sm flex items-center justify-center shrink-0 shadow-sm">
+                    {contactName.slice(0, 2).toUpperCase()}
+                  </div>
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <h3 className="font-bold text-base sm:text-lg text-gray-900 dark:text-white truncate">
+                        {selectedDeal.title}
+                      </h3>
+                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider ${
+                        isWon
+                          ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800"
+                          : isLost
+                          ? "bg-rose-50 text-rose-700 dark:bg-rose-950/60 dark:text-rose-400 border border-rose-200 dark:border-rose-800"
+                          : "bg-orange-50 text-orange-700 dark:bg-orange-950/60 dark:text-orange-400 border border-orange-200 dark:border-orange-800"
+                      }`}>
+                        {dealStage.replace("_", " ")}
+                      </span>
+                    </div>
+                    <p className="text-xs text-gray-500 dark:text-neutral-400 mt-0.5">
+                      Pipeline Deal Details · Created {new Date(selectedDeal.created_at || Date.now()).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-1.5 shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => handleOpenEditDeal(selectedDeal)}
+                    className="p-1.5 rounded-lg text-gray-600 dark:text-neutral-300 hover:text-orange-600 hover:bg-orange-50 dark:hover:bg-slate-800 transition flex items-center gap-1 text-xs font-semibold cursor-pointer border border-gray-200/80 dark:border-slate-700"
+                    title="Edit Deal"
+                  >
+                    <Pencil className="w-3.5 h-3.5" />
+                    <span className="hidden sm:inline">Edit</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedDeal(null)}
+                    className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 dark:hover:text-neutral-200 hover:bg-gray-100 dark:hover:bg-slate-800 transition cursor-pointer"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+              </div>
+
+              {/* Scrollable Body */}
+              <div className="flex-1 overflow-y-auto p-5 space-y-4 text-xs">
+                {/* 1. Key Value Metrics Grid */}
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                  <div className="p-3 rounded-xl bg-orange-50/60 dark:bg-orange-950/20 border border-orange-100 dark:border-orange-900/30">
+                    <span className="text-gray-500 dark:text-neutral-400 text-[10px] block font-semibold uppercase">Deal Value</span>
+                    <span className="font-extrabold text-sm sm:text-base text-orange-600 dark:text-orange-400 font-mono mt-0.5 block">
+                      ₹{dealValue.toLocaleString("en-IN")}
+                    </span>
+                  </div>
+                  <div className="p-3 rounded-xl bg-gray-50 dark:bg-slate-800/60 border border-gray-100 dark:border-slate-700/50">
+                    <span className="text-gray-500 dark:text-neutral-400 text-[10px] block font-semibold uppercase">Service</span>
+                    <span className="font-bold text-gray-800 dark:text-white mt-0.5 block truncate" title={selectedDeal.service}>
+                      {selectedDeal.service || "Tech Development"}
+                    </span>
+                  </div>
+                  <div className="p-3 rounded-xl bg-gray-50 dark:bg-slate-800/60 border border-gray-100 dark:border-slate-700/50">
+                    <span className="text-gray-500 dark:text-neutral-400 text-[10px] block font-semibold uppercase">Current Stage</span>
+                    <span className="font-bold text-gray-800 dark:text-white capitalize mt-0.5 block">
+                      {dealStage.replace("_", " ")}
+                    </span>
+                  </div>
+                  <div className="p-3 rounded-xl bg-gray-50 dark:bg-slate-800/60 border border-gray-100 dark:border-slate-700/50">
+                    <span className="text-gray-500 dark:text-neutral-400 text-[10px] block font-semibold uppercase">Expected Close</span>
+                    <span className="font-bold text-gray-800 dark:text-white mt-0.5 block">
+                      {selectedDeal.expected_close_date
+                        ? new Date(selectedDeal.expected_close_date).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })
+                        : "Open"}
+                    </span>
+                  </div>
+                </div>
+
+                {/* 2. Visual Stage Progress */}
+                <div className="p-3.5 rounded-xl bg-gray-50 dark:bg-slate-800/40 border border-gray-200/80 dark:border-slate-700/60 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px] font-bold text-gray-700 dark:text-neutral-300 uppercase tracking-wide">
+                      Pipeline Progression
+                    </span>
+                    {isWon ? (
+                      <span className="text-[10px] font-bold text-emerald-600 flex items-center gap-1">
+                        <CheckCircle2 className="w-3 h-3" /> Deal Won
+                      </span>
+                    ) : isLost ? (
+                      <span className="text-[10px] font-bold text-rose-600 flex items-center gap-1">
+                        <XCircle className="w-3 h-3" /> Closed Lost
+                      </span>
+                    ) : (
+                      <span className="text-[10px] font-semibold text-gray-500">
+                        Step {currentStageIndex + 1} of 5
+                      </span>
+                    )}
+                  </div>
+                  <div className="grid grid-cols-5 gap-1.5">
+                    {STAGES.map((st, idx) => {
+                      const isCompleted = !isLost && currentStageIndex >= idx;
+                      const isCurrent = !isLost && currentStageIndex === idx;
+                      return (
+                        <div
+                          key={st.id}
+                          className={`text-center py-1.5 px-1 rounded-lg text-[10px] font-bold transition-all ${
+                            isCurrent
+                              ? "bg-orange-500 text-white shadow-xs"
+                              : isCompleted
+                              ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border border-emerald-500/30"
+                              : "bg-gray-100 dark:bg-slate-800 text-gray-400 dark:text-neutral-500"
+                          }`}
+                        >
+                          {st.label}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* 3. Lost Reason Banner (if closed_lost) */}
+                {isLost && (
+                  <div className="p-3.5 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/50 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2 font-bold text-rose-800 dark:text-rose-200 text-xs">
+                        <XCircle className="w-4 h-4 text-rose-600 shrink-0" />
+                        <span>Closed Lost Reason</span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => handleDealStageChange(selectedDeal, "contacted", "closed_lost")}
+                        className="text-[11px] font-bold text-blue-600 dark:text-blue-400 hover:underline cursor-pointer"
+                      >
+                        Re-open Deal
+                      </button>
+                    </div>
+                    <p className="text-xs text-rose-700 dark:text-rose-300 bg-white/80 dark:bg-[#201713]/80 p-2.5 rounded-lg border border-rose-200/60 font-medium">
+                      {selectedDeal.loss_reason || "No specific loss reason recorded for this deal."}
+                    </p>
+                  </div>
+                )}
+
+                {/* 4. Client / Contact Information Card */}
+                <div className="p-3.5 rounded-xl bg-gray-50 dark:bg-slate-800/50 border border-gray-100 dark:border-slate-700/60 space-y-2.5">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-1.5 font-bold text-gray-900 dark:text-white">
+                      <Users className="w-4 h-4 text-orange-500" />
+                      <span>Contact & Client Details</span>
+                    </div>
+                    {contactPhone && (
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (lead) handleWhatsAppClick(lead);
+                            else sendDealDocWhatsApp(selectedDeal);
+                          }}
+                          className="px-2 py-1 rounded-lg bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800 font-bold text-[10px] flex items-center gap-1 hover:bg-emerald-100 transition cursor-pointer"
+                        >
+                          <WhatsAppIcon className="w-3 h-3" />
+                          <span>WhatsApp</span>
+                        </button>
+                        <a
+                          href={`tel:${contactPhone}`}
+                          className="px-2 py-1 rounded-lg bg-orange-50 dark:bg-orange-950/50 text-orange-700 dark:text-orange-400 border border-orange-200 dark:border-orange-800 font-bold text-[10px] flex items-center gap-1 hover:bg-orange-100 transition"
+                        >
+                          <Phone className="w-3 h-3" />
+                          <span>Call</span>
+                        </a>
+                      </div>
+                    )}
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                    <div>
+                      <span className="text-gray-400 text-[10px] block">Name / Entity</span>
+                      <span className="font-semibold text-gray-800 dark:text-neutral-200">
+                        {contactName} {contactCompany ? `(${contactCompany})` : ""}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-gray-400 text-[10px] block">Phone Number</span>
+                      <span className="font-semibold text-gray-800 dark:text-neutral-200 font-mono">
+                        {contactPhone || "Not provided"}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-gray-400 text-[10px] block">Email</span>
+                      <span className="font-semibold text-gray-800 dark:text-neutral-200 truncate block">
+                        {contactEmail || "Not provided"}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-gray-400 text-[10px] block">Relationship</span>
+                      <span className="font-semibold text-gray-800 dark:text-neutral-200">
+                        {client ? "Existing Client" : lead ? "Inbound Lead" : "Direct Deal"}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 5. Notes & Deliverables */}
+                {selectedDeal.notes && (
+                  <div className="p-3 rounded-xl bg-gray-50 dark:bg-slate-800/40 border border-gray-100 dark:border-slate-700/50">
+                    <span className="text-gray-400 text-[10px] block font-semibold uppercase mb-1">
+                      Deal Notes & Requirements
+                    </span>
+                    <p className="text-gray-700 dark:text-neutral-300 whitespace-pre-wrap font-medium">
+                      {selectedDeal.notes}
+                    </p>
+                  </div>
+                )}
+
+                {/* 6. Commercial Documents Linked */}
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-gray-900 dark:text-white uppercase text-[11px] tracking-wide flex items-center gap-1.5">
+                      <FileText className="w-3.5 h-3.5 text-blue-500" />
+                      <span>Commercial Documents ({dealProposals.length + dealAgreements.length + dealInvoices.length})</span>
+                    </span>
+                    <div className="flex items-center gap-1">
+                      <button
+                        type="button"
+                        onClick={() => openCommercialModal("proposal", selectedDeal)}
+                        className="px-2 py-0.5 rounded text-[10px] font-bold text-orange-600 bg-orange-50 dark:bg-orange-950/40 hover:bg-orange-100 transition cursor-pointer"
+                      >
+                        + Quotation
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => openCommercialModal("agreement", selectedDeal)}
+                        className="px-2 py-0.5 rounded text-[10px] font-bold text-indigo-600 bg-indigo-50 dark:bg-indigo-950/40 hover:bg-indigo-100 transition cursor-pointer"
+                      >
+                        + Agreement
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => openInvoiceModal(selectedDeal)}
+                        className="px-2 py-0.5 rounded text-[10px] font-bold text-purple-600 bg-purple-50 dark:bg-purple-950/40 hover:bg-purple-100 transition cursor-pointer"
+                      >
+                        + Invoice
+                      </button>
+                    </div>
+                  </div>
+                  {dealProposals.length === 0 && dealAgreements.length === 0 && dealInvoices.length === 0 ? (
+                    <div className="p-3 rounded-xl border border-dashed border-gray-200 dark:border-slate-800 text-center text-gray-400 text-xs">
+                      No commercial documents attached to this deal yet.
+                    </div>
+                  ) : (
+                    <div className="space-y-1.5">
+                      {dealProposals.map((p) => (
+                        <div key={p.id} className="p-2.5 rounded-xl bg-orange-50/50 dark:bg-orange-950/20 border border-orange-100 dark:border-orange-900/30 flex items-center justify-between">
+                          <div>
+                            <span className="font-bold text-gray-900 dark:text-white block">{p.title || "Quotation"}</span>
+                            <span className="text-[10px] text-gray-500">{p.quotation_number || "QT"} · ₹{(Number(p.total || p.amount) || 0).toLocaleString("en-IN")}</span>
+                          </div>
+                          <span className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-orange-100 dark:bg-orange-900/50 text-orange-700 dark:text-orange-300 uppercase">
+                            {p.status || "sent"}
+                          </span>
+                        </div>
+                      ))}
+                      {dealAgreements.map((a) => (
+                        <div key={a.id} className="p-2.5 rounded-xl bg-indigo-50/50 dark:bg-indigo-950/20 border border-indigo-100 dark:border-indigo-900/30 flex items-center justify-between">
+                          <div>
+                            <span className="font-bold text-gray-900 dark:text-white block">{a.title || "Agreement"}</span>
+                            <span className="text-[10px] text-gray-500">{a.agreement_number || "AGR"} · ₹{(Number(a.amount) || 0).toLocaleString("en-IN")}</span>
+                          </div>
+                          <span className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-indigo-100 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300 uppercase">
+                            {a.status || "active"}
+                          </span>
+                        </div>
+                      ))}
+                      {dealInvoices.map((inv) => (
+                        <div key={inv.id} className="p-2.5 rounded-xl bg-purple-50/50 dark:bg-purple-950/20 border border-purple-100 dark:border-purple-900/30 flex items-center justify-between">
+                          <div>
+                            <span className="font-bold text-gray-900 dark:text-white block">{inv.title || "Invoice"}</span>
+                            <span className="text-[10px] text-gray-500">{inv.invoice_number || "INV"} · ₹{(Number(inv.total_amount || inv.amount) || 0).toLocaleString("en-IN")}</span>
+                          </div>
+                          <span className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-purple-100 dark:bg-purple-900/50 text-purple-700 dark:text-purple-300 uppercase">
+                            {inv.status || "unpaid"}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* 7. Meetings & Follow-ups */}
+                {(dealMeetings.length > 0 || dealFollowUps.length > 0) && (
+                  <div className="space-y-2">
+                    <span className="font-bold text-gray-900 dark:text-white uppercase text-[11px] tracking-wide flex items-center gap-1.5">
+                      <Calendar className="w-3.5 h-3.5 text-emerald-500" />
+                      <span>Meetings & Follow-ups</span>
+                    </span>
+                    <div className="space-y-1.5">
+                      {dealMeetings.map((m) => (
+                        <div key={m.id} className="p-2 rounded-xl bg-gray-50 dark:bg-slate-800/60 border border-gray-100 dark:border-slate-700/50 flex items-center justify-between">
+                          <div>
+                            <span className="font-bold text-gray-900 dark:text-white block">Meeting: {m.title}</span>
+                            <span className="text-[10px] text-gray-500">{new Date(m.scheduled_at).toLocaleString("en-IN")}</span>
+                          </div>
+                          <span className="px-2 py-0.5 rounded-md text-[9px] font-bold bg-blue-50 text-blue-600 dark:bg-blue-950/50 capitalize">
+                            {m.status}
+                          </span>
+                        </div>
+                      ))}
+                      {dealFollowUps.map((f) => (
+                        <div key={f.id} className="p-2 rounded-xl bg-gray-50 dark:bg-slate-800/60 border border-gray-100 dark:border-slate-700/50 flex items-center justify-between">
+                          <div>
+                            <span className="font-bold text-gray-900 dark:text-white block">Follow-up: {f.title}</span>
+                            <span className="text-[10px] text-gray-500">{f.due_at ? new Date(f.due_at).toLocaleString("en-IN") : "No date"}</span>
+                          </div>
+                          <span className="px-2 py-0.5 rounded-md text-[9px] font-bold bg-amber-50 text-amber-600 dark:bg-amber-950/50 capitalize">
+                            {f.status}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Footer */}
+              <div className="flex items-center justify-between gap-2 p-4 border-t border-gray-100 dark:border-[#3a3020] bg-white dark:bg-[#18150f] shrink-0">
+                <button
+                  type="button"
+                  onClick={() => handleOpenEditDeal(selectedDeal)}
+                  className="px-4 py-2 rounded-xl text-xs font-bold bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white transition shadow-sm flex items-center gap-1.5 cursor-pointer"
+                >
+                  <Pencil className="w-3.5 h-3.5" />
+                  <span>Edit Deal Details</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSelectedDeal(null)}
+                  className="px-4 py-2 rounded-xl text-xs font-semibold text-gray-700 dark:text-neutral-300 hover:bg-gray-100 dark:hover:bg-slate-800 transition cursor-pointer"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* 10. Edit Deal Modal */}
+      {editingDeal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-xs">
+          <form
+            onSubmit={handleSaveEditDeal}
+            className="w-full max-w-lg max-h-[92vh] rounded-2xl bg-white dark:bg-[#18150f] border border-gray-200 dark:border-[#3a3020] shadow-2xl p-5 space-y-4 overflow-y-auto"
+          >
+            {/* Header */}
+            <div className="flex items-center justify-between border-b border-gray-100 dark:border-[#3a3020] pb-3">
+              <div className="flex items-center gap-2">
+                <span className="p-1.5 rounded-lg bg-orange-500/10 text-orange-600 dark:text-orange-400">
+                  <Pencil className="w-4 h-4" />
+                </span>
+                <div>
+                  <h3 className="font-bold text-sm sm:text-base text-gray-900 dark:text-white">Edit Deal Details</h3>
+                  <p className="text-[11px] text-gray-500 dark:text-neutral-400">Update pipeline stages, value, service, and closing details.</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setEditingDeal(null)}
+                className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 dark:hover:text-neutral-200 cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="space-y-3 text-xs">
+              {/* Deal Title */}
+              <div>
+                <label className="block font-medium mb-1 text-gray-700 dark:text-neutral-300">
+                  Deal Title *
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={editDealForm.title}
+                  onChange={(e) => setEditDealForm({ ...editDealForm, title: e.target.value })}
+                  placeholder="e.g. Acme Corp - E-Commerce Platform"
+                  className="w-full px-3 py-2 rounded-xl bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 focus:outline-hidden focus:ring-2 focus:ring-orange-500 text-gray-900 dark:text-white"
+                />
+              </div>
+
+              {/* Deal Value & Service */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-medium mb-1 text-gray-700 dark:text-neutral-300">
+                    Deal Value (₹) *
+                  </label>
+                  <input
+                    type="number"
+                    required
+                    min="0"
+                    value={editDealForm.deal_value}
+                    onChange={(e) => setEditDealForm({ ...editDealForm, deal_value: e.target.value })}
+                    placeholder="100000"
+                    className="w-full px-3 py-2 rounded-xl bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 focus:outline-hidden focus:ring-2 focus:ring-orange-500 font-mono font-bold text-gray-900 dark:text-white"
+                  />
+                </div>
+
+                <div>
+                  <label className="block font-medium mb-1 text-gray-700 dark:text-neutral-300">
+                    Service Required
+                  </label>
+                  <select
+                    value={editDealForm.service}
+                    onChange={(e) => setEditDealForm({ ...editDealForm, service: e.target.value })}
+                    className="w-full px-3 py-2 rounded-xl bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 focus:outline-hidden focus:ring-2 focus:ring-orange-500 text-gray-900 dark:text-white"
+                  >
+                    <option value="Web Development">Web Development</option>
+                    <option value="Mobile App Development">Mobile App Development</option>
+                    <option value="UI/UX Design">UI/UX Design</option>
+                    <option value="E-Commerce Development">E-Commerce Development</option>
+                    <option value="Custom CRM / ERP">Custom CRM / ERP</option>
+                    <option value="SEO & Digital Marketing">SEO & Digital Marketing</option>
+                    <option value="Cloud & DevOps">Cloud & DevOps</option>
+                    <option value="AI Automation">AI Automation</option>
+                    <option value="Full Stack Solution">Full Stack Solution</option>
+                    <option value="Other">Other</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Pipeline Stage & Expected Close Date */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-medium mb-1 text-gray-700 dark:text-neutral-300">
+                    Pipeline Stage *
+                  </label>
+                  <select
+                    value={editDealForm.pipeline_stage}
+                    onChange={(e) => setEditDealForm({ ...editDealForm, pipeline_stage: e.target.value })}
+                    className="w-full px-3 py-2 rounded-xl bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 focus:outline-hidden focus:ring-2 focus:ring-orange-500 text-gray-900 dark:text-white font-semibold"
+                  >
+                    <option value="contacted">Contacted</option>
+                    <option value="qualified">Meeting / Qualified</option>
+                    <option value="proposal">Quotation / Proposal</option>
+                    <option value="negotiation">Negotiation</option>
+                    <option value="closed_won">Closed Won</option>
+                    <option value="closed_lost">Closed Lost</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block font-medium mb-1 text-gray-700 dark:text-neutral-300">
+                    Expected Close Date
+                  </label>
+                  <input
+                    type="date"
+                    value={editDealForm.expected_close_date}
+                    onChange={(e) => setEditDealForm({ ...editDealForm, expected_close_date: e.target.value })}
+                    className="w-full px-3 py-2 rounded-xl bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 focus:outline-hidden focus:ring-2 focus:ring-orange-500 text-gray-900 dark:text-white"
+                  />
+                </div>
+              </div>
+
+              {/* Loss Reason (if stage is closed_lost) */}
+              {editDealForm.pipeline_stage === "closed_lost" && (
+                <div>
+                  <label className="block font-medium mb-1 text-rose-600 dark:text-rose-400">
+                    Loss Reason / Root Cause *
+                  </label>
+                  <textarea
+                    rows={2}
+                    required
+                    value={editDealForm.loss_reason}
+                    onChange={(e) => setEditDealForm({ ...editDealForm, loss_reason: e.target.value })}
+                    placeholder="e.g. Budget out of range, chosen competitor, requirements dropped..."
+                    className="w-full px-3 py-2 rounded-xl bg-rose-50/50 dark:bg-rose-950/20 border border-rose-200 dark:border-rose-900/50 focus:outline-hidden focus:ring-2 focus:ring-rose-500 text-gray-900 dark:text-white"
+                  />
+                </div>
+              )}
+
+              {/* Notes & Strategy */}
+              <div>
+                <label className="block font-medium mb-1 text-gray-700 dark:text-neutral-300">
+                  Deal Notes / Strategy
+                </label>
+                <textarea
+                  rows={3}
+                  value={editDealForm.notes}
+                  onChange={(e) => setEditDealForm({ ...editDealForm, notes: e.target.value })}
+                  placeholder="Key deliverables, client expectations, scope details..."
+                  className="w-full px-3 py-2 rounded-xl bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 focus:outline-hidden focus:ring-2 focus:ring-orange-500 text-gray-900 dark:text-white"
+                />
+              </div>
+            </div>
+
+            {/* Footer Buttons */}
+            <div className="flex items-center justify-end gap-2 pt-3 border-t border-gray-100 dark:border-[#3a3020]">
+              <button
+                type="button"
+                onClick={() => setEditingDeal(null)}
+                className="px-3.5 py-2 rounded-xl text-xs font-semibold text-gray-600 dark:text-neutral-300 hover:bg-gray-100 dark:hover:bg-slate-800 transition cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                className="px-4 py-2 rounded-xl text-xs font-bold bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white transition shadow-sm cursor-pointer"
               >
                 Save Changes
               </button>

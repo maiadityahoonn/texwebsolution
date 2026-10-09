@@ -41,6 +41,39 @@ function sanitizeMetaPhone(phone) {
   return cleanPhone(clean) || clean;
 }
 
+function firstValue(body, keys = []) {
+  for (const key of keys) {
+    const value = body?.[key];
+    if (value !== undefined && value !== null && String(value).trim() !== "") return value;
+  }
+  return "";
+}
+
+function collectFormAnswers(body) {
+  const systemKeys = new Set([
+    "id",
+    "created_time",
+    "ad_id",
+    "ad_name",
+    "adset_id",
+    "adset_name",
+    "campaign_id",
+    "campaign_name",
+    "form_id",
+    "form_name",
+    "is_organic",
+    "platform",
+    "lead_status",
+  ]);
+  return Object.fromEntries(
+    Object.entries(body || {}).filter(([key, value]) => {
+      if (systemKeys.has(key)) return false;
+      if (value === undefined || value === null || String(value).trim() === "") return false;
+      return true;
+    })
+  );
+}
+
 async function insertMetaPlaceholderLead(admin, { leadgenId, formId, adId, reason }) {
   const notes = [
     `Leadgen ID: ${leadgenId}`,
@@ -109,13 +142,80 @@ export async function POST(request) {
 
     const body = await request.json().catch(() => ({}));
 
+    const directName = firstValue(body, ["name", "full_name", "पूरा_नाम"]);
+    const directPhone = firstValue(body, ["phone", "phone_number", "mobile", "मोबाइल"]);
+    const directEmail = firstValue(body, ["email", "ईमेल"]);
+    if (directName || directPhone || directEmail) {
+      const name = cleanText(directName, 120);
+      const phone = sanitizeMetaPhone(directPhone);
+      const email = normalizeEmail(directEmail);
+      const service = normalizeServiceName(firstValue(body, ["service", "service_required", "what_does_your_business_need?", "what_service_are_you_looking_for?"]));
+      const budget = normalizeBudgetName(firstValue(body, ["budget", "budget_range", "what_is_your_approximate_budget_for_this_project?", "choose_your_budget_range?"]));
+      const city = cleanText(firstValue(body, ["city", "शहर"]), 80);
+      const state = cleanText(firstValue(body, ["state", "राज्य"]), 80);
+      const platform = (body.platform === "fb" ? "Facebook" : body.platform === "ig" ? "Instagram" : "Meta Ads");
+      const campaignName = cleanText(body.campaign_name || body.campaign, 120);
+      const adName = cleanText(body.ad_name || body.ad, 120);
+      const formName = cleanText(body.form_name || body.form, 120);
+      const metaLeadId = cleanText(body.meta_lead_id || body.leadgen_id || body.id, 80);
+      const formAnswers = collectFormAnswers(body);
+
+      const notesParts = [
+        campaignName ? `Campaign: ${campaignName}` : null,
+        adName ? `Ad: ${adName}` : null,
+        formName ? `Form: ${formName}` : null,
+        budget ? `Budget: ${budget}` : null,
+        city || state ? `Location: ${[city, state].filter(Boolean).join(", ")}` : null,
+        metaLeadId ? `Meta Lead ID: ${metaLeadId}` : null,
+        body.created_time ? `Meta Created: ${cleanText(body.created_time, 80)}` : null,
+        body.lead_status ? `Meta Status: ${cleanText(body.lead_status, 80)}` : null,
+        body.notes ? `Note: ${body.notes}` : null,
+      ].filter(Boolean);
+
+      const payload = {
+        name: name || "Meta Lead",
+        phone: phone || "Not provided",
+        email: email || null,
+        service: service || "Website Development",
+        source: `Meta Ads (${platform})`,
+        status: "New",
+        meta_lead_id: metaLeadId || null,
+        ad_id: cleanText(body.ad_id, 80) || null,
+        ad_name: adName || null,
+        adset_id: cleanText(body.adset_id, 80) || null,
+        adset_name: cleanText(body.adset_name, 120) || null,
+        campaign_id: cleanText(body.campaign_id, 80) || null,
+        campaign_name: campaignName || null,
+        form_id: cleanText(body.form_id, 80) || null,
+        form_name: formName || null,
+        platform,
+        budget_range: budget || null,
+        city: city || null,
+        state: state || null,
+        raw_metadata: {
+          source: "direct_meta_payload",
+          form_answers: formAnswers,
+          original_payload: body,
+        },
+        notes: notesParts.join(" | ") || "Inbound inquiry via Meta Ads",
+      };
+
+      const { data, error } = await admin.from("leads").insert([payload]).select().single();
+      if (error) {
+        return NextResponse.json({ error: error.message }, { status: 400 });
+      }
+
+      await sendMetaCrmEvent(request, data, data.status || "New");
+      return NextResponse.json({ ok: true, lead: data });
+    }
+
     // Option A: Direct Lead JSON (from Zapier / Make / Internal Importer)
     if (body.name || body.full_name || body.phone || body.phone_number || body["पूरा_नाम"] || body["मोबाइल"] || body["ईमेल"]) {
       const name = cleanText(body.name || body.full_name || body["पूरा_नाम"], 120);
       const phone = sanitizeMetaPhone(body.phone || body.phone_number || body["मोबाइल"]);
       const email = normalizeEmail(body.email || body["ईमेल"]);
-      const service = normalizeServiceName(body.service || body["what_service_are_you_looking_for?"]);
-      const budget = normalizeBudgetName(body.budget || body.budget_range || body["choose_your_budget_range?"]);
+      const service = normalizeServiceName(body.service || body.service_required || body["what_does_your_business_need?"] || body["what_service_are_you_looking_for?"]);
+      const budget = normalizeBudgetName(body.budget || body.budget_range || body["what_is_your_approximate_budget_for_this_project?"] || body["choose_your_budget_range?"]);
       const city = cleanText(body.city, 80);
       const state = cleanText(body.state, 80);
       const platform = (body.platform === "fb" ? "Facebook" : body.platform === "ig" ? "Instagram" : "Meta Ads");
@@ -185,8 +285,8 @@ export async function POST(request) {
                   const fullName = getField(["full_name", "name", "first_name"]);
                   const email = getField(["email"]);
                   const phone = sanitizeMetaPhone(getField(["phone_number", "phone"]));
-                  const serviceVal = getField(["what_service_are_you_looking_for?", "service", "service_required"]);
-                  const budgetVal = getField(["choose_your_budget_range?", "budget", "budget_range"]);
+                  const serviceVal = getField(["what_does_your_business_need?", "what_service_are_you_looking_for?", "service", "service_required"]);
+                  const budgetVal = getField(["what_is_your_approximate_budget_for_this_project?", "choose_your_budget_range?", "budget", "budget_range"]);
                   const city = getField(["city"]);
                   const state = getField(["state"]);
 
@@ -206,6 +306,15 @@ export async function POST(request) {
                       service: normalizeServiceName(serviceVal),
                       source: "Meta Ads (Instagram/FB)",
                       status: "New",
+                      meta_lead_id: leadgenId,
+                      ad_id: adId || null,
+                      form_id: formId || null,
+                      form_name: cleanText(leadData.form_name, 120) || null,
+                      raw_metadata: {
+                        source: "meta_leadgen_webhook",
+                        form_answers: Object.fromEntries(fieldData.map((field) => [field.name, field.values?.[0] || ""])),
+                        original_payload: leadData,
+                      },
                       notes: notes || "Direct Meta Leadgen Form submission",
                     },
                   ]).select().single();

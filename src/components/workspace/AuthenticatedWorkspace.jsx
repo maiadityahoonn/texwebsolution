@@ -172,6 +172,7 @@ import {
   getDeals,
   createDeal,
   updateDealStage,
+  updateDeal,
   getProposals,
   createProposal,
   updateProposal,
@@ -12595,6 +12596,12 @@ export default function AuthenticatedWorkspace({ defaultSection = "overview" } =
                     const res = await updateDealStage(dealId, stage, extra);
                     setDeals((prev) => prev.map((d) => (d.id === dealId ? { ...d, pipeline_stage: stage, ...extra, ...res } : d)));
                     setToast(`Deal stage updated to ${stage.replace('_', ' ')}.`);
+                    return res;
+                  }}
+                  onUpdateDeal={async (dealId, updates = {}) => {
+                    const res = await updateDeal(dealId, updates);
+                    setDeals((prev) => prev.map((d) => (d.id === dealId ? { ...d, ...updates, ...res } : d)));
+                    setToast("Deal details updated successfully.");
                     return res;
                   }}
                   onCreateDeal={async (dealData) => {

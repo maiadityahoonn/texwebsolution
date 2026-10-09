@@ -2442,6 +2442,46 @@ export async function updateDealStage(dealId, newStage, extra = {}) {
   }
 }
 
+export async function updateDeal(dealId, updates = {}) {
+  try {
+    const payload = {
+      ...(updates.title !== undefined && { title: updates.title }),
+      ...(updates.deal_value !== undefined && { deal_value: Number(updates.deal_value) || 0 }),
+      ...(updates.pipeline_stage !== undefined && { pipeline_stage: updates.pipeline_stage }),
+      ...(updates.service !== undefined && { service: updates.service }),
+      ...(updates.client_id !== undefined && { client_id: updates.client_id || null }),
+      ...(updates.lead_id !== undefined && { lead_id: updates.lead_id || null }),
+      ...(updates.assigned_to !== undefined && { assigned_to: updates.assigned_to || null }),
+      ...(updates.expected_close_date !== undefined && { expected_close_date: updates.expected_close_date || null }),
+      ...(updates.loss_reason !== undefined && { loss_reason: updates.loss_reason || null }),
+      ...(updates.notes !== undefined && { notes: updates.notes || '' }),
+      updated_at: new Date().toISOString(),
+    };
+
+    const { data, error } = await supabase
+      .from('deals')
+      .update(payload)
+      .eq('id', dealId)
+      .select();
+
+    if (error) throw error;
+    const current = readLocalCache(LOCAL_DEALS_KEY, []);
+    const updated = current.map((d) => (d.id === dealId ? { ...d, ...updates } : d));
+    writeLocalCache(LOCAL_DEALS_KEY, updated);
+    const updatedDeal = data?.[0] || updated.find((d) => d.id === dealId) || null;
+    if (updatedDeal && updates.pipeline_stage) sendDealStageMetaEvent(updatedDeal, updates.pipeline_stage);
+    return updatedDeal;
+  } catch (err) {
+    console.warn('Fallback: updateDeal in cache:', err.message);
+    const current = readLocalCache(LOCAL_DEALS_KEY, []);
+    const updated = current.map((d) => (d.id === dealId ? { ...d, ...updates } : d));
+    writeLocalCache(LOCAL_DEALS_KEY, updated);
+    const updatedDeal = updated.find((d) => d.id === dealId) || null;
+    if (updatedDeal && updates.pipeline_stage) sendDealStageMetaEvent(updatedDeal, updates.pipeline_stage);
+    return updatedDeal;
+  }
+}
+
 export async function getProposals() {
   try {
     const { data, error } = await supabase
