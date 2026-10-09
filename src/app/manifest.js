@@ -25,10 +25,12 @@ export default function manifest() {
     ],
     scope_extensions: [
       {
+        type: 'origin',
         origin: 'https://texwebsolution.in'
       },
       {
-        origin: 'https://*.texwebsolution.in'
+        type: 'origin',
+        origin: 'https://www.texwebsolution.in'
       }
     ],
     note_taking: {
@@ -77,6 +79,7 @@ export default function manifest() {
     share_target: {
       action: '/contact',
       method: 'GET',
+      enctype: 'application/x-www-form-urlencoded',
       params: {
         title: 'title',
         text: 'text',

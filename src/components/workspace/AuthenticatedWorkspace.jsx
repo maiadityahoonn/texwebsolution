@@ -4088,8 +4088,22 @@ export default function AuthenticatedWorkspace({ defaultSection = "overview" } =
           data: { session },
         } = await supabase.auth.getSession();
         if (session?.user && isMounted) {
-          setSessionUser(session.user);
-          await fetchProfile(session.user.id, session.user.email, session.user.user_metadata);
+          const {
+            data: { user },
+            error,
+          } = await supabase.auth.getUser();
+          if (error || !user) {
+            await supabase.auth.signOut({ scope: "local" });
+            setSessionUser(null);
+            setUserProfile(null);
+            setAuthMessage({
+              type: "error",
+              text: "Session expire ho gaya hai. Please login again.",
+            });
+            return;
+          }
+          setSessionUser(user);
+          await fetchProfile(user.id, user.email, user.user_metadata);
         }
       } catch (err) {
         console.warn("Auth check network error:", err?.message || err);
@@ -4109,8 +4123,22 @@ export default function AuthenticatedWorkspace({ defaultSection = "overview" } =
           return;
         }
         if (session?.user) {
-          setSessionUser(session.user);
-          await fetchProfile(session.user.id, session.user.email, session.user.user_metadata);
+          const {
+            data: { user },
+            error,
+          } = await supabase.auth.getUser();
+          if (error || !user) {
+            await supabase.auth.signOut({ scope: "local" });
+            setSessionUser(null);
+            setUserProfile(null);
+            setAuthMessage({
+              type: "error",
+              text: "Session expire ho gaya hai. Please login again.",
+            });
+            return;
+          }
+          setSessionUser(user);
+          await fetchProfile(user.id, user.email, user.user_metadata);
         } else if (event === "SIGNED_OUT") {
           setSessionUser(null);
           setUserProfile(null);

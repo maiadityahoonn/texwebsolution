@@ -23,17 +23,45 @@ export default function LoginPage() {
   useEffect(() => {
     let mounted = true;
 
-    supabase.auth.getSession().then(({ data }) => {
+    supabase.auth.getSession().then(async ({ data }) => {
       if (!mounted) return;
       if (data?.session) {
+        const {
+          data: { user },
+          error,
+        } = await supabase.auth.getUser();
+        if (!mounted) return;
+        if (error || !user) {
+          await supabase.auth.signOut({ scope: "local" });
+          setMessage("Session expire ho gaya hai. Please login again.");
+          setLoading(false);
+          return;
+        }
         router.replace(workspaceHref());
         return;
       }
       setLoading(false);
+    }).catch(async () => {
+      if (!mounted) return;
+      await supabase.auth.signOut({ scope: "local" });
+      setLoading(false);
     });
 
-    const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (session) router.replace(workspaceHref());
+    const { data: authListener } = supabase.auth.onAuthStateChange(async (_event, session) => {
+      if (session) {
+        const {
+          data: { user },
+          error,
+        } = await supabase.auth.getUser();
+        if (!mounted) return;
+        if (error || !user) {
+          await supabase.auth.signOut({ scope: "local" });
+          setMessage("Session expire ho gaya hai. Please login again.");
+          setLoading(false);
+          return;
+        }
+        router.replace(workspaceHref());
+      }
     });
 
     return () => {

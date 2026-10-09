@@ -386,6 +386,15 @@ function getLeadLocation(lead) {
   return match ? match[1].trim() : "-";
 }
 
+function getLeadLossReason(lead, linkedDeal) {
+  if (lead?.loss_reason) return lead.loss_reason;
+  if (linkedDeal?.loss_reason) return linkedDeal.loss_reason;
+  const notes = String(lead?.notes || linkedDeal?.notes || "");
+  const match = notes.match(/Lost:\s*([^\n\r]+)/i);
+  if (match && match[1]) return match[1].trim();
+  return null;
+}
+
 function formatLeadAnswer(value) {
   const text = String(value || "").trim();
   if (!text || text === "-" || text === "—" || /[\u0080-\u009f\u00c2\u00c3\u00e2\u201a]/u.test(text)) return "-";
@@ -1566,6 +1575,22 @@ export default function CrmModule({
     return { followUps: linkedFollowUps, meetings: linkedMeetings, deals: linkedDeals, summary };
   }, [deals, followUps, salesMeetings, selectedLead]);
 
+  const selectedLeadDeal = useMemo(() => {
+    if (!selectedLead?.id) return null;
+    return deals.find((deal) => deal.lead_id === selectedLead.id) || null;
+  }, [deals, selectedLead]);
+
+  const selectedLeadIsLost = useMemo(() => {
+    if (!selectedLead?.id) return false;
+    const hasLostDeal = Boolean(selectedLeadDeal && (selectedLeadDeal.pipeline_stage || selectedLeadDeal.stage) === "closed_lost");
+    return hasLostDeal || (!selectedLeadDeal && selectedLead.status === "Lost");
+  }, [selectedLead, selectedLeadDeal]);
+
+  const selectedLeadLossReason = useMemo(() => {
+    if (!selectedLeadIsLost || !selectedLead) return null;
+    return getLeadLossReason(selectedLead, selectedLeadDeal);
+  }, [selectedLead, selectedLeadDeal, selectedLeadIsLost]);
+
   function handleAddLeadSubmit(e) {
     e.preventDefault();
     if (!newLeadForm.name || !newLeadForm.phone) return;
@@ -2020,15 +2045,62 @@ export default function CrmModule({
       } else if (onUpdateLead) {
         onUpdateLead(lostTarget.item.id, {
           status: "Lost",
+          loss_reason: reasonText,
           notes: [lostTarget.item.notes, `Lost: ${reasonText}`].filter(Boolean).join("\n"),
         });
       } else if (onUpdateLeadStatus) {
         onUpdateLeadStatus(lostTarget.item.id, "Lost");
       }
+
+      if (selectedLead?.id === lostTarget.item.id) {
+        setSelectedLead((prev) =>
+          prev
+            ? {
+                ...prev,
+                status: "Lost",
+                loss_reason: reasonText,
+                notes: [lostTarget.item.notes, `Lost: ${reasonText}`].filter(Boolean).join("\n"),
+              }
+            : null
+        );
+      }
     }
 
     setShowLostModal(false);
     setLostTarget(null);
+  }
+
+  async function handleReopenLead(lead, linkedDeal) {
+    if (!lead) return;
+    try {
+      const updates = {
+        status: "Contacted",
+        notes: [lead.notes, `[Restored from Lost to Active at ${new Date().toLocaleString("en-IN")}]`].filter(Boolean).join("\n"),
+        loss_reason: null,
+      };
+
+      if (onUpdateLead) {
+        await onUpdateLead(lead.id, updates);
+      } else if (onUpdateLeadStatus) {
+        await onUpdateLeadStatus(lead.id, "Contacted");
+      }
+
+      const dealToReopen = linkedDeal || deals.find((d) => d.lead_id === lead.id);
+      if (dealToReopen && (dealToReopen.pipeline_stage || dealToReopen.stage) === "closed_lost") {
+        if (onUpdateDealStage) {
+          await onUpdateDealStage(dealToReopen.id, "contacted", {
+            loss_reason: null,
+            notes: [dealToReopen.notes, `[Deal Reopened from Lost at ${new Date().toLocaleString("en-IN")}]`].filter(Boolean).join("\n"),
+          });
+        }
+      }
+
+      if (selectedLead?.id === lead.id) {
+        setSelectedLead((prev) => (prev ? { ...prev, ...updates, loss_reason: null } : prev));
+      }
+    } catch (err) {
+      console.error("Failed to restore lead:", err);
+    }
   }
 
   function openAddDealModal(initialStage = "contacted", lead = null) {
@@ -2776,6 +2848,7 @@ export default function CrmModule({
                     const isInPipeline = Boolean(linkedDeal && !CLOSED_PIPELINE_STAGES.includes(linkedDeal.pipeline_stage || linkedDeal.stage));
                     const isConverted = hasWonDeal || (!linkedDeal && (lead.status === "Converted" || lead.status === "Closed Won"));
                     const isLost = hasLostDeal || (!linkedDeal && lead.status === "Lost");
+                    const lossReason = isLost ? getLeadLossReason(lead, linkedDeal) : null;
                     const stageLabel = linkedDeal ? (PIPELINE_STAGES.find((s) => s.id === (linkedDeal.pipeline_stage || linkedDeal.stage))?.label || "Pipeline") : null;
 
                     return (
@@ -2793,7 +2866,7 @@ export default function CrmModule({
                                 <span>Won in Pipeline</span>
                               </span>
                             )}
-                            {!isConverted && linkedDeal && (
+                            {!isConverted && !isLost && linkedDeal && (
                               <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9.5px] font-bold bg-amber-50 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-200/60 shrink-0">
                                 <TrendingUp className="w-2.5 h-2.5 text-amber-500" />
                                 <span>Pipeline: {stageLabel}</span>
@@ -2818,6 +2891,19 @@ export default function CrmModule({
                               month: "short",
                             })}
                           </div>
+
+                          {/* Show Lost Reason right under lead details */}
+                          {isLost && (
+                            <div className="mt-1.5 flex items-start gap-1.5 text-[11px] text-rose-700 dark:text-rose-300 bg-rose-50/80 dark:bg-rose-950/30 p-2 rounded-xl border border-rose-200/60 dark:border-rose-900/40 max-w-sm">
+                              <AlertCircle className="w-3.5 h-3.5 text-rose-500 shrink-0 mt-0.5" />
+                              <div className="leading-tight">
+                                <span className="font-bold text-[10px] uppercase text-rose-800 dark:text-rose-200 block mb-0.5">Lost Reason:</span>
+                                <span className="line-clamp-2 text-rose-700 dark:text-rose-300 font-medium" title={lossReason || "Not specified"}>
+                                  {lossReason || "No specific reason provided"}
+                                </span>
+                              </div>
+                            </div>
+                          )}
                         </td>
 
                         {/* 2. Contact Info (Phone & Email) */}
@@ -2868,10 +2954,11 @@ export default function CrmModule({
 
                       <td className="py-3.5 px-4 text-right">
                         <div className="flex items-center justify-end gap-1.5 flex-nowrap whitespace-nowrap">
+                          {/* 1. WhatsApp Button */}
                           {lead.phone && (
                             <button
                               onClick={() => handleWhatsAppClick(lead)}
-                              className="p-1.5 rounded-lg text-emerald-600 bg-emerald-50 dark:bg-emerald-950/40 hover:bg-emerald-100 transition shrink-0"
+                              className="p-1.5 rounded-lg text-emerald-600 bg-emerald-50 dark:bg-emerald-950/40 hover:bg-emerald-100 transition shrink-0 cursor-pointer"
                               title="Chat on WhatsApp"
                               aria-label="Chat on WhatsApp"
                             >
@@ -2879,46 +2966,69 @@ export default function CrmModule({
                             </button>
                           )}
 
-                          {linkedDeal || isConverted ? (
+                          {/* 2. Restore Lead Button (Only for Lost Leads) */}
+                          {isLost && (
+                            <button
+                              onClick={() => handleReopenLead(lead, linkedDeal)}
+                              className="p-1.5 rounded-lg text-emerald-600 bg-emerald-50 dark:bg-emerald-950/40 hover:bg-emerald-100 border border-emerald-200/60 dark:border-emerald-800/40 transition shrink-0 cursor-pointer"
+                              title="Restore / Re-activate Lead back to Active"
+                              aria-label="Restore / Re-activate Lead back to Active"
+                            >
+                              <RotateCcw className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+
+                          {/* 3. Pipeline / Deal Button */}
+                          {isConverted ? (
                             <button
                               onClick={() => {
                                 setViewMode("pipeline");
                                 setStatusFilter("all");
                               }}
-                              className={`p-1.5 rounded-lg shrink-0 transition ${
-                                isConverted
-                                  ? "text-emerald-700 bg-emerald-50 dark:bg-emerald-950/40 dark:text-emerald-300 hover:bg-emerald-100"
-                                  : "text-amber-700 bg-amber-50 dark:bg-amber-950/40 dark:text-amber-300 hover:bg-amber-100"
-                              }`}
-                              title={isConverted ? "Won in Pipeline (Click to view)" : "In Pipeline (Click to view)"}
-                              aria-label={isConverted ? "Won in Pipeline" : "In Pipeline"}
+                              className="p-1.5 rounded-lg shrink-0 transition text-emerald-700 bg-emerald-50 dark:bg-emerald-950/40 dark:text-emerald-300 hover:bg-emerald-100 cursor-pointer"
+                              title="Won in Pipeline (Click to view)"
+                              aria-label="Won in Pipeline"
+                            >
+                              <TrendingUp className="w-3.5 h-3.5" />
+                            </button>
+                          ) : isInPipeline && !isLost ? (
+                            <button
+                              onClick={() => {
+                                setViewMode("pipeline");
+                                setStatusFilter("all");
+                              }}
+                              className="p-1.5 rounded-lg shrink-0 transition text-amber-700 bg-amber-50 dark:bg-amber-950/40 dark:text-amber-300 hover:bg-amber-100 cursor-pointer"
+                              title={`In Pipeline (${stageLabel || "Active"}) - Click to view`}
+                              aria-label="In Pipeline"
                             >
                               <TrendingUp className="w-3.5 h-3.5" />
                             </button>
                           ) : (
                             <button
                               onClick={() => openAddDealModal("contacted", lead)}
-                              className="p-1.5 rounded-lg text-orange-600 bg-orange-50 dark:bg-orange-950/40 hover:bg-orange-100 transition shrink-0"
-                              title="Move to Pipeline"
-                              aria-label="Move to Pipeline"
+                              className="p-1.5 rounded-lg text-orange-600 bg-orange-50 dark:bg-orange-950/40 hover:bg-orange-100 transition shrink-0 cursor-pointer"
+                              title={isLost ? "Reopen & Convert to Pipeline Deal" : "Move to Pipeline"}
+                              aria-label={isLost ? "Reopen & Convert to Pipeline Deal" : "Move to Pipeline"}
                             >
                               <TrendingUp className="w-3.5 h-3.5" />
                             </button>
                           )}
 
+                          {/* 4. Follow-up Button */}
                           <button
                             onClick={() => openLeadFollowUpModal(lead)}
-                            className="p-1.5 rounded-lg text-blue-600 bg-blue-50 dark:bg-blue-950/40 hover:bg-blue-100 transition shrink-0"
-                            title="Schedule Follow-up"
-                            aria-label="Schedule Follow-up"
+                            className="p-1.5 rounded-lg text-blue-600 bg-blue-50 dark:bg-blue-950/40 hover:bg-blue-100 transition shrink-0 cursor-pointer"
+                            title={isLost ? "Schedule Re-nurture Follow-up" : "Schedule Follow-up"}
+                            aria-label={isLost ? "Schedule Re-nurture Follow-up" : "Schedule Follow-up"}
                           >
                             <Calendar className="w-3.5 h-3.5" />
                           </button>
 
-                          {lead.status !== "Lost" && lead.status !== "Converted" && (
+                          {/* 5. Mark as Lost Button (Only if NOT already Lost and NOT Won) */}
+                          {!isLost && !isConverted && (
                             <button
                               onClick={() => openLostModal({ type: "lead", item: lead })}
-                              className="p-1.5 rounded-lg text-red-600 bg-red-50 dark:bg-red-950/40 hover:bg-red-100 transition shrink-0"
+                              className="p-1.5 rounded-lg text-red-600 bg-red-50 dark:bg-red-950/40 hover:bg-red-100 transition shrink-0 cursor-pointer"
                               title="Mark Lead as Lost"
                               aria-label="Mark Lead as Lost"
                             >
@@ -2926,9 +3036,20 @@ export default function CrmModule({
                             </button>
                           )}
 
+                          {/* 6. Edit Lead Details */}
+                          <button
+                            onClick={() => handleOpenEdit(lead)}
+                            className="p-1.5 rounded-lg text-amber-600 bg-amber-50 dark:bg-amber-950/40 hover:bg-amber-100 transition shrink-0 cursor-pointer"
+                            title="Edit Lead Details"
+                            aria-label="Edit Lead Details"
+                          >
+                            <Pencil className="w-3.5 h-3.5" />
+                          </button>
+
+                          {/* 7. View Details & Timeline Button */}
                           <button
                             onClick={() => setSelectedLead(lead)}
-                            className="p-1.5 rounded-lg text-gray-500 hover:bg-gray-100 dark:hover:bg-slate-800 transition shrink-0"
+                            className="p-1.5 rounded-lg text-gray-500 hover:bg-gray-100 dark:hover:bg-slate-800 transition shrink-0 cursor-pointer"
                             title="View Details & Timeline"
                             aria-label="View Details & Timeline"
                           >
@@ -4034,13 +4155,19 @@ export default function CrmModule({
               </div>
             )}
 
-            <div className="p-3 rounded-xl bg-orange-50/70 dark:bg-orange-950/20 border border-orange-100 dark:border-orange-900/50 text-xs">
-              <div className="flex items-center gap-2 font-black text-orange-700 dark:text-orange-300 mb-1">
-                <Sparkles className="w-3.5 h-3.5" />
-                <span>AI Client Summary</span>
+            {selectedLeadIsLost && (
+              <div className="p-3.5 rounded-xl bg-rose-50/90 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/60 text-xs space-y-1.5">
+                <div className="flex items-center gap-2 font-bold text-rose-800 dark:text-rose-200">
+                  <AlertCircle className="w-4 h-4 text-rose-600 dark:text-rose-400 shrink-0" />
+                  <span className="uppercase text-[10.5px] tracking-wide">Lead Lost Reason</span>
+                </div>
+                <div className="bg-white/90 dark:bg-[#211d14]/80 p-2.5 rounded-lg border border-rose-100 dark:border-rose-900/30">
+                  <p className="text-rose-700 dark:text-rose-300 font-semibold leading-relaxed">
+                    {selectedLeadLossReason || "No specific reason was provided when marking this lead as lost."}
+                  </p>
+                </div>
               </div>
-              <p className="text-gray-700 dark:text-neutral-300 leading-relaxed">{selectedLeadActivity.summary}</p>
-            </div>
+            )}
 
             <div>
               <h4 className="text-xs font-bold text-gray-900 dark:text-white mb-2 uppercase tracking-wider">
@@ -4073,24 +4200,59 @@ export default function CrmModule({
 
             </div>
 
-            <div className="flex items-center justify-end gap-2 p-4 border-t border-gray-100 dark:border-[#3a3020] bg-white dark:bg-[#18150f] shrink-0">
-              <button
-                onClick={() => handleWhatsAppClick(selectedLead)}
-                className="px-3 py-1.5 rounded-xl text-xs font-semibold text-emerald-600 bg-emerald-50 dark:bg-emerald-950/40 hover:bg-emerald-100 transition flex items-center gap-1.5"
-              >
-                <WhatsAppIcon className="w-3.5 h-3.5" />
-                <span>WhatsApp</span>
-              </button>
-              <button
-                onClick={() => {
-                  setSelectedLead(null);
-                  onConvertToClientAndProject?.(selectedLead);
-                }}
-                className="px-3.5 py-1.5 rounded-xl text-xs font-bold bg-orange-600 hover:bg-orange-700 text-white transition flex items-center gap-1.5 shadow-sm"
-              >
-                <Briefcase className="w-3.5 h-3.5" />
-                <span>Convert to Project</span>
-              </button>
+            <div className="flex items-center justify-between gap-2 p-4 border-t border-gray-100 dark:border-[#3a3020] bg-white dark:bg-[#18150f] shrink-0">
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    handleOpenEdit(selectedLead);
+                    setSelectedLead(null);
+                  }}
+                  className="px-3 py-1.5 rounded-xl text-xs font-semibold text-gray-700 dark:text-neutral-300 bg-gray-100 dark:bg-slate-800 hover:bg-gray-200 dark:hover:bg-slate-700 transition flex items-center gap-1.5 cursor-pointer"
+                  title="Edit Lead Details"
+                >
+                  <Pencil className="w-3.5 h-3.5" />
+                  <span>Edit Lead</span>
+                </button>
+              </div>
+
+              <div className="flex items-center gap-2">
+                {selectedLead.phone && (
+                  <button
+                    type="button"
+                    onClick={() => handleWhatsAppClick(selectedLead)}
+                    className="px-3 py-1.5 rounded-xl text-xs font-semibold text-emerald-600 bg-emerald-50 dark:bg-emerald-950/40 hover:bg-emerald-100 transition flex items-center gap-1.5 cursor-pointer"
+                    title="Chat on WhatsApp"
+                  >
+                    <WhatsAppIcon className="w-3.5 h-3.5" />
+                    <span>WhatsApp</span>
+                  </button>
+                )}
+
+                {selectedLeadIsLost ? (
+                  <button
+                    type="button"
+                    onClick={() => handleReopenLead(selectedLead, selectedLeadDeal)}
+                    className="px-3.5 py-1.5 rounded-xl text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white transition flex items-center gap-1.5 shadow-sm cursor-pointer"
+                    title="Restore Lead back to Active"
+                  >
+                    <RotateCcw className="w-3.5 h-3.5" />
+                    <span>Restore Lead to Active</span>
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedLead(null);
+                      onConvertToClientAndProject?.(selectedLead);
+                    }}
+                    className="px-3.5 py-1.5 rounded-xl text-xs font-bold bg-orange-600 hover:bg-orange-700 text-white transition flex items-center gap-1.5 shadow-sm cursor-pointer"
+                  >
+                    <Briefcase className="w-3.5 h-3.5" />
+                    <span>Convert to Project</span>
+                  </button>
+                )}
+              </div>
             </div>
           </div>
         </div>
