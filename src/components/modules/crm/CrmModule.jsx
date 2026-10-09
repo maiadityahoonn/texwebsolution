@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef, useCallback } from "react";
 import { createPortal } from "react-dom";
 import {
   Search,
@@ -49,6 +49,176 @@ function WhatsAppIcon({ className = "w-4 h-4" }) {
     <svg className={className} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
       <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z" />
     </svg>
+  );
+}
+
+function ResponsiveTableContainer({ children, className = "" }) {
+  const scrollRef = useRef(null);
+  const [canScrollLeft, setCanScrollLeft] = useState(false);
+  const [canScrollRight, setCanScrollRight] = useState(false);
+  const [scrollProgress, setScrollProgress] = useState(0);
+  const [isOverflowing, setIsOverflowing] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
+  const dragState = useRef({ isDown: false, startX: 0, scrollLeft: 0, hasMoved: false });
+
+  const updateScrollState = useCallback(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const { scrollLeft, scrollWidth, clientWidth } = el;
+    const maxScroll = scrollWidth - clientWidth;
+    const overflowing = maxScroll > 6;
+    setIsOverflowing(overflowing);
+    setCanScrollLeft(scrollLeft > 6);
+    setCanScrollRight(overflowing && scrollLeft < maxScroll - 6);
+    setScrollProgress(maxScroll > 0 ? Math.min(100, Math.max(0, (scrollLeft / maxScroll) * 100)) : 0);
+  }, []);
+
+  useEffect(() => {
+    updateScrollState();
+    const el = scrollRef.current;
+    if (!el) return;
+    const onScroll = () => updateScrollState();
+    el.addEventListener("scroll", onScroll, { passive: true });
+    window.addEventListener("resize", updateScrollState);
+    const ro = new ResizeObserver(() => updateScrollState());
+    ro.observe(el);
+    return () => {
+      el.removeEventListener("scroll", onScroll);
+      window.removeEventListener("resize", updateScrollState);
+      ro.disconnect();
+    };
+  }, [updateScrollState]);
+
+  const scrollByAmount = (amount) => {
+    if (!scrollRef.current) return;
+    scrollRef.current.scrollBy({ left: amount, behavior: "smooth" });
+  };
+
+  const handleMouseDown = (e) => {
+    if (e.button !== 0) return;
+    const target = e.target;
+    if (target.closest("button, a, input, select, textarea, [role='button']")) return;
+    const el = scrollRef.current;
+    if (!el) return;
+    dragState.current = {
+      isDown: true,
+      startX: e.pageX - el.offsetLeft,
+      scrollLeft: el.scrollLeft,
+      hasMoved: false,
+    };
+    setIsDragging(true);
+  };
+
+  const handleMouseMove = (e) => {
+    if (!dragState.current.isDown) return;
+    const el = scrollRef.current;
+    if (!el) return;
+    const x = e.pageX - el.offsetLeft;
+    const walk = (x - dragState.current.startX) * 1.5;
+    if (Math.abs(walk) > 3) {
+      dragState.current.hasMoved = true;
+      e.preventDefault();
+    }
+    el.scrollLeft = dragState.current.scrollLeft - walk;
+  };
+
+  const handleMouseUpOrLeave = () => {
+    dragState.current.isDown = false;
+    setIsDragging(false);
+  };
+
+  return (
+    <div className="relative group/table-wrapper">
+      {/* Top Quick Scroll Bar */}
+      {isOverflowing && (
+        <div className="flex items-center justify-between gap-2 px-3 py-2 bg-gradient-to-r from-orange-50/90 via-amber-50/70 to-orange-50/90 dark:from-[#251e13] dark:via-[#1f190e] dark:to-[#251e13] border-b border-orange-200/50 dark:border-[#3a3020] text-xs select-none">
+          <div className="flex items-center gap-2 text-[11px] font-semibold text-orange-950 dark:text-orange-200">
+            <span className="flex h-2 w-2 relative">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-orange-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-orange-500"></span>
+            </span>
+            <span className="truncate">Horizontal scroll: swipe, drag or use arrows</span>
+          </div>
+
+          <div className="flex items-center gap-2.5 shrink-0">
+            {/* Visual Mini Progress Bar */}
+            <div className="hidden sm:flex items-center gap-1.5 text-[10px] text-orange-700 dark:text-orange-300 font-mono">
+              <div className="w-16 h-1.5 bg-orange-200/70 dark:bg-[#3a3020] rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-orange-500 dark:bg-orange-400 transition-all duration-150 rounded-full"
+                  style={{ width: `${Math.max(15, scrollProgress)}%` }}
+                />
+              </div>
+            </div>
+
+            {/* Quick Scroll Left / Right Buttons */}
+            <div className="flex items-center gap-1">
+              <button
+                type="button"
+                onClick={() => scrollByAmount(-280)}
+                disabled={!canScrollLeft}
+                className="p-1 rounded-lg bg-white dark:bg-slate-800 border border-orange-200/70 dark:border-slate-700 text-gray-700 dark:text-neutral-200 hover:bg-orange-100 dark:hover:bg-slate-700 disabled:opacity-25 disabled:cursor-not-allowed transition shadow-2xs cursor-pointer"
+                title="Scroll table left"
+                aria-label="Scroll table left"
+              >
+                <ChevronLeft className="w-3.5 h-3.5" />
+              </button>
+              <button
+                type="button"
+                onClick={() => scrollByAmount(280)}
+                disabled={!canScrollRight}
+                className="p-1 rounded-lg bg-white dark:bg-slate-800 border border-orange-200/70 dark:border-slate-700 text-gray-700 dark:text-neutral-200 hover:bg-orange-100 dark:hover:bg-slate-700 disabled:opacity-25 disabled:cursor-not-allowed transition shadow-2xs cursor-pointer"
+                title="Scroll table right"
+                aria-label="Scroll table right"
+              >
+                <ChevronRight className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Floating Side Edge Scroll Buttons */}
+      {isOverflowing && canScrollLeft && (
+        <button
+          type="button"
+          onClick={() => scrollByAmount(-280)}
+          className="absolute left-2 top-1/2 -translate-y-1/2 z-20 w-8 h-8 rounded-full bg-white/95 dark:bg-[#211d14]/95 text-gray-800 dark:text-white shadow-md border border-gray-200/80 dark:border-[#3a3020] flex items-center justify-center hover:scale-110 active:scale-95 transition-all opacity-85 hover:opacity-100 cursor-pointer"
+          title="Scroll Left"
+          aria-label="Scroll Left"
+        >
+          <ChevronLeft className="w-4 h-4" />
+        </button>
+      )}
+
+      {isOverflowing && canScrollRight && (
+        <button
+          type="button"
+          onClick={() => scrollByAmount(280)}
+          className="absolute right-2 top-1/2 -translate-y-1/2 z-20 w-8 h-8 rounded-full bg-white/95 dark:bg-[#211d14]/95 text-gray-800 dark:text-white shadow-md border border-gray-200/80 dark:border-[#3a3020] flex items-center justify-center hover:scale-110 active:scale-95 transition-all opacity-85 hover:opacity-100 cursor-pointer"
+          title="Scroll Right"
+          aria-label="Scroll Right"
+        >
+          <ChevronRight className="w-4 h-4" />
+        </button>
+      )}
+
+      {/* The Scrollable Viewport */}
+      <div
+        ref={scrollRef}
+        onMouseDown={handleMouseDown}
+        onMouseMove={handleMouseMove}
+        onMouseUp={handleMouseUpOrLeave}
+        onMouseLeave={handleMouseUpOrLeave}
+        className={`overflow-x-auto table-scroll ${isDragging ? "cursor-grabbing select-none" : "cursor-grab"} ${className}`}
+        style={{
+          WebkitOverflowScrolling: "touch",
+          touchAction: "pan-x pan-y",
+        }}
+      >
+        {children}
+      </div>
+    </div>
   );
 }
 
@@ -2573,7 +2743,7 @@ export default function CrmModule({
               </div>
             ) : (
               <>
-              <div className="overflow-x-auto table-scroll">
+              <ResponsiveTableContainer>
                 <table className="w-full text-left text-xs sm:text-sm border-collapse min-w-[980px]">
                   <thead>
                     <tr className="border-b border-gray-100 dark:border-[#3a3020] bg-gray-50/70 dark:bg-[#211d14] text-gray-500 dark:text-neutral-400 text-[11px] font-semibold uppercase tracking-wider">
@@ -2771,7 +2941,7 @@ export default function CrmModule({
                 })}
                 </tbody>
               </table>
-            </div>
+              </ResponsiveTableContainer>
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-4 py-3 border-t border-gray-100 dark:border-[#3a3020] bg-gray-50/60 dark:bg-[#211d14]/60 text-xs">
               <div className="text-gray-500 dark:text-neutral-400 flex items-center gap-1.5 flex-wrap">
                 <span>Showing</span>
@@ -3306,7 +3476,7 @@ export default function CrmModule({
                 No quotation or agreement found.
               </div>
             ) : (
-              <div className="overflow-x-auto table-scroll">
+              <ResponsiveTableContainer>
                 <table className="w-full text-left text-xs sm:text-sm border-collapse min-w-[860px]">
                   <thead>
                     <tr className="border-b border-gray-100 dark:border-[#3a3020] bg-gray-50/70 dark:bg-[#211d14] text-gray-500 dark:text-neutral-400 text-[11px] font-semibold uppercase tracking-wider">
@@ -3401,7 +3571,7 @@ export default function CrmModule({
                     })}
                   </tbody>
                 </table>
-              </div>
+              </ResponsiveTableContainer>
             )}
           </div>
         </div>
@@ -3414,7 +3584,8 @@ export default function CrmModule({
           ) : filteredFollowUps.length === 0 ? (
             <div className="p-8 text-center text-sm text-gray-500 dark:text-neutral-400">No sales follow-up found.</div>
           ) : (
-            <div className="overflow-x-auto table-scroll">
+            <>
+            <ResponsiveTableContainer>
               <table className="w-full text-left text-xs sm:text-sm border-collapse min-w-[760px]">
                 <thead>
                   <tr className="border-b border-gray-100 dark:border-[#3a3020] bg-gray-50/70 dark:bg-[#211d14] text-gray-500 dark:text-neutral-400 text-[11px] font-semibold uppercase tracking-wider">
@@ -3522,7 +3693,8 @@ export default function CrmModule({
                   })}
                 </tbody>
               </table>
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-4 py-3 border-t border-gray-100 dark:border-[#3a3020] bg-gray-50/60 dark:bg-[#211d14]/60 text-xs">
+            </ResponsiveTableContainer>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-4 py-3 border-t border-gray-100 dark:border-[#3a3020] bg-gray-50/60 dark:bg-[#211d14]/60 text-xs">
                 <div className="text-gray-500 dark:text-neutral-400 flex items-center gap-1.5 flex-wrap">
                   <span>Showing</span>
                   <span className="font-bold text-gray-800 dark:text-white">{followUpPageStart}</span>
@@ -3611,7 +3783,7 @@ export default function CrmModule({
                   </div>
                 </div>
               </div>
-            </div>
+            </>
           )}
         </div>
       )}
@@ -3623,7 +3795,8 @@ export default function CrmModule({
           ) : filteredSalesMeetings.length === 0 ? (
             <div className="p-8 text-center text-sm text-gray-500 dark:text-neutral-400">No sales meeting scheduled.</div>
           ) : (
-            <div className="overflow-x-auto table-scroll">
+            <>
+            <ResponsiveTableContainer>
               <table className="w-full text-left text-xs sm:text-sm border-collapse min-w-[820px]">
                 <thead>
                   <tr className="border-b border-gray-100 dark:border-[#3a3020] bg-gray-50/70 dark:bg-[#211d14] text-gray-500 dark:text-neutral-400 text-[11px] font-semibold uppercase tracking-wider">
@@ -3742,7 +3915,8 @@ export default function CrmModule({
                   })}
                 </tbody>
               </table>
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-4 py-3 border-t border-gray-100 dark:border-[#3a3020] bg-gray-50/40 dark:bg-[#211d14]/40 text-xs">
+            </ResponsiveTableContainer>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-4 py-3 border-t border-gray-100 dark:border-[#3a3020] bg-gray-50/40 dark:bg-[#211d14]/40 text-xs">
                 <div className="text-gray-500 dark:text-neutral-400">
                   {meetingPagination?.loading ? "Loading meetings..." : (
                     <>Showing meeting page <span className="font-bold text-gray-800 dark:text-white">{safeMeetingPage}</span> of <span className="font-bold text-gray-800 dark:text-white">{meetingPageCount}</span> ({meetingTotal} meetings)</>
@@ -3761,7 +3935,7 @@ export default function CrmModule({
                   </button>
                 </div>
               </div>
-            </div>
+            </>
           )}
         </div>
       )}

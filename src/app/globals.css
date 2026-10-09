@@ -297,16 +297,17 @@ html body div.table-scroll,
   display: block !important;
   -webkit-overflow-scrolling: touch !important;
   scrollbar-width: thin !important;
-  scrollbar-color: #ef4444 #f1f5f9 !important;
+  scrollbar-color: #f97316 #f1f5f9 !important;
   -ms-overflow-style: auto !important;
+  overscroll-behavior-x: contain !important;
 }
 
 html body .table-scroll::-webkit-scrollbar,
 html body div.table-scroll::-webkit-scrollbar,
 .table-scroll::-webkit-scrollbar {
   display: block !important;
-  height: 8px !important;
-  width: 8px !important;
+  height: 7px !important;
+  width: 7px !important;
   background: #f1f5f9 !important;
 }
 
@@ -322,19 +323,19 @@ html body .table-scroll::-webkit-scrollbar-thumb,
 html body div.table-scroll::-webkit-scrollbar-thumb,
 .table-scroll::-webkit-scrollbar-thumb {
   display: block !important;
-  background: #ef4444 !important;
+  background: #f97316 !important;
   border-radius: 9999px !important;
 }
 
 html body .table-scroll::-webkit-scrollbar-thumb:hover,
 html body div.table-scroll::-webkit-scrollbar-thumb:hover,
 .table-scroll::-webkit-scrollbar-thumb:hover {
-  background: #dc2626 !important;
+  background: #ea580c !important;
 }
 
 html.dark body .table-scroll,
 .dark .table-scroll {
-  scrollbar-color: #ef4444 var(--dark-eye-panel-soft) !important;
+  scrollbar-color: #f97316 var(--dark-eye-panel-soft) !important;
 }
 
 html.dark body .table-scroll::-webkit-scrollbar,
@@ -349,7 +350,7 @@ html.dark body .table-scroll::-webkit-scrollbar-track,
 
 html.dark body .table-scroll::-webkit-scrollbar-thumb,
 .dark .table-scroll::-webkit-scrollbar-thumb {
-  background: #ef4444 !important;
+  background: #f97316 !important;
 }
 
 /* Admin sidebar active link: branded red highlight instead of flat gray. */
