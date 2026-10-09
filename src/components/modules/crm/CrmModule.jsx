@@ -35,6 +35,9 @@ import {
   HelpCircle,
   ChevronLeft,
   ChevronRight,
+  Eye,
+  Video,
+  ArrowDownAZ,
 } from "lucide-react";
 import ActivityTimeline from "../shared/ActivityTimeline";
 import MetaLeadsImportModal from "./MetaLeadsImportModal";
@@ -374,6 +377,8 @@ export default function CrmModule({
     setQuery("");
     setStatusFilter("active");
     setDateFilter("all");
+    setLeadAlphabetFilter("all");
+    setLeadSortOrder("default");
     setLeadPage(1);
   }, [viewMode]);
 
@@ -388,10 +393,12 @@ export default function CrmModule({
   const [statusFilter, setStatusFilter] = useState("active");
   const [leadPage, setLeadPage] = useState(1);
   const [leadsPerPage, setLeadsPerPage] = useState(10);
+  const [leadAlphabetFilter, setLeadAlphabetFilter] = useState("all");
+  const [leadSortOrder, setLeadSortOrder] = useState("default");
   const [pipelinePage, setPipelinePage] = useState(1);
   const [pipelinePageSize, setPipelinePageSize] = useState(20);
   const [followUpPage, setFollowUpPage] = useState(1);
-  const [followUpPageSize, setFollowUpPageSize] = useState(50);
+  const [followUpPageSize, setFollowUpPageSize] = useState(10);
   const [meetingPage, setMeetingPage] = useState(1);
   const [meetingPageSize, setMeetingPageSize] = useState(50);
   const [dateFilter, setDateFilter] = useState("all");
@@ -626,15 +633,15 @@ export default function CrmModule({
     const timer = setTimeout(() => {
       const range = getServerDateRange();
       onFetchFollowUpsPage({
-        page: followUpPage,
-        pageSize: followUpPageSize,
-        search: query,
+        page: 1,
+        pageSize: 100,
+        search: "",
         ...range,
       });
     }, 350);
     return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [customDateRange.from, customDateRange.to, dateFilter, followUpPage, followUpPageSize, onFetchFollowUpsPage, query, selectedDate, viewMode]);
+  }, [customDateRange.from, customDateRange.to, dateFilter, onFetchFollowUpsPage, selectedDate, viewMode]);
 
   useEffect(() => {
     if (!onFetchMeetingsPage || viewMode !== "sales_meetings") return;
@@ -651,9 +658,52 @@ export default function CrmModule({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [customDateRange.from, customDateRange.to, dateFilter, meetingPage, meetingPageSize, onFetchMeetingsPage, query, selectedDate, viewMode]);
 
+  const leadLetterCounts = useMemo(() => {
+    const counts = {};
+    leads.forEach((lead) => {
+      const linkedDeal = deals.find((deal) => deal.lead_id === lead.id);
+      const isInPipeline = Boolean(linkedDeal && !CLOSED_PIPELINE_STAGES.includes(linkedDeal.pipeline_stage || linkedDeal.stage));
+      const hasWonDeal = Boolean(linkedDeal && (linkedDeal.pipeline_stage || linkedDeal.stage) === "closed_won");
+      const hasLostDeal = Boolean(linkedDeal && (linkedDeal.pipeline_stage || linkedDeal.stage) === "closed_lost");
+
+      const isConverted = hasWonDeal || (!linkedDeal && (lead.status === "Converted" || lead.status === "Closed Won"));
+      const isLost = !isConverted && (hasLostDeal || (!linkedDeal && lead.status === "Lost"));
+      const isPipelineLead = !isConverted && !isLost && (isInPipeline || (!linkedDeal && ["Contacted", "Qualified", "Proposal Sent", "In Pipeline", "Negotiation", "In Progress"].includes(lead.status)));
+      const isActiveInquiry = !isConverted && !isLost && !isPipelineLead;
+
+      const matchStatus =
+        statusFilter === "all" || !statusFilter
+          ? true
+          : statusFilter === "active"
+          ? isActiveInquiry
+          : statusFilter === "pipeline"
+          ? isPipelineLead
+          : statusFilter === "converted" || statusFilter === "won"
+          ? isConverted
+          : statusFilter === "lost"
+          ? isLost
+          : true;
+
+      const matchDate = matchesDateFilter(lead);
+      if (matchStatus && matchDate) {
+        const first = (lead.name || "").trim().toUpperCase().charAt(0);
+        if (/[A-Z]/.test(first)) {
+          counts[first] = (counts[first] || 0) + 1;
+        } else if (first) {
+          counts["#"] = (counts["#"] || 0) + 1;
+        }
+      }
+    });
+    return counts;
+  }, [customDateRange.from, customDateRange.to, dateFilter, deals, leads, selectedDate, statusFilter]);
+
+  const totalLettersCount = useMemo(() => {
+    return Object.values(leadLetterCounts).reduce((a, b) => a + b, 0);
+  }, [leadLetterCounts]);
+
   const filteredLeads = useMemo(() => {
     const q = query.trim().toLowerCase();
-    return leads.filter((lead) => {
+    const result = leads.filter((lead) => {
       const linkedDeal = deals.find((deal) => deal.lead_id === lead.id);
       const isInPipeline = Boolean(linkedDeal && !CLOSED_PIPELINE_STAGES.includes(linkedDeal.pipeline_stage || linkedDeal.stage));
       const hasWonDeal = Boolean(linkedDeal && (linkedDeal.pipeline_stage || linkedDeal.stage) === "closed_won");
@@ -683,16 +733,33 @@ export default function CrmModule({
         [lead.name, lead.phone, lead.email, lead.service, lead.source, lead.city, lead.state].some((val) =>
           String(val || "").toLowerCase().includes(q)
         );
-      return matchStatus && matchQuery && matchDate;
+
+      const firstChar = (lead.name || "").trim().toUpperCase().charAt(0);
+      const matchAlphabet =
+        leadAlphabetFilter === "all"
+          ? true
+          : leadAlphabetFilter === "#"
+          ? !/[A-Z]/.test(firstChar)
+          : firstChar === leadAlphabetFilter;
+
+      return matchStatus && matchQuery && matchDate && matchAlphabet;
     });
-  }, [customDateRange.from, customDateRange.to, dateFilter, deals, leads, query, selectedDate, statusFilter]);
+
+    if (leadSortOrder === "asc" || (leadSortOrder === "default" && leadAlphabetFilter !== "all")) {
+      result.sort((a, b) => String(a.name || "").localeCompare(String(b.name || ""), undefined, { sensitivity: "base" }));
+    } else if (leadSortOrder === "desc") {
+      result.sort((a, b) => String(b.name || "").localeCompare(String(a.name || ""), undefined, { sensitivity: "base" }));
+    }
+
+    return result;
+  }, [customDateRange.from, customDateRange.to, dateFilter, deals, leadAlphabetFilter, leadSortOrder, leads, query, selectedDate, statusFilter]);
 
   useEffect(() => {
     setLeadPage(1);
     setPipelinePage(1);
     setFollowUpPage(1);
     setMeetingPage(1);
-  }, [customDateRange.from, customDateRange.to, dateFilter, followUpPageSize, leadsPerPage, meetingPageSize, pipelinePageSize, query, selectedDate, statusFilter, viewMode]);
+  }, [customDateRange.from, customDateRange.to, dateFilter, followUpPageSize, leadAlphabetFilter, leadSortOrder, leadsPerPage, meetingPageSize, pipelinePageSize, query, selectedDate, statusFilter, viewMode]);
 
   const leadTotalForPagination = filteredLeads.length;
   const leadPageCount = Math.max(1, Math.ceil(leadTotalForPagination / leadsPerPage));
@@ -787,14 +854,38 @@ export default function CrmModule({
 
   const filteredFollowUps = useMemo(() => {
     const q = query.trim().toLowerCase();
+    const now = Date.now();
     return followUps.filter((item) => {
       const lead = leads.find((l) => l.id === item.lead_id);
       const client = clients.find((c) => c.id === item.client_id);
       if (!matchesDateFilter(item, "due_at")) return false;
-      return !q || [item.title, item.channel, item.status, item.notes, lead?.name, client?.name]
-        .some((value) => String(value || "").toLowerCase().includes(q));
+
+      const isOverdue = item.status === "pending" && item.due_at && new Date(item.due_at).getTime() < now;
+      const isPending = item.status === "pending";
+      const isDone = item.status === "done";
+      const isMissed = item.status === "missed";
+
+      const matchStatus =
+        statusFilter === "all" || !statusFilter
+          ? true
+          : statusFilter === "pending" || statusFilter === "active"
+          ? isPending && !isOverdue
+          : statusFilter === "overdue"
+          ? isOverdue
+          : statusFilter === "done" || statusFilter === "completed" || statusFilter === "won" || statusFilter === "converted"
+          ? isDone
+          : statusFilter === "missed" || statusFilter === "lost"
+          ? isMissed
+          : true;
+
+      const matchQuery =
+        !q ||
+        [item.title, item.channel, item.status, item.notes, lead?.name, client?.name]
+          .some((value) => String(value || "").toLowerCase().includes(q));
+
+      return matchStatus && matchQuery;
     });
-  }, [clients, customDateRange.from, customDateRange.to, dateFilter, followUps, leads, query, selectedDate]);
+  }, [clients, customDateRange.from, customDateRange.to, dateFilter, followUps, leads, query, selectedDate, statusFilter]);
 
   const filteredSalesMeetings = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -867,10 +958,15 @@ export default function CrmModule({
   }, [visiblePipelineDeals, pipelinePageSize, safePipelinePage]);
   const pipelinePageStart = pipelineTotal === 0 ? 0 : (safePipelinePage - 1) * pipelinePageSize + 1;
   const pipelinePageEnd = Math.min(pipelineTotal, safePipelinePage * pipelinePageSize);
-  const followUpTotal = followUpPagination?.count ?? filteredFollowUps.length;
-  const followUpBasePageCount = Math.max(1, Math.ceil(Math.max(followUpTotal, filteredFollowUps.length) / followUpPageSize));
-  const safeFollowUpPage = onFetchFollowUpsPage ? Math.max(1, followUpPage) : Math.min(followUpPage, followUpBasePageCount);
-  const followUpPageCount = Math.max(safeFollowUpPage, followUpBasePageCount, onFetchFollowUpsPage && filteredFollowUps.length >= followUpPageSize ? safeFollowUpPage + 1 : 1);
+  const followUpTotal = filteredFollowUps.length;
+  const followUpPageCount = Math.max(1, Math.ceil(followUpTotal / followUpPageSize));
+  const safeFollowUpPage = Math.min(Math.max(1, followUpPage), followUpPageCount);
+  const paginatedFollowUps = useMemo(() => {
+    const start = (safeFollowUpPage - 1) * followUpPageSize;
+    return filteredFollowUps.slice(start, start + followUpPageSize);
+  }, [filteredFollowUps, followUpPageSize, safeFollowUpPage]);
+  const followUpPageStart = followUpTotal === 0 ? 0 : (safeFollowUpPage - 1) * followUpPageSize + 1;
+  const followUpPageEnd = Math.min(followUpTotal, safeFollowUpPage * followUpPageSize);
   const meetingTotal = meetingPagination?.count ?? filteredSalesMeetings.length;
   const meetingBasePageCount = Math.max(1, Math.ceil(Math.max(meetingTotal, filteredSalesMeetings.length) / meetingPageSize));
   const safeMeetingPage = onFetchMeetingsPage ? Math.max(1, meetingPage) : Math.min(meetingPage, meetingBasePageCount);
@@ -1126,15 +1222,68 @@ export default function CrmModule({
       ];
     }
     if (viewMode === "followups") {
-      const pending = filteredFollowUps.filter((item) => item.status === "pending").length;
-      const overdue = filteredFollowUps.filter((item) => item.status === "pending" && item.due_at && new Date(item.due_at).getTime() < Date.now()).length;
-      const done = filteredFollowUps.filter((item) => item.status === "done").length;
-      const missed = filteredFollowUps.filter((item) => item.status === "missed").length;
+      const now = Date.now();
+      const allFollowUps = followUps.filter((item) => matchesDateFilter(item, "due_at"));
+      const totalCount = allFollowUps.length;
+      const allPending = allFollowUps.filter((item) => item.status === "pending");
+      const overdueCount = allPending.filter((item) => item.due_at && new Date(item.due_at).getTime() < now).length;
+      const pendingCount = allPending.length - overdueCount;
+      const doneCount = allFollowUps.filter((item) => item.status === "done").length;
+      const missedCount = allFollowUps.filter((item) => item.status === "missed").length;
+
       return [
-        { label: "Pending", value: pending, sub: "Need action", icon: Phone, tone: "text-amber-600 bg-amber-50 dark:bg-amber-950/30" },
-        { label: "Overdue", value: overdue, sub: "Past due time", icon: AlertCircle, tone: "text-red-600 bg-red-50 dark:bg-red-950/30" },
-        { label: "Completed", value: done, sub: "Marked done", icon: CheckCircle2, tone: "text-emerald-600 bg-emerald-50 dark:bg-emerald-950/30" },
-        { label: "Missed", value: missed, sub: "Needs reschedule", icon: XCircle, tone: "text-rose-600 bg-rose-50 dark:bg-rose-950/30" },
+        {
+          id: "total_followups",
+          label: "Total Follow-ups",
+          value: totalCount,
+          sub: "All scheduled follow-ups",
+          icon: Calendar,
+          tone: "text-blue-600 bg-blue-50 dark:bg-blue-950/30",
+          filterKey: "all",
+          helpText: "All follow-up activities recorded for leads and clients.",
+        },
+        {
+          id: "pending_followups",
+          label: "Pending",
+          value: pendingCount,
+          sub: "Upcoming actions required",
+          badge: "Open",
+          icon: Phone,
+          tone: "text-amber-600 bg-amber-50 dark:bg-amber-950/30",
+          filterKey: "pending",
+          helpText: "Open follow-ups scheduled for today or future dates.",
+        },
+        {
+          id: "overdue_followups",
+          label: "Overdue",
+          value: overdueCount,
+          sub: "Past due action required",
+          badge: overdueCount > 0 ? "Urgent" : null,
+          icon: AlertCircle,
+          tone: "text-red-600 bg-red-50 dark:bg-red-950/30",
+          filterKey: "overdue",
+          helpText: "Pending follow-ups whose due date has passed.",
+        },
+        {
+          id: "completed_followups",
+          label: "Completed",
+          value: doneCount,
+          sub: "Marked done successfully",
+          icon: CheckCircle2,
+          tone: "text-emerald-600 bg-emerald-50 dark:bg-emerald-950/30",
+          filterKey: "done",
+          helpText: "Follow-ups that were successfully completed.",
+        },
+        {
+          id: "missed_followups",
+          label: "Missed",
+          value: missedCount,
+          sub: "Needs reschedule",
+          icon: XCircle,
+          tone: "text-rose-600 bg-rose-50 dark:bg-rose-950/30",
+          filterKey: "missed",
+          helpText: "Follow-ups marked as missed or requiring rescheduling.",
+        },
       ];
     }
     if (viewMode === "sales_meetings") {
@@ -1959,12 +2108,16 @@ export default function CrmModule({
         <div className={`grid gap-3 ${pageStatusCards.length === 6 ? "grid-cols-2 sm:grid-cols-3 xl:grid-cols-6" : pageStatusCards.length === 5 ? "grid-cols-2 sm:grid-cols-3 xl:grid-cols-5" : "grid-cols-2 lg:grid-cols-4"}`}>
           {pageStatusCards.map((card) => {
             const Icon = card.icon;
-            const isClickable = Boolean(card.filterKey && (viewMode === "leads" || viewMode === "pipeline"));
+            const isClickable = Boolean(card.filterKey && (viewMode === "leads" || viewMode === "pipeline" || viewMode === "followups"));
             const isFilterActive =
-              (viewMode === "leads" || viewMode === "pipeline") &&
+              (viewMode === "leads" || viewMode === "pipeline" || viewMode === "followups") &&
               card.filterKey &&
               (
                 (card.filterKey === "all" && (statusFilter === "all" || !statusFilter)) ||
+                (card.filterKey === "pending" && (statusFilter === "pending" || statusFilter === "active")) ||
+                (card.filterKey === "overdue" && statusFilter === "overdue") ||
+                (card.filterKey === "done" && (statusFilter === "done" || statusFilter === "completed")) ||
+                (card.filterKey === "missed" && statusFilter === "missed") ||
                 (card.filterKey === "active" && statusFilter === "active") ||
                 (card.filterKey === "pipeline" && statusFilter === "pipeline") ||
                 (card.filterKey === "converted" && (statusFilter === "converted" || statusFilter === "won")) ||
@@ -1978,6 +2131,7 @@ export default function CrmModule({
                     setStatusFilter(card.filterKey);
                     setLeadPage(1);
                     setPipelinePage(1);
+                    setFollowUpPage(1);
                   }
                 }}
                 className={`p-4 rounded-2xl bg-white dark:bg-[#18150f] border shadow-2xs min-w-0 transition-all ${
@@ -2180,8 +2334,8 @@ export default function CrmModule({
       </>
       )}
 
-      {/* 3. Filter & Search Controls (Hidden on Leads & Pipeline pages as cards handle filtering) */}
-      {viewMode !== "reports" && viewMode !== "leads" && viewMode !== "pipeline" && (
+      {/* 3. Filter & Search Controls (Hidden on Leads, Pipeline & Follow-ups as cards handle filtering) */}
+      {viewMode !== "reports" && viewMode !== "leads" && viewMode !== "pipeline" && viewMode !== "followups" && (
       <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 p-3 rounded-2xl bg-white dark:bg-[#18150f] border border-gray-100 dark:border-[#3a3020]">
         <div className="relative flex-1">
           <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
@@ -2283,27 +2437,165 @@ export default function CrmModule({
 
       {/* 4. Leads List View */}
       {viewMode === "leads" && (
-        <div className="rounded-2xl bg-white dark:bg-[#18150f] border border-gray-100 dark:border-[#3a3020] overflow-hidden shadow-2xs">
-          {isLeadsLoading && paginatedLeads.length === 0 ? (
-            <TableSkeleton rows={6} columns={6} />
-          ) : filteredLeads.length === 0 ? (
-            <div className="p-8 text-center text-sm text-gray-500 dark:text-neutral-400">
-              No leads found matching your search and filter criteria.
+        <div className="space-y-3">
+          {/* Alphabetical Search & Filter Bar */}
+          <div className="p-3 sm:p-4 rounded-2xl bg-white dark:bg-[#18150f] border border-gray-100 dark:border-[#3a3020] shadow-2xs space-y-3">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+              {/* Search input with clear button */}
+              <div className="relative flex-1">
+                <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
+                <input
+                  type="text"
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  placeholder="Search leads alphabetically by name, phone, email, service..."
+                  className="w-full pl-9 pr-9 py-2 rounded-xl text-xs sm:text-sm bg-gray-50 dark:bg-slate-800/80 border border-gray-200 dark:border-slate-700/80 focus:outline-hidden focus:ring-2 focus:ring-orange-500 text-gray-900 dark:text-white placeholder-gray-400"
+                />
+                {query && (
+                  <button
+                    type="button"
+                    onClick={() => setQuery("")}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 p-0.5 cursor-pointer"
+                    title="Clear search"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                )}
+              </div>
+
+              {/* A-Z Sort Controls */}
+              <div className="flex items-center gap-1.5 shrink-0 bg-gray-100 dark:bg-slate-800/80 p-1 rounded-xl text-xs font-semibold">
+                <span className="text-[11px] text-gray-500 dark:text-neutral-400 px-1.5 flex items-center gap-1 select-none">
+                  <ArrowDownAZ className="w-3.5 h-3.5 text-orange-500" />
+                  <span>Sort:</span>
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setLeadSortOrder("asc")}
+                  className={`px-2.5 py-1 rounded-lg transition select-none cursor-pointer ${
+                    leadSortOrder === "asc"
+                      ? "bg-white dark:bg-slate-700 text-orange-600 dark:text-orange-400 shadow-2xs font-bold"
+                      : "text-gray-600 dark:text-neutral-400 hover:text-gray-900 dark:hover:text-white"
+                  }`}
+                  title="Sort Alphabetically A to Z"
+                >
+                  A → Z
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setLeadSortOrder("desc")}
+                  className={`px-2.5 py-1 rounded-lg transition select-none cursor-pointer ${
+                    leadSortOrder === "desc"
+                      ? "bg-white dark:bg-slate-700 text-orange-600 dark:text-orange-400 shadow-2xs font-bold"
+                      : "text-gray-600 dark:text-neutral-400 hover:text-gray-900 dark:hover:text-white"
+                  }`}
+                  title="Sort Alphabetically Z to A"
+                >
+                  Z → A
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setLeadSortOrder("default")}
+                  className={`px-2 py-1 rounded-lg transition select-none cursor-pointer ${
+                    leadSortOrder === "default"
+                      ? "bg-white dark:bg-slate-700 text-orange-600 dark:text-orange-400 shadow-2xs font-bold"
+                      : "text-gray-600 dark:text-neutral-400 hover:text-gray-900 dark:hover:text-white"
+                  }`}
+                  title="Default order (Newest first)"
+                >
+                  Default
+                </button>
+              </div>
             </div>
-          ) : (
-            <>
-            <div className="overflow-x-auto table-scroll">
-              <table className="w-full text-left text-xs sm:text-sm border-collapse min-w-[980px]">
-                <thead>
-                  <tr className="border-b border-gray-100 dark:border-[#3a3020] bg-gray-50/70 dark:bg-[#211d14] text-gray-500 dark:text-neutral-400 text-[11px] font-semibold uppercase tracking-wider">
-                    <th className="py-3 px-4">Full Name</th>
-                    <th className="py-3 px-4">Contact (Phone & Email)</th>
-                    <th className="py-3 px-4">Service Needed</th>
-                    <th className="py-3 px-4">Budget Range</th>
-                    <th className="py-3 px-4">City / State</th>
-                    <th className="py-3 px-4 text-right min-w-[300px]">Quick Actions</th>
-                  </tr>
-                </thead>
+
+            {/* A-Z Alphabet Selector Row */}
+            <div className="flex items-center gap-1 overflow-x-auto no-scrollbar pt-2 border-t border-gray-100 dark:border-[#2e2619]">
+              <span className="text-[10px] font-bold text-gray-400 dark:text-neutral-500 uppercase tracking-wider shrink-0 mr-1 select-none">
+                A-Z:
+              </span>
+              {["all", ..."ABCDEFGHIJKLMNOPQRSTUVWXYZ".split(""), "#"].map((char) => {
+                const isSelected = leadAlphabetFilter === char;
+                const count = char === "all" ? totalLettersCount : leadLetterCounts[char] || 0;
+                const hasLeads = count > 0;
+
+                return (
+                  <button
+                    key={char}
+                    type="button"
+                    onClick={() => {
+                      setLeadAlphabetFilter(isSelected && char !== "all" ? "all" : char);
+                      setLeadPage(1);
+                    }}
+                    disabled={char !== "all" && !hasLeads}
+                    className={`min-w-[26px] h-7 px-1.5 rounded-lg text-[11px] font-bold shrink-0 transition flex items-center justify-center gap-0.5 select-none ${
+                      isSelected
+                        ? "bg-orange-600 text-white shadow-2xs scale-105 cursor-pointer"
+                        : hasLeads
+                        ? "bg-gray-100 dark:bg-slate-800 text-gray-700 dark:text-neutral-300 hover:bg-orange-50 hover:text-orange-600 dark:hover:bg-orange-950/40 cursor-pointer"
+                        : "text-gray-300 dark:text-neutral-600 cursor-not-allowed opacity-35"
+                    }`}
+                    title={
+                      char === "all"
+                        ? `All leads (${totalLettersCount})`
+                        : hasLeads
+                        ? `${count} lead(s) starting with "${char}"`
+                        : `No leads starting with "${char}"`
+                    }
+                  >
+                    <span>{char === "all" ? "All" : char}</span>
+                    {isSelected && char !== "all" && (
+                      <span className="text-[9px] opacity-90">({count})</span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Table Container */}
+          <div className="rounded-2xl bg-white dark:bg-[#18150f] border border-gray-100 dark:border-[#3a3020] overflow-hidden shadow-2xs">
+            {isLeadsLoading && paginatedLeads.length === 0 ? (
+              <TableSkeleton rows={6} columns={6} />
+            ) : filteredLeads.length === 0 ? (
+              <div className="p-8 text-center text-sm text-gray-500 dark:text-neutral-400">
+                <p>No leads found matching your search and filter criteria{leadAlphabetFilter !== "all" && ` starting with "${leadAlphabetFilter}"`}.</p>
+                {(leadAlphabetFilter !== "all" || query) && (
+                  <button
+                    onClick={() => {
+                      setLeadAlphabetFilter("all");
+                      setQuery("");
+                    }}
+                    className="mt-2 text-xs font-semibold text-orange-600 hover:underline inline-block cursor-pointer"
+                  >
+                    Clear search & letter filter
+                  </button>
+                )}
+              </div>
+            ) : (
+              <>
+              <div className="overflow-x-auto table-scroll">
+                <table className="w-full text-left text-xs sm:text-sm border-collapse min-w-[980px]">
+                  <thead>
+                    <tr className="border-b border-gray-100 dark:border-[#3a3020] bg-gray-50/70 dark:bg-[#211d14] text-gray-500 dark:text-neutral-400 text-[11px] font-semibold uppercase tracking-wider">
+                      <th
+                        onClick={() => setLeadSortOrder(leadSortOrder === "asc" ? "desc" : "asc")}
+                        className="py-3 px-4 cursor-pointer hover:text-orange-600 transition select-none"
+                        title="Click to sort alphabetically"
+                      >
+                        <div className="flex items-center gap-1.5">
+                          <span>Full Name</span>
+                          <ArrowDownAZ className={`w-3.5 h-3.5 ${leadSortOrder !== "default" ? "text-orange-500" : "text-gray-400"}`} />
+                          {leadSortOrder === "asc" && <span className="text-[9px] font-bold text-orange-600 lowercase">a-z</span>}
+                          {leadSortOrder === "desc" && <span className="text-[9px] font-bold text-orange-600 lowercase">z-a</span>}
+                        </div>
+                      </th>
+                      <th className="py-3 px-4">Contact (Phone & Email)</th>
+                      <th className="py-3 px-4">Service Needed</th>
+                      <th className="py-3 px-4">Budget Range</th>
+                      <th className="py-3 px-4">City / State</th>
+                      <th className="py-3 px-4 text-right">Actions</th>
+                    </tr>
+                  </thead>
                 <tbody className="divide-y divide-gray-100 dark:divide-[#3a3020]/60">
                   {paginatedLeads.map((lead) => {
                     const budget = getLeadBudget(lead);
@@ -2404,13 +2696,14 @@ export default function CrmModule({
                           )}
                         </td>
 
-                      <td className="py-3.5 px-4 text-right min-w-[300px]">
+                      <td className="py-3.5 px-4 text-right">
                         <div className="flex items-center justify-end gap-1.5 flex-nowrap whitespace-nowrap">
                           {lead.phone && (
                             <button
                               onClick={() => handleWhatsAppClick(lead)}
                               className="p-1.5 rounded-lg text-emerald-600 bg-emerald-50 dark:bg-emerald-950/40 hover:bg-emerald-100 transition shrink-0"
                               title="Chat on WhatsApp"
+                              aria-label="Chat on WhatsApp"
                             >
                               <WhatsAppIcon className="w-3.5 h-3.5" />
                             </button>
@@ -2422,52 +2715,54 @@ export default function CrmModule({
                                 setViewMode("pipeline");
                                 setStatusFilter("all");
                               }}
-                              className={`px-2.5 py-1 rounded-lg text-xs font-semibold inline-flex items-center gap-1 shrink-0 transition ${
+                              className={`p-1.5 rounded-lg shrink-0 transition ${
                                 isConverted
                                   ? "text-emerald-700 bg-emerald-50 dark:bg-emerald-950/40 dark:text-emerald-300 hover:bg-emerald-100"
                                   : "text-amber-700 bg-amber-50 dark:bg-amber-950/40 dark:text-amber-300 hover:bg-amber-100"
                               }`}
-                              title={isConverted ? "View won deal in Pipeline" : "View active deal in Pipeline"}
+                              title={isConverted ? "Won in Pipeline (Click to view)" : "In Pipeline (Click to view)"}
+                              aria-label={isConverted ? "Won in Pipeline" : "In Pipeline"}
                             >
-                              <TrendingUp className="w-3 h-3" />
-                              <span>{isConverted ? "Won in Pipeline" : "In Pipeline"}</span>
+                              <TrendingUp className="w-3.5 h-3.5" />
                             </button>
                           ) : (
                             <button
                               onClick={() => openAddDealModal("contacted", lead)}
-                              className="px-2.5 py-1 rounded-lg text-xs font-semibold text-orange-600 bg-orange-50 dark:bg-orange-950/40 hover:bg-orange-100 transition inline-flex items-center gap-1 shrink-0"
-                              title="Move qualified lead to pipeline"
+                              className="p-1.5 rounded-lg text-orange-600 bg-orange-50 dark:bg-orange-950/40 hover:bg-orange-100 transition shrink-0"
+                              title="Move to Pipeline"
+                              aria-label="Move to Pipeline"
                             >
-                              <TrendingUp className="w-3 h-3" />
-                              <span>Pipeline</span>
+                              <TrendingUp className="w-3.5 h-3.5" />
                             </button>
                           )}
 
                           <button
                             onClick={() => openLeadFollowUpModal(lead)}
-                            className="px-2.5 py-1 rounded-lg text-xs font-semibold text-blue-600 bg-blue-50 dark:bg-blue-950/40 hover:bg-blue-100 transition inline-flex items-center gap-1 shrink-0"
-                            title="Create follow-up for this lead"
+                            className="p-1.5 rounded-lg text-blue-600 bg-blue-50 dark:bg-blue-950/40 hover:bg-blue-100 transition shrink-0"
+                            title="Schedule Follow-up"
+                            aria-label="Schedule Follow-up"
                           >
-                            <Calendar className="w-3 h-3" />
-                            <span>Follow-up</span>
+                            <Calendar className="w-3.5 h-3.5" />
                           </button>
 
                           {lead.status !== "Lost" && lead.status !== "Converted" && (
                             <button
                               onClick={() => openLostModal({ type: "lead", item: lead })}
-                              className="px-2.5 py-1 rounded-lg text-xs font-semibold text-red-600 bg-red-50 dark:bg-red-950/40 hover:bg-red-100 transition shrink-0"
-                              title="Mark lead lost with reason"
+                              className="p-1.5 rounded-lg text-red-600 bg-red-50 dark:bg-red-950/40 hover:bg-red-100 transition shrink-0"
+                              title="Mark Lead as Lost"
+                              aria-label="Mark Lead as Lost"
                             >
-                              Lost
+                              <XCircle className="w-3.5 h-3.5" />
                             </button>
                           )}
 
                           <button
                             onClick={() => setSelectedLead(lead)}
                             className="p-1.5 rounded-lg text-gray-500 hover:bg-gray-100 dark:hover:bg-slate-800 transition shrink-0"
-                            title="View Timeline & Details"
+                            title="View Details & Timeline"
+                            aria-label="View Details & Timeline"
                           >
-                            <Calendar className="w-3.5 h-3.5" />
+                            <Eye className="w-3.5 h-3.5" />
                           </button>
                         </div>
                       </td>
@@ -2569,6 +2864,7 @@ export default function CrmModule({
             </>
           )}
         </div>
+      </div>
       )}
 
       {viewMode === "pipeline" && (
@@ -3060,15 +3356,15 @@ export default function CrmModule({
                             {doc.valid_until || doc.start_date || doc.sent_at?.slice(0, 10) || doc.created_at?.slice(0, 10) || "-"}
                           </td>
                           <td className="py-3.5 px-4 text-right">
-                            <div className="flex items-center justify-end gap-2">
+                            <div className="flex items-center justify-end gap-1.5">
                               <button
                                 type="button"
                                 onClick={() => sendDocWhatsApp(doc, doc.docType)}
-                                className="px-2.5 py-1 rounded-lg text-xs font-bold bg-emerald-50 text-emerald-700 hover:bg-emerald-100 dark:bg-emerald-950/40 dark:text-emerald-300 border border-emerald-200/50 dark:border-emerald-800/40 transition flex items-center gap-1 cursor-pointer"
+                                className="p-1.5 rounded-lg text-emerald-600 bg-emerald-50 dark:bg-emerald-950/40 hover:bg-emerald-100 border border-emerald-200/50 dark:border-emerald-800/40 transition shrink-0 cursor-pointer"
                                 title="Send on WhatsApp"
+                                aria-label="Send on WhatsApp"
                               >
                                 <WhatsAppIcon className="w-3.5 h-3.5" />
-                                <span>WhatsApp</span>
                               </button>
                               {!isFinal && (
                                 <>
@@ -3078,9 +3374,11 @@ export default function CrmModule({
                                       else if (doc.quotation_number) onUpdateQuotation?.(doc.id, { status: "accepted" });
                                       else onUpdateProposal?.(doc.id, { status: "accepted", accepted_at: new Date().toISOString() });
                                     }}
-                                    className="px-2.5 py-1 rounded-lg text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white transition cursor-pointer"
+                                    className="p-1.5 rounded-lg text-white bg-emerald-600 hover:bg-emerald-700 transition shrink-0 cursor-pointer"
+                                    title={doc.docType === "agreement" ? "Sign Agreement" : "Accept Document"}
+                                    aria-label={doc.docType === "agreement" ? "Sign Agreement" : "Accept Document"}
                                   >
-                                    {doc.docType === "agreement" ? "Signed" : "Accept"}
+                                    <Check className="w-3.5 h-3.5" />
                                   </button>
                                   <button
                                     onClick={() => {
@@ -3088,9 +3386,11 @@ export default function CrmModule({
                                       else if (doc.quotation_number) onUpdateQuotation?.(doc.id, { status: "declined" });
                                       else onUpdateProposal?.(doc.id, { status: "rejected" });
                                     }}
-                                    className="px-2.5 py-1 rounded-lg text-xs font-bold bg-gray-100 dark:bg-slate-800 text-gray-700 dark:text-neutral-200 transition cursor-pointer"
+                                    className="p-1.5 rounded-lg text-red-600 bg-red-50 dark:bg-red-950/40 hover:bg-red-100 transition shrink-0 cursor-pointer"
+                                    title="Reject / Cancel"
+                                    aria-label="Reject / Cancel"
                                   >
-                                    Reject
+                                    <X className="w-3.5 h-3.5" />
                                   </button>
                                 </>
                               )}
@@ -3109,7 +3409,7 @@ export default function CrmModule({
 
       {viewMode === "followups" && (
         <div className="rounded-2xl bg-white dark:bg-[#18150f] border border-gray-100 dark:border-[#3a3020] overflow-hidden shadow-2xs">
-          {isFollowUpsLoading && filteredFollowUps.length === 0 ? (
+          {isFollowUpsLoading && paginatedFollowUps.length === 0 ? (
             <TableSkeleton rows={6} columns={6} />
           ) : filteredFollowUps.length === 0 ? (
             <div className="p-8 text-center text-sm text-gray-500 dark:text-neutral-400">No sales follow-up found.</div>
@@ -3127,7 +3427,7 @@ export default function CrmModule({
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100 dark:divide-[#3a3020]/60">
-                  {filteredFollowUps.map((item) => {
+                  {paginatedFollowUps.map((item) => {
                     const lead = leads.find((leadItem) => leadItem.id === item.lead_id);
                     const client = clients.find((clientItem) => clientItem.id === item.client_id);
                     const contactPhone = client?.phone || lead?.phone || "";
@@ -3155,7 +3455,7 @@ export default function CrmModule({
                           }`}>{item.status}</span>
                         </td>
                         <td className="py-3.5 px-4 text-right">
-                          <div className="flex items-center justify-end gap-2">
+                          <div className="flex items-center justify-end gap-1.5">
                             {contactPhone && (
                               <button
                                 onClick={() => {
@@ -3163,10 +3463,11 @@ export default function CrmModule({
                                   const text = encodeURIComponent(getFollowUpWhatsappMessage(item, lead, client));
                                   window.open(`https://wa.me/${cleanPhone}?text=${text}`, "_blank", "noopener,noreferrer");
                                 }}
-                                className="px-2.5 py-1 rounded-lg text-xs font-bold bg-emerald-50 text-emerald-700 hover:bg-emerald-100 transition flex items-center gap-1"
+                                className="p-1.5 rounded-lg text-emerald-600 bg-emerald-50 dark:bg-emerald-950/40 hover:bg-emerald-100 transition shrink-0"
+                                title="Chat on WhatsApp"
+                                aria-label="Chat on WhatsApp"
                               >
                                 <WhatsAppIcon className="w-3.5 h-3.5" />
-                                WhatsApp
                               </button>
                             )}
                             <a
@@ -3178,34 +3479,40 @@ export default function CrmModule({
                               })}
                               target="_blank"
                               rel="noreferrer"
-                              className="px-2.5 py-1 rounded-lg text-xs font-bold bg-gray-100 dark:bg-slate-800 text-gray-700 dark:text-neutral-200 hover:bg-gray-200 dark:hover:bg-slate-700 transition flex items-center gap-1"
+                              className="p-1.5 rounded-lg text-gray-700 dark:text-neutral-200 bg-gray-100 dark:bg-slate-800 hover:bg-gray-200 dark:hover:bg-slate-700 transition shrink-0"
+                              title="Add to Google Calendar"
+                              aria-label="Add to Google Calendar"
                             >
-                              <ExternalLink className="w-3 h-3" />
-                              Calendar
+                              <Calendar className="w-3.5 h-3.5" />
                             </a>
                             {item.status === "pending" && (
                               <>
                                 <button
                                   onClick={() => onUpdateFollowUp?.(item.id, { status: "done", completed_at: new Date().toISOString() })}
-                                  className="px-2.5 py-1 rounded-lg text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white transition"
+                                  className="p-1.5 rounded-lg text-white bg-emerald-600 hover:bg-emerald-700 transition shrink-0"
+                                  title="Mark as Done"
+                                  aria-label="Mark as Done"
                                 >
-                                  Done
+                                  <Check className="w-3.5 h-3.5" />
                                 </button>
                                 <button
                                   onClick={() => onUpdateFollowUp?.(item.id, { status: "missed", notes: [item.notes, `Missed at ${new Date().toLocaleString("en-IN")}`].filter(Boolean).join("\n") })}
-                                  className="px-2.5 py-1 rounded-lg text-xs font-bold bg-red-50 text-red-600 hover:bg-red-100 transition"
+                                  className="p-1.5 rounded-lg text-red-600 bg-red-50 dark:bg-red-950/40 hover:bg-red-100 transition shrink-0"
+                                  title="Mark as Missed"
+                                  aria-label="Mark as Missed"
                                 >
-                                  Missed
+                                  <X className="w-3.5 h-3.5" />
                                 </button>
                               </>
                             )}
                             {["pending", "missed"].includes(item.status) && (
                               <button
                                 onClick={() => openRescheduleModal(item)}
-                                className="px-2.5 py-1 rounded-lg text-xs font-bold bg-blue-50 text-blue-600 hover:bg-blue-100 transition flex items-center gap-1"
+                                className="p-1.5 rounded-lg text-blue-600 bg-blue-50 dark:bg-blue-950/40 hover:bg-blue-100 transition shrink-0"
+                                title="Reschedule Follow-up"
+                                aria-label="Reschedule Follow-up"
                               >
-                                <RotateCcw className="w-3 h-3" />
-                                Reschedule
+                                <RotateCcw className="w-3.5 h-3.5" />
                               </button>
                             )}
                           </div>
@@ -3215,23 +3522,93 @@ export default function CrmModule({
                   })}
                 </tbody>
               </table>
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-4 py-3 border-t border-gray-100 dark:border-[#3a3020] bg-gray-50/40 dark:bg-[#211d14]/40 text-xs">
-                <div className="text-gray-500 dark:text-neutral-400">
-                  {followUpPagination?.loading ? "Loading follow-ups..." : (
-                    <>Showing follow-up page <span className="font-bold text-gray-800 dark:text-white">{safeFollowUpPage}</span> of <span className="font-bold text-gray-800 dark:text-white">{followUpPageCount}</span> ({followUpTotal} follow-ups)</>
-                  )}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-4 py-3 border-t border-gray-100 dark:border-[#3a3020] bg-gray-50/60 dark:bg-[#211d14]/60 text-xs">
+                <div className="text-gray-500 dark:text-neutral-400 flex items-center gap-1.5 flex-wrap">
+                  <span>Showing</span>
+                  <span className="font-bold text-gray-800 dark:text-white">{followUpPageStart}</span>
+                  <span>to</span>
+                  <span className="font-bold text-gray-800 dark:text-white">{followUpPageEnd}</span>
+                  <span>of</span>
+                  <span className="font-bold text-gray-800 dark:text-white">{followUpTotal}</span>
+                  <span>follow-ups</span>
                 </div>
-                <div className="flex items-center gap-2 justify-end">
-                  <select value={followUpPageSize} onChange={(e) => setFollowUpPageSize(Number(e.target.value))} className="px-2.5 py-1.5 rounded-lg bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 font-semibold text-gray-700 dark:text-neutral-200" aria-label="Follow-ups per page">
-                    <option value={25}>25 per page</option>
-                    <option value={50}>50 per page</option>
-                  </select>
-                  <button type="button" onClick={() => setFollowUpPage((page) => Math.max(1, page - 1))} disabled={safeFollowUpPage <= 1} className="px-3 py-1.5 rounded-lg font-bold bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 text-gray-700 dark:text-neutral-200 disabled:opacity-40 disabled:cursor-not-allowed">
-                    Prev
-                  </button>
-                  <button type="button" onClick={() => setFollowUpPage((page) => Math.min(followUpPageCount, page + 1))} disabled={safeFollowUpPage >= followUpPageCount} className="px-3 py-1.5 rounded-lg font-bold bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 text-gray-700 dark:text-neutral-200 disabled:opacity-40 disabled:cursor-not-allowed">
-                    Next
-                  </button>
+
+                <div className="flex items-center gap-2.5 flex-wrap justify-between sm:justify-end">
+                  <div className="flex items-center gap-1.5 text-xs text-gray-500 dark:text-neutral-400">
+                    <span className="hidden xs:inline">Rows per page:</span>
+                    <select
+                      value={followUpPageSize}
+                      onChange={(e) => {
+                        setFollowUpPageSize(Number(e.target.value));
+                        setFollowUpPage(1);
+                      }}
+                      className="px-2.5 py-1.5 rounded-xl bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 font-semibold text-gray-700 dark:text-neutral-200 text-xs focus:outline-hidden focus:ring-1 focus:ring-orange-500"
+                      aria-label="Follow-ups per page"
+                    >
+                      <option value={10}>10 / page</option>
+                      <option value={20}>20 / page</option>
+                      <option value={50}>50 / page</option>
+                      <option value={100}>100 / page</option>
+                    </select>
+                  </div>
+
+                  <div className="flex items-center gap-1">
+                    <button
+                      type="button"
+                      onClick={() => setFollowUpPage((p) => Math.max(1, p - 1))}
+                      disabled={safeFollowUpPage <= 1}
+                      className="p-1.5 rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-gray-700 dark:text-neutral-200 disabled:opacity-30 disabled:cursor-not-allowed hover:bg-gray-100 dark:hover:bg-slate-700 transition"
+                      title="Previous Page"
+                      aria-label="Previous Page"
+                    >
+                      <ChevronLeft className="w-3.5 h-3.5" />
+                    </button>
+
+                    {Array.from({ length: followUpPageCount }, (_, i) => i + 1)
+                      .filter((page) => {
+                        if (followUpPageCount <= 5) return true;
+                        if (page === 1 || page === followUpPageCount) return true;
+                        return Math.abs(page - safeFollowUpPage) <= 1;
+                      })
+                      .reduce((acc, page, idx, arr) => {
+                        if (idx > 0 && page - arr[idx - 1] > 1) {
+                          acc.push("...");
+                        }
+                        acc.push(page);
+                        return acc;
+                      }, [])
+                      .map((item, idx) =>
+                        item === "..." ? (
+                          <span key={`ellipsis-${idx}`} className="px-1 text-gray-400 font-bold select-none">
+                            ...
+                          </span>
+                        ) : (
+                          <button
+                            key={`page-${item}`}
+                            type="button"
+                            onClick={() => setFollowUpPage(item)}
+                            className={`min-w-[28px] h-7 px-2 rounded-xl text-xs font-bold transition ${
+                              safeFollowUpPage === item
+                                ? "bg-orange-600 text-white shadow-2xs"
+                                : "bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 text-gray-700 dark:text-neutral-300 hover:bg-gray-100 dark:hover:bg-slate-700"
+                            }`}
+                          >
+                            {item}
+                          </button>
+                        )
+                      )}
+
+                    <button
+                      type="button"
+                      onClick={() => setFollowUpPage((p) => Math.min(followUpPageCount, p + 1))}
+                      disabled={safeFollowUpPage >= followUpPageCount}
+                      className="p-1.5 rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-gray-700 dark:text-neutral-200 disabled:opacity-30 disabled:cursor-not-allowed hover:bg-gray-100 dark:hover:bg-slate-700 transition"
+                      title="Next Page"
+                      aria-label="Next Page"
+                    >
+                      <ChevronRight className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
@@ -3280,24 +3657,38 @@ export default function CrmModule({
                           }`}>{item.status}</span>
                         </td>
                         <td className="py-3.5 px-4 text-right">
-                          <div className="flex justify-end gap-2">
+                          <div className="flex items-center justify-end gap-1.5">
                             {lead?.phone && (
                               <>
                                 <button
                                   type="button"
                                   onClick={() => handleWhatsAppClick(lead)}
-                                  className="px-2.5 py-1 rounded-lg text-xs font-bold bg-emerald-50 text-emerald-700 hover:bg-emerald-100 transition"
+                                  className="p-1.5 rounded-lg text-emerald-600 bg-emerald-50 dark:bg-emerald-950/40 hover:bg-emerald-100 transition shrink-0"
+                                  title="Chat on WhatsApp"
+                                  aria-label="Chat on WhatsApp"
                                 >
-                                  WhatsApp
+                                  <WhatsAppIcon className="w-3.5 h-3.5" />
                                 </button>
-                                <a href={`tel:${lead.phone}`} className="px-2.5 py-1 rounded-lg text-xs font-bold bg-orange-50 text-orange-700 hover:bg-orange-100 transition">
-                                  Call
+                                <a
+                                  href={`tel:${lead.phone}`}
+                                  className="p-1.5 rounded-lg text-orange-600 bg-orange-50 dark:bg-orange-950/40 hover:bg-orange-100 transition shrink-0"
+                                  title="Call Client"
+                                  aria-label="Call Client"
+                                >
+                                  <Phone className="w-3.5 h-3.5" />
                                 </a>
                               </>
                             )}
                             {item.meeting_link && (
-                              <a href={item.meeting_link} target="_blank" rel="noreferrer" className="px-2.5 py-1 rounded-lg text-xs font-bold bg-blue-600 hover:bg-blue-700 text-white transition">
-                                Join
+                              <a
+                                href={item.meeting_link}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="p-1.5 rounded-lg text-white bg-blue-600 hover:bg-blue-700 transition shrink-0"
+                                title="Join Meeting"
+                                aria-label="Join Meeting"
+                              >
+                                <Video className="w-3.5 h-3.5" />
                               </a>
                             )}
                             <a
@@ -3310,29 +3701,37 @@ export default function CrmModule({
                               })}
                               target="_blank"
                               rel="noreferrer"
-                              className="px-2.5 py-1 rounded-lg text-xs font-bold bg-gray-100 dark:bg-slate-800 text-gray-700 dark:text-neutral-200 hover:bg-gray-200 dark:hover:bg-slate-700 transition"
+                              className="p-1.5 rounded-lg text-gray-700 dark:text-neutral-200 bg-gray-100 dark:bg-slate-800 hover:bg-gray-200 dark:hover:bg-slate-700 transition shrink-0"
+                              title="Open in Google Calendar"
+                              aria-label="Open in Google Calendar"
                             >
-                              Calendar
+                              <Calendar className="w-3.5 h-3.5" />
                             </a>
                             {item.status === "scheduled" && (
                               <>
                                 <button
                                   onClick={() => openSalesMeetingRescheduleModal(item)}
-                                  className="px-2.5 py-1 rounded-lg text-xs font-bold bg-amber-50 text-amber-700 hover:bg-amber-100 transition"
+                                  className="p-1.5 rounded-lg text-amber-700 bg-amber-50 dark:bg-amber-950/40 hover:bg-amber-100 transition shrink-0"
+                                  title="Reschedule Meeting"
+                                  aria-label="Reschedule Meeting"
                                 >
-                                  Reschedule
+                                  <RotateCcw className="w-3.5 h-3.5" />
                                 </button>
                                 <button
                                   onClick={() => onUpdateSalesMeeting?.(item.id, { status: "completed", outcome: item.outcome || "Meeting completed. Follow-up required." })}
-                                  className="px-2.5 py-1 rounded-lg text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white transition"
+                                  className="p-1.5 rounded-lg text-white bg-emerald-600 hover:bg-emerald-700 transition shrink-0"
+                                  title="Mark as Completed"
+                                  aria-label="Mark as Completed"
                                 >
-                                  Complete
+                                  <Check className="w-3.5 h-3.5" />
                                 </button>
                                 <button
                                   onClick={() => onUpdateSalesMeeting?.(item.id, { status: "no_show", outcome: "Client did not join. Reschedule follow-up required." })}
-                                  className="px-2.5 py-1 rounded-lg text-xs font-bold bg-red-50 text-red-600 hover:bg-red-100 transition"
+                                  className="p-1.5 rounded-lg text-red-600 bg-red-50 dark:bg-red-950/40 hover:bg-red-100 transition shrink-0"
+                                  title="Mark as No Show"
+                                  aria-label="Mark as No Show"
                                 >
-                                  No Show
+                                  <X className="w-3.5 h-3.5" />
                                 </button>
                               </>
                             )}
