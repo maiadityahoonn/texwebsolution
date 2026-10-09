@@ -30,8 +30,8 @@ function mapEventName(status) {
   if (value.includes("won") || value.includes("converted")) return "LeadWon";
   if (value.includes("negotiation")) return "LeadNegotiation";
   if (value.includes("proposal") || value.includes("quotation")) return "LeadQuotation";
-  if (value.includes("meeting") || value.includes("contacted")) return "LeadMeeting";
-  if (value.includes("qualified") || value.includes("requirement")) return "QualifiedLead";
+  if (value.includes("meeting")) return "LeadMeeting";
+  if (value.includes("contacted") || value.includes("qualified") || value.includes("requirement")) return "QualifiedLead";
   return "Lead";
 }
 

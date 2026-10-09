@@ -23,7 +23,8 @@ function mapDealStageToLeadStatus(stage) {
   if (value.includes('negotiation')) return 'Negotiation';
   if (value.includes('proposal')) return 'Proposal Sent';
   if (value.includes('qualified') || value.includes('requirement')) return 'Qualified';
-  if (value.includes('contacted') || value.includes('meeting')) return 'Meeting';
+  if (value.includes('contacted')) return 'Qualified';
+  if (value.includes('meeting')) return 'Meeting';
   return 'Lead';
 }
 

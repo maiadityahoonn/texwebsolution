@@ -53,10 +53,11 @@ function normalizePhoneForHash(value) {
 
 function eventNameForStatus(status) {
   const value = cleanText(status || "Qualified", 80).toLowerCase();
-  if (value.includes("meeting") || value.includes("contacted")) return "LeadMeeting";
+  if (value.includes("meeting")) return "LeadMeeting";
   if (value.includes("quotation") || value.includes("proposal")) return "LeadQuotation";
   if (value.includes("won") || value.includes("converted")) return "LeadWon";
   if (value.includes("lost")) return "LeadLost";
+  if (value.includes("contacted")) return "QualifiedLead";
   return "QualifiedLead";
 }
 

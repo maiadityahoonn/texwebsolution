@@ -105,6 +105,52 @@ const FinanceModule = dynamic(() => import("@/components/modules/finance/Finance
 const SupportModule = dynamic(() => import("@/components/modules/support/SupportModule"), { ssr: false });
 const SalesHeadOverview = dynamic(() => import("@/components/modules/crm/SalesHeadOverview"), { ssr: false });
 const NotificationCenterModal = dynamic(() => import("@/components/modules/notifications/NotificationCenterModal"), { ssr: false });
+const META_LEAD_ALERT_STORAGE_KEY = "texweb_pending_meta_lead_alerts";
+const MAX_META_LEAD_ALERTS = 20;
+
+function isMetaLeadRecord(lead) {
+  if (!lead) return false;
+  const sourceText = [
+    lead.source,
+    lead.lead_source,
+    lead.platform,
+    lead.form_name,
+    lead.campaign_name,
+    lead.raw_metadata?.source,
+    lead.raw_metadata?.platform,
+  ].filter(Boolean).join(" ").toLowerCase();
+  return Boolean(lead.meta_lead_id || lead.form_id || sourceText.includes("meta") || sourceText.includes("facebook") || sourceText.includes("instagram"));
+}
+
+function buildMetaLeadAlert(lead) {
+  return {
+    id: lead?.id || lead?.meta_lead_id || `${Date.now()}`,
+    leadId: lead?.id || "",
+    name: lead?.name || lead?.full_name || lead?.title || "Meta Lead",
+    phone: lead?.phone || "Not provided",
+    email: lead?.email || "",
+    service: lead?.service || lead?.service_needed || "Meta Ads Lead",
+    source: lead?.source || lead?.platform || "Meta Ads",
+    receivedAt: lead?.created_at || lead?.created_time || new Date().toISOString(),
+  };
+}
+
+function mergeMetaLeadAlert(list, alert) {
+  if (!alert?.id) return list;
+  return [alert, ...list.filter((item) => item.id !== alert.id)].slice(0, MAX_META_LEAD_ALERTS);
+}
+
+function persistMetaLeadAlerts(alerts) {
+  if (typeof window === "undefined") return;
+  try {
+    if (alerts.length) {
+      localStorage.setItem(META_LEAD_ALERT_STORAGE_KEY, JSON.stringify(alerts));
+    } else {
+      localStorage.removeItem(META_LEAD_ALERT_STORAGE_KEY);
+    }
+  } catch {}
+}
+
 import { useCrmData } from "@/components/workspace/useCrmData";
 import { useWorkspaceNotifications } from "@/components/workspace/useWorkspaceNotifications";
 import { isSoundEnabled, setSoundEnabled, playNotificationSound } from "@/lib/notificationSound";
@@ -780,6 +826,96 @@ export default function AuthenticatedWorkspace({ defaultSection = "overview" } =
     setToast,
   });
   notificationBridgeRef.current = pushLiveSalesNotification;
+  const activeSectionRef = useRef(activeSection);
+  const metaLeadAlertSeenRef = useRef(new Set());
+  const [pendingMetaLeadAlerts, setPendingMetaLeadAlerts] = useState([]);
+  const [metaLeadAlertModalOpen, setMetaLeadAlertModalOpen] = useState(false);
+
+  useEffect(() => {
+    activeSectionRef.current = activeSection;
+  }, [activeSection]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      const cachedAlerts = JSON.parse(localStorage.getItem(META_LEAD_ALERT_STORAGE_KEY) || "[]");
+      if (Array.isArray(cachedAlerts) && cachedAlerts.length) {
+        cachedAlerts.forEach((alert) => {
+          if (alert?.id) metaLeadAlertSeenRef.current.add(alert.id);
+        });
+        setPendingMetaLeadAlerts(cachedAlerts.slice(0, MAX_META_LEAD_ALERTS));
+        setMetaLeadAlertModalOpen(true);
+      }
+    } catch {}
+  }, []);
+
+  useEffect(() => {
+    if (typeof document === "undefined") return undefined;
+    const showPendingAlerts = () => {
+      if (!document.hidden && pendingMetaLeadAlerts.length) {
+        setMetaLeadAlertModalOpen(true);
+      }
+    };
+    document.addEventListener("visibilitychange", showPendingAlerts);
+    window.addEventListener("focus", showPendingAlerts);
+    return () => {
+      document.removeEventListener("visibilitychange", showPendingAlerts);
+      window.removeEventListener("focus", showPendingAlerts);
+    };
+  }, [pendingMetaLeadAlerts.length]);
+
+  useEffect(() => {
+    if (pendingMetaLeadAlerts.length && activeSection !== "crm") {
+      setMetaLeadAlertModalOpen(true);
+    }
+  }, [activeSection, pendingMetaLeadAlerts.length]);
+
+  useEffect(() => {
+    if (typeof document === "undefined" || !metaLeadAlertModalOpen) return undefined;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [metaLeadAlertModalOpen]);
+
+  const dismissMetaLeadAlerts = useCallback(() => {
+    setMetaLeadAlertModalOpen(false);
+    setPendingMetaLeadAlerts([]);
+    persistMetaLeadAlerts([]);
+  }, []);
+
+  const openMetaLeadAlertsInCrm = useCallback(() => {
+    dismissMetaLeadAlerts();
+    selectSection("crm");
+  }, [dismissMetaLeadAlerts]);
+
+  const handleRealtimeLeadEvent = useCallback((payload) => {
+    handleRealtimeLead(payload);
+    const lead = payload?.new;
+    if (payload?.eventType !== "INSERT" || !isMetaLeadRecord(lead)) return;
+    const alert = buildMetaLeadAlert(lead);
+    if (metaLeadAlertSeenRef.current.has(alert.id)) return;
+    metaLeadAlertSeenRef.current.add(alert.id);
+
+    setToast("New Meta lead received");
+    playNotificationSound("lead");
+
+    const shouldBlockWithModal =
+      activeSectionRef.current !== "crm" ||
+      (typeof document !== "undefined" && document.hidden);
+
+    if (shouldBlockWithModal) {
+      setPendingMetaLeadAlerts((prev) => {
+        const next = mergeMetaLeadAlert(prev, alert);
+        persistMetaLeadAlerts(next);
+        return next;
+      });
+      if (typeof document === "undefined" || !document.hidden) {
+        setMetaLeadAlertModalOpen(true);
+      }
+    }
+  }, [handleRealtimeLead]);
   const [selectedBatchId, setSelectedBatchId] = useState("");
   const [batchWorkspaceTab, setBatchWorkspaceTab] = useState("overview");
   const [batchWorkspaceData, setBatchWorkspaceData] = useState(() => emptyBatchWorkspaceData());
@@ -4182,7 +4318,7 @@ export default function AuthenticatedWorkspace({ defaultSection = "overview" } =
         })
         .on("postgres_changes", { event: "*", schema: "public", table: "batch_assignment_history" }, () => refreshBatchWorkspace(undefined, { silent: true }))
         .on("postgres_changes", { event: "*", schema: "public", table: "audit_logs" }, () => loadDashboardData())
-        .on("postgres_changes", { event: "*", schema: "public", table: "leads" }, handleRealtimeLead)
+        .on("postgres_changes", { event: "*", schema: "public", table: "leads" }, handleRealtimeLeadEvent)
         .on("postgres_changes", { event: "*", schema: "public", table: "deals" }, handleRealtimeDeal)
         .on("postgres_changes", { event: "*", schema: "public", table: "sales_followups" }, handleRealtimeFollowUp)
         .on("postgres_changes", { event: "*", schema: "public", table: "sales_meetings" }, handleRealtimeSalesMeeting)
@@ -4245,7 +4381,7 @@ export default function AuthenticatedWorkspace({ defaultSection = "overview" } =
       .on("postgres_changes", { event: "*", schema: "public", table: "tasks" }, () => loadDashboardData())
       .on("postgres_changes", { event: "*", schema: "public", table: "task_submissions" }, () => loadDashboardData())
       .on("postgres_changes", { event: "*", schema: "public", table: "meetings" }, () => loadDashboardData())
-      .on("postgres_changes", { event: "*", schema: "public", table: "leads" }, handleRealtimeLead)
+      .on("postgres_changes", { event: "*", schema: "public", table: "leads" }, handleRealtimeLeadEvent)
       .on("postgres_changes", { event: "*", schema: "public", table: "batches" }, () => loadDashboardData())
       .on("postgres_changes", { event: "*", schema: "public", table: "member_assignments" }, () => loadDashboardData())
       .on("postgres_changes", { event: "*", schema: "public", table: "daily_updates" }, () => loadDashboardData())
@@ -16617,6 +16753,71 @@ export default function AuthenticatedWorkspace({ defaultSection = "overview" } =
           </ModalWrapper>
         );
       })()}
+
+      {metaLeadAlertModalOpen && pendingMetaLeadAlerts.length > 0 && (
+        <ModalWrapper
+          isDark={isDark}
+          title="New Meta lead received"
+          subtitle={`${pendingMetaLeadAlerts.length} lead${pendingMetaLeadAlerts.length > 1 ? "s" : ""} waiting in CRM`}
+          maxWidth="max-w-xl"
+        >
+          <div className="space-y-3">
+            <div className="rounded-2xl border border-emerald-200 bg-emerald-50/80 dark:border-emerald-500/30 dark:bg-emerald-500/10 p-3">
+              <div className="flex items-start gap-3">
+                <span className="w-9 h-9 rounded-2xl bg-emerald-600 text-white flex items-center justify-center shrink-0">
+                  <Target className="w-4 h-4" />
+                </span>
+                <div className="min-w-0">
+                  <p className="text-sm font-black text-gray-950 dark:text-white">CRM me new Meta lead aa gaya hai.</p>
+                  <p className="text-xs text-gray-600 dark:text-slate-300 mt-1">
+                    Popup close karne se pehle lead CRM me open kar sakte ho. Page scroll locked rahega jab tak action nahi lete.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="max-h-[42vh] overflow-y-auto space-y-2 pr-1">
+              {pendingMetaLeadAlerts.map((alert) => (
+                <div
+                  key={alert.id}
+                  className="rounded-2xl border border-gray-200 dark:border-slate-800 bg-white dark:bg-slate-950/60 p-3"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="text-sm font-black text-gray-950 dark:text-white truncate" title={alert.name}>{alert.name}</p>
+                      <p className="text-xs text-gray-500 dark:text-slate-400 truncate" title={alert.service}>{alert.service}</p>
+                    </div>
+                    <span className="shrink-0 rounded-full bg-pink-50 text-pink-700 dark:bg-pink-500/10 dark:text-pink-300 px-2.5 py-1 text-[10px] font-black">
+                      {alert.source}
+                    </span>
+                  </div>
+                  <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs text-gray-600 dark:text-slate-300">
+                    <span className="truncate" title={alert.phone}><Phone className="inline w-3.5 h-3.5 mr-1 text-emerald-600" />{alert.phone}</span>
+                    <span className="truncate" title={alert.email || "No email"}><Mail className="inline w-3.5 h-3.5 mr-1 text-blue-600" />{alert.email || "No email"}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="flex flex-col sm:flex-row sm:justify-end gap-2 pt-2 border-t border-gray-100 dark:border-slate-800">
+              <button
+                type="button"
+                onClick={dismissMetaLeadAlerts}
+                className="px-4 py-2 rounded-xl border border-gray-200 dark:border-slate-700 text-sm font-bold text-gray-700 dark:text-slate-200 hover:bg-gray-50 dark:hover:bg-slate-800 transition cursor-pointer"
+              >
+                Dismiss
+              </button>
+              <button
+                type="button"
+                onClick={openMetaLeadAlertsInCrm}
+                className="px-4 py-2 rounded-xl bg-orange-600 hover:bg-orange-700 text-white text-sm font-black shadow-lg shadow-orange-600/20 transition cursor-pointer"
+              >
+                Open CRM Leads
+              </button>
+            </div>
+          </div>
+        </ModalWrapper>
+      )}
 
       {/* 16. Global Notification Center Modal / Drawer */}
       <NotificationCenterModal

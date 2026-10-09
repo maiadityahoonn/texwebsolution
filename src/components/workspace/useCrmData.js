@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { patchRealtimeList } from "@/components/workspace/realtimeListUtils";
 import {
   getAgreements,
@@ -29,6 +29,11 @@ export function useCrmData({ sessionUserId = "", pushLiveSalesNotification } = {
   const [salesMeetings, setSalesMeetings] = useState([]);
   const [meetingPagination, setMeetingPagination] = useState({ count: 0, page: 1, pageSize: 50, loading: false });
   const [invoicesList, setInvoicesList] = useState([]);
+  const leadsRef = useRef([]);
+
+  useEffect(() => {
+    leadsRef.current = leads;
+  }, [leads]);
 
   const refreshLeadSummary = useCallback(async function refreshLeadSummary(params = {}) {
     const summary = await getCloudLeadsSummary(params);
@@ -156,13 +161,34 @@ export function useCrmData({ sessionUserId = "", pushLiveSalesNotification } = {
   }, []);
 
   const handleRealtimeLead = useCallback(function handleRealtimeLead(payload) {
-    const insertedId = payload?.eventType === "INSERT" ? payload?.new?.id : null;
-    const alreadyExists = insertedId ? leads.some((item) => item.id === insertedId) : false;
-    patchRealtimeList(setLeads, payload, { limit: leadPagination.pageSize || 50 });
-    if (payload?.eventType === "INSERT" && !alreadyExists) {
-      setLeadPagination((prev) => ({ ...prev, count: Math.max((prev.count || 0) + 1, leads.length + 1) }));
+    const eventType = payload?.eventType;
+    const row = eventType === "DELETE" ? payload?.old : payload?.new;
+    if (!row?.id) return;
+    const exists = leadsRef.current.some((item) => item.id === row.id);
+
+    setLeads((prev) => {
+      if (eventType === "DELETE") {
+        return prev.some((item) => item.id === row.id) ? prev.filter((item) => item.id !== row.id) : prev;
+      }
+      if (eventType === "UPDATE") {
+        const itemExists = prev.some((item) => item.id === row.id);
+        const next = itemExists
+          ? prev.map((item) => (item.id === row.id ? { ...item, ...row } : item))
+          : [row, ...prev];
+        return next.slice(0, leadPagination.pageSize || 50);
+      }
+      return [row, ...prev.filter((item) => item.id !== row.id)].slice(0, leadPagination.pageSize || 50);
+    });
+
+    if (eventType === "INSERT" && !exists) {
+      setLeadPagination((prev) => ({ ...prev, count: Math.max((prev.count || 0) + 1, 1) }));
+      setLeadSummary((prev) => ({ ...prev, total: (prev.total || 0) + 1 }));
     }
-  }, [leadPagination.pageSize, leads]);
+    if (eventType === "DELETE" && exists) {
+      setLeadPagination((prev) => ({ ...prev, count: Math.max((prev.count || 0) - 1, 0) }));
+      setLeadSummary((prev) => ({ ...prev, total: Math.max((prev.total || 0) - 1, 0) }));
+    }
+  }, [leadPagination.pageSize]);
 
   const handleRealtimeDeal = useCallback(function handleRealtimeDeal(payload) {
     const insertedId = payload?.eventType === "INSERT" ? payload?.new?.id : null;
