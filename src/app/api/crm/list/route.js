@@ -1,5 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
+import { cacheGetJson, cacheSetJson } from "@/lib/upstashCache";
 
 const CRM_READ_ROLES = new Set([
   "super_admin",
@@ -108,11 +109,17 @@ export async function GET(request) {
   const to = from + pageSize - 1;
 
   if (resource === "leads_summary") {
+    const dateFrom = searchParams.get("dateFrom") || "";
+    const dateTo = searchParams.get("dateTo") || "";
+    const cacheKey = dateFrom || dateTo
+      ? `crm:leads-summary:${dateFrom || "start"}:${dateTo || "end"}`
+      : "crm:leads-summary:all";
+    const cached = await cacheGetJson(cacheKey);
+    if (cached) return NextResponse.json(cached);
+
     let qTotal = admin.from("leads").select("id", { count: "exact", head: true });
     let qConverted = admin.from("leads").select("id", { count: "exact", head: true }).in("status", ["Converted", "Closed Won"]);
     let qLost = admin.from("leads").select("id", { count: "exact", head: true }).eq("status", "Lost");
-    const dateFrom = searchParams.get("dateFrom") || "";
-    const dateTo = searchParams.get("dateTo") || "";
     if (dateFrom) {
       qTotal = qTotal.gte("created_at", dateFrom);
       qConverted = qConverted.gte("created_at", dateFrom);
@@ -124,11 +131,13 @@ export async function GET(request) {
       qLost = qLost.lte("created_at", dateTo);
     }
     const [resTotal, resConverted, resLost] = await Promise.all([qTotal, qConverted, qLost]);
-    return NextResponse.json({
+    const summary = {
       total: resTotal.count || 0,
       converted: resConverted.count || 0,
       lost: resLost.count || 0,
-    });
+    };
+    await cacheSetJson(cacheKey, summary, 60);
+    return NextResponse.json(summary);
   }
 
   const configs = {
@@ -175,6 +184,18 @@ export async function GET(request) {
   } else if (resource === "deals") {
     const stage = searchParams.get("stage") || "";
     if (stage && stage !== "all") query = query.eq("pipeline_stage", stage);
+  } else if (resource === "sales_meetings" && status && status !== "all") {
+    if (status === "today") {
+      const todayStart = new Date();
+      todayStart.setHours(0, 0, 0, 0);
+      const todayEnd = new Date();
+      todayEnd.setHours(23, 59, 59, 999);
+      query = query.gte("scheduled_at", todayStart.toISOString()).lte("scheduled_at", todayEnd.toISOString());
+    } else if (status === "no_show") {
+      query = query.in("status", ["no_show", "cancelled"]);
+    } else {
+      query = query.eq("status", status);
+    }
   } else if (status && status !== "all") {
     query = query.eq("status", status);
   }

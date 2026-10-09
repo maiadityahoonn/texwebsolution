@@ -2838,7 +2838,19 @@ export async function getSalesMeetings(options = null) {
       .select('*', withCount ? { count: 'exact' } : undefined)
       .order('scheduled_at', { ascending: true });
 
-    if (options?.status && options.status !== 'all') query = query.eq('status', options.status);
+    if (options?.status && options.status !== 'all') {
+      if (options.status === 'today') {
+        const todayStart = new Date();
+        todayStart.setHours(0, 0, 0, 0);
+        const todayEnd = new Date();
+        todayEnd.setHours(23, 59, 59, 999);
+        query = query.gte('scheduled_at', todayStart.toISOString()).lte('scheduled_at', todayEnd.toISOString());
+      } else if (options.status === 'no_show') {
+        query = query.in('status', ['no_show', 'cancelled']);
+      } else {
+        query = query.eq('status', options.status);
+      }
+    }
     if (options?.dateFrom) query = query.gte('scheduled_at', options.dateFrom);
     if (options?.dateTo) query = query.lte('scheduled_at', options.dateTo);
     const search = String(options?.search || '').trim();
@@ -2920,6 +2932,23 @@ export async function updateSalesMeeting(meetingId, updates) {
     writeLocalCache(LOCAL_SALES_MEETINGS_KEY, updated);
     return updated.find((item) => item.id === meetingId) || null;
   }
+}
+
+export async function deleteSalesMeeting(meetingId) {
+  try {
+    const { error } = await supabase
+      .from('sales_meetings')
+      .delete()
+      .eq('id', meetingId);
+
+    if (error) throw error;
+  } catch (err) {
+    console.warn('Fallback: deleteSalesMeeting in cache:', err.message);
+  }
+  const current = readLocalCache(LOCAL_SALES_MEETINGS_KEY, []);
+  const updated = current.filter((item) => item.id !== meetingId);
+  writeLocalCache(LOCAL_SALES_MEETINGS_KEY, updated);
+  return true;
 }
 
 // ==========================================

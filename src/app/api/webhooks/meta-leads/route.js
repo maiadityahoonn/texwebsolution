@@ -1,6 +1,41 @@
 import { createClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
-import { cleanPhone, cleanText, normalizeEmail } from "@/lib/apiSecurity";
+import { cleanPhone, cleanText, getClientIp, normalizeEmail } from "@/lib/apiSecurity";
+import { checkApiRateLimit, rateLimitResponse } from "@/lib/rateLimit";
+import { cacheDel, cacheSetNx, pushQueue } from "@/lib/upstashCache";
+
+const META_LEAD_DEDUP_TTL_SECONDS = 60 * 60 * 24 * 30;
+
+function dedupKeyForMetaLead(metaLeadId) {
+  const cleanId = String(metaLeadId || "").replace(/[^\w:-]/g, "");
+  return cleanId ? `crm:meta-lead:dedup:${cleanId}` : "";
+}
+
+async function claimMetaLead(metaLeadId) {
+  const key = dedupKeyForMetaLead(metaLeadId);
+  if (!key) return { claimed: true, key: "" };
+  const claimed = await cacheSetNx(key, "1", META_LEAD_DEDUP_TTL_SECONDS);
+  return { claimed, key };
+}
+
+async function releaseMetaLeadClaim(key) {
+  if (key) await cacheDel(key);
+}
+
+async function afterLeadInserted(request, lead, status = "New") {
+  await pushQueue("crm:meta-leads:recent", {
+    id: lead.id,
+    meta_lead_id: lead.meta_lead_id || null,
+    name: lead.name,
+    phone: lead.phone,
+    email: lead.email,
+    service: lead.service,
+    source: lead.source,
+    created_at: lead.created_at || new Date().toISOString(),
+  }, { ttlSeconds: 60 * 60 * 24 * 7, maxItems: 100 });
+  await cacheDel("crm:leads-summary:all");
+  await sendMetaCrmEvent(request, lead, status);
+}
 
 function getAdminClient() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -135,6 +170,12 @@ export async function GET(request) {
  */
 export async function POST(request) {
   try {
+    const ip = getClientIp(request);
+    const limited = await checkApiRateLimit(`meta-leads-webhook:${ip}`, { limit: 120, windowMs: 60_000 });
+    if (!limited.allowed) {
+      return NextResponse.json(rateLimitResponse(limited), { status: 429 });
+    }
+
     const admin = getAdminClient();
     if (!admin) {
       return NextResponse.json({ error: "Admin client not configured." }, { status: 500 });
@@ -159,6 +200,10 @@ export async function POST(request) {
       const formName = cleanText(body.form_name || body.form, 120);
       const metaLeadId = cleanText(body.meta_lead_id || body.leadgen_id || body.id, 80);
       const formAnswers = collectFormAnswers(body);
+      const claim = await claimMetaLead(metaLeadId);
+      if (!claim.claimed) {
+        return NextResponse.json({ ok: true, duplicate: true, meta_lead_id: metaLeadId });
+      }
 
       const notesParts = [
         campaignName ? `Campaign: ${campaignName}` : null,
@@ -202,10 +247,11 @@ export async function POST(request) {
 
       const { data, error } = await admin.from("leads").insert([payload]).select().single();
       if (error) {
+        await releaseMetaLeadClaim(claim.key);
         return NextResponse.json({ error: error.message }, { status: 400 });
       }
 
-      await sendMetaCrmEvent(request, data, data.status || "New");
+      await afterLeadInserted(request, data, data.status || "New");
       return NextResponse.json({ ok: true, lead: data });
     }
 
@@ -223,6 +269,10 @@ export async function POST(request) {
       const adName = cleanText(body.ad_name || body.ad, 120);
       const formName = cleanText(body.form_name || body.form, 120);
       const metaLeadId = cleanText(body.meta_lead_id || body.leadgen_id || body.id, 80);
+      const claim = await claimMetaLead(metaLeadId);
+      if (!claim.claimed) {
+        return NextResponse.json({ ok: true, duplicate: true, meta_lead_id: metaLeadId });
+      }
 
       const notesParts = [
         campaignName ? `Campaign: ${campaignName}` : null,
@@ -248,10 +298,11 @@ export async function POST(request) {
 
       const { data, error } = await admin.from("leads").insert([payload]).select().single();
       if (error) {
+        await releaseMetaLeadClaim(claim.key);
         return NextResponse.json({ error: error.message }, { status: 400 });
       }
 
-      await sendMetaCrmEvent(request, data, data.status || "New");
+      await afterLeadInserted(request, data, data.status || "New");
       return NextResponse.json({ ok: true, lead: data });
     }
 
@@ -267,6 +318,8 @@ export async function POST(request) {
             const adId = change.value?.ad_id;
 
             if (leadgenId && pageAccessToken) {
+              const claim = await claimMetaLead(leadgenId);
+              if (!claim.claimed) continue;
               try {
                 // Fetch lead details from Meta Graph API
                 const apiVersion = process.env.META_CAPI_API_VERSION || "v26.0";
@@ -318,7 +371,8 @@ export async function POST(request) {
                       notes: notes || "Direct Meta Leadgen Form submission",
                     },
                   ]).select().single();
-                  if (insertedLead) await sendMetaCrmEvent(request, insertedLead, insertedLead.status || "New");
+                  if (insertedLead) await afterLeadInserted(request, insertedLead, insertedLead.status || "New");
+                  if (!insertedLead) await releaseMetaLeadClaim(claim.key);
                 } else {
                   const errorBody = await metaRes.json().catch(() => ({}));
                   const reason = errorBody?.error?.message || `Meta Graph returned ${metaRes.status}`;
@@ -328,7 +382,8 @@ export async function POST(request) {
                     adId,
                     reason,
                   });
-                  if (insertedLead) await sendMetaCrmEvent(request, insertedLead, insertedLead.status || "New");
+                  if (insertedLead) await afterLeadInserted(request, insertedLead, insertedLead.status || "New");
+                  if (!insertedLead) await releaseMetaLeadClaim(claim.key);
                 }
               } catch (fetchErr) {
                 console.error("Meta Graph API error:", fetchErr);
@@ -338,9 +393,12 @@ export async function POST(request) {
                   adId,
                   reason: fetchErr?.message || "Meta Graph fetch failed",
                 });
-                if (insertedLead) await sendMetaCrmEvent(request, insertedLead, insertedLead.status || "New");
+                if (insertedLead) await afterLeadInserted(request, insertedLead, insertedLead.status || "New");
+                if (!insertedLead) await releaseMetaLeadClaim(claim.key);
               }
             } else if (leadgenId) {
+              const claim = await claimMetaLead(leadgenId);
+              if (!claim.claimed) continue;
               // Store placeholder if Access Token not set yet
               const { data: insertedLead } = await insertMetaPlaceholderLead(admin, {
                 leadgenId,
@@ -348,7 +406,8 @@ export async function POST(request) {
                 adId,
                 reason: "META_PAGE_ACCESS_TOKEN missing. Configure it for automatic field decoding.",
               });
-              if (insertedLead) await sendMetaCrmEvent(request, insertedLead, insertedLead.status || "New");
+              if (insertedLead) await afterLeadInserted(request, insertedLead, insertedLead.status || "New");
+              if (!insertedLead) await releaseMetaLeadClaim(claim.key);
             }
           }
         }

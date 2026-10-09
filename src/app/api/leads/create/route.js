@@ -2,6 +2,7 @@ import { createClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
 import { checkApiRateLimit, rateLimitResponse } from "@/lib/rateLimit";
 import { cleanPhone, cleanText, getClientIp, isBodyTooLarge, isJsonRequest, isValidEmail, normalizeEmail } from "@/lib/apiSecurity";
+import { cacheDel } from "@/lib/upstashCache";
 
 function getAdminClient() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -77,5 +78,6 @@ export async function POST(request) {
   }
 
   if (data) await sendMetaCrmEvent(request, data, data.status || "New");
+  await cacheDel("crm:leads-summary:all");
   return NextResponse.json({ ok: true });
 }

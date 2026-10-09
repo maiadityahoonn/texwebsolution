@@ -38,6 +38,7 @@ import {
   Eye,
   Video,
   ArrowDownAZ,
+  Settings,
 } from "lucide-react";
 import ActivityTimeline from "../shared/ActivityTimeline";
 import MetaLeadsImportModal from "./MetaLeadsImportModal";
@@ -262,6 +263,67 @@ function PipelineSkeleton() {
           </div>
         </div>
       ))}
+    </div>
+  );
+}
+
+function StatusCardsSkeleton({ cards = 4 }) {
+  return (
+    <div className="grid gap-3 grid-cols-2 lg:grid-cols-4">
+      {Array.from({ length: cards }).map((_, index) => (
+        <div key={index} className="p-4 rounded-2xl bg-white dark:bg-[#18150f] border border-gray-100 dark:border-[#3a3020] shadow-2xs">
+          <div className="flex items-center justify-between gap-2">
+            <div className="h-3 w-24 rounded-full bg-gray-100 dark:bg-slate-800 animate-pulse" />
+            <div className="h-8 w-8 rounded-xl bg-gray-100 dark:bg-slate-800 animate-pulse" />
+          </div>
+          <div className="h-7 w-16 rounded-full bg-gray-100 dark:bg-slate-800 animate-pulse mt-3" />
+          <div className="h-3 w-32 rounded-full bg-gray-100 dark:bg-slate-800 animate-pulse mt-2" />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function ReportsSkeleton() {
+  return (
+    <div className="space-y-4">
+      <StatusCardsSkeleton cards={4} />
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+        {[0, 1].map((item) => (
+          <div key={item} className="rounded-2xl bg-white dark:bg-[#18150f] border border-gray-100 dark:border-[#3a3020] p-4 shadow-2xs space-y-3">
+            <div className="h-4 w-36 rounded-full bg-gray-100 dark:bg-slate-800 animate-pulse" />
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+              {[0, 1, 2, 3].map((metric) => (
+                <div key={metric} className="rounded-xl bg-gray-50 dark:bg-[#211d14] border border-gray-100 dark:border-[#3a3020] p-3 space-y-2">
+                  <div className="h-5 w-12 rounded-full bg-gray-200 dark:bg-slate-800 animate-pulse" />
+                  <div className="h-3 w-16 rounded-full bg-gray-200 dark:bg-slate-800 animate-pulse" />
+                </div>
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+      <div className="rounded-2xl bg-white dark:bg-[#18150f] border border-gray-100 dark:border-[#3a3020] p-4 shadow-2xs">
+        <TableSkeleton rows={4} columns={3} />
+      </div>
+    </div>
+  );
+}
+
+function CommercialsSkeleton() {
+  return (
+    <div className="space-y-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        {[0, 1, 2].map((item) => (
+          <div key={item} className="p-4 rounded-2xl bg-white dark:bg-[#18150f] border border-gray-100 dark:border-[#3a3020] shadow-2xs space-y-2">
+            <div className="h-4 w-32 rounded-full bg-gray-100 dark:bg-slate-800 animate-pulse" />
+            <div className="h-3 w-44 max-w-full rounded-full bg-gray-100 dark:bg-slate-800 animate-pulse" />
+          </div>
+        ))}
+      </div>
+      <div className="rounded-2xl bg-white dark:bg-[#18150f] border border-gray-100 dark:border-[#3a3020] overflow-hidden shadow-2xs">
+        <TableSkeleton rows={6} columns={6} />
+      </div>
     </div>
   );
 }
@@ -513,6 +575,7 @@ export default function CrmModule({
   onDeleteFollowUp,
   onCreateSalesMeeting,
   onUpdateSalesMeeting,
+  onDeleteSalesMeeting,
   onUpdateDealStage,
   onUpdateDeal,
   onMarkLeadLost,
@@ -526,6 +589,7 @@ export default function CrmModule({
   onFetchDealsPage,
   onFetchFollowUpsPage,
   onFetchMeetingsPage,
+  isLoading = false,
   showViewTabs = false,
   headerActionsSlotId = "",
 }) {
@@ -539,7 +603,7 @@ export default function CrmModule({
 
   useEffect(() => {
     setQuery("");
-    setStatusFilter("active");
+    setStatusFilter(viewMode === "leads" ? "active" : "all");
     setDateFilter("all");
     setLeadAlphabetFilter("all");
     setLeadSortOrder("default");
@@ -825,13 +889,14 @@ export default function CrmModule({
       onFetchMeetingsPage({
         page: meetingPage,
         pageSize: meetingPageSize,
-        search: query,
+        search: "",
+        status: "",
         ...range,
       });
     }, 350);
     return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [customDateRange.from, customDateRange.to, dateFilter, meetingPage, meetingPageSize, onFetchMeetingsPage, query, selectedDate, viewMode]);
+  }, [customDateRange.from, customDateRange.to, dateFilter, meetingPage, meetingPageSize, onFetchMeetingsPage, selectedDate, viewMode]);
 
   const leadLetterCounts = useMemo(() => {
     const counts = {};
@@ -1028,50 +1093,48 @@ export default function CrmModule({
   }
 
   const filteredFollowUps = useMemo(() => {
-    const q = query.trim().toLowerCase();
     const now = Date.now();
     return followUps.filter((item) => {
-      const lead = leads.find((l) => l.id === item.lead_id);
-      const client = clients.find((c) => c.id === item.client_id);
       if (!matchesDateFilter(item, "due_at")) return false;
-
       const isOverdue = item.status === "pending" && item.due_at && new Date(item.due_at).getTime() < now;
-      const isPending = item.status === "pending";
-      const isDone = item.status === "done";
-      const isMissed = item.status === "missed";
-
       const matchStatus =
         statusFilter === "all" || !statusFilter
           ? true
           : statusFilter === "pending" || statusFilter === "active"
-          ? isPending && !isOverdue
+          ? item.status === "pending" && !isOverdue
           : statusFilter === "overdue"
           ? isOverdue
-          : statusFilter === "done" || statusFilter === "completed" || statusFilter === "won" || statusFilter === "converted"
-          ? isDone
-          : statusFilter === "missed" || statusFilter === "lost"
-          ? isMissed
+          : statusFilter === "done" || statusFilter === "completed"
+          ? item.status === "done"
+          : statusFilter === "missed"
+          ? item.status === "missed"
           : true;
-
-      const matchQuery =
-        !q ||
-        [item.title, item.channel, item.status, item.notes, lead?.name, client?.name]
-          .some((value) => String(value || "").toLowerCase().includes(q));
-
-      return matchStatus && matchQuery;
+      if (!matchStatus) return false;
+      return true;
     });
-  }, [clients, customDateRange.from, customDateRange.to, dateFilter, followUps, leads, query, selectedDate, statusFilter]);
+  }, [customDateRange.from, customDateRange.to, dateFilter, followUps, selectedDate, statusFilter]);
 
   const filteredSalesMeetings = useMemo(() => {
-    const q = query.trim().toLowerCase();
+    const todayStr = new Date().toDateString();
     return salesMeetings.filter((item) => {
-      const lead = leads.find((l) => l.id === item.lead_id);
-      const client = clients.find((c) => c.id === item.client_id);
       if (!matchesDateFilter(item, "scheduled_at")) return false;
-      return !q || [item.title, item.meeting_type, item.status, item.agenda, lead?.name, client?.name]
-        .some((value) => String(value || "").toLowerCase().includes(q));
+      const isToday = Boolean(item.scheduled_at && new Date(item.scheduled_at).toDateString() === todayStr);
+      const matchStatus =
+        statusFilter === "all" || !statusFilter
+          ? true
+          : statusFilter === "scheduled" || statusFilter === "pending" || statusFilter === "active"
+          ? item.status === "scheduled"
+          : statusFilter === "today"
+          ? isToday
+          : statusFilter === "completed" || statusFilter === "done"
+          ? item.status === "completed"
+          : statusFilter === "no_show" || statusFilter === "cancelled" || statusFilter === "missed"
+          ? ["no_show", "cancelled"].includes(item.status)
+          : true;
+      if (!matchStatus) return false;
+      return true;
     });
-  }, [clients, customDateRange.from, customDateRange.to, dateFilter, leads, query, salesMeetings, selectedDate]);
+  }, [customDateRange.from, customDateRange.to, dateFilter, salesMeetings, selectedDate, statusFilter]);
 
   const allPipelineDeals = useMemo(() => {
     const existingDealLeadIds = new Set(deals.map((d) => d.lead_id).filter(Boolean));
@@ -1098,32 +1161,16 @@ export default function CrmModule({
   }, [deals, leads]);
 
   const visiblePipelineDeals = useMemo(() => {
-    const q = query.trim().toLowerCase();
     return allPipelineDeals.filter((deal) => {
       const stage = deal.pipeline_stage || deal.stage || "contacted";
-      if (statusFilter === "lost") {
-        if (stage !== "closed_lost") return false;
-      } else {
-        if (stage === "closed_lost") return false;
-      }
-      if (statusFilter === "won" || statusFilter === "converted") {
-        return stage === "closed_won";
-      }
-      if (statusFilter === "active") {
-        if (CLOSED_PIPELINE_STAGES.includes(stage)) return false;
-      }
-      if (q) {
-        const lead = leads.find((l) => l.id === deal.lead_id);
-        const matchTitle = String(deal.title || "").toLowerCase().includes(q);
-        const matchService = String(deal.service || "").toLowerCase().includes(q);
-        const matchLead = [lead?.name, lead?.phone, lead?.email].some((v) =>
-          String(v || "").toLowerCase().includes(q)
-        );
-        if (!matchTitle && !matchService && !matchLead) return false;
-      }
+      if (dateFilter !== "all" && !matchesDateFilter(deal, "created_at") && !matchesDateFilter(deal, "updated_at")) return false;
+      if (statusFilter === "lost") return stage === "closed_lost";
+      if (statusFilter === "won" || statusFilter === "converted") return stage === "closed_won";
+      if (statusFilter === "active") return !CLOSED_PIPELINE_STAGES.includes(stage);
+      if (stage === "closed_lost") return false;
       return true;
     });
-  }, [allPipelineDeals, leads, query, statusFilter]);
+  }, [allPipelineDeals, customDateRange.from, customDateRange.to, dateFilter, selectedDate, statusFilter]);
   const pipelineTotal = visiblePipelineDeals.length;
   const pipelinePageCount = Math.max(1, Math.ceil(pipelineTotal / pipelinePageSize));
   const safePipelinePage = Math.min(Math.max(1, pipelinePage), pipelinePageCount);
@@ -1146,10 +1193,19 @@ export default function CrmModule({
   const meetingBasePageCount = Math.max(1, Math.ceil(Math.max(meetingTotal, filteredSalesMeetings.length) / meetingPageSize));
   const safeMeetingPage = onFetchMeetingsPage ? Math.max(1, meetingPage) : Math.min(meetingPage, meetingBasePageCount);
   const meetingPageCount = Math.max(safeMeetingPage, meetingBasePageCount, onFetchMeetingsPage && filteredSalesMeetings.length >= meetingPageSize ? safeMeetingPage + 1 : 1);
-  const isLeadsLoading = Boolean(leadPagination?.loading);
-  const isPipelineLoading = Boolean(dealPagination?.loading);
-  const isFollowUpsLoading = Boolean(followUpPagination?.loading);
-  const isMeetingsLoading = Boolean(meetingPagination?.loading);
+  const paginatedSalesMeetings = useMemo(() => {
+    if (onFetchMeetingsPage) return filteredSalesMeetings;
+    const start = (safeMeetingPage - 1) * meetingPageSize;
+    return filteredSalesMeetings.slice(start, start + meetingPageSize);
+  }, [filteredSalesMeetings, meetingPageSize, onFetchMeetingsPage, safeMeetingPage]);
+  const meetingPageStart = meetingTotal === 0 ? 0 : (safeMeetingPage - 1) * meetingPageSize + 1;
+  const meetingPageEnd = Math.min(meetingTotal, safeMeetingPage * meetingPageSize);
+  const isLeadsLoading = Boolean(leadPagination?.loading || (isLoading && leads.length === 0));
+  const isPipelineLoading = Boolean(dealPagination?.loading || (isLoading && deals.length === 0));
+  const isFollowUpsLoading = Boolean(followUpPagination?.loading || (isLoading && followUps.length === 0));
+  const isMeetingsLoading = Boolean(meetingPagination?.loading || (isLoading && salesMeetings.length === 0));
+  const isReportsLoading = Boolean(isLoading && leads.length === 0 && deals.length === 0 && followUps.length === 0);
+  const isCommercialsLoading = Boolean(isLoading && proposals.length === 0 && quotations.length === 0 && agreements.length === 0);
 
   const leadSummaryMetrics = useMemo(() => {
     const totalLeads = leadSummary?.total ?? (leadPagination?.count || leads.length);
@@ -1462,16 +1518,74 @@ export default function CrmModule({
       ];
     }
     if (viewMode === "sales_meetings") {
-      const scheduled = filteredSalesMeetings.filter((item) => item.status === "scheduled").length;
-      const completed = filteredSalesMeetings.filter((item) => item.status === "completed").length;
-      const noShow = filteredSalesMeetings.filter((item) => ["no_show", "cancelled"].includes(item.status)).length;
-      const today = filteredSalesMeetings.filter((item) => item.scheduled_at && new Date(item.scheduled_at).toDateString() === new Date().toDateString()).length;
+      const allMeetings = salesMeetings.filter((item) => matchesDateFilter(item, "scheduled_at"));
+      const totalCount = allMeetings.length;
+      const scheduledCount = allMeetings.filter((item) => item.status === "scheduled").length;
+      const completedCount = allMeetings.filter((item) => item.status === "completed").length;
+      const noShowCount = allMeetings.filter((item) => ["no_show", "cancelled"].includes(item.status)).length;
+      const decidedCount = completedCount + noShowCount;
+      const showUpRateNum = decidedCount > 0 ? (completedCount / decidedCount) * 100 : 0;
+      const showUpRateDisplay = showUpRateNum % 1 === 0 ? `${showUpRateNum}%` : `${showUpRateNum.toFixed(1)}%`;
+
       return [
-        { label: "Scheduled", value: scheduled, sub: "Upcoming meetings", icon: Calendar, tone: "text-blue-600 bg-blue-50 dark:bg-blue-950/30" },
-        { label: "Today", value: today, sub: "Meetings today", icon: Phone, tone: "text-cyan-600 bg-cyan-50 dark:bg-cyan-950/30" },
-        { label: "Completed", value: completed, sub: "Done meetings", icon: CheckCircle2, tone: "text-emerald-600 bg-emerald-50 dark:bg-emerald-950/30" },
-        { label: "No Show", value: noShow, sub: "Missed/cancelled", icon: XCircle, tone: "text-rose-600 bg-rose-50 dark:bg-rose-950/30" },
-      ];
+        {
+          id: "total_meetings",
+          label: "Total Meetings",
+          value: totalCount,
+          sub: "All pipeline meetings",
+          icon: Calendar,
+          tone: "text-blue-600 bg-blue-50 dark:bg-blue-950/30",
+          filterKey: "all",
+          helpText: "All client discovery, demo, quotation, and negotiation meetings.",
+        },
+        {
+          id: "scheduled_meetings",
+          label: "Scheduled",
+          value: scheduledCount,
+          sub: "Upcoming pipeline calls",
+          badge: "Upcoming",
+          icon: Video,
+          tone: "text-indigo-600 bg-indigo-50 dark:bg-indigo-950/30",
+          filterKey: "scheduled",
+          helpText: "Scheduled meetings waiting to be conducted.",
+        },
+        {
+          id: "completed_meetings",
+          label: "Completed",
+          value: completedCount,
+          sub: "Successfully conducted",
+          badge: "Conducted",
+          icon: CheckCircle2,
+          tone: "text-emerald-600 bg-emerald-50 dark:bg-emerald-950/30",
+          filterKey: "completed",
+          helpText: "Successfully held discovery or closing meetings.",
+        },
+        {
+          id: "no_show_meetings",
+          label: "No Show / Missed",
+          value: noShowCount,
+          sub: "Client missed or cancelled",
+          badge: noShowCount > 0 ? "Reschedule" : null,
+          icon: XCircle,
+          tone: "text-rose-600 bg-rose-50 dark:bg-rose-950/30",
+          filterKey: "no_show",
+          helpText: "Meetings where client did not attend or cancelled; follow up to reschedule.",
+        },
+        {
+          id: "showup_rate",
+          label: "Show-up Rate",
+          value: showUpRateDisplay,
+          sub: decidedCount > 0 ? `${completedCount} Done ÷ ${decidedCount} Decided` : "No closed sessions",
+          badge: decidedCount > 0 ? `${completedCount}W / ${noShowCount}L` : null,
+          icon: Target,
+          tone: "text-purple-600 bg-purple-50 dark:bg-purple-950/30",
+          filterKey: "completed",
+          isRateCard: true,
+          ratioBasis: "Formula: (Completed ÷ (Completed + No Show)) × 100",
+          ratioFormula: decidedCount > 0 ? `(${completedCount} ÷ ${decidedCount}) × 100 = ${showUpRateDisplay}` : null,
+          helpText: `Meeting Show-up Rate is (${completedCount} completed out of ${decidedCount} decided meetings).`,
+        },
+      ].filter((card) => !["today_meetings", "showup_rate"].includes(card.id));
     }
     return [];
   }, [
@@ -2276,15 +2390,15 @@ export default function CrmModule({
           onClick={() => setShowMeetingSettingsModal(true)}
           className="flex shrink-0 items-center gap-1.5 px-3.5 py-2 rounded-xl border border-gray-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-gray-700 dark:text-neutral-200 hover:bg-gray-50 dark:hover:bg-slate-800 font-semibold text-xs transition shadow-sm cursor-pointer"
         >
-          <Calendar className="w-4 h-4" />
+          <Settings className="w-4 h-4" />
           <span>Meet Settings</span>
         </button>
         <button
           onClick={() => setShowSalesMeetingModal(true)}
-          className="flex shrink-0 items-center gap-1.5 px-3.5 py-2 rounded-xl border border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 font-semibold text-xs transition shadow-sm cursor-pointer"
+          className="flex shrink-0 items-center gap-1.5 px-3.5 py-2 rounded-xl bg-orange-600 hover:bg-orange-700 text-white font-semibold text-xs transition shadow-sm cursor-pointer"
         >
-          <Calendar className="w-4 h-4" />
-          <span>Meeting</span>
+          <Plus className="w-4 h-4" />
+          <span>Schedule Meeting</span>
         </button>
         </>
       )}
@@ -2383,15 +2497,24 @@ export default function CrmModule({
       </div>
 
       {pageStatusCards.length > 0 && (
+        isReportsLoading || isLeadsLoading || isPipelineLoading || isFollowUpsLoading || isMeetingsLoading || isCommercialsLoading ? (
+          <StatusCardsSkeleton cards={Math.min(6, Math.max(1, pageStatusCards.length))} />
+        ) : (
         <div className={`grid gap-3 ${pageStatusCards.length === 6 ? "grid-cols-2 sm:grid-cols-3 xl:grid-cols-6" : pageStatusCards.length === 5 ? "grid-cols-2 sm:grid-cols-3 xl:grid-cols-5" : "grid-cols-2 lg:grid-cols-4"}`}>
           {pageStatusCards.map((card) => {
             const Icon = card.icon;
-            const isClickable = Boolean(card.filterKey && (viewMode === "leads" || viewMode === "pipeline" || viewMode === "followups"));
+            const isClickable = Boolean(
+              card.filterKey && ["leads", "pipeline", "followups", "sales_meetings"].includes(viewMode)
+            );
             const isFilterActive =
-              (viewMode === "leads" || viewMode === "pipeline" || viewMode === "followups") &&
+              ["leads", "pipeline", "followups", "sales_meetings"].includes(viewMode) &&
               card.filterKey &&
               (
                 (card.filterKey === "all" && (statusFilter === "all" || !statusFilter)) ||
+                (card.filterKey === "scheduled" && (statusFilter === "scheduled" || statusFilter === "pending" || statusFilter === "active")) ||
+                (card.filterKey === "today" && statusFilter === "today") ||
+                (card.filterKey === "completed" && (statusFilter === "completed" || statusFilter === "done")) ||
+                (card.filterKey === "no_show" && (statusFilter === "no_show" || statusFilter === "cancelled" || statusFilter === "missed")) ||
                 (card.filterKey === "pending" && (statusFilter === "pending" || statusFilter === "active")) ||
                 (card.filterKey === "overdue" && statusFilter === "overdue") ||
                 (card.filterKey === "done" && (statusFilter === "done" || statusFilter === "completed")) ||
@@ -2410,6 +2533,7 @@ export default function CrmModule({
                     setLeadPage(1);
                     setPipelinePage(1);
                     setFollowUpPage(1);
+                    setMeetingPage(1);
                   }
                 }}
                 className={`p-4 rounded-2xl bg-white dark:bg-[#18150f] border shadow-2xs min-w-0 transition-all ${
@@ -2448,10 +2572,14 @@ export default function CrmModule({
             );
           })}
         </div>
+        )
       )}
 
 
       {viewMode === "reports" && (
+        isReportsLoading ? (
+          <ReportsSkeleton />
+        ) : (
       <>
       {/* 2. Key Metrics Bar */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
@@ -2610,10 +2738,11 @@ export default function CrmModule({
         )}
       </div>
       </>
+        )
       )}
 
-      {/* 3. Filter & Search Controls (Hidden on Leads, Pipeline & Follow-ups as cards handle filtering) */}
-      {viewMode !== "reports" && viewMode !== "leads" && viewMode !== "pipeline" && viewMode !== "followups" && (
+      {/* 3. Filter & Search Controls (Hidden on Leads, Pipeline, Follow-ups, and Meetings as cards handle filtering) */}
+      {viewMode === "commercials" && (
       <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 p-3 rounded-2xl bg-white dark:bg-[#18150f] border border-gray-100 dark:border-[#3a3020]">
         <div className="relative flex-1">
           <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
@@ -2621,39 +2750,10 @@ export default function CrmModule({
             type="text"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search leads by name, phone, email, service, source..."
+            placeholder="Search quotations, proposals, agreements by title, client..."
             className="w-full pl-9 pr-4 py-2 rounded-xl text-xs sm:text-sm bg-gray-50 dark:bg-slate-800/80 border border-gray-200 dark:border-slate-700/80 focus:outline-hidden focus:ring-2 focus:ring-orange-500"
           />
         </div>
-
-        {viewMode === "pipeline" && (
-        <div className="flex items-center gap-2 overflow-x-auto no-scrollbar">
-          {[
-            ["all", "All Stages"],
-            ["active", "Active Deals"],
-            ["won", "Won / Converted"],
-            ["lost", "Closed Lost"],
-          ].map(([value, label]) => {
-            const isSelected =
-              statusFilter === value ||
-              (value === "won" && statusFilter === "converted") ||
-              (value === "all" && !["active", "won", "converted", "lost"].includes(statusFilter));
-            return (
-              <button
-                key={value}
-                onClick={() => setStatusFilter(value === "won" ? "won" : value)}
-                className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition ${
-                  isSelected
-                    ? "bg-orange-600 text-white shadow-2xs"
-                    : "bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-neutral-400 hover:text-gray-900 dark:hover:text-white"
-                }`}
-              >
-                {label}
-              </button>
-            );
-          })}
-        </div>
-        )}
       </div>
       )}
 
@@ -3659,6 +3759,9 @@ export default function CrmModule({
       )}
 
       {viewMode === "commercials" && (
+        isCommercialsLoading ? (
+          <CommercialsSkeleton />
+        ) : (
         <div className="space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             {[
@@ -3784,6 +3887,7 @@ export default function CrmModule({
             )}
           </div>
         </div>
+        )
       )}
 
       {viewMode === "followups" && (
@@ -3998,10 +4102,41 @@ export default function CrmModule({
 
       {viewMode === "sales_meetings" && (
         <div className="rounded-2xl bg-white dark:bg-[#18150f] border border-gray-100 dark:border-[#3a3020] overflow-hidden shadow-2xs">
-          {isMeetingsLoading && filteredSalesMeetings.length === 0 ? (
+          {isMeetingsLoading && paginatedSalesMeetings.length === 0 ? (
             <TableSkeleton rows={6} columns={6} />
           ) : filteredSalesMeetings.length === 0 ? (
-            <div className="p-8 text-center text-sm text-gray-500 dark:text-neutral-400">No sales meeting scheduled.</div>
+            <div className="p-12 text-center space-y-3">
+              <div className="w-12 h-12 rounded-2xl bg-orange-50 dark:bg-orange-950/30 text-orange-600 dark:text-orange-400 flex items-center justify-center mx-auto">
+                <Calendar className="w-6 h-6" />
+              </div>
+              <div className="font-bold text-gray-900 dark:text-white text-base">No sales meetings found</div>
+              <p className="text-xs text-gray-500 dark:text-neutral-400 max-w-sm mx-auto">
+                {dateFilter !== "all"
+                  ? "No meetings match the selected date range."
+                  : "There are currently no sales meetings scheduled."}
+              </p>
+              <div className="flex items-center justify-center gap-2 pt-2">
+                {dateFilter !== "all" && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setDateFilter("all");
+                      setMeetingPage(1);
+                    }}
+                    className="px-3.5 py-1.5 rounded-xl text-xs font-semibold bg-gray-100 dark:bg-slate-800 text-gray-700 dark:text-neutral-300 hover:bg-gray-200 transition cursor-pointer"
+                  >
+                    Clear Filters
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={() => setShowSalesMeetingModal(true)}
+                  className="px-3.5 py-1.5 rounded-xl text-xs font-semibold bg-orange-600 hover:bg-orange-700 text-white transition cursor-pointer"
+                >
+                  Schedule Meeting
+                </button>
+              </div>
+            </div>
           ) : (
             <>
             <ResponsiveTableContainer>
@@ -4017,55 +4152,98 @@ export default function CrmModule({
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100 dark:divide-[#3a3020]/60">
-                  {filteredSalesMeetings.map((item) => {
+                  {paginatedSalesMeetings.map((item) => {
                     const lead = leads.find((leadItem) => leadItem.id === item.lead_id);
                     const client = clients.find((clientItem) => clientItem.id === item.client_id);
+                    const contactPhone = client?.phone || lead?.phone || "";
+                    const scheduledTime = item.scheduled_at ? new Date(item.scheduled_at).getTime() : 0;
+                    const isOverdue = item.status === "scheduled" && scheduledTime > 0 && scheduledTime < Date.now();
+                    const isToday = item.scheduled_at && new Date(item.scheduled_at).toDateString() === new Date().toDateString();
                     return (
-                      <tr key={item.id} className="hover:bg-gray-50/60 dark:hover:bg-slate-800/40 transition">
+                      <tr key={item.id} className={`hover:bg-gray-50/60 dark:hover:bg-slate-800/40 transition ${isOverdue ? "bg-red-50/40 dark:bg-red-950/10" : ""}`}>
                         <td className="py-3.5 px-4">
-                          <div className="font-bold text-gray-900 dark:text-white">{item.title}</div>
+                          <div className="flex items-center gap-2">
+                            <div className="font-bold text-gray-900 dark:text-white">{item.title}</div>
+                            {isOverdue && (
+                              <span className="px-2 py-0.5 rounded-full bg-red-100 dark:bg-red-950/40 text-red-600 dark:text-red-400 text-[10px] font-black uppercase">
+                                Passed
+                              </span>
+                            )}
+                            {!isOverdue && isToday && item.status === "scheduled" && (
+                              <span className="px-2 py-0.5 rounded-full bg-cyan-100 dark:bg-cyan-950/40 text-cyan-700 dark:text-cyan-300 text-[10px] font-black uppercase">
+                                Today
+                              </span>
+                            )}
+                          </div>
                           <div className="text-[11px] text-gray-500 line-clamp-1">{item.agenda || item.next_action || "Sales meeting"}</div>
                         </td>
                         <td className="py-3.5 px-4">
-                          <div className="font-semibold text-gray-900 dark:text-white">{client?.name || lead?.name || "Unlinked"}</div>
+                          {lead ? (
+                            <button
+                              type="button"
+                              onClick={() => setSelectedLead(lead)}
+                              className="text-left font-semibold text-gray-900 dark:text-white hover:text-orange-600 dark:hover:text-orange-400 transition cursor-pointer"
+                              title="View Lead Details"
+                            >
+                              {lead.name}
+                            </button>
+                          ) : (
+                            <div className="font-semibold text-gray-900 dark:text-white">{client?.name || "Unlinked"}</div>
+                          )}
                           <div className="text-[11px] text-gray-500">{client ? "Client" : lead ? "Lead" : "General"}</div>
                         </td>
                         <td className="py-3.5 px-4 capitalize font-semibold text-gray-700 dark:text-neutral-200">{item.meeting_type}</td>
-                        <td className="py-3.5 px-4 text-gray-500 text-xs">{new Date(item.scheduled_at).toLocaleString("en-IN")} - {item.duration_minutes || 30}m</td>
+                        <td className="py-3.5 px-4 text-gray-500 text-xs">
+                          <div>{new Date(item.scheduled_at).toLocaleString("en-IN")}</div>
+                          <div className="text-[11px] text-gray-400">{item.duration_minutes || 30} mins</div>
+                        </td>
                         <td className="py-3.5 px-4">
                           <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase ${
-                            item.status === "completed" ? "bg-emerald-50 text-emerald-600" : item.status === "cancelled" || item.status === "no_show" ? "bg-red-50 text-red-600" : "bg-blue-50 text-blue-600"
-                          }`}>{item.status}</span>
+                            item.status === "completed"
+                              ? "bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-300"
+                              : item.status === "cancelled" || item.status === "no_show"
+                              ? "bg-red-50 text-red-600 dark:bg-red-950/40 dark:text-red-300"
+                              : isOverdue
+                              ? "bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300"
+                              : "bg-blue-50 text-blue-600 dark:bg-blue-950/40 dark:text-blue-300"
+                          }`}>
+                            {item.status === "no_show" ? "No Show" : item.status}
+                          </span>
                         </td>
                         <td className="py-3.5 px-4 text-right">
                           <div className="flex items-center justify-end gap-1.5">
-                            {lead?.phone && (
+                            {contactPhone && (
                               <>
                                 <button
                                   type="button"
-                                  onClick={() => handleWhatsAppClick(lead)}
-                                  className="p-1.5 rounded-lg text-emerald-600 bg-emerald-50 dark:bg-emerald-950/40 hover:bg-emerald-100 transition shrink-0"
+                                  onClick={() => {
+                                    const cleanPhone = contactPhone.replace(/[^0-9]/g, "");
+                                    const name = client?.name || lead?.name || "there";
+                                    const text = encodeURIComponent(`Hi ${name}, quick check regarding our sales meeting "${item.title}". Please let me know if you need any info before our discussion.`);
+                                    window.open(`https://wa.me/${cleanPhone}?text=${text}`, "_blank", "noopener,noreferrer");
+                                  }}
+                                  className="p-1.5 rounded-lg text-emerald-600 bg-emerald-50 dark:bg-emerald-950/40 hover:bg-emerald-100 transition shrink-0 cursor-pointer"
                                   title="Chat on WhatsApp"
                                   aria-label="Chat on WhatsApp"
                                 >
                                   <WhatsAppIcon className="w-3.5 h-3.5" />
                                 </button>
                                 <a
-                                  href={`tel:${lead.phone}`}
+                                  href={`tel:${contactPhone}`}
                                   className="p-1.5 rounded-lg text-orange-600 bg-orange-50 dark:bg-orange-950/40 hover:bg-orange-100 transition shrink-0"
-                                  title="Call Client"
-                                  aria-label="Call Client"
+                                  title="Call Contact"
+                                  aria-label="Call Contact"
                                 >
                                   <Phone className="w-3.5 h-3.5" />
                                 </a>
                               </>
                             )}
-                            {item.meeting_link && (
+                            {item.meeting_link && item.status !== "completed" && item.status !== "no_show" && item.status !== "cancelled" && (
                               <a
-                                href={item.meeting_link}
+                                href={item.meeting_link.startsWith("http") ? item.meeting_link : `https://${item.meeting_link}`}
                                 target="_blank"
                                 rel="noreferrer"
-                                className="p-1.5 rounded-lg text-white bg-blue-600 hover:bg-blue-700 transition shrink-0"
+                                className="p-1.5 rounded-lg text-white bg-blue-600 hover:bg-blue-700 transition shrink-0 inline-flex items-center justify-center cursor-pointer"
                                 title="Join Meeting"
                                 aria-label="Join Meeting"
                               >
@@ -4075,24 +4253,27 @@ export default function CrmModule({
                             {item.status === "scheduled" && (
                               <>
                                 <button
+                                  type="button"
                                   onClick={() => openSalesMeetingRescheduleModal(item)}
-                                  className="p-1.5 rounded-lg text-amber-700 bg-amber-50 dark:bg-amber-950/40 hover:bg-amber-100 transition shrink-0"
+                                  className="p-1.5 rounded-lg text-amber-700 bg-amber-50 dark:bg-amber-950/40 hover:bg-amber-100 transition shrink-0 cursor-pointer"
                                   title="Reschedule Meeting"
                                   aria-label="Reschedule Meeting"
                                 >
                                   <RotateCcw className="w-3.5 h-3.5" />
                                 </button>
                                 <button
-                                  onClick={() => onUpdateSalesMeeting?.(item.id, { status: "completed", outcome: item.outcome || "Meeting completed. Follow-up required." })}
-                                  className="p-1.5 rounded-lg text-white bg-emerald-600 hover:bg-emerald-700 transition shrink-0"
+                                  type="button"
+                                  onClick={() => onUpdateSalesMeeting?.(item.id, { status: "completed" })}
+                                  className="p-1.5 rounded-lg text-white bg-emerald-600 hover:bg-emerald-700 transition shrink-0 cursor-pointer"
                                   title="Mark as Completed"
                                   aria-label="Mark as Completed"
                                 >
                                   <Check className="w-3.5 h-3.5" />
                                 </button>
                                 <button
-                                  onClick={() => onUpdateSalesMeeting?.(item.id, { status: "no_show", outcome: "Client did not join. Reschedule follow-up required." })}
-                                  className="p-1.5 rounded-lg text-red-600 bg-red-50 dark:bg-red-950/40 hover:bg-red-100 transition shrink-0"
+                                  type="button"
+                                  onClick={() => onUpdateSalesMeeting?.(item.id, { status: "no_show" })}
+                                  className="p-1.5 rounded-lg text-red-600 bg-red-50 dark:bg-red-950/40 hover:bg-red-100 transition shrink-0 cursor-pointer"
                                   title="Mark as No Show"
                                   aria-label="Mark as No Show"
                                 >
@@ -4100,6 +4281,21 @@ export default function CrmModule({
                                 </button>
                               </>
                             )}
+
+                            {/* Delete Meeting */}
+                            <button
+                              type="button"
+                              onClick={() => {
+                                if (window.confirm("Are you sure you want to delete this sales meeting?")) {
+                                  onDeleteSalesMeeting?.(item.id);
+                                }
+                              }}
+                              className="p-1.5 rounded-lg text-red-600 bg-red-50 dark:bg-red-950/40 hover:bg-red-100 transition shrink-0 cursor-pointer"
+                              title="Delete Meeting"
+                              aria-label="Delete Meeting"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
                           </div>
                         </td>
                       </tr>
@@ -4108,23 +4304,93 @@ export default function CrmModule({
                 </tbody>
               </table>
             </ResponsiveTableContainer>
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-4 py-3 border-t border-gray-100 dark:border-[#3a3020] bg-gray-50/40 dark:bg-[#211d14]/40 text-xs">
-                <div className="text-gray-500 dark:text-neutral-400">
-                  {meetingPagination?.loading ? "Loading meetings..." : (
-                    <>Showing meeting page <span className="font-bold text-gray-800 dark:text-white">{safeMeetingPage}</span> of <span className="font-bold text-gray-800 dark:text-white">{meetingPageCount}</span> ({meetingTotal} meetings)</>
-                  )}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-4 py-3 border-t border-gray-100 dark:border-[#3a3020] bg-gray-50/60 dark:bg-[#211d14]/60 text-xs">
+                <div className="text-gray-500 dark:text-neutral-400 flex items-center gap-1.5 flex-wrap">
+                  <span>Showing</span>
+                  <span className="font-bold text-gray-800 dark:text-white">{meetingPageStart}</span>
+                  <span>to</span>
+                  <span className="font-bold text-gray-800 dark:text-white">{meetingPageEnd}</span>
+                  <span>of</span>
+                  <span className="font-bold text-gray-800 dark:text-white">{meetingTotal}</span>
+                  <span>meetings</span>
                 </div>
-                <div className="flex items-center gap-2 justify-end">
-                  <select value={meetingPageSize} onChange={(e) => setMeetingPageSize(Number(e.target.value))} className="px-2.5 py-1.5 rounded-lg bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 font-semibold text-gray-700 dark:text-neutral-200" aria-label="Meetings per page">
-                    <option value={25}>25 per page</option>
-                    <option value={50}>50 per page</option>
-                  </select>
-                  <button type="button" onClick={() => setMeetingPage((page) => Math.max(1, page - 1))} disabled={safeMeetingPage <= 1} className="px-3 py-1.5 rounded-lg font-bold bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 text-gray-700 dark:text-neutral-200 disabled:opacity-40 disabled:cursor-not-allowed">
-                    Prev
-                  </button>
-                  <button type="button" onClick={() => setMeetingPage((page) => Math.min(meetingPageCount, page + 1))} disabled={safeMeetingPage >= meetingPageCount} className="px-3 py-1.5 rounded-lg font-bold bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 text-gray-700 dark:text-neutral-200 disabled:opacity-40 disabled:cursor-not-allowed">
-                    Next
-                  </button>
+
+                <div className="flex items-center gap-2.5 flex-wrap justify-between sm:justify-end">
+                  <div className="flex items-center gap-1.5 text-xs text-gray-500 dark:text-neutral-400">
+                    <span className="hidden xs:inline">Rows per page:</span>
+                    <select
+                      value={meetingPageSize}
+                      onChange={(e) => {
+                        setMeetingPageSize(Number(e.target.value));
+                        setMeetingPage(1);
+                      }}
+                      className="px-2.5 py-1.5 rounded-xl bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 font-semibold text-gray-700 dark:text-neutral-200 text-xs focus:outline-hidden focus:ring-1 focus:ring-orange-500"
+                      aria-label="Meetings per page"
+                    >
+                      <option value={10}>10 / page</option>
+                      <option value={20}>20 / page</option>
+                      <option value={50}>50 / page</option>
+                      <option value={100}>100 / page</option>
+                    </select>
+                  </div>
+
+                  <div className="flex items-center gap-1">
+                    <button
+                      type="button"
+                      onClick={() => setMeetingPage((p) => Math.max(1, p - 1))}
+                      disabled={safeMeetingPage <= 1}
+                      className="p-1.5 rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-gray-700 dark:text-neutral-200 disabled:opacity-30 disabled:cursor-not-allowed hover:bg-gray-100 dark:hover:bg-slate-700 transition cursor-pointer"
+                      title="Previous Page"
+                      aria-label="Previous Page"
+                    >
+                      <ChevronLeft className="w-3.5 h-3.5" />
+                    </button>
+
+                    {Array.from({ length: meetingPageCount }, (_, i) => i + 1)
+                      .filter((page) => {
+                        if (meetingPageCount <= 5) return true;
+                        if (page === 1 || page === meetingPageCount) return true;
+                        return Math.abs(page - safeMeetingPage) <= 1;
+                      })
+                      .reduce((acc, page, idx, arr) => {
+                        if (idx > 0 && page - arr[idx - 1] > 1) {
+                          acc.push("...");
+                        }
+                        acc.push(page);
+                        return acc;
+                      }, [])
+                      .map((item, idx) =>
+                        item === "..." ? (
+                          <span key={`ellipsis-${idx}`} className="px-1 text-gray-400 font-bold select-none">
+                            ...
+                          </span>
+                        ) : (
+                          <button
+                            key={`page-${item}`}
+                            type="button"
+                            onClick={() => setMeetingPage(item)}
+                            className={`min-w-[28px] h-7 px-2 rounded-xl text-xs font-bold transition cursor-pointer ${
+                              safeMeetingPage === item
+                                ? "bg-orange-600 text-white shadow-2xs"
+                                : "bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 text-gray-700 dark:text-neutral-300 hover:bg-gray-100 dark:hover:bg-slate-700"
+                            }`}
+                          >
+                            {item}
+                          </button>
+                        )
+                      )}
+
+                    <button
+                      type="button"
+                      onClick={() => setMeetingPage((p) => Math.min(meetingPageCount, p + 1))}
+                      disabled={safeMeetingPage >= meetingPageCount}
+                      className="p-1.5 rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-gray-700 dark:text-neutral-200 disabled:opacity-30 disabled:cursor-not-allowed hover:bg-gray-100 dark:hover:bg-slate-700 transition cursor-pointer"
+                      title="Next Page"
+                      aria-label="Next Page"
+                    >
+                      <ChevronRight className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
                 </div>
               </div>
             </>

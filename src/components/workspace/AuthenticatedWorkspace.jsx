@@ -234,6 +234,7 @@ import {
   getSalesMeetings,
   createSalesMeeting,
   updateSalesMeeting,
+  deleteSalesMeeting,
   getProjects,
   createProject,
   updateProject,
@@ -752,6 +753,7 @@ export default function AuthenticatedWorkspace({ defaultSection = "overview" } =
     meetingPagination,
     invoicesList,
     setInvoicesList,
+    crmLoading,
     loadCrmData,
     handleFetchLeadsPage,
     handleFetchDealsPage,
@@ -773,6 +775,7 @@ export default function AuthenticatedWorkspace({ defaultSection = "overview" } =
   const [supportTicketsList, setSupportTicketsList] = useState([]);
   const businessDataLoadedRef = useRef(new Set());
   const businessDataLoadingRef = useRef(new Set());
+  const [businessLoadingGroups, setBusinessLoadingGroups] = useState([]);
   const [tasks, setTasks] = useState([]);
   const [meetings, setMeetings] = useState([]);
   const [certificates, setCertificates] = useState([]);
@@ -4020,6 +4023,7 @@ export default function AuthenticatedWorkspace({ defaultSection = "overview" } =
     await Promise.all(toLoad.map(async (group) => {
       if (businessDataLoadingRef.current.has(group)) return;
       businessDataLoadingRef.current.add(group);
+      setBusinessLoadingGroups((prev) => (prev.includes(group) ? prev : [...prev, group]));
       try {
         if (group === "crm") {
           await loadCrmData();
@@ -4075,9 +4079,12 @@ export default function AuthenticatedWorkspace({ defaultSection = "overview" } =
         console.warn(`Lazy business data fetch warning (${group}):`, err?.message || err);
       } finally {
         businessDataLoadingRef.current.delete(group);
+        setBusinessLoadingGroups((prev) => prev.filter((item) => item !== group));
       }
     }));
   }
+
+  const isBusinessGroupLoading = useCallback((group) => businessLoadingGroups.includes(group), [businessLoadingGroups]);
 
   async function writeAudit(action, entityType, entityId, summary, metadata = {}) {
     if (!sessionUser?.id) return;
@@ -7364,11 +7371,6 @@ export default function AuthenticatedWorkspace({ defaultSection = "overview" } =
                       <Target className="w-5 h-5 shrink-0 stroke-[1.75] text-red-500" />
                       <span className="admin-sidebar-item-label">Leads</span>
                     </div>
-                    {crmLeadCount > 0 && (
-                      <span className="text-[11px] font-bold text-red-600 bg-red-50 dark:bg-red-950/40 px-2 py-0.5 rounded-full">
-                        {crmLeadCount > 99 ? "99+" : crmLeadCount}
-                      </span>
-                    )}
                   </button>
 
                   <button
@@ -7385,11 +7387,6 @@ export default function AuthenticatedWorkspace({ defaultSection = "overview" } =
                       <TrendingUp className="w-5 h-5 shrink-0 stroke-[1.75] text-emerald-500" />
                       <span className="admin-sidebar-item-label">Sales Pipeline</span>
                     </div>
-                    {activePipelineCount > 0 && (
-                      <span className="text-[11px] font-bold text-emerald-600 bg-emerald-50 dark:bg-emerald-950/40 px-2 py-0.5 rounded-full">
-                        {activePipelineCount}
-                      </span>
-                    )}
                   </button>
 
                   <button
@@ -7406,11 +7403,6 @@ export default function AuthenticatedWorkspace({ defaultSection = "overview" } =
                       <Phone className="w-5 h-5 shrink-0 stroke-[1.75] text-blue-500" />
                       <span className="admin-sidebar-item-label">Follow-ups</span>
                     </div>
-                    {salesFollowUps.filter((item) => item.status === "pending").length > 0 && (
-                      <span className="text-[11px] font-bold text-blue-600 bg-blue-50 dark:bg-blue-950/40 px-2 py-0.5 rounded-full">
-                        {salesFollowUps.filter((item) => item.status === "pending").length}
-                      </span>
-                    )}
                   </button>
 
                   <button
@@ -7427,11 +7419,6 @@ export default function AuthenticatedWorkspace({ defaultSection = "overview" } =
                       <Calendar className="w-5 h-5 shrink-0 stroke-[1.75] text-cyan-500" />
                       <span className="admin-sidebar-item-label">Meetings</span>
                     </div>
-                    {salesMeetings.filter((item) => item.status === "scheduled").length > 0 && (
-                      <span className="text-[11px] font-bold text-cyan-600 bg-cyan-50 dark:bg-cyan-950/40 px-2 py-0.5 rounded-full">
-                        {salesMeetings.filter((item) => item.status === "scheduled").length}
-                      </span>
-                    )}
                   </button>
 
                   <button
@@ -7448,11 +7435,6 @@ export default function AuthenticatedWorkspace({ defaultSection = "overview" } =
                       <FileText className="w-5 h-5 shrink-0 stroke-[1.75] text-orange-500" />
                       <span className="admin-sidebar-item-label">Quotation</span>
                     </div>
-                    {proposals.length + quotations.length > 0 && (
-                      <span className="text-[11px] font-bold text-orange-600 bg-orange-50 dark:bg-orange-950/40 px-2 py-0.5 rounded-full">
-                        {proposals.length + quotations.length}
-                      </span>
-                    )}
                   </button>
 
                   <button
@@ -7469,11 +7451,6 @@ export default function AuthenticatedWorkspace({ defaultSection = "overview" } =
                       <ShieldCheck className="w-5 h-5 shrink-0 stroke-[1.75] text-indigo-500" />
                       <span className="admin-sidebar-item-label">Agreements</span>
                     </div>
-                    {agreements.length > 0 && (
-                      <span className="text-[11px] font-bold text-indigo-600 bg-indigo-50 dark:bg-indigo-950/40 px-2 py-0.5 rounded-full">
-                        {agreements.length}
-                      </span>
-                    )}
                   </button>
 
                   <button
@@ -7490,11 +7467,6 @@ export default function AuthenticatedWorkspace({ defaultSection = "overview" } =
                       <CreditCard className="w-5 h-5 shrink-0 stroke-[1.75] text-emerald-500" />
                       <span className="admin-sidebar-item-label">Invoices</span>
                     </div>
-                    {invoicesList.length > 0 && (
-                      <span className="text-[11px] font-bold text-emerald-600 bg-emerald-50 dark:bg-emerald-950/40 px-2 py-0.5 rounded-full">
-                        {invoicesList.length}
-                      </span>
-                    )}
                   </button>
 
                   <button
@@ -7511,11 +7483,6 @@ export default function AuthenticatedWorkspace({ defaultSection = "overview" } =
                       <Wallet className="w-5 h-5 shrink-0 stroke-[1.75] text-lime-600" />
                       <span className="admin-sidebar-item-label">Payments</span>
                     </div>
-                    {invoicesList.filter((invoice) => invoice.status === "paid").length > 0 && (
-                      <span className="text-[11px] font-bold text-lime-700 bg-lime-50 dark:bg-lime-950/40 px-2 py-0.5 rounded-full">
-                        {invoicesList.filter((invoice) => invoice.status === "paid").length}
-                      </span>
-                    )}
                   </button>
 
                   <button
@@ -7532,11 +7499,6 @@ export default function AuthenticatedWorkspace({ defaultSection = "overview" } =
                       <Building2 className="w-5 h-5 shrink-0 stroke-[1.75] text-blue-500" />
                       <span className="admin-sidebar-item-label">Clients</span>
                     </div>
-                    {clients.length > 0 && (
-                      <span className="text-[11px] font-bold text-blue-600 bg-blue-50 dark:bg-blue-950/40 px-2 py-0.5 rounded-full">
-                        {clients.length}
-                      </span>
-                    )}
                   </button>
 
                   <button
@@ -12549,9 +12511,11 @@ export default function AuthenticatedWorkspace({ defaultSection = "overview" } =
                   }
                   commercialScope={activeSection === "agreements" ? "agreement" : activeSection === "sales_commercials" ? "proposal_quote" : "all"}
                   leads={leads}
+                  leadPagination={leadPagination}
                   leadSummary={leadSummary}
                   onRefreshLeadSummary={refreshLeadSummary}
                   deals={deals}
+                  dealPagination={dealPagination}
                   clients={clients}
                   proposals={proposals}
                   quotations={quotations}
@@ -12561,6 +12525,7 @@ export default function AuthenticatedWorkspace({ defaultSection = "overview" } =
                   followUpPagination={followUpPagination}
                   salesMeetings={salesMeetings}
                   meetingPagination={meetingPagination}
+                  isLoading={crmLoading}
                   headerActionsSlotId="crm-header-actions"
                   onFetchLeadsPage={handleFetchLeadsPage}
                   onFetchDealsPage={handleFetchDealsPage}
@@ -12702,28 +12667,13 @@ export default function AuthenticatedWorkspace({ defaultSection = "overview" } =
                     const res = await updateSalesMeeting(id, updates);
                     if (res) {
                       setSalesMeetings((prev) => prev.map((item) => (item.id === id ? { ...item, ...updates, ...res } : item)));
-                      setToast("Sales meeting updated.");
-                      if (updates.status === "completed") {
-                        await createAutoSalesFollowUp({
-                          lead_id: res.lead_id || null,
-                          client_id: res.client_id || null,
-                          deal_id: res.deal_id || null,
-                          title: `Post-meeting next action: ${res.title || "Client meeting"}`,
-                          due_at: new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString(),
-                          notes: "Auto-created after meeting completion. Send summary, confirm requirements, and move pipeline forward.",
-                        }, "Auto follow-up created after meeting");
-                      }
-                      if (updates.status === "no_show") {
-                        await createAutoSalesFollowUp({
-                          lead_id: res.lead_id || null,
-                          client_id: res.client_id || null,
-                          deal_id: res.deal_id || null,
-                          title: `Reschedule missed meeting: ${res.title || "Client meeting"}`,
-                          due_at: new Date(Date.now() + 3 * 60 * 60 * 1000).toISOString(),
-                          notes: "Auto-created after client no-show. Send reschedule message and confirm new slot.",
-                        }, "Auto follow-up created for no-show meeting");
-                      }
+                      setToast(`Meeting status updated to ${updates.status || "updated"}.`);
                     }
+                  }}
+                  onDeleteSalesMeeting={async (id) => {
+                    await deleteSalesMeeting(id);
+                    setSalesMeetings((prev) => prev.filter((item) => item.id !== id));
+                    setToast("Sales meeting deleted successfully.");
                   }}
                   onOpenDirectWhatsapp={handleDirectWhatsapp}
                   onOpenChat={(lead) => handleOpenClientChat(lead)}
@@ -12778,6 +12728,9 @@ export default function AuthenticatedWorkspace({ defaultSection = "overview" } =
 
               {/* 4.8. CLIENT MANAGEMENT MODULE */}
               {activeSection === "clients" && (
+                isBusinessGroupLoading("clients") && clients.length === 0 ? (
+                  <WorkspaceModuleSkeleton title="Loading client accounts" />
+                ) : (
                 <ClientsModule
                   clients={clients}
                   deals={deals}
@@ -12801,10 +12754,14 @@ export default function AuthenticatedWorkspace({ defaultSection = "overview" } =
                   }}
                   isDark={isDark}
                 />
+                )
               )}
 
               {/* 4.9. PROJECTS & DELIVERY MODULE */}
               {activeSection === "projects" && (
+                isBusinessGroupLoading("projects") && projectsData.length === 0 ? (
+                  <WorkspaceModuleSkeleton title="Loading project delivery" />
+                ) : (
                 <ProjectsModule
                   projects={projectsData}
                   clients={clients}
@@ -12851,10 +12808,14 @@ export default function AuthenticatedWorkspace({ defaultSection = "overview" } =
                   onHandoverToSupport={handleHandoverToSupport}
                   isDark={isDark}
                 />
+                )
               )}
 
               {/* 4.10. SOCIAL MEDIA MARKETING (SMM) MODULE */}
               {(activeSection === "smm" || activeSection === "content_calendar") && (
+                isBusinessGroupLoading("smm") && smmClients.length === 0 && contentCalendar.length === 0 ? (
+                  <WorkspaceModuleSkeleton title="Loading SMM workspace" />
+                ) : (
                 <SmmModule
                   smmClients={smmClients}
                   contentCalendar={contentCalendar}
@@ -12884,10 +12845,14 @@ export default function AuthenticatedWorkspace({ defaultSection = "overview" } =
                   onOpenChat={handleOpenSmmChat}
                   isDark={isDark}
                 />
+                )
               )}
 
               {/* 4.11. FINANCE & BILLING MODULE */}
               {(activeSection === "invoices" || activeSection === "payments") && (
+                isBusinessGroupLoading("finance") && invoicesList.length === 0 ? (
+                  <WorkspaceModuleSkeleton title="Loading invoices and payments" />
+                ) : (
                 <FinanceModule
                   invoices={invoicesList}
                   proposals={proposals}
@@ -12947,10 +12912,14 @@ export default function AuthenticatedWorkspace({ defaultSection = "overview" } =
                   }}
                   isDark={isDark}
                 />
+                )
               )}
 
               {/* 4.12. SUPPORT & TICKETS MODULE */}
               {activeSection === "support" && (
+                isBusinessGroupLoading("support") && supportTicketsList.length === 0 ? (
+                  <WorkspaceModuleSkeleton title="Loading support tickets" />
+                ) : (
                 <SupportModule
                   tickets={supportTicketsList}
                   clients={clients}
@@ -12974,6 +12943,7 @@ export default function AuthenticatedWorkspace({ defaultSection = "overview" } =
                   onOpenChat={handleOpenSupportChat}
                   isDark={isDark}
                 />
+                )
               )}
 
               {/* 5. Main Data Table (for all list sections, plus admin overview) */}
@@ -16952,6 +16922,39 @@ function BusinessCommandOverview({
             </div>
           ))}
         </div>
+      </div>
+    </div>
+  );
+}
+
+function WorkspaceModuleSkeleton({ title = "Loading workspace" }) {
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <div className="h-5 w-48 rounded-full bg-gray-100 dark:bg-slate-800 animate-pulse" />
+          <div className="h-3 w-64 max-w-full rounded-full bg-gray-100 dark:bg-slate-800 animate-pulse mt-2" />
+        </div>
+        <div className="hidden sm:block h-10 w-32 rounded-2xl bg-gray-100 dark:bg-slate-800 animate-pulse" />
+      </div>
+      <div className="sr-only" aria-live="polite">{title}</div>
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        {[0, 1, 2, 3].map((item) => (
+          <div key={item} className="p-4 rounded-2xl bg-white dark:bg-[#18150f] border border-gray-100 dark:border-[#3a3020] shadow-2xs">
+            <div className="h-3 w-24 rounded-full bg-gray-100 dark:bg-slate-800 animate-pulse" />
+            <div className="h-7 w-14 rounded-full bg-gray-100 dark:bg-slate-800 animate-pulse mt-3" />
+            <div className="h-3 w-32 rounded-full bg-gray-100 dark:bg-slate-800 animate-pulse mt-2" />
+          </div>
+        ))}
+      </div>
+      <div className="rounded-2xl bg-white dark:bg-[#18150f] border border-gray-100 dark:border-[#3a3020] overflow-hidden shadow-2xs">
+        {[0, 1, 2, 3, 4, 5].map((row) => (
+          <div key={row} className="grid grid-cols-4 gap-3 px-4 py-4 border-b border-gray-100 dark:border-[#3a3020]/60 last:border-b-0">
+            {[0, 1, 2, 3].map((col) => (
+              <div key={col} className={`h-3 rounded-full bg-gray-100 dark:bg-slate-800 animate-pulse ${col === 0 ? "w-4/5" : col === 3 ? "w-2/3 justify-self-end" : "w-full"}`} />
+            ))}
+          </div>
+        ))}
       </div>
     </div>
   );

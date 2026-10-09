@@ -29,6 +29,7 @@ export function useCrmData({ sessionUserId = "", pushLiveSalesNotification } = {
   const [salesMeetings, setSalesMeetings] = useState([]);
   const [meetingPagination, setMeetingPagination] = useState({ count: 0, page: 1, pageSize: 50, loading: false });
   const [invoicesList, setInvoicesList] = useState([]);
+  const [crmLoading, setCrmLoading] = useState(false);
   const leadsRef = useRef([]);
 
   useEffect(() => {
@@ -44,40 +45,45 @@ export function useCrmData({ sessionUserId = "", pushLiveSalesNotification } = {
   }, []);
 
   const loadCrmData = useCallback(async function loadCrmData() {
-    const [leadsRes, dealsRes, proposalsRes, quotationsRes, agreementsRes, followUpsRes, meetingsRes, invoicesRes, summaryRes] = await Promise.all([
-      getCloudLeads({ page: 1, pageSize: 200, withCount: true }),
-      getDeals({ page: 1, pageSize: 100, withCount: true }),
-      getProposals(),
-      getQuotations(),
-      getAgreements(),
-      getSalesFollowUps({ page: 1, pageSize: 50, withCount: true }),
-      getSalesMeetings({ page: 1, pageSize: 50, withCount: true }),
-      getInvoices(),
-      getCloudLeadsSummary(),
-    ]);
-    setLeads(leadsRes?.data || leadsRes || []);
-    if (leadsRes?.data) {
-      setLeadPagination({ count: leadsRes.count || 0, page: leadsRes.page || 1, pageSize: leadsRes.pageSize || 200, loading: false });
+    setCrmLoading(true);
+    try {
+      const [leadsRes, dealsRes, proposalsRes, quotationsRes, agreementsRes, followUpsRes, meetingsRes, invoicesRes, summaryRes] = await Promise.all([
+        getCloudLeads({ page: 1, pageSize: 200, withCount: true }),
+        getDeals({ page: 1, pageSize: 100, withCount: true }),
+        getProposals(),
+        getQuotations(),
+        getAgreements(),
+        getSalesFollowUps({ page: 1, pageSize: 50, withCount: true }),
+        getSalesMeetings({ page: 1, pageSize: 50, withCount: true }),
+        getInvoices(),
+        getCloudLeadsSummary(),
+      ]);
+      setLeads(leadsRes?.data || leadsRes || []);
+      if (leadsRes?.data) {
+        setLeadPagination({ count: leadsRes.count || 0, page: leadsRes.page || 1, pageSize: leadsRes.pageSize || 200, loading: false });
+      }
+      if (summaryRes && typeof summaryRes.total === "number") {
+        setLeadSummary(summaryRes);
+      }
+      setDeals(dealsRes?.data || dealsRes || []);
+      if (dealsRes?.data) {
+        setDealPagination({ count: dealsRes.count || 0, page: dealsRes.page || 1, pageSize: dealsRes.pageSize || 100, loading: false });
+      }
+      setProposals(proposalsRes || []);
+      setQuotations(quotationsRes || []);
+      setAgreements(agreementsRes || []);
+      setSalesFollowUps(followUpsRes?.data || followUpsRes || []);
+      if (followUpsRes?.data) {
+        setFollowUpPagination({ count: followUpsRes.count || 0, page: followUpsRes.page || 1, pageSize: followUpsRes.pageSize || 50, loading: false });
+      }
+      setSalesMeetings(meetingsRes?.data || meetingsRes || []);
+      if (meetingsRes?.data) {
+        setMeetingPagination({ count: meetingsRes.count || 0, page: meetingsRes.page || 1, pageSize: meetingsRes.pageSize || 50, loading: false });
+      }
+      setInvoicesList(invoicesRes || []);
+    } finally {
+      setCrmLoading(false);
     }
-    if (summaryRes && typeof summaryRes.total === "number") {
-      setLeadSummary(summaryRes);
-    }
-    setDeals(dealsRes?.data || dealsRes || []);
-    if (dealsRes?.data) {
-      setDealPagination({ count: dealsRes.count || 0, page: dealsRes.page || 1, pageSize: dealsRes.pageSize || 100, loading: false });
-    }
-    setProposals(proposalsRes || []);
-    setQuotations(quotationsRes || []);
-    setAgreements(agreementsRes || []);
-    setSalesFollowUps(followUpsRes?.data || followUpsRes || []);
-    if (followUpsRes?.data) {
-      setFollowUpPagination({ count: followUpsRes.count || 0, page: followUpsRes.page || 1, pageSize: followUpsRes.pageSize || 50, loading: false });
-    }
-    setSalesMeetings(meetingsRes?.data || meetingsRes || []);
-    if (meetingsRes?.data) {
-      setMeetingPagination({ count: meetingsRes.count || 0, page: meetingsRes.page || 1, pageSize: meetingsRes.pageSize || 50, loading: false });
-    }
-    setInvoicesList(invoicesRes || []);
   }, []);
 
   const handleFetchLeadsPage = useCallback(async function handleFetchLeadsPage(params = {}) {
@@ -269,6 +275,7 @@ export function useCrmData({ sessionUserId = "", pushLiveSalesNotification } = {
     meetingPagination,
     invoicesList,
     setInvoicesList,
+    crmLoading,
     loadCrmData,
     handleFetchLeadsPage,
     handleFetchDealsPage,

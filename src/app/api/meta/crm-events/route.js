@@ -1,6 +1,7 @@
 import crypto from "crypto";
 import { NextResponse } from "next/server";
 import { cleanPhone, cleanText, isBodyTooLarge, isJsonRequest, normalizeEmail } from "@/lib/apiSecurity";
+import { cacheDel, cacheSetNx } from "@/lib/upstashCache";
 
 const DATASET_ID = process.env.META_CAPI_DATASET_ID || "1117053014586521";
 const API_VERSION = process.env.META_CAPI_API_VERSION || "v26.0";
@@ -64,11 +65,12 @@ export async function POST(request) {
   }
 
   const eventTime = Math.floor(new Date(body.event_time || lead.updated_at || lead.created_at || Date.now()).getTime() / 1000);
+  const eventName = mapEventName(body.status || lead.status);
   const payload = {
     data: [
       {
         action_source: "system_generated",
-        event_name: mapEventName(body.status || lead.status),
+        event_name: eventName,
         event_time: Number.isFinite(eventTime) ? eventTime : Math.floor(Date.now() / 1000),
         custom_data: {
           event_source: "crm",
@@ -86,6 +88,17 @@ export async function POST(request) {
     payload.test_event_code = process.env.META_CAPI_TEST_EVENT_CODE;
   }
 
+  const idempotencySubject = metaLeadId || email || phone || lead.id || "";
+  const idempotencyKey = idempotencySubject
+    ? `crm:capi:idempotency:${idempotencySubject}:${eventName}:${cleanText(body.status || lead.status || "New", 80)}`
+    : "";
+  if (idempotencyKey) {
+    const claimed = await cacheSetNx(idempotencyKey, "1", 60 * 60 * 24 * 7);
+    if (!claimed) {
+      return NextResponse.json({ ok: true, skipped: true, reason: "Duplicate CAPI event suppressed." });
+    }
+  }
+
   const url = `https://graph.facebook.com/${API_VERSION}/${DATASET_ID}/events?access_token=${encodeURIComponent(accessToken)}`;
   const response = await fetch(url, {
     method: "POST",
@@ -94,6 +107,7 @@ export async function POST(request) {
   });
   const result = await response.json().catch(() => ({}));
   if (!response.ok) {
+    if (idempotencyKey) await cacheDel(idempotencyKey);
     return NextResponse.json({ ok: false, error: result.error?.message || "Meta CAPI request failed.", details: result }, { status: 502 });
   }
 
