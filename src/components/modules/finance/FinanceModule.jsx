@@ -739,20 +739,20 @@ export default function FinanceModule({
               </div>
             </div>
 
-            <div className="flex items-center justify-end gap-2 pt-3 border-t border-gray-100 dark:border-[#3a3020]">
+            <div className="flex flex-wrap items-center justify-end gap-2 pt-3 border-t border-gray-100 dark:border-[#3a3020]">
               <button type="button" onClick={() => setShowCommercialModal(false)} className="px-3.5 py-2 rounded-xl text-xs font-semibold text-gray-500 cursor-pointer">
                 Cancel
               </button>
-              <button type="submit" className="px-4 py-2 rounded-xl text-xs font-bold bg-orange-600 hover:bg-orange-700 text-white shadow-sm cursor-pointer">
+              <button type="submit" className="px-4 py-2 rounded-xl text-xs font-bold bg-orange-600 hover:bg-orange-700 text-white shadow-sm cursor-pointer shrink-0">
                 Save Document
               </button>
               <button
                 type="button"
                 onClick={(e) => handleCreateCommercialSubmit(e, true)}
-                className="px-4 py-2 rounded-xl text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm flex items-center gap-1.5 cursor-pointer"
+                className="px-4 py-2 rounded-xl text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm flex items-center gap-1.5 cursor-pointer shrink-0"
               >
-                <WhatsAppIcon className="w-3.5 h-3.5" />
-                <span>Save & Send on WhatsApp</span>
+                <WhatsAppIcon className="w-3.5 h-3.5 shrink-0" />
+                <span>Save & WhatsApp</span>
               </button>
             </div>
           </form>
@@ -853,7 +853,7 @@ export default function FinanceModule({
               </div>
             </div>
 
-            <div className="flex items-center justify-end gap-2 pt-3 border-t border-gray-100 dark:border-[#3a3020]">
+            <div className="flex flex-wrap items-center justify-end gap-2 pt-3 border-t border-gray-100 dark:border-[#3a3020]">
               <button
                 type="button"
                 onClick={() => setShowAddInvoiceModal(false)}
@@ -863,17 +863,17 @@ export default function FinanceModule({
               </button>
               <button
                 type="submit"
-                className="px-4 py-2 rounded-xl text-xs font-bold bg-orange-600 hover:bg-orange-700 text-white shadow-sm cursor-pointer"
+                className="px-4 py-2 rounded-xl text-xs font-bold bg-orange-600 hover:bg-orange-700 text-white shadow-sm cursor-pointer shrink-0"
               >
                 Issue Invoice
               </button>
               <button
                 type="button"
                 onClick={(e) => handleCreateInvoiceSubmit(e, true)}
-                className="px-4 py-2 rounded-xl text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm flex items-center gap-1.5 cursor-pointer"
+                className="px-4 py-2 rounded-xl text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm flex items-center gap-1.5 cursor-pointer shrink-0"
               >
-                <WhatsAppIcon className="w-3.5 h-3.5" />
-                <span>Issue & Send on WhatsApp</span>
+                <WhatsAppIcon className="w-3.5 h-3.5 shrink-0" />
+                <span>Issue & WhatsApp</span>
               </button>
             </div>
           </form>

@@ -33,6 +33,8 @@ import {
   Target,
   Percent,
   HelpCircle,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import ActivityTimeline from "../shared/ActivityTimeline";
 import MetaLeadsImportModal from "./MetaLeadsImportModal";
@@ -387,7 +389,7 @@ export default function CrmModule({
   const [leadPage, setLeadPage] = useState(1);
   const [leadsPerPage, setLeadsPerPage] = useState(10);
   const [pipelinePage, setPipelinePage] = useState(1);
-  const [pipelinePageSize, setPipelinePageSize] = useState(100);
+  const [pipelinePageSize, setPipelinePageSize] = useState(20);
   const [followUpPage, setFollowUpPage] = useState(1);
   const [followUpPageSize, setFollowUpPageSize] = useState(50);
   const [meetingPage, setMeetingPage] = useState(1);
@@ -593,38 +595,31 @@ export default function CrmModule({
     const timer = setTimeout(() => {
       const range = getLeadServerDateRange();
       onFetchLeadsPage({
-        page: leadPage,
-        pageSize: leadsPerPage,
-        search: query,
-        status: statusFilter,
+        page: 1,
+        pageSize: 200,
+        search: "",
         ...range,
       });
     }, 350);
     return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [customDateRange.from, customDateRange.to, dateFilter, leadPage, leadsPerPage, onFetchLeadsPage, query, selectedDate, statusFilter, viewMode]);
+  }, [customDateRange.from, customDateRange.to, dateFilter, onFetchLeadsPage, selectedDate, viewMode]);
 
   useEffect(() => {
     if (!onFetchDealsPage || viewMode !== "pipeline") return;
     const timer = setTimeout(() => {
       const range = getServerDateRange();
-      const stageParam =
-        statusFilter === "won" || statusFilter === "converted"
-          ? "closed_won"
-          : statusFilter === "lost"
-          ? "closed_lost"
-          : "";
       onFetchDealsPage({
-        page: pipelinePage,
-        pageSize: pipelinePageSize,
-        search: query,
-        stage: stageParam,
+        page: 1,
+        pageSize: 200,
+        search: "",
+        stage: "",
         ...range,
       });
     }, 350);
     return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [customDateRange.from, customDateRange.to, dateFilter, onFetchDealsPage, pipelinePage, pipelinePageSize, query, selectedDate, statusFilter, viewMode]);
+  }, [customDateRange.from, customDateRange.to, dateFilter, onFetchDealsPage, selectedDate, viewMode]);
 
   useEffect(() => {
     if (!onFetchFollowUpsPage || viewMode !== "followups") return;
@@ -659,32 +654,33 @@ export default function CrmModule({
   const filteredLeads = useMemo(() => {
     const q = query.trim().toLowerCase();
     return leads.filter((lead) => {
-      const isInPipeline = deals.some((deal) => deal.lead_id === lead.id && !CLOSED_PIPELINE_STAGES.includes(deal.pipeline_stage || deal.stage));
-      const hasWonDeal = deals.some((deal) => deal.lead_id === lead.id && (deal.pipeline_stage || deal.stage) === "closed_won");
-      const hasLostDeal = deals.some((deal) => deal.lead_id === lead.id && (deal.pipeline_stage || deal.stage) === "closed_lost");
-      const isConverted = lead.status === "Converted" || lead.status === "Closed Won" || hasWonDeal;
-      const isLost = lead.status === "Lost" || hasLostDeal;
-      const isPipelineLead = isInPipeline || ["Contacted", "Qualified", "Proposal Sent", "In Pipeline", "Negotiation"].includes(lead.status);
-      const isArchived = isConverted || isLost || Boolean(deals.some((deal) => deal.lead_id === lead.id));
+      const linkedDeal = deals.find((deal) => deal.lead_id === lead.id);
+      const isInPipeline = Boolean(linkedDeal && !CLOSED_PIPELINE_STAGES.includes(linkedDeal.pipeline_stage || linkedDeal.stage));
+      const hasWonDeal = Boolean(linkedDeal && (linkedDeal.pipeline_stage || linkedDeal.stage) === "closed_won");
+      const hasLostDeal = Boolean(linkedDeal && (linkedDeal.pipeline_stage || linkedDeal.stage) === "closed_lost");
+
+      const isConverted = hasWonDeal || (!linkedDeal && (lead.status === "Converted" || lead.status === "Closed Won"));
+      const isLost = !isConverted && (hasLostDeal || (!linkedDeal && lead.status === "Lost"));
+      const isPipelineLead = !isConverted && !isLost && (isInPipeline || (!linkedDeal && ["Contacted", "Qualified", "Proposal Sent", "In Pipeline", "Negotiation", "In Progress"].includes(lead.status)));
+      const isActiveInquiry = !isConverted && !isLost && !isPipelineLead;
 
       const matchStatus =
-        statusFilter === "all"
+        statusFilter === "all" || !statusFilter
           ? true
           : statusFilter === "active"
-          ? !isArchived && !isPipelineLead
+          ? isActiveInquiry
           : statusFilter === "pipeline"
           ? isPipelineLead
-          : statusFilter === "converted"
+          : statusFilter === "converted" || statusFilter === "won"
           ? isConverted
           : statusFilter === "lost"
           ? isLost
-          : statusFilter === "archived"
-          ? isArchived
-          : lead.status === statusFilter;
+          : true;
+
       const matchDate = matchesDateFilter(lead);
       const matchQuery =
         !q ||
-        [lead.name, lead.phone, lead.email, lead.service, lead.source].some((val) =>
+        [lead.name, lead.phone, lead.email, lead.service, lead.source, lead.city, lead.state].some((val) =>
           String(val || "").toLowerCase().includes(q)
         );
       return matchStatus && matchQuery && matchDate;
@@ -698,38 +694,43 @@ export default function CrmModule({
     setMeetingPage(1);
   }, [customDateRange.from, customDateRange.to, dateFilter, followUpPageSize, leadsPerPage, meetingPageSize, pipelinePageSize, query, selectedDate, statusFilter, viewMode]);
 
-  const serverLeadTotal = leadPagination?.count ?? filteredLeads.length;
-  const leadTotalForPagination = onFetchLeadsPage ? Math.max(serverLeadTotal, filteredLeads.length) : filteredLeads.length;
-  const leadBasePageCount = Math.max(1, Math.ceil(leadTotalForPagination / leadsPerPage));
-  const safeLeadPage = onFetchLeadsPage ? Math.max(1, leadPage) : Math.min(leadPage, leadBasePageCount);
-  const leadHasPossibleNextPage = Boolean(onFetchLeadsPage && filteredLeads.length >= leadsPerPage);
-  const leadPageCount = Math.max(safeLeadPage, leadBasePageCount, leadHasPossibleNextPage ? safeLeadPage + 1 : 1);
+  const leadTotalForPagination = filteredLeads.length;
+  const leadPageCount = Math.max(1, Math.ceil(leadTotalForPagination / leadsPerPage));
+  const safeLeadPage = Math.min(Math.max(1, leadPage), leadPageCount);
   const paginatedLeads = useMemo(() => {
-    if (onFetchLeadsPage) return filteredLeads;
     const start = (safeLeadPage - 1) * leadsPerPage;
     return filteredLeads.slice(start, start + leadsPerPage);
-  }, [filteredLeads, leadsPerPage, onFetchLeadsPage, safeLeadPage]);
-  const loadedLeadEnd = onFetchLeadsPage
-    ? (safeLeadPage - 1) * leadsPerPage + filteredLeads.length
-    : Math.min(leadTotalForPagination, safeLeadPage * leadsPerPage);
-  const leadDisplayTotal = Math.max(leadTotalForPagination, loadedLeadEnd);
-  const leadTotalIsEstimated = Boolean(onFetchLeadsPage && filteredLeads.length >= leadsPerPage && leadDisplayTotal > leadTotalForPagination);
-  const leadPageStart = leadDisplayTotal === 0 ? 0 : (safeLeadPage - 1) * leadsPerPage + 1;
-  const leadPageEnd = Math.min(leadDisplayTotal, loadedLeadEnd || safeLeadPage * leadsPerPage);
+  }, [filteredLeads, leadsPerPage, safeLeadPage]);
+  const leadPageStart = leadTotalForPagination === 0 ? 0 : (safeLeadPage - 1) * leadsPerPage + 1;
+  const leadPageEnd = Math.min(leadTotalForPagination, safeLeadPage * leadsPerPage);
 
   // Aggregate Metrics
   const stats = useMemo(() => {
     const total = leadSummary?.total ?? leads.length;
-    const newCount = leads.filter((l) => l.status === "New").length;
-    const convertedCount = Math.max(
-      leadSummary?.converted || 0,
-      leads.filter((l) => l.status === "Converted" || l.status === "Closed Won").length,
-      deals.filter((d) => (d.pipeline_stage || d.stage) === "closed_won").length
+    const newCount = leads.filter((l) => l.status === "New" && !deals.some((d) => d.lead_id === l.id)).length;
+    
+    const wonDealLeadIds = new Set(
+      deals.filter((d) => (d.pipeline_stage || d.stage) === "closed_won").map((d) => d.lead_id).filter(Boolean)
     );
-    const lostCount = Math.max(
-      leadSummary?.lost || 0,
-      leads.filter((l) => l.status === "Lost").length
+    const activePipelineLeadIds = new Set(
+      deals.filter((d) => !CLOSED_PIPELINE_STAGES.includes(d.pipeline_stage || d.stage)).map((d) => d.lead_id).filter(Boolean)
     );
+    const lostDealLeadIds = new Set(
+      deals.filter((d) => (d.pipeline_stage || d.stage) === "closed_lost").map((d) => d.lead_id).filter(Boolean)
+    );
+
+    const convertedCount = leads.filter((l) => {
+      if (wonDealLeadIds.has(l.id)) return true;
+      if (activePipelineLeadIds.has(l.id) || lostDealLeadIds.has(l.id)) return false;
+      return l.status === "Converted" || l.status === "Closed Won";
+    }).length + deals.filter((d) => (d.pipeline_stage || d.stage) === "closed_won" && !d.lead_id).length;
+
+    const lostCount = leads.filter((l) => {
+      if (lostDealLeadIds.has(l.id)) return true;
+      if (activePipelineLeadIds.has(l.id) || wonDealLeadIds.has(l.id)) return false;
+      return l.status === "Lost";
+    }).length + deals.filter((d) => (d.pipeline_stage || d.stage) === "closed_lost" && !d.lead_id).length;
+
     const lostDealsCount = deals.filter((d) => (d.pipeline_stage || d.stage) === "closed_lost").length;
     const rate = total > 0 ? Math.round((convertedCount / total) * 100) : 0;
     const totalPipelineValue = deals
@@ -858,9 +859,14 @@ export default function CrmModule({
     });
   }, [allPipelineDeals, leads, query, statusFilter]);
   const pipelineTotal = visiblePipelineDeals.length;
-  const pipelineBasePageCount = Math.max(1, Math.ceil(Math.max(pipelineTotal, visiblePipelineDeals.length) / pipelinePageSize));
-  const safePipelinePage = onFetchDealsPage ? Math.max(1, pipelinePage) : Math.min(pipelinePage, pipelineBasePageCount);
-  const pipelinePageCount = Math.max(safePipelinePage, pipelineBasePageCount, onFetchDealsPage && visiblePipelineDeals.length >= pipelinePageSize ? safePipelinePage + 1 : 1);
+  const pipelinePageCount = Math.max(1, Math.ceil(pipelineTotal / pipelinePageSize));
+  const safePipelinePage = Math.min(Math.max(1, pipelinePage), pipelinePageCount);
+  const paginatedPipelineDeals = useMemo(() => {
+    const start = (safePipelinePage - 1) * pipelinePageSize;
+    return visiblePipelineDeals.slice(start, start + pipelinePageSize);
+  }, [visiblePipelineDeals, pipelinePageSize, safePipelinePage]);
+  const pipelinePageStart = pipelineTotal === 0 ? 0 : (safePipelinePage - 1) * pipelinePageSize + 1;
+  const pipelinePageEnd = Math.min(pipelineTotal, safePipelinePage * pipelinePageSize);
   const followUpTotal = followUpPagination?.count ?? filteredFollowUps.length;
   const followUpBasePageCount = Math.max(1, Math.ceil(Math.max(followUpTotal, filteredFollowUps.length) / followUpPageSize));
   const safeFollowUpPage = onFetchFollowUpsPage ? Math.max(1, followUpPage) : Math.min(followUpPage, followUpBasePageCount);
@@ -875,33 +881,51 @@ export default function CrmModule({
   const isMeetingsLoading = Boolean(meetingPagination?.loading);
 
   const leadSummaryMetrics = useMemo(() => {
-    const totalLeads = leadSummary?.total ?? (
-      statusFilter === "all"
-        ? (leadPagination?.count || leads.length)
-        : Math.max(leadTotalForPagination, leads.length)
+    const totalLeads = leadSummary?.total ?? (leadPagination?.count || leads.length);
+
+    const wonDealLeadIds = new Set(
+      deals.filter((d) => (d.pipeline_stage || d.stage) === "closed_won").map((d) => d.lead_id).filter(Boolean)
+    );
+    const activePipelineLeadIds = new Set(
+      deals.filter((d) => !CLOSED_PIPELINE_STAGES.includes(d.pipeline_stage || d.stage)).map((d) => d.lead_id).filter(Boolean)
+    );
+    const lostDealLeadIds = new Set(
+      deals.filter((d) => (d.pipeline_stage || d.stage) === "closed_lost").map((d) => d.lead_id).filter(Boolean)
     );
 
-    const convertedLoaded = leads.filter(
-      (l) => l.status === "Converted" || l.status === "Closed Won" || deals.some((d) => d.lead_id === l.id && (d.pipeline_stage || d.stage) === "closed_won")
-    ).length;
-    const convertedDeals = deals.filter((d) => (d.pipeline_stage || d.stage) === "closed_won").length;
-    const convertedCount = Math.max(leadSummary?.converted || 0, convertedLoaded, convertedDeals);
+    // 1. Converted / Won Leads
+    const convertedFromLeads = leads.filter((l) => {
+      if (wonDealLeadIds.has(l.id)) return true;
+      if (activePipelineLeadIds.has(l.id) || lostDealLeadIds.has(l.id)) return false;
+      return l.status === "Converted" || l.status === "Closed Won";
+    }).length;
+    const standaloneWonDeals = deals.filter((d) => (d.pipeline_stage || d.stage) === "closed_won" && !d.lead_id).length;
+    const wonDealsCount = deals.filter((d) => (d.pipeline_stage || d.stage) === "closed_won").length;
+    const convertedCount = Math.max(wonDealsCount, convertedFromLeads + standaloneWonDeals);
 
-    const lostLoaded = leads.filter((l) => l.status === "Lost").length;
-    const lostDeals = deals.filter((d) => (d.pipeline_stage || d.stage) === "closed_lost").length;
-    const lostCount = Math.max(leadSummary?.lost || 0, lostLoaded) + lostDeals;
+    // 2. Lost Leads
+    const lostFromLeads = leads.filter((l) => {
+      if (lostDealLeadIds.has(l.id)) return true;
+      if (activePipelineLeadIds.has(l.id) || wonDealLeadIds.has(l.id)) return false;
+      return l.status === "Lost";
+    }).length;
+    const standaloneLostDeals = deals.filter((d) => (d.pipeline_stage || d.stage) === "closed_lost" && !d.lead_id).length;
+    const lostDealsCount = deals.filter((d) => (d.pipeline_stage || d.stage) === "closed_lost").length;
+    const lostCount = Math.max(lostDealsCount, lostFromLeads + standaloneLostDeals);
 
+    // 3. In Pipeline (Deal Stage)
     const openDealsCount = deals.filter(
       (d) => !CLOSED_PIPELINE_STAGES.includes(d.pipeline_stage || d.stage)
     ).length;
     const pipelineLeadsFromLoaded = leads.filter((l) => {
-      const linkedDeal = deals.find((d) => d.lead_id === l.id);
-      if (linkedDeal) return !CLOSED_PIPELINE_STAGES.includes(linkedDeal.pipeline_stage || linkedDeal.stage);
-      return ["Contacted", "Qualified", "Proposal Sent", "In Pipeline", "Negotiation"].includes(l.status);
+      if (activePipelineLeadIds.has(l.id)) return true;
+      if (wonDealLeadIds.has(l.id) || lostDealLeadIds.has(l.id)) return false;
+      return ["Contacted", "Qualified", "Proposal Sent", "In Pipeline", "Negotiation", "In Progress"].includes(l.status);
     }).length;
     const pipelineCount = Math.max(openDealsCount, pipelineLeadsFromLoaded);
 
-    const activeCount = Math.max(0, totalLeads - convertedCount - lostCount);
+    // 4. Active Inquiries (Raw incoming leads not in pipeline and not decided)
+    const activeCount = Math.max(0, totalLeads - pipelineCount - convertedCount - lostCount);
 
     const convRateNumber = totalLeads > 0 ? (convertedCount / totalLeads) * 100 : 0;
     const convRateDisplay = convRateNumber % 1 === 0 ? `${convRateNumber}%` : `${convRateNumber.toFixed(1)}%`;
@@ -912,27 +936,27 @@ export default function CrmModule({
 
     return {
       totalLeads,
+      activeCount,
+      pipelineCount,
       convertedCount,
       lostCount,
-      pipelineCount,
-      activeCount,
       decidedTotal,
       convRateNumber,
       convRateDisplay,
       winRateNumber,
       winRateDisplay,
     };
-  }, [deals, leadPagination?.count, leadSummary, leadTotalForPagination, leads, statusFilter]);
+  }, [deals, leadPagination?.count, leadSummary, leads]);
 
   const pageStatusCards = useMemo(() => {
     if (viewMode === "reports") return [];
     if (viewMode === "leads") {
       const {
         totalLeads,
+        activeCount,
+        pipelineCount,
         convertedCount,
         lostCount,
-        pipelineCount,
-        activeCount,
         decidedTotal,
         convRateDisplay,
         winRateDisplay,
@@ -943,11 +967,21 @@ export default function CrmModule({
           id: "total_leads",
           label: "Total Leads",
           value: totalLeads,
-          sub: `${activeCount} active inquiries`,
+          sub: "All captured inbound leads",
           icon: Users,
           tone: "text-blue-600 bg-blue-50 dark:bg-blue-950/30",
           filterKey: "all",
           helpText: "All captured inbound inquiries across all channels.",
+        },
+        {
+          id: "active_inquiries",
+          label: "Active Inquiries",
+          value: activeCount,
+          sub: "New inquiries to qualify",
+          icon: HelpCircle,
+          tone: "text-cyan-600 bg-cyan-50 dark:bg-cyan-950/30",
+          filterKey: "active",
+          helpText: "Inbound leads waiting to be qualified into sales pipeline.",
         },
         {
           id: "pipeline",
@@ -961,7 +995,7 @@ export default function CrmModule({
         },
         {
           id: "converted",
-          label: "Converted Leads",
+          label: "Converted (Won)",
           value: convertedCount,
           sub: "Turned into paying clients",
           icon: CheckCircle2,
@@ -983,10 +1017,10 @@ export default function CrmModule({
           id: "conversion_rate",
           label: "Conversion Rate",
           value: convRateDisplay,
-          sub: `Ratio: ${convertedCount}/${totalLeads} (${convertedCount} Won ÷ ${totalLeads} Total)`,
+          sub: `${convertedCount} Won ÷ ${totalLeads} Total`,
           icon: Target,
           tone: "text-purple-600 bg-purple-50 dark:bg-purple-950/30",
-          filterKey: "all",
+          filterKey: "converted",
           badge: `Win Rate: ${winRateDisplay}`,
           isRateCard: true,
           ratioBasis: `Formula: (Converted Leads ÷ Total Leads) × 100`,
@@ -1163,7 +1197,7 @@ export default function CrmModule({
     const lostDeals = deals.filter((deal) => (deal.pipeline_stage || deal.stage) === "closed_lost" && matchesDateFilter(deal, "updated_at")).length;
     const activeLeads = leads.filter((lead) => matchesDateFilter(lead, "created_at")).length;
     const totalBaseLeads = dateFilter === "all" ? Math.max(activeLeads, leadSummary?.total || 0) : activeLeads;
-    const totalWon = dateFilter === "all" ? Math.max(wonDeals, leadSummary?.converted || 0) : wonDeals;
+    const totalWon = wonDeals;
     const conversionRate = totalBaseLeads > 0 ? Math.round((totalWon / totalBaseLeads) * 100) : 0;
     const sourceMap = new Map();
     leads.forEach((lead) => {
@@ -1922,25 +1956,33 @@ export default function CrmModule({
       </div>
 
       {pageStatusCards.length > 0 && (
-        <div className={`grid gap-3 ${pageStatusCards.length === 5 ? "grid-cols-2 sm:grid-cols-3 xl:grid-cols-5" : "grid-cols-2 lg:grid-cols-4"}`}>
+        <div className={`grid gap-3 ${pageStatusCards.length === 6 ? "grid-cols-2 sm:grid-cols-3 xl:grid-cols-6" : pageStatusCards.length === 5 ? "grid-cols-2 sm:grid-cols-3 xl:grid-cols-5" : "grid-cols-2 lg:grid-cols-4"}`}>
           {pageStatusCards.map((card) => {
             const Icon = card.icon;
             const isClickable = Boolean(card.filterKey && (viewMode === "leads" || viewMode === "pipeline"));
             const isFilterActive =
               (viewMode === "leads" || viewMode === "pipeline") &&
               card.filterKey &&
-              (statusFilter === card.filterKey || (card.filterKey === "won" && statusFilter === "converted") || (card.filterKey === "all" && statusFilter === "all"));
+              (
+                (card.filterKey === "all" && (statusFilter === "all" || !statusFilter)) ||
+                (card.filterKey === "active" && statusFilter === "active") ||
+                (card.filterKey === "pipeline" && statusFilter === "pipeline") ||
+                (card.filterKey === "converted" && (statusFilter === "converted" || statusFilter === "won")) ||
+                (card.filterKey === "lost" && statusFilter === "lost")
+              );
             return (
               <div
                 key={card.label}
                 onClick={() => {
                   if (isClickable && card.filterKey) {
                     setStatusFilter(card.filterKey);
+                    setLeadPage(1);
+                    setPipelinePage(1);
                   }
                 }}
                 className={`p-4 rounded-2xl bg-white dark:bg-[#18150f] border shadow-2xs min-w-0 transition-all ${
                   isFilterActive
-                    ? "border-orange-500 ring-2 ring-orange-500/30 bg-orange-50/20 dark:bg-orange-950/20"
+                    ? "border-orange-500 ring-2 ring-orange-500/40 bg-orange-50/25 dark:bg-orange-950/25 shadow-xs"
                     : "border-gray-100 dark:border-[#3a3020]"
                 } ${
                   isClickable ? "cursor-pointer hover:border-orange-300 dark:hover:border-orange-500/50 hover:shadow-xs active:scale-[0.99]" : ""
@@ -2138,8 +2180,8 @@ export default function CrmModule({
       </>
       )}
 
-      {/* 3. Filter & Search Controls */}
-      {viewMode !== "reports" && (
+      {/* 3. Filter & Search Controls (Hidden on Leads & Pipeline pages as cards handle filtering) */}
+      {viewMode !== "reports" && viewMode !== "leads" && viewMode !== "pipeline" && (
       <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 p-3 rounded-2xl bg-white dark:bg-[#18150f] border border-gray-100 dark:border-[#3a3020]">
         <div className="relative flex-1">
           <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
@@ -2152,30 +2194,6 @@ export default function CrmModule({
           />
         </div>
 
-        {viewMode === "leads" && (
-        <div className="flex items-center gap-2 overflow-x-auto no-scrollbar">
-          {[
-            ["all", "All"],
-            ["active", "Active"],
-            ["pipeline", "Pipeline"],
-            ["converted", "Converted"],
-            ["lost", "Lost"],
-            ["archived", "Archive"],
-          ].map(([value, label]) => (
-            <button
-              key={value}
-              onClick={() => setStatusFilter(value)}
-              className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition ${
-                statusFilter === value
-                  ? "bg-orange-600 text-white shadow-2xs"
-                  : "bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-neutral-400 hover:text-gray-900 dark:hover:text-white"
-              }`}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
-        )}
         {viewMode === "pipeline" && (
         <div className="flex items-center gap-2 overflow-x-auto no-scrollbar">
           {[
@@ -2293,8 +2311,9 @@ export default function CrmModule({
                     const linkedDeal = deals.find((deal) => deal.lead_id === lead.id);
                     const hasWonDeal = Boolean(linkedDeal && (linkedDeal.pipeline_stage || linkedDeal.stage) === "closed_won");
                     const hasLostDeal = Boolean(linkedDeal && (linkedDeal.pipeline_stage || linkedDeal.stage) === "closed_lost");
-                    const isConverted = lead.status === "Converted" || lead.status === "Closed Won" || hasWonDeal;
-                    const isLost = lead.status === "Lost" || hasLostDeal;
+                    const isInPipeline = Boolean(linkedDeal && !CLOSED_PIPELINE_STAGES.includes(linkedDeal.pipeline_stage || linkedDeal.stage));
+                    const isConverted = hasWonDeal || (!linkedDeal && (lead.status === "Converted" || lead.status === "Closed Won"));
+                    const isLost = hasLostDeal || (!linkedDeal && lead.status === "Lost");
                     const stageLabel = linkedDeal ? (PIPELINE_STAGES.find((s) => s.id === (linkedDeal.pipeline_stage || linkedDeal.stage))?.label || "Pipeline") : null;
 
                     return (
@@ -2458,43 +2477,93 @@ export default function CrmModule({
                 </tbody>
               </table>
             </div>
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-4 py-3 border-t border-gray-100 dark:border-[#3a3020] bg-gray-50/40 dark:bg-[#211d14]/40 text-xs">
-              <div className="text-gray-500 dark:text-neutral-400">
-                {leadPagination?.loading ? "Loading leads..." : (
-                  <>
-                    Showing <span className="font-bold text-gray-800 dark:text-white">{leadPageStart}</span>-<span className="font-bold text-gray-800 dark:text-white">{leadPageEnd}</span> of <span className="font-bold text-gray-800 dark:text-white">{leadDisplayTotal}{leadTotalIsEstimated ? "+" : ""}</span> leads
-                  </>
-                )}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-4 py-3 border-t border-gray-100 dark:border-[#3a3020] bg-gray-50/60 dark:bg-[#211d14]/60 text-xs">
+              <div className="text-gray-500 dark:text-neutral-400 flex items-center gap-1.5 flex-wrap">
+                <span>Showing</span>
+                <span className="font-bold text-gray-800 dark:text-white">{leadPageStart}</span>
+                <span>to</span>
+                <span className="font-bold text-gray-800 dark:text-white">{leadPageEnd}</span>
+                <span>of</span>
+                <span className="font-bold text-gray-800 dark:text-white">{leadTotalForPagination}</span>
+                <span>leads</span>
               </div>
-              <div className="flex items-center gap-2 justify-between sm:justify-end">
-                <select
-                  value={leadsPerPage}
-                  onChange={(e) => setLeadsPerPage(Number(e.target.value))}
-                  className="px-2.5 py-1.5 rounded-lg bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 font-semibold text-gray-700 dark:text-neutral-200"
-                  aria-label="Leads per page"
-                >
-                  <option value={10}>10 per page</option>
-                  <option value={20}>20 per page</option>
-                </select>
-                <button
-                  type="button"
-                  onClick={() => setLeadPage((page) => Math.max(1, page - 1))}
-                  disabled={safeLeadPage <= 1}
-                  className="px-3 py-1.5 rounded-lg font-bold bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 text-gray-700 dark:text-neutral-200 disabled:opacity-40 disabled:cursor-not-allowed"
-                >
-                  Prev
-                </button>
-                <span className="font-bold text-gray-700 dark:text-neutral-200">
-                  {safeLeadPage}/{leadPageCount}
-                </span>
-                <button
-                  type="button"
-                  onClick={() => setLeadPage((page) => Math.min(leadPageCount, page + 1))}
-                  disabled={safeLeadPage >= leadPageCount}
-                  className="px-3 py-1.5 rounded-lg font-bold bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 text-gray-700 dark:text-neutral-200 disabled:opacity-40 disabled:cursor-not-allowed"
-                >
-                  Next
-                </button>
+
+              <div className="flex items-center gap-2.5 flex-wrap justify-between sm:justify-end">
+                <div className="flex items-center gap-1.5 text-xs text-gray-500 dark:text-neutral-400">
+                  <span className="hidden xs:inline">Rows per page:</span>
+                  <select
+                    value={leadsPerPage}
+                    onChange={(e) => {
+                      setLeadsPerPage(Number(e.target.value));
+                      setLeadPage(1);
+                    }}
+                    className="px-2.5 py-1.5 rounded-xl bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 font-semibold text-gray-700 dark:text-neutral-200 text-xs focus:outline-hidden focus:ring-1 focus:ring-orange-500"
+                    aria-label="Leads per page"
+                  >
+                    <option value={10}>10 / page</option>
+                    <option value={20}>20 / page</option>
+                    <option value={50}>50 / page</option>
+                    <option value={100}>100 / page</option>
+                  </select>
+                </div>
+
+                <div className="flex items-center gap-1">
+                  <button
+                    type="button"
+                    onClick={() => setLeadPage((p) => Math.max(1, p - 1))}
+                    disabled={safeLeadPage <= 1}
+                    className="p-1.5 rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-gray-700 dark:text-neutral-200 disabled:opacity-30 disabled:cursor-not-allowed hover:bg-gray-100 dark:hover:bg-slate-700 transition"
+                    title="Previous Page"
+                    aria-label="Previous Page"
+                  >
+                    <ChevronLeft className="w-3.5 h-3.5" />
+                  </button>
+
+                  {Array.from({ length: leadPageCount }, (_, i) => i + 1)
+                    .filter((page) => {
+                      if (leadPageCount <= 5) return true;
+                      if (page === 1 || page === leadPageCount) return true;
+                      return Math.abs(page - safeLeadPage) <= 1;
+                    })
+                    .reduce((acc, page, idx, arr) => {
+                      if (idx > 0 && page - arr[idx - 1] > 1) {
+                        acc.push("...");
+                      }
+                      acc.push(page);
+                      return acc;
+                    }, [])
+                    .map((item, idx) =>
+                      item === "..." ? (
+                        <span key={`ellipsis-${idx}`} className="px-1 text-gray-400 font-bold select-none">
+                          ...
+                        </span>
+                      ) : (
+                        <button
+                          key={`page-${item}`}
+                          type="button"
+                          onClick={() => setLeadPage(item)}
+                          className={`min-w-[28px] h-7 px-2 rounded-xl text-xs font-bold transition ${
+                            safeLeadPage === item
+                              ? "bg-orange-600 text-white shadow-2xs"
+                              : "bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 text-gray-700 dark:text-neutral-300 hover:bg-gray-100 dark:hover:bg-slate-700"
+                          }`}
+                        >
+                          {item}
+                        </button>
+                      )
+                    )}
+
+                  <button
+                    type="button"
+                    onClick={() => setLeadPage((p) => Math.min(leadPageCount, p + 1))}
+                    disabled={safeLeadPage >= leadPageCount}
+                    className="p-1.5 rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-gray-700 dark:text-neutral-200 disabled:opacity-30 disabled:cursor-not-allowed hover:bg-gray-100 dark:hover:bg-slate-700 transition"
+                    title="Next Page"
+                    aria-label="Next Page"
+                  >
+                    <ChevronRight className="w-3.5 h-3.5" />
+                  </button>
+                </div>
               </div>
             </div>
             </>
@@ -2512,7 +2581,7 @@ export default function CrmModule({
             ? [{ id: "closed_lost", label: "Closed Lost Deals", color: "bg-rose-500" }]
             : PIPELINE_STAGES
           ).map((col) => {
-            const colDeals = visiblePipelineDeals.filter(
+            const colDeals = paginatedPipelineDeals.filter(
               (d) =>
                 (d.pipeline_stage || "contacted") === col.id &&
                 (dateFilter === "all" || matchesDateFilter(d, "created_at") || matchesDateFilter(d, "updated_at"))
@@ -2695,11 +2764,11 @@ export default function CrmModule({
                       <div className="pt-1.5 border-t border-gray-100 dark:border-[#2e2619] space-y-1.5">
                         {col.id !== "closed_won" && col.id !== "closed_lost" ? (
                           <>
-                            <div className="flex items-center justify-between gap-1.5">
+                            <div className="flex items-center justify-between gap-1 min-w-0">
                               <select
                                 value={deal.pipeline_stage || "contacted"}
                                 onChange={(e) => handleDealStageChange(deal, e.target.value, col.id)}
-                                className="text-[10px] font-semibold bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-md px-1.5 py-0.5 text-gray-700 dark:text-neutral-300 focus:outline-hidden cursor-pointer"
+                                className="text-[9.5px] font-semibold bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-md px-1 py-0.5 text-gray-700 dark:text-neutral-300 focus:outline-hidden cursor-pointer max-w-[76px] shrink truncate"
                               >
                                 <option value="contacted">Contacted</option>
                                 <option value="qualified">Meeting</option>
@@ -2709,94 +2778,78 @@ export default function CrmModule({
                                 <option value="closed_lost">Lost</option>
                               </select>
 
-                              {col.id === "negotiation" ? (
-                                <div className="flex items-center gap-1 shrink-0">
-                                  <button
-                                    type="button"
-                                    onClick={() => openPipelineFollowUpModal(deal)}
-                                    className="flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[10px] font-bold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/40 hover:bg-blue-100 border border-blue-200/50 shrink-0 transition cursor-pointer"
-                                    title="Add Follow-up"
-                                  >
-                                    <Clock className="w-3 h-3 text-blue-500 shrink-0" />
-                                    <span>Follow-up</span>
-                                  </button>
-                                  <button
-                                    type="button"
-                                    onClick={() => sendDealDocWhatsApp(deal)}
-                                    className="p-1 rounded-md text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 hover:bg-emerald-100 border border-emerald-200/50 shrink-0 transition cursor-pointer"
-                                    title="Share Agreement / Invoice on WhatsApp"
-                                  >
-                                    <WhatsAppIcon className="w-3.5 h-3.5 shrink-0" />
-                                  </button>
-                                </div>
-                              ) : (
-                                <div className="flex items-center gap-1 shrink-0">
-                                  <button
-                                    type="button"
-                                    onClick={() => openPipelineFollowUpModal(deal)}
-                                    className="p-1 rounded-md text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/40 hover:bg-blue-100 border border-blue-200/40 shrink-0 transition cursor-pointer"
-                                    title="Add Follow-up"
-                                  >
-                                    <Clock className="w-3.5 h-3.5 shrink-0" />
-                                  </button>
+                              <div className="flex items-center gap-0.5 shrink-0">
+                                <button
+                                  type="button"
+                                  onClick={() => openPipelineFollowUpModal(deal)}
+                                  className="p-1 rounded-md text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/40 hover:bg-blue-100 border border-blue-200/40 shrink-0 transition cursor-pointer"
+                                  title="Add Follow-up"
+                                >
+                                  <Clock className="w-3 h-3 shrink-0" />
+                                </button>
 
-                                  {col.id === "contacted" && (
+                                {col.id === "contacted" && (
+                                  <button
+                                    type="button"
+                                    onClick={() => openMeetingWhatsApp(deal)}
+                                    className="p-1 rounded-md text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 hover:bg-emerald-100 border border-emerald-200/40 shrink-0 transition cursor-pointer"
+                                    title="Send WhatsApp confirmation"
+                                  >
+                                    <WhatsAppIcon className="w-3 h-3 shrink-0" />
+                                  </button>
+                                )}
+
+                                {col.id === "proposal" && (
+                                  <>
                                     <button
                                       type="button"
-                                      onClick={() => openMeetingWhatsApp(deal)}
-                                      className="p-1 rounded-md text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 hover:bg-emerald-100 border border-emerald-200/40 shrink-0 transition cursor-pointer"
-                                      title="Send WhatsApp confirmation"
+                                      onClick={() => openCommercialModal("proposal", deal)}
+                                      className="p-1 rounded-md text-orange-600 dark:text-orange-400 bg-orange-50 dark:bg-orange-950/40 hover:bg-orange-100 border border-orange-200/40 shrink-0 transition cursor-pointer"
+                                      title="Open Quotation"
                                     >
-                                      <WhatsAppIcon className="w-3.5 h-3.5 shrink-0" />
+                                      <FileText className="w-3 h-3 shrink-0" />
                                     </button>
-                                  )}
+                                    <button
+                                      type="button"
+                                      onClick={() => sendDealDocWhatsApp(deal)}
+                                      className="p-1 rounded-md text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 hover:bg-emerald-100 border border-emerald-200/40 shrink-0 transition cursor-pointer"
+                                      title="Share Quotation on WhatsApp"
+                                    >
+                                      <WhatsAppIcon className="w-3 h-3 shrink-0" />
+                                    </button>
+                                  </>
+                                )}
 
-                                  {col.id === "proposal" && (
-                                    <>
-                                      <button
-                                        type="button"
-                                        onClick={() => openCommercialModal("proposal", deal)}
-                                        className="p-1 rounded-md text-orange-600 dark:text-orange-400 bg-orange-50 dark:bg-orange-950/40 hover:bg-orange-100 border border-orange-200/40 shrink-0 transition cursor-pointer"
-                                        title="Open Quotation"
-                                      >
-                                        <FileText className="w-3.5 h-3.5 shrink-0" />
-                                      </button>
-                                      <button
-                                        type="button"
-                                        onClick={() => sendDealDocWhatsApp(deal)}
-                                        className="p-1 rounded-md text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 hover:bg-emerald-100 border border-emerald-200/40 shrink-0 transition cursor-pointer"
-                                        title="Share Quotation on WhatsApp"
-                                      >
-                                        <WhatsAppIcon className="w-3.5 h-3.5 shrink-0" />
-                                      </button>
-                                    </>
-                                  )}
-                                </div>
-                              )}
-                            </div>
-
-                            {col.id === "negotiation" && (
-                              <div className="grid grid-cols-2 gap-1.5 pt-0.5">
-                                <button
-                                  type="button"
-                                  onClick={() => openCommercialModal("agreement", deal)}
-                                  className="py-1 px-2 rounded-lg text-[10px] font-bold bg-indigo-50 dark:bg-indigo-950/50 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-100 dark:hover:bg-indigo-900/60 border border-indigo-200/60 dark:border-indigo-800/50 flex items-center justify-center gap-1 transition shadow-2xs cursor-pointer"
-                                  title="Create / Open Agreement"
-                                >
-                                  <FileText className="w-3 h-3 text-indigo-500 shrink-0" />
-                                  <span>Agreement</span>
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => openInvoiceModal(deal)}
-                                  className="py-1 px-2 rounded-lg text-[10px] font-bold bg-purple-50 dark:bg-purple-950/50 text-purple-700 dark:text-purple-300 hover:bg-purple-100 dark:hover:bg-purple-900/60 border border-purple-200/60 dark:border-purple-800/50 flex items-center justify-center gap-1 transition shadow-2xs cursor-pointer"
-                                  title="Generate / Open Invoice"
-                                >
-                                  <DollarSign className="w-3 h-3 text-purple-500 shrink-0" />
-                                  <span>Invoice</span>
-                                </button>
+                                {col.id === "negotiation" && (
+                                  <>
+                                    <button
+                                      type="button"
+                                      onClick={() => openCommercialModal("agreement", deal)}
+                                      className="p-1 rounded-md text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/40 hover:bg-indigo-100 border border-indigo-200/40 shrink-0 transition cursor-pointer"
+                                      title="Create / Open Agreement"
+                                    >
+                                      <FileText className="w-3 h-3 shrink-0" />
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => openInvoiceModal(deal)}
+                                      className="p-1 rounded-md text-purple-600 dark:text-purple-400 bg-purple-50 dark:bg-purple-950/40 hover:bg-purple-100 border border-purple-200/40 shrink-0 transition cursor-pointer"
+                                      title="Generate / Open Invoice"
+                                    >
+                                      <DollarSign className="w-3 h-3 shrink-0" />
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => sendDealDocWhatsApp(deal)}
+                                      className="p-1 rounded-md text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 hover:bg-emerald-100 border border-emerald-200/40 shrink-0 transition cursor-pointer"
+                                      title="Share Agreement / Invoice on WhatsApp"
+                                    >
+                                      <WhatsAppIcon className="w-3 h-3 shrink-0" />
+                                    </button>
+                                  </>
+                                )}
                               </div>
-                            )}
+                            </div>
                           </>
                         ) : col.id === "closed_won" ? (
                           <div className="w-full flex items-center justify-between text-[10px]">
@@ -2838,28 +2891,93 @@ export default function CrmModule({
           })}
         </div>
         )}
-        <div className="mt-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-4 py-3 rounded-2xl border border-gray-100 dark:border-[#3a3020] bg-white dark:bg-[#18150f] text-xs">
-          <div className="text-gray-500 dark:text-neutral-400">
-            {dealPagination?.loading ? "Loading pipeline..." : (
-              <>Showing pipeline page <span className="font-bold text-gray-800 dark:text-white">{safePipelinePage}</span> of <span className="font-bold text-gray-800 dark:text-white">{pipelinePageCount}</span> ({pipelineTotal} deals)</>
-            )}
+        <div className="mt-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-4 py-3 rounded-2xl border border-gray-100 dark:border-[#3a3020] bg-white dark:bg-[#18150f] text-xs shadow-2xs">
+          <div className="text-gray-500 dark:text-neutral-400 flex items-center gap-1.5 flex-wrap">
+            <span>Showing</span>
+            <span className="font-bold text-gray-800 dark:text-white">{pipelinePageStart}</span>
+            <span>to</span>
+            <span className="font-bold text-gray-800 dark:text-white">{pipelinePageEnd}</span>
+            <span>of</span>
+            <span className="font-bold text-gray-800 dark:text-white">{pipelineTotal}</span>
+            <span>deals</span>
           </div>
-          <div className="flex items-center gap-2 justify-end">
-            <select
-              value={pipelinePageSize}
-              onChange={(e) => setPipelinePageSize(Number(e.target.value))}
-              className="px-2.5 py-1.5 rounded-lg bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 font-semibold text-gray-700 dark:text-neutral-200"
-              aria-label="Pipeline deals per page"
-            >
-              <option value={50}>50 per page</option>
-              <option value={100}>100 per page</option>
-            </select>
-            <button type="button" onClick={() => setPipelinePage((page) => Math.max(1, page - 1))} disabled={safePipelinePage <= 1} className="px-3 py-1.5 rounded-lg font-bold bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 text-gray-700 dark:text-neutral-200 disabled:opacity-40 disabled:cursor-not-allowed">
-              Prev
-            </button>
-            <button type="button" onClick={() => setPipelinePage((page) => Math.min(pipelinePageCount, page + 1))} disabled={safePipelinePage >= pipelinePageCount} className="px-3 py-1.5 rounded-lg font-bold bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 text-gray-700 dark:text-neutral-200 disabled:opacity-40 disabled:cursor-not-allowed">
-              Next
-            </button>
+
+          <div className="flex items-center gap-2.5 flex-wrap justify-between sm:justify-end">
+            <div className="flex items-center gap-1.5 text-xs text-gray-500 dark:text-neutral-400">
+              <span className="hidden xs:inline">Deals per page:</span>
+              <select
+                value={pipelinePageSize}
+                onChange={(e) => {
+                  setPipelinePageSize(Number(e.target.value));
+                  setPipelinePage(1);
+                }}
+                className="px-2.5 py-1.5 rounded-xl bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 font-semibold text-gray-700 dark:text-neutral-200 text-xs focus:outline-hidden focus:ring-1 focus:ring-orange-500"
+                aria-label="Pipeline deals per page"
+              >
+                <option value={10}>10 / page</option>
+                <option value={20}>20 / page</option>
+                <option value={50}>50 / page</option>
+                <option value={100}>100 / page</option>
+              </select>
+            </div>
+
+            <div className="flex items-center gap-1">
+              <button
+                type="button"
+                onClick={() => setPipelinePage((p) => Math.max(1, p - 1))}
+                disabled={safePipelinePage <= 1}
+                className="p-1.5 rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-gray-700 dark:text-neutral-200 disabled:opacity-30 disabled:cursor-not-allowed hover:bg-gray-100 dark:hover:bg-slate-700 transition"
+                title="Previous Page"
+                aria-label="Previous Page"
+              >
+                <ChevronLeft className="w-3.5 h-3.5" />
+              </button>
+
+              {Array.from({ length: pipelinePageCount }, (_, i) => i + 1)
+                .filter((page) => {
+                  if (pipelinePageCount <= 5) return true;
+                  if (page === 1 || page === pipelinePageCount) return true;
+                  return Math.abs(page - safePipelinePage) <= 1;
+                })
+                .reduce((acc, page, idx, arr) => {
+                  if (idx > 0 && page - arr[idx - 1] > 1) {
+                    acc.push("...");
+                  }
+                  acc.push(page);
+                  return acc;
+                }, [])
+                .map((item, idx) =>
+                  item === "..." ? (
+                    <span key={`ellipsis-${idx}`} className="px-1 text-gray-400 font-bold select-none">
+                      ...
+                    </span>
+                  ) : (
+                    <button
+                      key={`page-${item}`}
+                      type="button"
+                      onClick={() => setPipelinePage(item)}
+                      className={`min-w-[28px] h-7 px-2 rounded-xl text-xs font-bold transition ${
+                        safePipelinePage === item
+                          ? "bg-orange-600 text-white shadow-2xs"
+                          : "bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 text-gray-700 dark:text-neutral-300 hover:bg-gray-100 dark:hover:bg-slate-700"
+                      }`}
+                    >
+                      {item}
+                    </button>
+                  )
+                )}
+
+              <button
+                type="button"
+                onClick={() => setPipelinePage((p) => Math.min(pipelinePageCount, p + 1))}
+                disabled={safePipelinePage >= pipelinePageCount}
+                className="p-1.5 rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-gray-700 dark:text-neutral-200 disabled:opacity-30 disabled:cursor-not-allowed hover:bg-gray-100 dark:hover:bg-slate-700 transition"
+                title="Next Page"
+                aria-label="Next Page"
+              >
+                <ChevronRight className="w-3.5 h-3.5" />
+              </button>
+            </div>
           </div>
         </div>
         </>
@@ -3874,23 +3992,27 @@ export default function CrmModule({
               </div>
             </div>
 
-            <div className="flex items-center justify-end gap-2 pt-3 border-t border-gray-100 dark:border-[#3a3020]">
-              <button type="button" onClick={() => setShowCommercialModal(false)} className="px-3.5 py-2 rounded-xl text-xs font-semibold text-gray-600 dark:text-neutral-300">
+            <div className="flex flex-wrap items-center justify-end gap-2 pt-3 border-t border-gray-100 dark:border-[#3a3020]">
+              <button
+                type="button"
+                onClick={() => setShowCommercialModal(false)}
+                className="px-3.5 py-2 rounded-xl text-xs font-semibold text-gray-600 dark:text-neutral-300 hover:bg-gray-100 dark:hover:bg-slate-800 transition cursor-pointer"
+              >
                 Cancel
               </button>
               <button
                 type="submit"
-                className="px-4 py-2 rounded-xl text-xs font-bold bg-orange-600 hover:bg-orange-700 text-white transition shadow-sm cursor-pointer"
+                className="px-4 py-2 rounded-xl text-xs font-bold bg-orange-600 hover:bg-orange-700 text-white transition shadow-sm cursor-pointer shrink-0"
               >
-                Save {commercialType === "agreement" ? "agreement" : "quotation"}
+                Save {commercialType === "agreement" ? "Agreement" : "Quotation"}
               </button>
               <button
                 type="button"
                 onClick={(e) => handleCreateCommercialSubmit(e, true)}
-                className="px-4 py-2 rounded-xl text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white transition shadow-sm flex items-center gap-1.5 cursor-pointer"
+                className="px-4 py-2 rounded-xl text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white transition shadow-sm flex items-center gap-1.5 cursor-pointer shrink-0"
               >
-                <WhatsAppIcon className="w-3.5 h-3.5" />
-                <span>Save & Send on WhatsApp</span>
+                <WhatsAppIcon className="w-3.5 h-3.5 shrink-0" />
+                <span>Save & WhatsApp</span>
               </button>
             </div>
           </form>
@@ -4030,7 +4152,7 @@ export default function CrmModule({
               </div>
             </div>
 
-            <div className="flex items-center justify-end gap-2 pt-3 border-t border-gray-100 dark:border-[#3a3020]">
+            <div className="flex flex-wrap items-center justify-end gap-2 pt-3 border-t border-gray-100 dark:border-[#3a3020]">
               <button
                 type="button"
                 onClick={() => setShowInvoiceModal(false)}
@@ -4040,18 +4162,18 @@ export default function CrmModule({
               </button>
               <button
                 type="submit"
-                className="px-4 py-2 rounded-xl text-xs font-bold bg-purple-600 hover:bg-purple-700 text-white transition shadow-sm flex items-center gap-1.5 cursor-pointer"
+                className="px-4 py-2 rounded-xl text-xs font-bold bg-purple-600 hover:bg-purple-700 text-white transition shadow-sm flex items-center gap-1.5 cursor-pointer shrink-0"
               >
-                <DollarSign className="w-3.5 h-3.5" />
-                <span>Generate & Issue Invoice</span>
+                <DollarSign className="w-3.5 h-3.5 shrink-0" />
+                <span>Issue Invoice</span>
               </button>
               <button
                 type="button"
                 onClick={(e) => handleCreateInvoiceSubmit(e, true)}
-                className="px-4 py-2 rounded-xl text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white transition shadow-sm flex items-center gap-1.5 cursor-pointer"
+                className="px-4 py-2 rounded-xl text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white transition shadow-sm flex items-center gap-1.5 cursor-pointer shrink-0"
               >
-                <WhatsAppIcon className="w-3.5 h-3.5" />
-                <span>Generate & Send on WhatsApp</span>
+                <WhatsAppIcon className="w-3.5 h-3.5 shrink-0" />
+                <span>Issue & WhatsApp</span>
               </button>
             </div>
           </form>

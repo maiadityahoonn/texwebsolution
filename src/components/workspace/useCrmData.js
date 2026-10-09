@@ -40,7 +40,7 @@ export function useCrmData({ sessionUserId = "", pushLiveSalesNotification } = {
 
   const loadCrmData = useCallback(async function loadCrmData() {
     const [leadsRes, dealsRes, proposalsRes, quotationsRes, agreementsRes, followUpsRes, meetingsRes, invoicesRes, summaryRes] = await Promise.all([
-      getCloudLeads({ page: 1, pageSize: 50, withCount: true }),
+      getCloudLeads({ page: 1, pageSize: 200, withCount: true }),
       getDeals({ page: 1, pageSize: 100, withCount: true }),
       getProposals(),
       getQuotations(),
@@ -52,7 +52,7 @@ export function useCrmData({ sessionUserId = "", pushLiveSalesNotification } = {
     ]);
     setLeads(leadsRes?.data || leadsRes || []);
     if (leadsRes?.data) {
-      setLeadPagination({ count: leadsRes.count || 0, page: leadsRes.page || 1, pageSize: leadsRes.pageSize || 50, loading: false });
+      setLeadPagination({ count: leadsRes.count || 0, page: leadsRes.page || 1, pageSize: leadsRes.pageSize || 200, loading: false });
     }
     if (summaryRes && typeof summaryRes.total === "number") {
       setLeadSummary(summaryRes);
@@ -79,7 +79,7 @@ export function useCrmData({ sessionUserId = "", pushLiveSalesNotification } = {
     setLeadPagination((prev) => ({ ...prev, loading: true }));
     const result = await getCloudLeads({
       page: params.page || 1,
-      pageSize: params.pageSize || 10,
+      pageSize: params.pageSize || 200,
       search: params.search || "",
       status: params.status || "",
       dateFrom: params.dateFrom || "",
@@ -90,7 +90,7 @@ export function useCrmData({ sessionUserId = "", pushLiveSalesNotification } = {
     setLeadPagination({
       count: result?.count || 0,
       page: result?.page || params.page || 1,
-      pageSize: result?.pageSize || params.pageSize || 10,
+      pageSize: result?.pageSize || params.pageSize || 200,
       loading: false,
     });
   }, []);
