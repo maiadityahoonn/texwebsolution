@@ -2517,8 +2517,8 @@ export default function CrmModule({
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-3">
           <div>
             <div className="flex items-center gap-2 text-sm font-bold text-gray-900 dark:text-white">
-              <Sparkles className="w-4 h-4 text-orange-500" />
-              Sales AI Assist
+              <Target className="w-4 h-4 text-orange-500" />
+              Sales Priority & Next Actions
             </div>
             <p className="text-xs text-gray-500 dark:text-neutral-400 mt-0.5">Priority, risk, and next action from lead data, meetings, and follow-ups.</p>
           </div>
@@ -2532,7 +2532,7 @@ export default function CrmModule({
         </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
           {aiInsights.rankedLeads.length === 0 ? (
-            <div className="md:col-span-3 text-xs text-gray-500 dark:text-neutral-400">No active lead needs AI action right now.</div>
+            <div className="md:col-span-3 text-xs text-gray-500 dark:text-neutral-400">No active lead needs action right now.</div>
           ) : (
             aiInsights.rankedLeads.map(({ lead, action }) => (
               <div key={lead.id} className="rounded-xl border border-gray-100 dark:border-[#3a3020] bg-gray-50 dark:bg-[#211d14] p-3">
@@ -5325,7 +5325,7 @@ export default function CrmModule({
 
                 <div>
                   <label className="block font-medium mb-1 text-gray-700 dark:text-neutral-300">
-                    AI Re-Nurture Cadence
+                    Re-Nurture Cadence
                   </label>
                   <select
                     value={lostForm.re_nurture_days}
@@ -5353,52 +5353,6 @@ export default function CrmModule({
                   className="w-full px-3 py-2 rounded-xl bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 focus:outline-hidden"
                 />
               </div>
-
-              {/* 5. 2026 AI Trend: AI Objection Counter & WhatsApp Recovery Draft */}
-              {AI_OBJECTION_HANDLERS[lostForm.reason] && (
-                <div className="p-3.5 rounded-2xl bg-gradient-to-br from-amber-50 to-orange-50 dark:from-amber-950/20 dark:to-orange-950/20 border border-amber-200/80 dark:border-amber-800/40 space-y-2">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-1.5 font-bold text-amber-800 dark:text-amber-300 text-xs">
-                      <Sparkles className="w-3.5 h-3.5 text-amber-500" />
-                      <span>AI Sales Advice: Try Handling this Objection</span>
-                    </div>
-                  </div>
-                  <p className="text-[11px] text-amber-900/90 dark:text-amber-200/90 leading-relaxed font-medium">
-                    {AI_OBJECTION_HANDLERS[lostForm.reason].counter}
-                  </p>
-
-                  {/* 1-Click WhatsApp Recovery Draft */}
-                  <div className="pt-2 border-t border-amber-200/60 dark:border-amber-800/40 flex items-center justify-between gap-2">
-                    <span className="text-[10.5px] text-gray-500 dark:text-neutral-400">
-                      Smart Breakup / Recovery Pitch
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const rawText = AI_OBJECTION_HANDLERS[lostForm.reason].whatsapp_draft;
-                        const clientName = (lostTarget.item.name || lostTarget.item.title || "there").split(" ")[0];
-                        const text = rawText.replace("{NAME}", clientName);
-                        navigator.clipboard?.writeText(text);
-                        setCopiedScript(true);
-                        setTimeout(() => setCopiedScript(false), 2000);
-                      }}
-                      className="px-2.5 py-1 rounded-lg text-[10.5px] font-bold bg-amber-500 hover:bg-amber-600 text-white flex items-center gap-1 transition shadow-2xs cursor-pointer"
-                    >
-                      {copiedScript ? (
-                        <>
-                          <Check className="w-3 h-3 text-white" />
-                          <span>Copied Pitch!</span>
-                        </>
-                      ) : (
-                        <>
-                          <Copy className="w-3 h-3" />
-                          <span>Copy WhatsApp Pitch</span>
-                        </>
-                      )}
-                    </button>
-                  </div>
-                </div>
-              )}
             </div>
 
             {/* Footer Buttons */}
