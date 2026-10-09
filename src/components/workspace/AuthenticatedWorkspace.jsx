@@ -12497,6 +12497,14 @@ export default function AuthenticatedWorkspace({ defaultSection = "overview" } =
                       setToast("Agreement updated.");
                     }
                   }}
+                  onCreateInvoice={async (inv) => {
+                    const res = await createInvoice(inv);
+                    if (res) {
+                      setInvoicesList((prev) => [res, ...prev.filter((i) => i.id !== res.id)]);
+                      setToast("Invoice generated successfully.");
+                      return res;
+                    }
+                  }}
                   onCreateFollowUp={async (followUp) => {
                     const res = await createSalesFollowUp({ ...followUp, created_by: sessionUser?.id || null, assigned_to: sessionUser?.id || null });
                     if (res) {

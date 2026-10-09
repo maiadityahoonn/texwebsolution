@@ -14,6 +14,7 @@ import {
   Phone,
   Mail,
   Calendar,
+  Clock,
   MessageSquare,
   Building2,
   Briefcase,
@@ -36,6 +37,7 @@ import {
 import ActivityTimeline from "../shared/ActivityTimeline";
 import MetaLeadsImportModal from "./MetaLeadsImportModal";
 import { playNotificationSound } from "@/lib/notificationSound";
+import { createInvoice } from "@/services/supabaseService";
 
 function WhatsAppIcon({ className = "w-4 h-4" }) {
   return (
@@ -338,6 +340,7 @@ export default function CrmModule({
   onUpdateQuotation,
   onCreateAgreement,
   onUpdateAgreement,
+  onCreateInvoice,
   onCreateFollowUp,
   onUpdateFollowUp,
   onCreateSalesMeeting,
@@ -400,6 +403,19 @@ export default function CrmModule({
   const [showAddDealModal, setShowAddDealModal] = useState(false);
   const [showMetaImportModal, setShowMetaImportModal] = useState(false);
   const [showCommercialModal, setShowCommercialModal] = useState(false);
+  const [showInvoiceModal, setShowInvoiceModal] = useState(false);
+  const [invoiceDeal, setInvoiceDeal] = useState(null);
+  const [invoiceForm, setInvoiceForm] = useState({
+    deal_id: "",
+    client_id: "",
+    invoice_number: "",
+    title: "",
+    amount: "",
+    milestone_type: "advance",
+    due_date: "",
+    notes: "",
+    status: "sent",
+  });
   const [showFollowUpModal, setShowFollowUpModal] = useState(false);
   const [showSalesMeetingModal, setShowSalesMeetingModal] = useState(false);
   const [showMeetingSettingsModal, setShowMeetingSettingsModal] = useState(false);
@@ -592,11 +608,17 @@ export default function CrmModule({
     if (!onFetchDealsPage || viewMode !== "pipeline") return;
     const timer = setTimeout(() => {
       const range = getServerDateRange();
+      const stageParam =
+        statusFilter === "won" || statusFilter === "converted"
+          ? "closed_won"
+          : statusFilter === "lost"
+          ? "closed_lost"
+          : "";
       onFetchDealsPage({
         page: pipelinePage,
         pageSize: pipelinePageSize,
         search: query,
-        stage: (statusFilter === "won" || statusFilter === "converted") ? "closed_won" : "",
+        stage: stageParam,
         ...range,
       });
     }, 350);
@@ -812,9 +834,16 @@ export default function CrmModule({
     const q = query.trim().toLowerCase();
     return allPipelineDeals.filter((deal) => {
       const stage = deal.pipeline_stage || deal.stage || "contacted";
-      if (stage === "closed_lost") return false;
+      if (statusFilter === "lost") {
+        if (stage !== "closed_lost") return false;
+      } else {
+        if (stage === "closed_lost") return false;
+      }
       if (statusFilter === "won" || statusFilter === "converted") {
         return stage === "closed_won";
+      }
+      if (statusFilter === "active") {
+        if (CLOSED_PIPELINE_STAGES.includes(stage)) return false;
       }
       if (q) {
         const lead = leads.find((l) => l.id === deal.lead_id);
@@ -968,15 +997,86 @@ export default function CrmModule({
       ];
     }
     if (viewMode === "pipeline") {
-      const wonCount = visiblePipelineDeals.filter((deal) => (deal.pipeline_stage || deal.stage) === "closed_won").length;
-      const openCount = visiblePipelineDeals.length - wonCount;
-      const pipelineValue = visiblePipelineDeals.reduce((sum, deal) => sum + (Number(deal.deal_value || deal.value) || 0), 0);
-      const warmStaleDealsCount = deals.filter((deal) => !["closed_won", "closed_lost"].includes(deal.pipeline_stage || deal.stage) && new Date(deal.updated_at || deal.created_at || Date.now()).getTime() < Date.now() - 3 * 86400000).length;
+      const activeDeals = allPipelineDeals.filter(
+        (deal) => !CLOSED_PIPELINE_STAGES.includes(deal.pipeline_stage || deal.stage)
+      );
+      const wonDeals = allPipelineDeals.filter(
+        (deal) => (deal.pipeline_stage || deal.stage) === "closed_won"
+      );
+      const lostDeals = allPipelineDeals.filter(
+        (deal) => (deal.pipeline_stage || deal.stage) === "closed_lost"
+      );
+
+      const openCount = activeDeals.length;
+      const wonCount = wonDeals.length;
+      const lostCount = lostDeals.length;
+      const totalDealsCount = allPipelineDeals.length;
+      const decidedCount = wonCount + lostCount;
+
+      const activeValue = activeDeals.reduce((sum, d) => sum + (Number(d.deal_value || d.value) || 0), 0);
+      const wonValue = wonDeals.reduce((sum, d) => sum + (Number(d.deal_value || d.value) || 0), 0);
+      const lostValue = lostDeals.reduce((sum, d) => sum + (Number(d.deal_value || d.value) || 0), 0);
+      const totalValue = allPipelineDeals.reduce((sum, d) => sum + (Number(d.deal_value || d.value) || 0), 0);
+
+      const winRateNumber = decidedCount > 0 ? (wonCount / decidedCount) * 100 : 0;
+      const winRateDisplay = winRateNumber % 1 === 0 ? `${winRateNumber}%` : `${winRateNumber.toFixed(1)}%`;
+
       return [
-        { label: "Open Deals", value: openCount, sub: "Active pipeline cards", icon: TrendingUp, tone: "text-emerald-600 bg-emerald-50 dark:bg-emerald-950/30", filterKey: "active" },
-        { label: "Won In Pipeline", value: wonCount, sub: "Visible before handover", icon: CheckCircle2, tone: "text-green-600 bg-green-50 dark:bg-green-950/30", filterKey: "won" },
-        { label: "Pipeline Value", value: `Rs. ${pipelineValue.toLocaleString("en-IN")}`, sub: "Visible deal value", icon: DollarSign, tone: "text-amber-600 bg-amber-50 dark:bg-amber-950/30", filterKey: "all" },
-        { label: "Stale Deals", value: warmStaleDealsCount, sub: "Idle for 3+ days", icon: AlertCircle, tone: "text-red-600 bg-red-50 dark:bg-red-950/30" },
+        {
+          id: "pipeline_value",
+          label: "Total Pipeline Value",
+          value: `Rs. ${totalValue.toLocaleString("en-IN")}`,
+          sub: `${totalDealsCount} total deals managed`,
+          badge: `${openCount} in progress`,
+          icon: DollarSign,
+          tone: "text-indigo-600 bg-indigo-50 dark:bg-indigo-950/30",
+          filterKey: "all",
+          helpText: "Total monetary value across all deals in the sales pipeline.",
+        },
+        {
+          id: "active_deals",
+          label: "Active Deals",
+          value: openCount,
+          sub: `Rs. ${activeValue.toLocaleString("en-IN")} in active stages`,
+          badge: "In Progress",
+          icon: TrendingUp,
+          tone: "text-amber-600 bg-amber-50 dark:bg-amber-950/30",
+          filterKey: "active",
+          helpText: "Open deals currently in Contacted, Meeting, Quotation, or Negotiation stages.",
+        },
+        {
+          id: "closed_won",
+          label: "Closed Won",
+          value: wonCount,
+          sub: `Rs. ${wonValue.toLocaleString("en-IN")} revenue booked`,
+          badge: "Won Deals",
+          icon: CheckCircle2,
+          tone: "text-emerald-600 bg-emerald-50 dark:bg-emerald-950/30",
+          filterKey: "won",
+          helpText: "Deals successfully won and converted into paying clients.",
+        },
+        {
+          id: "closed_lost",
+          label: "Closed Lost",
+          value: lostCount,
+          sub: `Rs. ${lostValue.toLocaleString("en-IN")} dropped value`,
+          badge: "Drop-offs",
+          icon: XCircle,
+          tone: "text-rose-600 bg-rose-50 dark:bg-rose-950/30",
+          filterKey: "lost",
+          helpText: "Deals marked lost with recorded drop-off reasons.",
+        },
+        {
+          id: "deal_win_rate",
+          label: "Deal Win Rate",
+          value: winRateDisplay,
+          sub: decidedCount > 0 ? `(${wonCount} Won ÷ ${decidedCount} Decided)` : "No closed deals yet",
+          badge: decidedCount > 0 ? `${wonCount}W / ${lostCount}L` : "0 Decided",
+          icon: Target,
+          tone: "text-purple-600 bg-purple-50 dark:bg-purple-950/30",
+          filterKey: "won",
+          helpText: "Win rate calculated as (Closed Won ÷ (Closed Won + Closed Lost)) × 100.",
+        },
       ];
     }
     if (viewMode === "commercials") {
@@ -1210,6 +1310,9 @@ export default function CrmModule({
   }
 
   function openCommercialModal(type = "proposal", deal = null) {
+    if (type === "invoice") {
+      return openInvoiceModal(deal);
+    }
     const linkedDeal = deal || deals.find((item) => item.id === commercialForm.deal_id) || deals[0];
     setCommercialType(type);
     setCommercialForm((prev) => ({
@@ -1223,6 +1326,84 @@ export default function CrmModule({
       agreement_number: `AGR-2026-${Math.floor(1000 + Math.random() * 9000)}`,
     }));
     setShowCommercialModal(true);
+  }
+
+  function openInvoiceModal(deal = null) {
+    const linkedDeal = deal || deals.find((item) => item.id === invoiceForm.deal_id) || deals[0];
+    setInvoiceDeal(linkedDeal || null);
+    const dealVal = linkedDeal ? Number(linkedDeal.deal_value || linkedDeal.value) || 0 : 0;
+    const invNumber = `INV-2026-${Math.floor(1000 + Math.random() * 9000)}`;
+    const advanceAmount = dealVal > 0 ? Math.round(dealVal * 0.4) : (dealVal ? dealVal : "");
+    const dueDate = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split("T")[0];
+    const dealTitle = linkedDeal?.title || linkedDeal?.client_name || "Client";
+
+    setInvoiceForm({
+      deal_id: linkedDeal?.id || "",
+      client_id: linkedDeal?.client_id || "",
+      invoice_number: invNumber,
+      title: `${dealTitle} - Advance Invoice (40%)`,
+      amount: advanceAmount ? String(advanceAmount) : "",
+      milestone_type: "advance",
+      due_date: dueDate,
+      notes: "Payment due within 7 days of invoice issue date. 18% GST standard applicable.",
+      status: "sent",
+    });
+    setShowInvoiceModal(true);
+  }
+
+  function handleInvoiceMilestoneChange(newMilestone) {
+    const dealVal = invoiceDeal ? Number(invoiceDeal.deal_value || invoiceDeal.value) || 0 : 0;
+    const dealTitle = invoiceDeal?.title || invoiceDeal?.client_name || "Client";
+    let newAmount = invoiceForm.amount;
+    let newTitle = invoiceForm.title;
+
+    if (dealVal > 0) {
+      if (newMilestone === "advance") {
+        newAmount = String(Math.round(dealVal * 0.4));
+        newTitle = `${dealTitle} - Advance Invoice (40%)`;
+      } else if (newMilestone === "milestone") {
+        newAmount = String(Math.round(dealVal * 0.3));
+        newTitle = `${dealTitle} - Sprint Milestone Invoice (30%)`;
+      } else if (newMilestone === "final") {
+        newAmount = String(Math.round(dealVal * 0.3));
+        newTitle = `${dealTitle} - Final Delivery Invoice (30%)`;
+      } else if (newMilestone === "full") {
+        newAmount = String(dealVal);
+        newTitle = `${dealTitle} - Full Payment Invoice (100%)`;
+      } else if (newMilestone === "monthly_retainer") {
+        newAmount = String(dealVal);
+        newTitle = `${dealTitle} - Monthly Retainer Invoice`;
+      }
+    }
+
+    setInvoiceForm((prev) => ({
+      ...prev,
+      milestone_type: newMilestone,
+      amount: newAmount,
+      title: newTitle,
+    }));
+  }
+
+  async function handleCreateInvoiceSubmit(e) {
+    e.preventDefault();
+    if (!invoiceForm.deal_id || !invoiceForm.amount) return;
+    const baseAmt = parseFloat(invoiceForm.amount) || 0;
+    const taxAmt = Math.round(baseAmt * 0.18);
+    const payload = {
+      ...invoiceForm,
+      amount: baseAmt,
+      tax_amount: taxAmt,
+      total_amount: baseAmt + taxAmt,
+    };
+    if (onCreateInvoice) {
+      await onCreateInvoice(payload);
+    } else {
+      await createInvoice(payload);
+    }
+    try {
+      playNotificationSound?.("payment");
+    } catch (_) {}
+    setShowInvoiceModal(false);
   }
 
   function handleCreateCommercialSubmit(e) {
@@ -1734,83 +1915,6 @@ export default function CrmModule({
         </div>
       )}
 
-      {viewMode === "leads" && (
-        <div className="rounded-2xl border border-purple-200/80 dark:border-purple-900/40 bg-gradient-to-r from-purple-50/80 via-indigo-50/40 to-blue-50/40 dark:from-[#20152b] dark:via-[#19192b] dark:to-[#121c2c] p-3.5 shadow-2xs">
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
-            <div className="flex items-start md:items-center gap-3 min-w-0">
-              <span className="w-9 h-9 rounded-xl bg-purple-600 text-white flex items-center justify-center shrink-0 shadow-xs">
-                <Target className="w-4 h-4" />
-              </span>
-              <div className="min-w-0">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <span className="text-xs font-black text-gray-900 dark:text-white">
-                    Conversion Ratio Basis
-                  </span>
-                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-white dark:bg-[#18150f] text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800">
-                    Formula: (Converted Leads ÷ Total Leads) × 100
-                  </span>
-                </div>
-                <p className="text-[11px] text-gray-600 dark:text-neutral-300 mt-1">
-                  <strong>Lead Conversion Rate:</strong> ({leadSummaryMetrics.convertedCount} Converted ÷ {leadSummaryMetrics.totalLeads} Total) × 100 = <span className="text-purple-600 dark:text-purple-400 font-black">{leadSummaryMetrics.convRateDisplay}</span>
-                  {leadSummaryMetrics.decidedTotal > 0 && (
-                    <span className="ml-2 pl-2 border-l border-gray-300 dark:border-gray-700">
-                      <strong>Win Rate on Closed:</strong> ({leadSummaryMetrics.convertedCount} Won ÷ {leadSummaryMetrics.decidedTotal} Decided) = <span className="text-emerald-600 dark:text-emerald-400 font-black">{leadSummaryMetrics.winRateDisplay}</span>
-                    </span>
-                  )}
-                </p>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-2 text-xs shrink-0 flex-wrap">
-              <span className="text-gray-500 dark:text-neutral-400 text-[11px]">Filter leads:</span>
-              <button
-                type="button"
-                onClick={() => setStatusFilter("all")}
-                className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition cursor-pointer ${
-                  statusFilter === "all"
-                    ? "bg-blue-600 text-white"
-                    : "bg-white dark:bg-[#1f1b13] border border-gray-200 dark:border-slate-800 text-blue-700 dark:text-blue-300 hover:bg-blue-50"
-                }`}
-              >
-                All ({leadSummaryMetrics.totalLeads})
-              </button>
-              <button
-                type="button"
-                onClick={() => setStatusFilter("pipeline")}
-                className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition cursor-pointer ${
-                  statusFilter === "pipeline"
-                    ? "bg-amber-600 text-white"
-                    : "bg-white dark:bg-[#1f1b13] border border-gray-200 dark:border-slate-800 text-amber-700 dark:text-amber-300 hover:bg-amber-50"
-                }`}
-              >
-                Pipeline ({leadSummaryMetrics.pipelineCount})
-              </button>
-              <button
-                type="button"
-                onClick={() => setStatusFilter("converted")}
-                className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition cursor-pointer ${
-                  statusFilter === "converted"
-                    ? "bg-emerald-600 text-white"
-                    : "bg-white dark:bg-[#1f1b13] border border-gray-200 dark:border-slate-800 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-50"
-                }`}
-              >
-                Converted ({leadSummaryMetrics.convertedCount})
-              </button>
-              <button
-                type="button"
-                onClick={() => setStatusFilter("lost")}
-                className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition cursor-pointer ${
-                  statusFilter === "lost"
-                    ? "bg-rose-600 text-white"
-                    : "bg-white dark:bg-[#1f1b13] border border-gray-200 dark:border-slate-800 text-rose-700 dark:text-rose-300 hover:bg-rose-50"
-                }`}
-              >
-                Lost ({leadSummaryMetrics.lostCount})
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {viewMode === "reports" && (
       <>
@@ -2017,11 +2121,12 @@ export default function CrmModule({
             ["all", "All Stages"],
             ["active", "Active Deals"],
             ["won", "Won / Converted"],
+            ["lost", "Closed Lost"],
           ].map(([value, label]) => {
             const isSelected =
               statusFilter === value ||
               (value === "won" && statusFilter === "converted") ||
-              (value === "all" && !["active", "won", "converted"].includes(statusFilter));
+              (value === "all" && !["active", "won", "converted", "lost"].includes(statusFilter));
             return (
               <button
                 key={value}
@@ -2341,8 +2446,11 @@ export default function CrmModule({
         {isPipelineLoading && visiblePipelineDeals.length === 0 ? (
           <PipelineSkeleton />
         ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3">
-          {PIPELINE_STAGES.map((col) => {
+        <div className={`grid grid-cols-1 ${statusFilter === "lost" ? "sm:grid-cols-2 lg:grid-cols-3" : "sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5"} gap-3`}>
+          {(statusFilter === "lost"
+            ? [{ id: "closed_lost", label: "Closed Lost Deals", color: "bg-rose-500" }]
+            : PIPELINE_STAGES
+          ).map((col) => {
             const colDeals = visiblePipelineDeals.filter(
               (d) =>
                 (d.pipeline_stage || "contacted") === col.id &&
@@ -2405,141 +2513,241 @@ export default function CrmModule({
                       getDocStatusBadge("Invoice", latestInvoice),
                     ].filter(Boolean);
 
+                    const lead = leads.find((item) => item.id === deal.lead_id);
+                    const clientName = lead?.name || deal.title?.split(" - ")[0] || deal.title || "Deal";
+                    const serviceName = deal.service || lead?.service || deal.title?.split(" - ")[1] || "Tech Development";
+                    const dealInitials = clientName
+                      .split(" ")
+                      .map((w) => w[0])
+                      .filter(Boolean)
+                      .slice(0, 2)
+                      .join("")
+                      .toUpperCase() || "DL";
+
+                    const isMetaLead = Boolean(
+                      lead?.source?.toLowerCase().includes("meta") ||
+                      lead?.source?.toLowerCase().includes("instagram") ||
+                      deal.notes?.toLowerCase().includes("meta") ||
+                      deal.notes?.toLowerCase().includes("instagram")
+                    );
+                    const isInstagram = Boolean(
+                      lead?.source?.toLowerCase().includes("instagram") ||
+                      deal.notes?.toLowerCase().includes("instagram")
+                    );
+
+                    const isDefaultNote = !deal.notes || [
+                      "converted lead",
+                      "created from lead",
+                    ].some((kw) => deal.notes.toLowerCase().includes(kw));
+                    const customNotes = !isDefaultNote ? deal.notes : null;
+
+                    const meetingDateStr = nextMeeting?.scheduled_at
+                      ? new Date(nextMeeting.scheduled_at).toLocaleDateString("en-IN", { day: "numeric", month: "short" }) +
+                        ", " +
+                        new Date(nextMeeting.scheduled_at).toLocaleTimeString("en-IN", { hour: "numeric", minute: "2-digit", hour12: true })
+                      : null;
+
+                    const followUpDateStr = nextFollowUp?.due_at
+                      ? new Date(nextFollowUp.due_at).toLocaleDateString("en-IN", { day: "numeric", month: "short" }) +
+                        ", " +
+                        new Date(nextFollowUp.due_at).toLocaleTimeString("en-IN", { hour: "numeric", minute: "2-digit", hour12: true })
+                      : null;
+
                     return (
                     <div
                       key={deal.id}
                       draggable
                       onDragStart={() => setDraggedDealId(deal.id)}
                       onDragEnd={() => setDraggedDealId(null)}
-                      className="p-3 rounded-xl bg-gray-50 dark:bg-[#211d14] border border-gray-200/80 dark:border-[#3a3020] hover:border-orange-500 transition shadow-2xs space-y-1.5 cursor-grab active:cursor-grabbing"
+                      className="group relative p-2.5 rounded-xl bg-white dark:bg-[#1a1711] border border-gray-200/90 dark:border-[#382f20] hover:border-orange-500/80 hover:shadow-xs transition-all duration-150 space-y-2 cursor-grab active:cursor-grabbing"
                     >
-                      <div className="font-semibold text-xs text-gray-900 dark:text-white line-clamp-1">
-                        {deal.title}
+                      {/* 1. Header: Avatar + Client Name + Value */}
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-1.5 min-w-0">
+                          <span className="w-5 h-5 rounded-md bg-gradient-to-br from-orange-500 to-amber-500 text-white text-[9px] font-black flex items-center justify-center shrink-0 uppercase tracking-tighter shadow-2xs">
+                            {dealInitials}
+                          </span>
+                          <span className="font-bold text-xs text-gray-900 dark:text-white truncate" title={clientName}>
+                            {clientName}
+                          </span>
+                          {deal._optimistic && (
+                            <span className="text-[8px] font-bold text-amber-600 animate-pulse shrink-0">●</span>
+                          )}
+                        </div>
+                        <span className={`px-1.5 py-0.5 rounded-md text-[11px] font-black shrink-0 tracking-tight ${
+                          col.id === "closed_won"
+                            ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-400 border border-emerald-200/50 dark:border-emerald-800/40"
+                            : "bg-orange-50 text-orange-600 dark:bg-orange-950/50 dark:text-orange-400 border border-orange-200/50 dark:border-orange-800/40"
+                        }`}>
+                          ₹{(Number(deal.deal_value) || 0).toLocaleString("en-IN")}
+                        </span>
                       </div>
-                      {deal._optimistic && (
-                        <div className="inline-flex w-fit px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300">
-                          Saving...
-                        </div>
-                      )}
-                      <div className="text-[11px] font-bold text-orange-600 dark:text-orange-400">
-                        Rs. {(Number(deal.deal_value) || 0).toLocaleString("en-IN")}
+
+                      {/* 2. Service & Badges */}
+                      <div className="flex items-center gap-1 flex-wrap">
+                        <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-neutral-300 truncate max-w-[140px]">
+                          {serviceName}
+                        </span>
+                        {isMetaLead && (
+                          <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-pink-50 text-pink-600 dark:bg-pink-950/40 dark:text-pink-400 border border-pink-200/50">
+                            {isInstagram ? "IG" : "Meta"}
+                          </span>
+                        )}
+                        {docBadges.map((badge) => (
+                          <span
+                            key={badge.label}
+                            className={`px-1.5 py-0.5 rounded text-[9px] font-bold capitalize ${badge.tone}`}
+                          >
+                            {badge.label}
+                          </span>
+                        ))}
                       </div>
-                      <div className="text-[10px] text-gray-500 dark:text-neutral-400">
-                        {deal.service || "Tech Development"}
-                      </div>
-                      {deal.notes && (
-                        <div className="text-[10px] text-gray-500 dark:text-neutral-400 bg-white/60 dark:bg-slate-900/40 p-1.5 rounded-lg line-clamp-3">
-                          {deal.notes}
+
+                      {/* 3. Action / Status Highlight (Single Compact Row) */}
+                      {col.id === "closed_won" ? (
+                        <div className="flex items-center gap-1.5 text-[10px] font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-50/70 dark:bg-emerald-950/30 px-2 py-1 rounded-lg border border-emerald-200/40 dark:border-emerald-800/30">
+                          <CheckCircle2 className="w-3 h-3 text-emerald-500 shrink-0" />
+                          <span className="truncate">Won · Client & Project Active</span>
                         </div>
-                      )}
-                      {nextMeeting && (
-                        <div className="text-[10px] text-blue-600 dark:text-blue-300 bg-blue-50 dark:bg-blue-950/30 p-1.5 rounded-lg">
-                          Meeting: {new Date(nextMeeting.scheduled_at).toLocaleString("en-IN")}
+                      ) : col.id === "closed_lost" ? (
+                        <div className="flex items-center gap-1.5 text-[10px] font-medium text-rose-700 dark:text-rose-300 bg-rose-50/70 dark:bg-rose-950/30 px-2 py-1 rounded-lg border border-rose-200/40 line-clamp-1" title={deal.loss_reason}>
+                          <XCircle className="w-3 h-3 text-rose-500 shrink-0" />
+                          <span className="truncate">{deal.loss_reason || "Deal dropped"}</span>
                         </div>
-                      )}
-                      {nextFollowUp && (
-                        <div className="text-[10px] text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/30 p-1.5 rounded-lg">
-                          Next follow-up: {new Date(nextFollowUp.due_at).toLocaleString("en-IN")}
+                      ) : meetingDateStr ? (
+                        <div className="flex items-center gap-1.5 text-[10px] font-medium text-blue-700 dark:text-blue-300 bg-blue-50/80 dark:bg-blue-950/30 px-2 py-1 rounded-lg border border-blue-200/40">
+                          <Calendar className="w-3 h-3 text-blue-500 shrink-0" />
+                          <span className="truncate">Meet: {meetingDateStr}</span>
                         </div>
-                      )}
-                      {deal.loss_reason && col.id === "closed_lost" && (
-                        <div className="text-[10px] text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/40 p-1.5 rounded-lg border border-red-200/50 mt-1 line-clamp-2">
-                          {deal.loss_reason}
+                      ) : followUpDateStr ? (
+                        <div className="flex items-center gap-1.5 text-[10px] font-medium text-amber-700 dark:text-amber-300 bg-amber-50/80 dark:bg-amber-950/30 px-2 py-1 rounded-lg border border-amber-200/40">
+                          <Clock className="w-3 h-3 text-amber-500 shrink-0" />
+                          <span className="truncate">Follow-up: {followUpDateStr}</span>
                         </div>
-                      )}
-                      {docBadges.length > 0 && (
-                        <div className="flex flex-wrap gap-1">
-                          {docBadges.map((badge) => (
-                            <span
-                              key={badge.label}
-                              className={`px-1.5 py-0.5 rounded-full text-[9px] font-bold capitalize ${badge.tone}`}
-                            >
-                              {badge.label}
+                      ) : customNotes ? (
+                        <div className="text-[10px] text-gray-500 dark:text-neutral-400 line-clamp-1 px-1 italic">
+                          {customNotes}
+                        </div>
+                      ) : null}
+
+                      {/* 4. Action Toolbar */}
+                      <div className="pt-1.5 border-t border-gray-100 dark:border-[#2e2619] space-y-1.5">
+                        {col.id !== "closed_won" && col.id !== "closed_lost" ? (
+                          <>
+                            <div className="flex items-center justify-between gap-1.5">
+                              <select
+                                value={deal.pipeline_stage || "contacted"}
+                                onChange={(e) => handleDealStageChange(deal, e.target.value, col.id)}
+                                className="text-[10px] font-semibold bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-md px-1.5 py-0.5 text-gray-700 dark:text-neutral-300 focus:outline-hidden cursor-pointer"
+                              >
+                                <option value="contacted">Contacted</option>
+                                <option value="qualified">Meeting</option>
+                                <option value="proposal">Quotation</option>
+                                <option value="negotiation">Negotiation</option>
+                                <option value="closed_won">Won</option>
+                                <option value="closed_lost">Lost</option>
+                              </select>
+
+                              {col.id === "negotiation" ? (
+                                <button
+                                  type="button"
+                                  onClick={() => openPipelineFollowUpModal(deal)}
+                                  className="flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[10px] font-bold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/40 hover:bg-blue-100 border border-blue-200/50 shrink-0 transition cursor-pointer"
+                                  title="Add Follow-up"
+                                >
+                                  <Clock className="w-3 h-3 text-blue-500 shrink-0" />
+                                  <span>Follow-up</span>
+                                </button>
+                              ) : (
+                                <div className="flex items-center gap-1 shrink-0">
+                                  <button
+                                    type="button"
+                                    onClick={() => openPipelineFollowUpModal(deal)}
+                                    className="p-1 rounded-md text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/40 hover:bg-blue-100 border border-blue-200/40 shrink-0 transition cursor-pointer"
+                                    title="Add Follow-up"
+                                  >
+                                    <Clock className="w-3.5 h-3.5 shrink-0" />
+                                  </button>
+
+                                  {col.id === "contacted" && (
+                                    <button
+                                      type="button"
+                                      onClick={() => openMeetingWhatsApp(deal)}
+                                      className="p-1 rounded-md text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 hover:bg-emerald-100 border border-emerald-200/40 shrink-0 transition cursor-pointer"
+                                      title="Send WhatsApp confirmation"
+                                    >
+                                      <WhatsAppIcon className="w-3.5 h-3.5 shrink-0" />
+                                    </button>
+                                  )}
+
+                                  {col.id === "proposal" && (
+                                    <button
+                                      type="button"
+                                      onClick={() => openCommercialModal("proposal", deal)}
+                                      className="p-1 rounded-md text-orange-600 dark:text-orange-400 bg-orange-50 dark:bg-orange-950/40 hover:bg-orange-100 border border-orange-200/40 shrink-0 transition cursor-pointer"
+                                      title="Open Quotation"
+                                    >
+                                      <FileText className="w-3.5 h-3.5 shrink-0" />
+                                    </button>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+
+                            {col.id === "negotiation" && (
+                              <div className="grid grid-cols-2 gap-1.5 pt-0.5">
+                                <button
+                                  type="button"
+                                  onClick={() => openCommercialModal("agreement", deal)}
+                                  className="py-1 px-2 rounded-lg text-[10px] font-bold bg-indigo-50 dark:bg-indigo-950/50 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-100 dark:hover:bg-indigo-900/60 border border-indigo-200/60 dark:border-indigo-800/50 flex items-center justify-center gap-1 transition shadow-2xs cursor-pointer"
+                                  title="Create / Open Agreement"
+                                >
+                                  <FileText className="w-3 h-3 text-indigo-500 shrink-0" />
+                                  <span>Agreement</span>
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => openInvoiceModal(deal)}
+                                  className="py-1 px-2 rounded-lg text-[10px] font-bold bg-purple-50 dark:bg-purple-950/50 text-purple-700 dark:text-purple-300 hover:bg-purple-100 dark:hover:bg-purple-900/60 border border-purple-200/60 dark:border-purple-800/50 flex items-center justify-center gap-1 transition shadow-2xs cursor-pointer"
+                                  title="Generate / Open Invoice"
+                                >
+                                  <DollarSign className="w-3 h-3 text-purple-500 shrink-0" />
+                                  <span>Invoice</span>
+                                </button>
+                              </div>
+                            )}
+                          </>
+                        ) : col.id === "closed_won" ? (
+                          <div className="w-full flex items-center justify-between text-[10px]">
+                            <span className="text-emerald-600 dark:text-emerald-400 font-bold flex items-center gap-1">
+                              <Briefcase className="w-3 h-3" />
+                              <span>Client Active</span>
                             </span>
-                          ))}
-                        </div>
-                      )}
-
-                      {col.id !== "closed_won" && col.id !== "closed_lost" && (
-                        <div className="space-y-1.5 pt-1.5 border-t border-gray-200/60 dark:border-[#3a3020]/60 mt-1.5">
-                        <div className="flex items-center justify-between gap-1">
-                          <select
-                            value={deal.pipeline_stage || "contacted"}
-                            onChange={(e) => {
-                              const nextStage = e.target.value;
-                              handleDealStageChange(deal, nextStage, col.id);
-                            }}
-                            className="text-[10px] bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded px-1.5 py-0.5 text-gray-700 dark:text-neutral-300 focus:outline-hidden"
-                          >
-                            <option value="contacted">Contacted</option>
-                            <option value="qualified">Meeting</option>
-                            <option value="proposal">Quotation</option>
-                            <option value="negotiation">Negotiation</option>
-                            <option value="closed_won">Won</option>
-                          </select>
-                        </div>
-                        <div>
-                          <button
-                            type="button"
-                            onClick={() => openPipelineFollowUpModal(deal)}
-                            className="w-full py-1 rounded-lg text-[10px] font-bold bg-blue-50 text-blue-700 dark:bg-blue-950/30 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-950/50 transition"
-                            title="Create manual follow-up with date and time"
-                          >
-                            Add Follow-up
-                          </button>
-                        </div>
-                        </div>
-                      )}
-
-                      {col.id === "contacted" && (
-                        <button
-                          type="button"
-                          onClick={() => openMeetingWhatsApp(deal)}
-                          className="w-full mt-2 py-1 rounded-lg text-[10px] font-bold bg-emerald-600 text-white flex items-center justify-center gap-1 shadow-2xs"
-                          title="Send meeting confirmation on WhatsApp"
-                        >
-                          <WhatsAppIcon className="w-3 h-3" />
-                          <span>Send Meeting WhatsApp</span>
-                        </button>
-                      )}
-
-                      {col.id === "proposal" && (
-                        <button
-                          type="button"
-                          onClick={() => openCommercialModal("proposal", deal)}
-                          className="w-full mt-2 py-1 rounded-lg text-[10px] font-bold bg-orange-600 text-white flex items-center justify-center gap-1 shadow-2xs"
-                          title="Open linked quotation page"
-                        >
-                          <FileText className="w-3 h-3" />
-                          <span>Open Quotation</span>
-                        </button>
-                      )}
-
-                      {col.id === "negotiation" && (
-                        <div className="grid grid-cols-2 gap-1.5 mt-2">
-                          <button
-                            type="button"
-                            onClick={() => openCommercialModal("agreement", deal)}
-                            className="py-1 rounded-lg text-[10px] font-bold bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 text-gray-700 dark:text-neutral-200"
-                          >
-                            Agreement
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => onNavigateSection?.("invoices")}
-                            className="py-1 rounded-lg text-[10px] font-bold bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 text-gray-700 dark:text-neutral-200"
-                          >
-                            Invoice
-                          </button>
-                        </div>
-                      )}
-
-                      {col.id === "closed_won" && (
-                        <div className="w-full mt-2 py-1 px-2 rounded-lg text-[10px] font-bold bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-300 flex items-center justify-center gap-1">
-                          <Briefcase className="w-3 h-3" />
-                          <span>Client + project auto-created</span>
-                        </div>
-                      )}
+                            <button
+                              type="button"
+                              onClick={() => onNavigateSection?.("projects")}
+                              className="text-[9.5px] font-bold text-gray-500 hover:text-emerald-600 dark:text-neutral-400 flex items-center gap-0.5 transition cursor-pointer"
+                            >
+                              <span>View Project</span>
+                              <ExternalLink className="w-2.5 h-2.5" />
+                            </button>
+                          </div>
+                        ) : (
+                          <div className="w-full flex items-center justify-between text-[10px]">
+                            <span className="text-rose-600 dark:text-rose-400 font-bold flex items-center gap-1">
+                              <XCircle className="w-3 h-3" />
+                              <span>Closed Lost</span>
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => handleDealStageChange(deal, "contacted", col.id)}
+                              className="text-[9.5px] font-bold text-blue-600 hover:underline transition cursor-pointer"
+                            >
+                              Re-open
+                            </button>
+                          </div>
+                        )}
+                      </div>
                     </div>
                     );
                   })}
@@ -3580,6 +3788,159 @@ export default function CrmModule({
               </button>
               <button type="submit" className="px-4 py-2 rounded-xl text-xs font-bold bg-orange-600 hover:bg-orange-700 text-white transition shadow-sm">
                 Save {commercialType === "agreement" ? "agreement" : "quotation"}
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
+
+      {/* Sales Invoice Modal */}
+      {showInvoiceModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
+          <form
+            onSubmit={handleCreateInvoiceSubmit}
+            className="w-full max-w-lg max-h-[90vh] overflow-y-auto no-scrollbar rounded-2xl bg-white dark:bg-[#18150f] border border-gray-200 dark:border-[#3a3020] shadow-2xl p-5 space-y-4"
+          >
+            <div className="flex items-center justify-between border-b border-gray-100 dark:border-[#3a3020] pb-3">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-xl bg-purple-50 dark:bg-purple-950/60 border border-purple-200/60 dark:border-purple-800/50 flex items-center justify-center text-purple-600 dark:text-purple-400 shrink-0">
+                  <DollarSign className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-base text-gray-900 dark:text-white">Generate Sales Invoice</h3>
+                  <p className="text-[11px] text-gray-400">Create and issue an official tax invoice linked to this pipeline deal.</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowInvoiceModal(false)}
+                className="p-1 rounded-lg text-gray-400 hover:text-gray-600 dark:hover:text-neutral-200 transition cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Linked Deal Context Card */}
+            {invoiceDeal && (
+              <div className="p-3 rounded-xl bg-purple-50/60 dark:bg-purple-950/30 border border-purple-200/60 dark:border-purple-800/50 flex items-center justify-between">
+                <div>
+                  <div className="text-[10px] uppercase font-bold text-purple-600 dark:text-purple-400 tracking-wider">Linked Deal</div>
+                  <div className="font-bold text-xs text-gray-900 dark:text-white">
+                    {invoiceDeal.title || invoiceDeal.client_name || "Client Deal"}
+                  </div>
+                </div>
+                <div className="text-right">
+                  <div className="text-[10px] text-gray-400">Deal Value</div>
+                  <div className="font-black text-xs text-purple-700 dark:text-purple-300">
+                    ₹{Number(invoiceDeal.deal_value || 0).toLocaleString("en-IN")}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+              <div>
+                <label className="block font-medium mb-1 text-gray-700 dark:text-neutral-300">Invoice Number *</label>
+                <input
+                  type="text"
+                  required
+                  value={invoiceForm.invoice_number}
+                  onChange={(e) => setInvoiceForm({ ...invoiceForm, invoice_number: e.target.value })}
+                  className="w-full px-3 py-2 rounded-xl bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 font-mono"
+                />
+              </div>
+
+              <div>
+                <label className="block font-medium mb-1 text-gray-700 dark:text-neutral-300">Milestone Stage</label>
+                <select
+                  value={invoiceForm.milestone_type}
+                  onChange={(e) => handleInvoiceMilestoneChange(e.target.value)}
+                  className="w-full px-3 py-2 rounded-xl bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 font-semibold cursor-pointer"
+                >
+                  <option value="advance">Advance (40%)</option>
+                  <option value="milestone">Sprint Milestone (30%)</option>
+                  <option value="final">Final Delivery (30%)</option>
+                  <option value="full">Full Payment (100%)</option>
+                  <option value="monthly_retainer">Monthly Retainer</option>
+                  <option value="custom">Custom</option>
+                </select>
+              </div>
+
+              <div className="sm:col-span-2">
+                <label className="block font-medium mb-1 text-gray-700 dark:text-neutral-300">Invoice Title / Description *</label>
+                <input
+                  type="text"
+                  required
+                  value={invoiceForm.title}
+                  onChange={(e) => setInvoiceForm({ ...invoiceForm, title: e.target.value })}
+                  className="w-full px-3 py-2 rounded-xl bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700"
+                />
+              </div>
+
+              <div>
+                <label className="block font-medium mb-1 text-gray-700 dark:text-neutral-300">Subtotal (Excl. Tax) ₹ *</label>
+                <input
+                  type="number"
+                  required
+                  value={invoiceForm.amount}
+                  onChange={(e) => setInvoiceForm({ ...invoiceForm, amount: e.target.value })}
+                  className="w-full px-3 py-2 rounded-xl bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 font-mono font-bold"
+                />
+              </div>
+
+              <div>
+                <label className="block font-medium mb-1 text-gray-700 dark:text-neutral-300">Due Date</label>
+                <input
+                  type="date"
+                  value={invoiceForm.due_date}
+                  onChange={(e) => setInvoiceForm({ ...invoiceForm, due_date: e.target.value })}
+                  className="w-full px-3 py-2 rounded-xl bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700"
+                />
+              </div>
+
+              {/* Tax & Total Calculation Summary */}
+              <div className="sm:col-span-2 p-3 rounded-xl bg-gray-50 dark:bg-slate-800/60 border border-gray-200/70 dark:border-slate-700/60 space-y-1.5 text-xs">
+                <div className="flex justify-between text-gray-500 dark:text-neutral-400">
+                  <span>Subtotal Amount:</span>
+                  <span className="font-mono font-semibold">₹{(Number(invoiceForm.amount) || 0).toLocaleString("en-IN")}</span>
+                </div>
+                <div className="flex justify-between text-gray-500 dark:text-neutral-400">
+                  <span>GST (18% Standard):</span>
+                  <span className="font-mono font-semibold">₹{Math.round((Number(invoiceForm.amount) || 0) * 0.18).toLocaleString("en-IN")}</span>
+                </div>
+                <div className="pt-1.5 border-t border-gray-200 dark:border-slate-700 flex justify-between items-center font-bold text-gray-900 dark:text-white">
+                  <span>Total Invoiced (Inc. Tax):</span>
+                  <span className="font-mono text-sm text-purple-600 dark:text-purple-400">
+                    ₹{Math.round((Number(invoiceForm.amount) || 0) * 1.18).toLocaleString("en-IN")}
+                  </span>
+                </div>
+              </div>
+
+              <div className="sm:col-span-2">
+                <label className="block font-medium mb-1 text-gray-700 dark:text-neutral-300">Notes & Payment Terms</label>
+                <textarea
+                  rows={2}
+                  value={invoiceForm.notes}
+                  onChange={(e) => setInvoiceForm({ ...invoiceForm, notes: e.target.value })}
+                  className="w-full px-3 py-2 rounded-xl bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 text-xs"
+                />
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-3 border-t border-gray-100 dark:border-[#3a3020]">
+              <button
+                type="button"
+                onClick={() => setShowInvoiceModal(false)}
+                className="px-3.5 py-2 rounded-xl text-xs font-semibold text-gray-600 dark:text-neutral-300 hover:bg-gray-100 dark:hover:bg-slate-800 transition cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                className="px-4 py-2 rounded-xl text-xs font-bold bg-purple-600 hover:bg-purple-700 text-white transition shadow-sm flex items-center gap-1.5 cursor-pointer"
+              >
+                <DollarSign className="w-3.5 h-3.5" />
+                <span>Generate & Issue Invoice</span>
               </button>
             </div>
           </form>
