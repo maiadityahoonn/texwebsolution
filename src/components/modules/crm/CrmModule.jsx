@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useState, useMemo, useEffect } from "react";
 import { createPortal } from "react-dom";
@@ -29,6 +29,9 @@ import {
   AlertCircle,
   ShieldAlert,
   RotateCcw,
+  Target,
+  Percent,
+  HelpCircle,
 } from "lucide-react";
 import ActivityTimeline from "../shared/ActivityTimeline";
 import MetaLeadsImportModal from "./MetaLeadsImportModal";
@@ -319,6 +322,8 @@ export default function CrmModule({
   meetingPagination = null,
   initialViewMode = "leads",
   leadPagination = null,
+  leadSummary = null,
+  onRefreshLeadSummary = null,
   commercialScope = "all",
   isDark = false,
   onUpdateLeadStatus,
@@ -591,7 +596,7 @@ export default function CrmModule({
         page: pipelinePage,
         pageSize: pipelinePageSize,
         search: query,
-        stage: statusFilter === "won" ? "closed_won" : "",
+        stage: (statusFilter === "won" || statusFilter === "converted") ? "closed_won" : "",
         ...range,
       });
     }, 350);
@@ -632,11 +637,25 @@ export default function CrmModule({
   const filteredLeads = useMemo(() => {
     const q = query.trim().toLowerCase();
     return leads.filter((lead) => {
-      const isInPipeline = deals.some((deal) => deal.lead_id === lead.id);
-      const isArchived = ["Converted", "Lost", "Archived"].includes(lead.status) || isInPipeline;
+      const isInPipeline = deals.some((deal) => deal.lead_id === lead.id && !CLOSED_PIPELINE_STAGES.includes(deal.pipeline_stage || deal.stage));
+      const hasWonDeal = deals.some((deal) => deal.lead_id === lead.id && (deal.pipeline_stage || deal.stage) === "closed_won");
+      const hasLostDeal = deals.some((deal) => deal.lead_id === lead.id && (deal.pipeline_stage || deal.stage) === "closed_lost");
+      const isConverted = lead.status === "Converted" || lead.status === "Closed Won" || hasWonDeal;
+      const isLost = lead.status === "Lost" || hasLostDeal;
+      const isPipelineLead = isInPipeline || ["Contacted", "Qualified", "Proposal Sent", "In Pipeline", "Negotiation"].includes(lead.status);
+      const isArchived = isConverted || isLost || Boolean(deals.some((deal) => deal.lead_id === lead.id));
+
       const matchStatus =
-        statusFilter === "active"
-          ? !isArchived
+        statusFilter === "all"
+          ? true
+          : statusFilter === "active"
+          ? !isArchived && !isPipelineLead
+          : statusFilter === "pipeline"
+          ? isPipelineLead
+          : statusFilter === "converted"
+          ? isConverted
+          : statusFilter === "lost"
+          ? isLost
           : statusFilter === "archived"
           ? isArchived
           : lead.status === statusFilter;
@@ -678,10 +697,17 @@ export default function CrmModule({
 
   // Aggregate Metrics
   const stats = useMemo(() => {
-    const total = leads.length;
+    const total = leadSummary?.total ?? leads.length;
     const newCount = leads.filter((l) => l.status === "New").length;
-    const convertedCount = leads.filter((l) => l.status === "Converted" || l.status === "Closed Won").length;
-    const lostCount = leads.filter((l) => l.status === "Lost").length;
+    const convertedCount = Math.max(
+      leadSummary?.converted || 0,
+      leads.filter((l) => l.status === "Converted" || l.status === "Closed Won").length,
+      deals.filter((d) => (d.pipeline_stage || d.stage) === "closed_won").length
+    );
+    const lostCount = Math.max(
+      leadSummary?.lost || 0,
+      leads.filter((l) => l.status === "Lost").length
+    );
     const lostDealsCount = deals.filter((d) => (d.pipeline_stage || d.stage) === "closed_lost").length;
     const rate = total > 0 ? Math.round((convertedCount / total) * 100) : 0;
     const totalPipelineValue = deals
@@ -695,7 +721,7 @@ export default function CrmModule({
       .reduce((acc, d) => acc + (Number(d.deal_value || d.value) || 0), 0);
 
     return { total, newCount, convertedCount, lostCount, lostDealsCount, rate, totalPipelineValue, wonValue, lostValue };
-  }, [leads, deals]);
+  }, [leads, deals, leadSummary]);
 
   const commercialDocs = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -758,12 +784,50 @@ export default function CrmModule({
     });
   }, [clients, customDateRange.from, customDateRange.to, dateFilter, leads, query, salesMeetings, selectedDate]);
 
-  const visiblePipelineDeals = deals.filter((deal) => {
-    const stage = deal.pipeline_stage || deal.stage;
-    if (stage === "closed_lost") return false;
-    if (statusFilter === "won") return stage === "closed_won";
-    return true;
-  });
+  const allPipelineDeals = useMemo(() => {
+    const existingDealLeadIds = new Set(deals.map((d) => d.lead_id).filter(Boolean));
+    const list = [...deals];
+    leads.forEach((l) => {
+      const isLeadWon = l.status === "Converted" || l.status === "Closed Won";
+      if (isLeadWon && !existingDealLeadIds.has(l.id)) {
+        list.push({
+          id: `lead-converted-${l.id}`,
+          title: l.name ? `${l.name} - ${l.service || "Tech Development"}` : "Converted Lead",
+          lead_id: l.id,
+          pipeline_stage: "closed_won",
+          stage: "closed_won",
+          deal_value: Number(l.deal_value || l.budget || 0) || 50000,
+          currency: "INR",
+          service: l.service || "Tech Development",
+          created_at: l.created_at,
+          updated_at: l.updated_at || l.created_at,
+          notes: l.notes || `Converted from lead: ${l.name}`,
+        });
+      }
+    });
+    return list;
+  }, [deals, leads]);
+
+  const visiblePipelineDeals = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    return allPipelineDeals.filter((deal) => {
+      const stage = deal.pipeline_stage || deal.stage || "contacted";
+      if (stage === "closed_lost") return false;
+      if (statusFilter === "won" || statusFilter === "converted") {
+        return stage === "closed_won";
+      }
+      if (q) {
+        const lead = leads.find((l) => l.id === deal.lead_id);
+        const matchTitle = String(deal.title || "").toLowerCase().includes(q);
+        const matchService = String(deal.service || "").toLowerCase().includes(q);
+        const matchLead = [lead?.name, lead?.phone, lead?.email].some((v) =>
+          String(v || "").toLowerCase().includes(q)
+        );
+        if (!matchTitle && !matchService && !matchLead) return false;
+      }
+      return true;
+    });
+  }, [allPipelineDeals, leads, query, statusFilter]);
   const pipelineTotal = visiblePipelineDeals.length;
   const pipelineBasePageCount = Math.max(1, Math.ceil(Math.max(pipelineTotal, visiblePipelineDeals.length) / pipelinePageSize));
   const safePipelinePage = onFetchDealsPage ? Math.max(1, pipelinePage) : Math.min(pipelinePage, pipelineBasePageCount);
@@ -781,16 +845,126 @@ export default function CrmModule({
   const isFollowUpsLoading = Boolean(followUpPagination?.loading);
   const isMeetingsLoading = Boolean(meetingPagination?.loading);
 
+  const leadSummaryMetrics = useMemo(() => {
+    const totalLeads = leadSummary?.total ?? (
+      statusFilter === "all"
+        ? (leadPagination?.count || leads.length)
+        : Math.max(leadTotalForPagination, leads.length)
+    );
+
+    const convertedLoaded = leads.filter(
+      (l) => l.status === "Converted" || l.status === "Closed Won" || deals.some((d) => d.lead_id === l.id && (d.pipeline_stage || d.stage) === "closed_won")
+    ).length;
+    const convertedDeals = deals.filter((d) => (d.pipeline_stage || d.stage) === "closed_won").length;
+    const convertedCount = Math.max(leadSummary?.converted || 0, convertedLoaded, convertedDeals);
+
+    const lostLoaded = leads.filter((l) => l.status === "Lost").length;
+    const lostDeals = deals.filter((d) => (d.pipeline_stage || d.stage) === "closed_lost").length;
+    const lostCount = Math.max(leadSummary?.lost || 0, lostLoaded) + lostDeals;
+
+    const openDealsCount = deals.filter(
+      (d) => !CLOSED_PIPELINE_STAGES.includes(d.pipeline_stage || d.stage)
+    ).length;
+    const pipelineLeadsFromLoaded = leads.filter((l) => {
+      const linkedDeal = deals.find((d) => d.lead_id === l.id);
+      if (linkedDeal) return !CLOSED_PIPELINE_STAGES.includes(linkedDeal.pipeline_stage || linkedDeal.stage);
+      return ["Contacted", "Qualified", "Proposal Sent", "In Pipeline", "Negotiation"].includes(l.status);
+    }).length;
+    const pipelineCount = Math.max(openDealsCount, pipelineLeadsFromLoaded);
+
+    const activeCount = Math.max(0, totalLeads - convertedCount - lostCount);
+
+    const convRateNumber = totalLeads > 0 ? (convertedCount / totalLeads) * 100 : 0;
+    const convRateDisplay = convRateNumber % 1 === 0 ? `${convRateNumber}%` : `${convRateNumber.toFixed(1)}%`;
+
+    const decidedTotal = convertedCount + lostCount;
+    const winRateNumber = decidedTotal > 0 ? (convertedCount / decidedTotal) * 100 : 0;
+    const winRateDisplay = winRateNumber % 1 === 0 ? `${winRateNumber}%` : `${winRateNumber.toFixed(1)}%`;
+
+    return {
+      totalLeads,
+      convertedCount,
+      lostCount,
+      pipelineCount,
+      activeCount,
+      decidedTotal,
+      convRateNumber,
+      convRateDisplay,
+      winRateNumber,
+      winRateDisplay,
+    };
+  }, [deals, leadPagination?.count, leadSummary, leadTotalForPagination, leads, statusFilter]);
+
   const pageStatusCards = useMemo(() => {
     if (viewMode === "reports") return [];
     if (viewMode === "leads") {
-      const archivedLoaded = leads.filter((lead) => ["Converted", "Lost", "Archived", "Closed Won"].includes(lead.status)).length;
-      const metaLoaded = leads.filter((lead) => String(lead.source || lead.platform || "").toLowerCase().includes("meta") || String(lead.source || "").toLowerCase().includes("instagram")).length;
+      const {
+        totalLeads,
+        convertedCount,
+        lostCount,
+        pipelineCount,
+        activeCount,
+        decidedTotal,
+        convRateDisplay,
+        winRateDisplay,
+      } = leadSummaryMetrics;
+
       return [
-        { label: "Active Leads", value: leadTotalForPagination, sub: `${filteredLeads.length} loaded on this page`, icon: Users, tone: "text-blue-600 bg-blue-50 dark:bg-blue-950/30" },
-        { label: "Meta Leads", value: metaLoaded, sub: "Loaded from current result", icon: Sparkles, tone: "text-pink-600 bg-pink-50 dark:bg-pink-950/30" },
-        { label: "Pipeline Ready", value: filteredLeads.filter((lead) => !["Lost", "Converted", "Archived"].includes(lead.status)).length, sub: "Can qualify to pipeline", icon: TrendingUp, tone: "text-orange-600 bg-orange-50 dark:bg-orange-950/30" },
-        { label: "Archived", value: archivedLoaded, sub: "Lost or converted leads", icon: ShieldAlert, tone: "text-rose-600 bg-rose-50 dark:bg-rose-950/30" },
+        {
+          id: "total_leads",
+          label: "Total Leads",
+          value: totalLeads,
+          sub: `${activeCount} active inquiries`,
+          icon: Users,
+          tone: "text-blue-600 bg-blue-50 dark:bg-blue-950/30",
+          filterKey: "all",
+          helpText: "All captured inbound inquiries across all channels.",
+        },
+        {
+          id: "pipeline",
+          label: "In Pipeline",
+          value: pipelineCount,
+          sub: "Active in deal stages",
+          icon: TrendingUp,
+          tone: "text-amber-600 bg-amber-50 dark:bg-amber-950/30",
+          filterKey: "pipeline",
+          helpText: "Leads currently in contacted, meeting, proposal, or negotiation stages.",
+        },
+        {
+          id: "converted",
+          label: "Converted Leads",
+          value: convertedCount,
+          sub: "Turned into paying clients",
+          icon: CheckCircle2,
+          tone: "text-emerald-600 bg-emerald-50 dark:bg-emerald-950/30",
+          filterKey: "converted",
+          helpText: "Leads successfully converted to closed won deals / client accounts.",
+        },
+        {
+          id: "lost",
+          label: "Lost Leads",
+          value: lostCount,
+          sub: "Dropped / marked lost",
+          icon: XCircle,
+          tone: "text-rose-600 bg-rose-50 dark:bg-rose-950/30",
+          filterKey: "lost",
+          helpText: "Leads that dropped off or were closed lost with documented reasons.",
+        },
+        {
+          id: "conversion_rate",
+          label: "Conversion Rate",
+          value: convRateDisplay,
+          sub: `Ratio: ${convertedCount}/${totalLeads} (${convertedCount} Won ÷ ${totalLeads} Total)`,
+          icon: Target,
+          tone: "text-purple-600 bg-purple-50 dark:bg-purple-950/30",
+          filterKey: "all",
+          badge: `Win Rate: ${winRateDisplay}`,
+          isRateCard: true,
+          ratioBasis: `Formula: (Converted Leads ÷ Total Leads) × 100`,
+          ratioFormula: `(${convertedCount} ÷ ${totalLeads}) × 100 = ${convRateDisplay}`,
+          winRateFormula: decidedTotal > 0 ? `Win Rate on Closed: (${convertedCount} Won ÷ ${decidedTotal} Decided) = ${winRateDisplay}` : null,
+          helpText: `Conversion Ratio is calculated as (Converted Leads ÷ Total Leads) × 100. Out of ${totalLeads} total leads, ${convertedCount} became clients (${convRateDisplay}). Win rate on decided deals (${convertedCount} won, ${lostCount} lost) is ${winRateDisplay}.`,
+        },
       ];
     }
     if (viewMode === "pipeline") {
@@ -799,9 +973,9 @@ export default function CrmModule({
       const pipelineValue = visiblePipelineDeals.reduce((sum, deal) => sum + (Number(deal.deal_value || deal.value) || 0), 0);
       const warmStaleDealsCount = deals.filter((deal) => !["closed_won", "closed_lost"].includes(deal.pipeline_stage || deal.stage) && new Date(deal.updated_at || deal.created_at || Date.now()).getTime() < Date.now() - 3 * 86400000).length;
       return [
-        { label: "Open Deals", value: openCount, sub: "Active pipeline cards", icon: TrendingUp, tone: "text-emerald-600 bg-emerald-50 dark:bg-emerald-950/30" },
-        { label: "Won In Pipeline", value: wonCount, sub: "Visible before handover", icon: CheckCircle2, tone: "text-green-600 bg-green-50 dark:bg-green-950/30" },
-        { label: "Pipeline Value", value: `Rs. ${pipelineValue.toLocaleString("en-IN")}`, sub: "Visible deal value", icon: DollarSign, tone: "text-amber-600 bg-amber-50 dark:bg-amber-950/30" },
+        { label: "Open Deals", value: openCount, sub: "Active pipeline cards", icon: TrendingUp, tone: "text-emerald-600 bg-emerald-50 dark:bg-emerald-950/30", filterKey: "active" },
+        { label: "Won In Pipeline", value: wonCount, sub: "Visible before handover", icon: CheckCircle2, tone: "text-green-600 bg-green-50 dark:bg-green-950/30", filterKey: "won" },
+        { label: "Pipeline Value", value: `Rs. ${pipelineValue.toLocaleString("en-IN")}`, sub: "Visible deal value", icon: DollarSign, tone: "text-amber-600 bg-amber-50 dark:bg-amber-950/30", filterKey: "all" },
         { label: "Stale Deals", value: warmStaleDealsCount, sub: "Idle for 3+ days", icon: AlertCircle, tone: "text-red-600 bg-red-50 dark:bg-red-950/30" },
       ];
     }
@@ -854,6 +1028,7 @@ export default function CrmModule({
     quotations,
     viewMode,
     visiblePipelineDeals,
+    leadSummaryMetrics,
   ]);
 
   const archivedDeals = useMemo(() => {
@@ -887,7 +1062,9 @@ export default function CrmModule({
     const wonDeals = deals.filter((deal) => (deal.pipeline_stage || deal.stage) === "closed_won" && matchesDateFilter(deal, "updated_at")).length;
     const lostDeals = deals.filter((deal) => (deal.pipeline_stage || deal.stage) === "closed_lost" && matchesDateFilter(deal, "updated_at")).length;
     const activeLeads = leads.filter((lead) => matchesDateFilter(lead, "created_at")).length;
-    const conversionRate = activeLeads > 0 ? Math.round((wonDeals / activeLeads) * 100) : 0;
+    const totalBaseLeads = dateFilter === "all" ? Math.max(activeLeads, leadSummary?.total || 0) : activeLeads;
+    const totalWon = dateFilter === "all" ? Math.max(wonDeals, leadSummary?.converted || 0) : wonDeals;
+    const conversionRate = totalBaseLeads > 0 ? Math.round((totalWon / totalBaseLeads) * 100) : 0;
     const sourceMap = new Map();
     leads.forEach((lead) => {
       const source = lead.source || "Unknown";
@@ -912,7 +1089,7 @@ export default function CrmModule({
       conversionRate,
       sourceRows: Array.from(sourceMap.values()).sort((a, b) => b.value - a.value).slice(0, 5),
     };
-  }, [customDateRange.from, customDateRange.to, dateFilter, deals, followUps, leads, selectedDate]);
+  }, [customDateRange.from, customDateRange.to, dateFilter, deals, followUps, leadSummary, leads, selectedDate]);
 
   const selectedLeadActivity = useMemo(() => {
     if (!selectedLead?.id) return { followUps: [], meetings: [], deals: [], summary: "" };
@@ -1503,22 +1680,135 @@ export default function CrmModule({
       </div>
 
       {pageStatusCards.length > 0 && (
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-          {pageStatusCards.slice(0, 4).map((card) => {
+        <div className={`grid gap-3 ${pageStatusCards.length === 5 ? "grid-cols-2 sm:grid-cols-3 xl:grid-cols-5" : "grid-cols-2 lg:grid-cols-4"}`}>
+          {pageStatusCards.map((card) => {
             const Icon = card.icon;
+            const isClickable = Boolean(card.filterKey && (viewMode === "leads" || viewMode === "pipeline"));
+            const isFilterActive =
+              (viewMode === "leads" || viewMode === "pipeline") &&
+              card.filterKey &&
+              (statusFilter === card.filterKey || (card.filterKey === "won" && statusFilter === "converted") || (card.filterKey === "all" && statusFilter === "all"));
             return (
-              <div key={card.label} className="p-4 rounded-2xl bg-white dark:bg-[#18150f] border border-gray-100 dark:border-[#3a3020] shadow-2xs min-w-0">
-                <div className="flex items-center justify-between gap-3 text-gray-500 dark:text-neutral-400 text-xs">
+              <div
+                key={card.label}
+                onClick={() => {
+                  if (isClickable && card.filterKey) {
+                    setStatusFilter(card.filterKey);
+                  }
+                }}
+                className={`p-4 rounded-2xl bg-white dark:bg-[#18150f] border shadow-2xs min-w-0 transition-all ${
+                  isFilterActive
+                    ? "border-orange-500 ring-2 ring-orange-500/30 bg-orange-50/20 dark:bg-orange-950/20"
+                    : "border-gray-100 dark:border-[#3a3020]"
+                } ${
+                  isClickable ? "cursor-pointer hover:border-orange-300 dark:hover:border-orange-500/50 hover:shadow-xs active:scale-[0.99]" : ""
+                }`}
+                title={card.helpText || card.label}
+              >
+                <div className="flex items-center justify-between gap-2 text-gray-500 dark:text-neutral-400 text-xs">
                   <span className="font-semibold truncate">{card.label}</span>
-                  <span className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 ${card.tone}`}>
-                    <Icon className="w-4 h-4" />
-                  </span>
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    {card.badge && (
+                      <span className="px-1.5 py-0.5 rounded-md text-[10px] font-black bg-purple-50 dark:bg-purple-950/40 text-purple-600 dark:text-purple-300">
+                        {card.badge}
+                      </span>
+                    )}
+                    <span className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 ${card.tone}`}>
+                      <Icon className="w-4 h-4" />
+                    </span>
+                  </div>
                 </div>
                 <div className="text-xl sm:text-2xl font-black mt-2 text-gray-900 dark:text-white truncate">{card.value}</div>
-                <div className="text-[11px] text-gray-500 dark:text-neutral-400 mt-1 font-medium truncate">{card.sub}</div>
+                <div className="text-[11px] text-gray-500 dark:text-neutral-400 mt-1 font-medium truncate" title={card.sub}>
+                  {card.sub}
+                </div>
+                {card.ratioFormula && (
+                  <div className="mt-2 pt-2 border-t border-gray-100 dark:border-[#2a2418] text-[10px] text-purple-600 dark:text-purple-400 font-bold truncate flex items-center gap-1" title={card.ratioBasis}>
+                    <Sparkles className="w-3 h-3 shrink-0" />
+                    <span className="truncate">{card.ratioFormula}</span>
+                  </div>
+                )}
               </div>
             );
           })}
+        </div>
+      )}
+
+      {viewMode === "leads" && (
+        <div className="rounded-2xl border border-purple-200/80 dark:border-purple-900/40 bg-gradient-to-r from-purple-50/80 via-indigo-50/40 to-blue-50/40 dark:from-[#20152b] dark:via-[#19192b] dark:to-[#121c2c] p-3.5 shadow-2xs">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+            <div className="flex items-start md:items-center gap-3 min-w-0">
+              <span className="w-9 h-9 rounded-xl bg-purple-600 text-white flex items-center justify-center shrink-0 shadow-xs">
+                <Target className="w-4 h-4" />
+              </span>
+              <div className="min-w-0">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-xs font-black text-gray-900 dark:text-white">
+                    Conversion Ratio Basis
+                  </span>
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-white dark:bg-[#18150f] text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800">
+                    Formula: (Converted Leads ÷ Total Leads) × 100
+                  </span>
+                </div>
+                <p className="text-[11px] text-gray-600 dark:text-neutral-300 mt-1">
+                  <strong>Lead Conversion Rate:</strong> ({leadSummaryMetrics.convertedCount} Converted ÷ {leadSummaryMetrics.totalLeads} Total) × 100 = <span className="text-purple-600 dark:text-purple-400 font-black">{leadSummaryMetrics.convRateDisplay}</span>
+                  {leadSummaryMetrics.decidedTotal > 0 && (
+                    <span className="ml-2 pl-2 border-l border-gray-300 dark:border-gray-700">
+                      <strong>Win Rate on Closed:</strong> ({leadSummaryMetrics.convertedCount} Won ÷ {leadSummaryMetrics.decidedTotal} Decided) = <span className="text-emerald-600 dark:text-emerald-400 font-black">{leadSummaryMetrics.winRateDisplay}</span>
+                    </span>
+                  )}
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 text-xs shrink-0 flex-wrap">
+              <span className="text-gray-500 dark:text-neutral-400 text-[11px]">Filter leads:</span>
+              <button
+                type="button"
+                onClick={() => setStatusFilter("all")}
+                className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition cursor-pointer ${
+                  statusFilter === "all"
+                    ? "bg-blue-600 text-white"
+                    : "bg-white dark:bg-[#1f1b13] border border-gray-200 dark:border-slate-800 text-blue-700 dark:text-blue-300 hover:bg-blue-50"
+                }`}
+              >
+                All ({leadSummaryMetrics.totalLeads})
+              </button>
+              <button
+                type="button"
+                onClick={() => setStatusFilter("pipeline")}
+                className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition cursor-pointer ${
+                  statusFilter === "pipeline"
+                    ? "bg-amber-600 text-white"
+                    : "bg-white dark:bg-[#1f1b13] border border-gray-200 dark:border-slate-800 text-amber-700 dark:text-amber-300 hover:bg-amber-50"
+                }`}
+              >
+                Pipeline ({leadSummaryMetrics.pipelineCount})
+              </button>
+              <button
+                type="button"
+                onClick={() => setStatusFilter("converted")}
+                className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition cursor-pointer ${
+                  statusFilter === "converted"
+                    ? "bg-emerald-600 text-white"
+                    : "bg-white dark:bg-[#1f1b13] border border-gray-200 dark:border-slate-800 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-50"
+                }`}
+              >
+                Converted ({leadSummaryMetrics.convertedCount})
+              </button>
+              <button
+                type="button"
+                onClick={() => setStatusFilter("lost")}
+                className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition cursor-pointer ${
+                  statusFilter === "lost"
+                    ? "bg-rose-600 text-white"
+                    : "bg-white dark:bg-[#1f1b13] border border-gray-200 dark:border-slate-800 text-rose-700 dark:text-rose-300 hover:bg-rose-50"
+                }`}
+              >
+                Lost ({leadSummaryMetrics.lostCount})
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
@@ -1700,7 +1990,11 @@ export default function CrmModule({
         {viewMode === "leads" && (
         <div className="flex items-center gap-2 overflow-x-auto no-scrollbar">
           {[
+            ["all", "All"],
             ["active", "Active"],
+            ["pipeline", "Pipeline"],
+            ["converted", "Converted"],
+            ["lost", "Lost"],
             ["archived", "Archive"],
           ].map(([value, label]) => (
             <button
@@ -1720,21 +2014,28 @@ export default function CrmModule({
         {viewMode === "pipeline" && (
         <div className="flex items-center gap-2 overflow-x-auto no-scrollbar">
           {[
-            ["active", "Active"],
-            ["won", "Won"],
-          ].map(([value, label]) => (
-            <button
-              key={value}
-              onClick={() => setStatusFilter(value)}
-              className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition ${
-                statusFilter === value
-                  ? "bg-orange-600 text-white shadow-2xs"
-                  : "bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-neutral-400 hover:text-gray-900 dark:hover:text-white"
-              }`}
-            >
-              {label}
-            </button>
-          ))}
+            ["all", "All Stages"],
+            ["active", "Active Deals"],
+            ["won", "Won / Converted"],
+          ].map(([value, label]) => {
+            const isSelected =
+              statusFilter === value ||
+              (value === "won" && statusFilter === "converted") ||
+              (value === "all" && !["active", "won", "converted"].includes(statusFilter));
+            return (
+              <button
+                key={value}
+                onClick={() => setStatusFilter(value === "won" ? "won" : value)}
+                className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition ${
+                  isSelected
+                    ? "bg-orange-600 text-white shadow-2xs"
+                    : "bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-neutral-400 hover:text-gray-900 dark:hover:text-white"
+                }`}
+              >
+                {label}
+              </button>
+            );
+          })}
         </div>
         )}
       </div>
@@ -1823,6 +2124,12 @@ export default function CrmModule({
                   {paginatedLeads.map((lead) => {
                     const budget = getLeadBudget(lead);
                     const location = getLeadLocation(lead);
+                    const linkedDeal = deals.find((deal) => deal.lead_id === lead.id);
+                    const hasWonDeal = Boolean(linkedDeal && (linkedDeal.pipeline_stage || linkedDeal.stage) === "closed_won");
+                    const hasLostDeal = Boolean(linkedDeal && (linkedDeal.pipeline_stage || linkedDeal.stage) === "closed_lost");
+                    const isConverted = lead.status === "Converted" || lead.status === "Closed Won" || hasWonDeal;
+                    const isLost = lead.status === "Lost" || hasLostDeal;
+                    const stageLabel = linkedDeal ? (PIPELINE_STAGES.find((s) => s.id === (linkedDeal.pipeline_stage || linkedDeal.stage))?.label || "Pipeline") : null;
 
                     return (
                       <tr
@@ -1831,8 +2138,26 @@ export default function CrmModule({
                       >
                         {/* 1. Full Name */}
                         <td className="py-3.5 px-4">
-                          <div className="font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+                          <div className="font-semibold text-gray-900 dark:text-white flex items-center gap-2 flex-wrap">
                             <span>{lead.name}</span>
+                            {isConverted && (
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9.5px] font-bold bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-200/60 shrink-0">
+                                <CheckCircle2 className="w-2.5 h-2.5 text-emerald-500" />
+                                <span>Won in Pipeline</span>
+                              </span>
+                            )}
+                            {!isConverted && linkedDeal && (
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9.5px] font-bold bg-amber-50 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-200/60 shrink-0">
+                                <TrendingUp className="w-2.5 h-2.5 text-amber-500" />
+                                <span>Pipeline: {stageLabel}</span>
+                              </span>
+                            )}
+                            {isLost && (
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9.5px] font-bold bg-rose-50 text-rose-700 dark:bg-rose-950/60 dark:text-rose-300 border border-rose-200/60 shrink-0">
+                                <XCircle className="w-2.5 h-2.5 text-rose-500" />
+                                <span>Lost</span>
+                              </span>
+                            )}
                             {lead.source?.toLowerCase().includes("meta") && (
                               <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9.5px] font-bold bg-pink-50 text-pink-700 dark:bg-pink-950/60 dark:text-pink-300 border border-pink-200/60 shrink-0">
                                 <Sparkles className="w-2.5 h-2.5 text-pink-500" />
@@ -1906,14 +2231,32 @@ export default function CrmModule({
                             </button>
                           )}
 
-                          <button
-                            onClick={() => openAddDealModal("contacted", lead)}
-                            className="px-2.5 py-1 rounded-lg text-xs font-semibold text-orange-600 bg-orange-50 dark:bg-orange-950/40 hover:bg-orange-100 transition inline-flex items-center gap-1 shrink-0"
-                            title="Move qualified lead to pipeline"
-                          >
-                            <TrendingUp className="w-3 h-3" />
-                            <span>Pipeline</span>
-                          </button>
+                          {linkedDeal || isConverted ? (
+                            <button
+                              onClick={() => {
+                                setViewMode("pipeline");
+                                setStatusFilter("all");
+                              }}
+                              className={`px-2.5 py-1 rounded-lg text-xs font-semibold inline-flex items-center gap-1 shrink-0 transition ${
+                                isConverted
+                                  ? "text-emerald-700 bg-emerald-50 dark:bg-emerald-950/40 dark:text-emerald-300 hover:bg-emerald-100"
+                                  : "text-amber-700 bg-amber-50 dark:bg-amber-950/40 dark:text-amber-300 hover:bg-amber-100"
+                              }`}
+                              title={isConverted ? "View won deal in Pipeline" : "View active deal in Pipeline"}
+                            >
+                              <TrendingUp className="w-3 h-3" />
+                              <span>{isConverted ? "Won in Pipeline" : "In Pipeline"}</span>
+                            </button>
+                          ) : (
+                            <button
+                              onClick={() => openAddDealModal("contacted", lead)}
+                              className="px-2.5 py-1 rounded-lg text-xs font-semibold text-orange-600 bg-orange-50 dark:bg-orange-950/40 hover:bg-orange-100 transition inline-flex items-center gap-1 shrink-0"
+                              title="Move qualified lead to pipeline"
+                            >
+                              <TrendingUp className="w-3 h-3" />
+                              <span>Pipeline</span>
+                            </button>
+                          )}
 
                           <button
                             onClick={() => openLeadFollowUpModal(lead)}
@@ -2000,7 +2343,11 @@ export default function CrmModule({
         ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3">
           {PIPELINE_STAGES.map((col) => {
-            const colDeals = visiblePipelineDeals.filter((d) => (d.pipeline_stage || "contacted") === col.id && matchesDateFilter(d, "created_at"));
+            const colDeals = visiblePipelineDeals.filter(
+              (d) =>
+                (d.pipeline_stage || "contacted") === col.id &&
+                (dateFilter === "all" || matchesDateFilter(d, "created_at") || matchesDateFilter(d, "updated_at"))
+            );
             const colTotal = colDeals.reduce((sum, d) => sum + (Number(d.deal_value) || 0), 0);
 
             return (

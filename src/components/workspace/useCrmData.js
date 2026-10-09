@@ -5,6 +5,7 @@ import { patchRealtimeList } from "@/components/workspace/realtimeListUtils";
 import {
   getAgreements,
   getCloudLeads,
+  getCloudLeadsSummary,
   getDeals,
   getInvoices,
   getProposals,
@@ -16,6 +17,7 @@ import {
 export function useCrmData({ sessionUserId = "", pushLiveSalesNotification } = {}) {
   const [leads, setLeads] = useState([]);
   const [leadPagination, setLeadPagination] = useState({ count: 0, page: 1, pageSize: 50, loading: false });
+  const [leadSummary, setLeadSummary] = useState({ total: 0, converted: 0, lost: 0 });
   const [clients, setClients] = useState([]);
   const [deals, setDeals] = useState([]);
   const [dealPagination, setDealPagination] = useState({ count: 0, page: 1, pageSize: 100, loading: false });
@@ -28,8 +30,16 @@ export function useCrmData({ sessionUserId = "", pushLiveSalesNotification } = {
   const [meetingPagination, setMeetingPagination] = useState({ count: 0, page: 1, pageSize: 50, loading: false });
   const [invoicesList, setInvoicesList] = useState([]);
 
+  const refreshLeadSummary = useCallback(async function refreshLeadSummary(params = {}) {
+    const summary = await getCloudLeadsSummary(params);
+    if (summary && typeof summary.total === "number") {
+      setLeadSummary(summary);
+    }
+    return summary;
+  }, []);
+
   const loadCrmData = useCallback(async function loadCrmData() {
-    const [leadsRes, dealsRes, proposalsRes, quotationsRes, agreementsRes, followUpsRes, meetingsRes, invoicesRes] = await Promise.all([
+    const [leadsRes, dealsRes, proposalsRes, quotationsRes, agreementsRes, followUpsRes, meetingsRes, invoicesRes, summaryRes] = await Promise.all([
       getCloudLeads({ page: 1, pageSize: 50, withCount: true }),
       getDeals({ page: 1, pageSize: 100, withCount: true }),
       getProposals(),
@@ -38,10 +48,14 @@ export function useCrmData({ sessionUserId = "", pushLiveSalesNotification } = {
       getSalesFollowUps({ page: 1, pageSize: 50, withCount: true }),
       getSalesMeetings({ page: 1, pageSize: 50, withCount: true }),
       getInvoices(),
+      getCloudLeadsSummary(),
     ]);
     setLeads(leadsRes?.data || leadsRes || []);
     if (leadsRes?.data) {
       setLeadPagination({ count: leadsRes.count || 0, page: leadsRes.page || 1, pageSize: leadsRes.pageSize || 50, loading: false });
+    }
+    if (summaryRes && typeof summaryRes.total === "number") {
+      setLeadSummary(summaryRes);
     }
     setDeals(dealsRes?.data || dealsRes || []);
     if (dealsRes?.data) {
@@ -207,6 +221,9 @@ export function useCrmData({ sessionUserId = "", pushLiveSalesNotification } = {
     leads,
     setLeads,
     leadPagination,
+    leadSummary,
+    setLeadSummary,
+    refreshLeadSummary,
     clients,
     setClients,
     deals,

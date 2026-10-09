@@ -683,6 +683,8 @@ export default function AuthenticatedWorkspace({ defaultSection = "overview" } =
     leads,
     setLeads,
     leadPagination,
+    leadSummary,
+    refreshLeadSummary,
     clients,
     setClients,
     deals,
@@ -12381,6 +12383,8 @@ export default function AuthenticatedWorkspace({ defaultSection = "overview" } =
                   }
                   commercialScope={activeSection === "agreements" ? "agreement" : activeSection === "sales_commercials" ? "proposal_quote" : "all"}
                   leads={leads}
+                  leadSummary={leadSummary}
+                  onRefreshLeadSummary={refreshLeadSummary}
                   deals={deals}
                   clients={clients}
                   proposals={proposals}
@@ -12399,12 +12403,14 @@ export default function AuthenticatedWorkspace({ defaultSection = "overview" } =
                   onUpdateLeadStatus={async (id, status) => {
                     await updateCloudLeadStatus(id, status);
                     setLeads((prev) => prev.map((l) => (l.id === id ? { ...l, status } : l)));
+                    refreshLeadSummary?.();
                     setToast(`Lead status updated to ${status}.`);
                   }}
                   onCreateLead={async (data) => {
                     const res = await createCloudLead(data);
                     if (res) {
                       setLeads((prev) => [res, ...prev]);
+                      refreshLeadSummary?.();
                       setToast("New lead created successfully.");
                     }
                   }}
@@ -12412,6 +12418,7 @@ export default function AuthenticatedWorkspace({ defaultSection = "overview" } =
                     const res = await createCloudLead(data);
                     if (res) {
                       setLeads((prev) => [res, ...prev]);
+                      refreshLeadSummary?.();
                       setToast("New lead created successfully.");
                     }
                   }}

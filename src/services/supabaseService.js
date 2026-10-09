@@ -146,6 +146,17 @@ export async function getCloudLeads(options = null) {
       const archivedStatusFilter = `status.in.${toPostgrestInList(ARCHIVED_LEAD_STATUSES)}`;
       const pipelineFilter = pipelineLeadIds.length > 0 ? `id.in.${toPostgrestInList(pipelineLeadIds)}` : "";
       query = query.or([archivedStatusFilter, pipelineFilter].filter(Boolean).join(','));
+    } else if (options?.status === 'converted') {
+      query = query.in('status', ['Converted', 'Closed Won']);
+    } else if (options?.status === 'lost') {
+      query = query.eq('status', 'Lost');
+    } else if (options?.status === 'pipeline') {
+      const pipelineLeadIds = await getPipelineLeadIds();
+      if (pipelineLeadIds.length > 0) {
+        query = query.in('id', pipelineLeadIds);
+      } else {
+        query = query.in('status', ['Contacted', 'Qualified', 'Proposal Sent', 'In Pipeline', 'Negotiation']);
+      }
     } else if (options?.status && options.status !== 'all') {
       query = query.eq('status', options.status);
     }
@@ -197,6 +208,41 @@ export async function getCloudLeads(options = null) {
   } catch (err) {
     console.warn('Fallback: Error fetching cloud leads:', err.message);
     return options?.withCount ? { data: [], count: 0, page: 1, pageSize: clampPageSize(options?.pageSize) } : null;
+  }
+}
+
+export async function getCloudLeadsSummary(options = {}) {
+  try {
+    const apiResult = await fetchCrmListFromApi('leads_summary', options);
+    if (apiResult && typeof apiResult.total === 'number') {
+      return apiResult;
+    }
+
+    let qTotal = supabase.from('leads').select('id', { count: 'exact', head: true });
+    let qConverted = supabase.from('leads').select('id', { count: 'exact', head: true }).in('status', ['Converted', 'Closed Won']);
+    let qLost = supabase.from('leads').select('id', { count: 'exact', head: true }).eq('status', 'Lost');
+
+    if (options?.dateFrom) {
+      qTotal = qTotal.gte('created_at', options.dateFrom);
+      qConverted = qConverted.gte('created_at', options.dateFrom);
+      qLost = qLost.gte('created_at', options.dateFrom);
+    }
+    if (options?.dateTo) {
+      qTotal = qTotal.lte('created_at', options.dateTo);
+      qConverted = qConverted.lte('created_at', options.dateTo);
+      qLost = qLost.lte('created_at', options.dateTo);
+    }
+
+    const [resTotal, resConverted, resLost] = await Promise.all([qTotal, qConverted, qLost]);
+
+    return {
+      total: resTotal.count || 0,
+      converted: resConverted.count || 0,
+      lost: resLost.count || 0,
+    };
+  } catch (err) {
+    console.warn('Error fetching lead summary:', err.message);
+    return { total: 0, converted: 0, lost: 0 };
   }
 }
 

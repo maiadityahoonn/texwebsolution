@@ -107,6 +107,30 @@ export async function GET(request) {
   const from = (page - 1) * pageSize;
   const to = from + pageSize - 1;
 
+  if (resource === "leads_summary") {
+    let qTotal = admin.from("leads").select("id", { count: "exact", head: true });
+    let qConverted = admin.from("leads").select("id", { count: "exact", head: true }).in("status", ["Converted", "Closed Won"]);
+    let qLost = admin.from("leads").select("id", { count: "exact", head: true }).eq("status", "Lost");
+    const dateFrom = searchParams.get("dateFrom") || "";
+    const dateTo = searchParams.get("dateTo") || "";
+    if (dateFrom) {
+      qTotal = qTotal.gte("created_at", dateFrom);
+      qConverted = qConverted.gte("created_at", dateFrom);
+      qLost = qLost.gte("created_at", dateFrom);
+    }
+    if (dateTo) {
+      qTotal = qTotal.lte("created_at", dateTo);
+      qConverted = qConverted.lte("created_at", dateTo);
+      qLost = qLost.lte("created_at", dateTo);
+    }
+    const [resTotal, resConverted, resLost] = await Promise.all([qTotal, qConverted, qLost]);
+    return NextResponse.json({
+      total: resTotal.count || 0,
+      converted: resConverted.count || 0,
+      lost: resLost.count || 0,
+    });
+  }
+
   const configs = {
     leads: { table: "leads", order: "created_at", ascending: false, dateField: "created_at" },
     deals: { table: "deals", order: "created_at", ascending: false, dateField: "created_at" },
@@ -135,6 +159,19 @@ export async function GET(request) {
     const filters = [`status.in.${toPostgrestInList(ARCHIVED_LEAD_STATUSES)}`];
     if (pipelineLeadIds.length > 0) filters.push(`id.in.${toPostgrestInList(pipelineLeadIds)}`);
     query = query.or(filters.join(","));
+  } else if (resource === "leads" && status === "converted") {
+    query = query.in("status", ["Converted", "Closed Won"]);
+  } else if (resource === "leads" && status === "lost") {
+    query = query.eq("status", "Lost");
+  } else if (resource === "leads" && status === "pipeline") {
+    const pipelineLeadIds = await getPipelineLeadIds(admin);
+    if (pipelineLeadIds.length > 0) {
+      query = query.in("id", pipelineLeadIds);
+    } else {
+      query = query.in("status", ["Contacted", "Qualified", "Proposal Sent", "In Pipeline", "Negotiation"]);
+    }
+  } else if (resource === "leads" && (status === "all" || !status)) {
+    // no status filter
   } else if (resource === "deals") {
     const stage = searchParams.get("stage") || "";
     if (stage && stage !== "all") query = query.eq("pipeline_stage", stage);
