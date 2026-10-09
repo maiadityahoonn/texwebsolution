@@ -2700,13 +2700,12 @@ export async function getSalesFollowUps(options = null) {
 
     if (error) throw error;
     if (withCount) {
-      writeLocalCache(LOCAL_SALES_FOLLOWUPS_KEY, mergeCloudAndLocal(data || [], readLocalCache(LOCAL_SALES_FOLLOWUPS_KEY, [])));
+      writeLocalCache(LOCAL_SALES_FOLLOWUPS_KEY, data || []);
       return { data: data || [], count: count || 0, page, pageSize };
     }
-    const merged = mergeCloudAndLocal(data || [], readLocalCache(LOCAL_SALES_FOLLOWUPS_KEY, []))
-      .sort((a, b) => new Date(a.due_at || a.created_at || 0).getTime() - new Date(b.due_at || b.created_at || 0).getTime());
-    writeLocalCache(LOCAL_SALES_FOLLOWUPS_KEY, merged);
-    return merged;
+    const sorted = (data || []).sort((a, b) => new Date(a.due_at || a.created_at || 0).getTime() - new Date(b.due_at || b.created_at || 0).getTime());
+    writeLocalCache(LOCAL_SALES_FOLLOWUPS_KEY, sorted);
+    return sorted;
   } catch (err) {
     console.warn('Fallback: getSalesFollowUps from cache:', err.message);
     if (options?.withCount) {
@@ -2760,6 +2759,23 @@ export async function updateSalesFollowUp(followUpId, updates) {
     writeLocalCache(LOCAL_SALES_FOLLOWUPS_KEY, updated);
     return updated.find((item) => item.id === followUpId) || null;
   }
+}
+
+export async function deleteSalesFollowUp(followUpId) {
+  try {
+    const { error } = await supabase
+      .from('sales_followups')
+      .delete()
+      .eq('id', followUpId);
+
+    if (error) throw error;
+  } catch (err) {
+    console.warn('Fallback: deleteSalesFollowUp in cache:', err.message);
+  }
+  const current = readLocalCache(LOCAL_SALES_FOLLOWUPS_KEY, []);
+  const updated = current.filter((item) => item.id !== followUpId);
+  writeLocalCache(LOCAL_SALES_FOLLOWUPS_KEY, updated);
+  return true;
 }
 
 export async function getSalesMeetings(options = null) {

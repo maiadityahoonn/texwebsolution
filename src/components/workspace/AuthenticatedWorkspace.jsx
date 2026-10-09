@@ -183,6 +183,7 @@ import {
   getSalesFollowUps,
   createSalesFollowUp,
   updateSalesFollowUp,
+  deleteSalesFollowUp,
   getSalesMeetings,
   createSalesMeeting,
   updateSalesMeeting,
@@ -12547,6 +12548,11 @@ export default function AuthenticatedWorkspace({ defaultSection = "overview" } =
                       const statusText = updates.status === "done" ? "Follow-up completed." : updates.status === "missed" ? "Follow-up marked missed." : updates.due_at ? "Follow-up rescheduled." : "Follow-up updated.";
                       pushLiveSalesNotification(statusText, res.title || "Sales follow-up", updates.status === "missed" ? "alert" : "lead", "/workspace?section=sales_followups");
                     }
+                  }}
+                  onDeleteFollowUp={async (id) => {
+                    await deleteSalesFollowUp(id);
+                    setSalesFollowUps((prev) => prev.filter((item) => item.id !== id));
+                    setToast("Follow-up deleted successfully.");
                   }}
                   onCreateSalesMeeting={async (meeting) => {
                     const res = await createSalesMeeting({ ...meeting, created_by: sessionUser?.id || null, host_id: sessionUser?.id || null });

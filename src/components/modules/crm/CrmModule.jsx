@@ -476,23 +476,6 @@ function getFollowUpWhatsappMessage(item, lead, client) {
   return `Hi ${name}, quick follow-up from TexWeb Solution regarding ${context}. Please let me know a good time to close the next step.`;
 }
 
-function formatCalendarDate(value) {
-  return new Date(value).toISOString().replace(/[-:]/g, "").split(".")[0] + "Z";
-}
-
-function createGoogleCalendarUrl({ title, start, durationMinutes = 30, details = "", location = "" }) {
-  const startDate = new Date(start);
-  const endDate = new Date(startDate.getTime() + Number(durationMinutes || 30) * 60000);
-  const params = new URLSearchParams({
-    action: "TEMPLATE",
-    text: title || "TexWeb Sales Follow-up",
-    dates: `${formatCalendarDate(startDate)}/${formatCalendarDate(endDate)}`,
-    details,
-    location,
-  });
-  return `https://calendar.google.com/calendar/render?${params.toString()}`;
-}
-
 export default function CrmModule({
   leads = [],
   deals = [],
@@ -527,6 +510,7 @@ export default function CrmModule({
   onCreateInvoice,
   onCreateFollowUp,
   onUpdateFollowUp,
+  onDeleteFollowUp,
   onCreateSalesMeeting,
   onUpdateSalesMeeting,
   onUpdateDealStage,
@@ -3762,21 +3746,6 @@ export default function CrmModule({
                                 <WhatsAppIcon className="w-3.5 h-3.5" />
                               </button>
                             )}
-                            <a
-                              href={createGoogleCalendarUrl({
-                                title: item.title,
-                                start: item.due_at,
-                                durationMinutes: 15,
-                                details: item.notes || "Sales follow-up",
-                              })}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="p-1.5 rounded-lg text-gray-700 dark:text-neutral-200 bg-gray-100 dark:bg-slate-800 hover:bg-gray-200 dark:hover:bg-slate-700 transition shrink-0"
-                              title="Add to Google Calendar"
-                              aria-label="Add to Google Calendar"
-                            >
-                              <Calendar className="w-3.5 h-3.5" />
-                            </a>
                             {item.status === "pending" && (
                               <>
                                 <button
@@ -3807,6 +3776,20 @@ export default function CrmModule({
                                 <RotateCcw className="w-3.5 h-3.5" />
                               </button>
                             )}
+
+                            {/* Delete Follow-up */}
+                            <button
+                              onClick={() => {
+                                if (window.confirm("Are you sure you want to delete this follow-up?")) {
+                                  onDeleteFollowUp?.(item.id);
+                                }
+                              }}
+                              className="p-1.5 rounded-lg text-red-600 bg-red-50 dark:bg-red-950/40 hover:bg-red-100 transition shrink-0 cursor-pointer"
+                              title="Delete Follow-up"
+                              aria-label="Delete Follow-up"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
                           </div>
                         </td>
                       </tr>
@@ -3985,22 +3968,6 @@ export default function CrmModule({
                                 <Video className="w-3.5 h-3.5" />
                               </a>
                             )}
-                            <a
-                              href={createGoogleCalendarUrl({
-                                title: item.title,
-                                start: item.scheduled_at,
-                                durationMinutes: item.duration_minutes || 30,
-                                details: item.agenda || item.next_action || "Sales meeting",
-                                location: item.meeting_link || item.location || "",
-                              })}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="p-1.5 rounded-lg text-gray-700 dark:text-neutral-200 bg-gray-100 dark:bg-slate-800 hover:bg-gray-200 dark:hover:bg-slate-700 transition shrink-0"
-                              title="Open in Google Calendar"
-                              aria-label="Open in Google Calendar"
-                            >
-                              <Calendar className="w-3.5 h-3.5" />
-                            </a>
                             {item.status === "scheduled" && (
                               <>
                                 <button
