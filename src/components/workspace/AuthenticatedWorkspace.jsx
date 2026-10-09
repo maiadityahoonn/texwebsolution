@@ -716,6 +716,7 @@ export default function AuthenticatedWorkspace({ defaultSection = "overview" } =
     handleRealtimeInvoice,
   } = crmData;
   const crmLeadCount = leadPagination?.count ?? leads.length;
+  const activePipelineCount = deals.filter((deal) => (deal.pipeline_stage || deal.stage) !== "closed_lost").length;
   const [projectsData, setProjectsData] = useState([]);
   const [smmClients, setSmmClients] = useState([]);
   const [contentCalendar, setContentCalendar] = useState([]);
@@ -3651,7 +3652,7 @@ export default function AuthenticatedWorkspace({ defaultSection = "overview" } =
     const items = [
       { key: "overview", label: "Dashboard", icon: Home, section: "overview", show: true },
       { key: "crm", label: "CRM", icon: Target, section: "crm", show: canUseCrm, badge: crmLeadCount },
-      { key: "pipeline", label: "Pipeline", icon: TrendingUp, section: "pipeline", show: canUseCrm, badge: deals.length },
+      { key: "pipeline", label: "Pipeline", icon: TrendingUp, section: "pipeline", show: canUseCrm, badge: activePipelineCount },
       { key: "sales_followups", label: "Follow-ups", icon: Phone, section: "sales_followups", show: canUseCrm, badge: overdueFollowUps || salesFollowUps.filter((item) => item.status === "pending").length },
       { key: "sales_meetings", label: "Meetings", icon: Calendar, section: "sales_meetings", show: canUseCrm, badge: salesMeetings.filter((item) => item.status === "scheduled").length },
       { key: "sales_commercials", label: "Quotation", icon: FileText, section: "sales_commercials", show: canUseCrm, badge: proposals.length + quotations.length },
@@ -3705,6 +3706,7 @@ export default function AuthenticatedWorkspace({ defaultSection = "overview" } =
     contentCalendar.length,
     dailyUpdates.length,
     deals.length,
+    activePipelineCount,
     agreements.length,
     invoicesList.length,
     isAdminRole,
@@ -7215,9 +7217,9 @@ export default function AuthenticatedWorkspace({ defaultSection = "overview" } =
                       <TrendingUp className="w-5 h-5 shrink-0 stroke-[1.75] text-emerald-500" />
                       <span className="admin-sidebar-item-label">Sales Pipeline</span>
                     </div>
-                    {deals.length > 0 && (
+                    {activePipelineCount > 0 && (
                       <span className="text-[11px] font-bold text-emerald-600 bg-emerald-50 dark:bg-emerald-950/40 px-2 py-0.5 rounded-full">
-                        {deals.length}
+                        {activePipelineCount}
                       </span>
                     )}
                   </button>
@@ -8048,7 +8050,7 @@ export default function AuthenticatedWorkspace({ defaultSection = "overview" } =
                   <p className="text-xs text-gray-500 dark:text-slate-400 mt-1 leading-relaxed">
                     {activeSection === "overview" && `Welcome back, ${userProfile?.full_name?.split(" ")[0] || sessionUser?.user_metadata?.full_name?.split(" ")[0] || "User"} 👋 Here is your workspace overview and activity today.`}
                     {activeSection === "crm" && "Track website inquiries, lead statuses, WhatsApp outreach, and qualification."}
-                    {activeSection === "pipeline" && "Visual Kanban pipeline from Lead to Closed Won agreement and advance payment."}
+                    {activeSection === "pipeline" && "Open Kanban pipeline for meetings, quotations, and negotiation."}
                     {activeSection === "sales_followups" && "Schedule calls, WhatsApp reminders, and sales next actions."}
                     {activeSection === "sales_meetings" && "Plan discovery, requirement, quotation, and negotiation meetings."}
                     {activeSection === "sales_reports" && "Review source ROI, stale deals, follow-up performance, and sales AI insights."}
@@ -8128,7 +8130,7 @@ export default function AuthenticatedWorkspace({ defaultSection = "overview" } =
                     <p className="text-xs text-gray-500 dark:text-slate-400 mt-1 max-w-2xl leading-relaxed">
                       {activeSection === "overview" && (isAdminRole ? "Overview of HR managers, training batches, and recent activity." : "Overview of team members, tasks, and updates.")}
                       {activeSection === "crm" && "Track website inquiries, lead qualification, and customer acquisition."}
-                      {activeSection === "pipeline" && "Kanban deal progress: meetings, quotations, negotiation, and closed won handover."}
+                      {activeSection === "pipeline" && "Open Kanban deal progress: meetings, quotations, and negotiation."}
                       {activeSection === "clients" && "Centralized directory of client companies with linked deals, projects, invoices, and tickets."}
                       {activeSection === "projects" && "Monitor technical project delivery, sprints, QA checklists, and deployment handover."}
                       {activeSection === "smm" && "Social media client retainers, platform profiles, and deliverable targets."}
@@ -14884,10 +14886,6 @@ export default function AuthenticatedWorkspace({ defaultSection = "overview" } =
                 </div>
               )}
 
-              {/* Section Empty Check */}
-              {activeSection !== "alerts" && activeSection !== "chat" && activeSection !== "settings" && activeSection !== "batch_workspace" && activeSection !== "batch_files" && activeSection !== "review_center" && activeSection !== "task_submissions" && activeSection !== "at_risk_watchlist" && (activeSection !== "overview" || isAdminRole) && totalRecords === 0 && (
-                <div className="text-center py-10 text-gray-400 text-xs">No records found in this section.</div>
-              )}
             </div>
           </main>
         </div>

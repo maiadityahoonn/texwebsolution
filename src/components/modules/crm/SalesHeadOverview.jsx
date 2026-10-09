@@ -44,19 +44,15 @@ export default function SalesHeadOverview({
     (l) => (l.status || "").toLowerCase().includes("qualif")
   ).length;
 
-  const wonDealsCount = deals.filter(
+  const visiblePipelineDeals = deals.filter(
+    (d) => (d.pipeline_stage || d.stage) !== "closed_lost"
+  );
+
+  const wonDealsCount = visiblePipelineDeals.filter(
     (d) => (d.pipeline_stage || d.stage) === "closed_won"
   ).length;
 
-  const lostDealsCount = deals.filter(
-    (d) => (d.pipeline_stage || d.stage) === "closed_lost"
-  ).length;
-
-  const lostLeadsCount = leads.filter(
-    (l) => (l.status || "").toLowerCase() === "lost"
-  ).length;
-
-  const totalPipelineValue = deals.reduce((sum, d) => {
+  const totalPipelineValue = visiblePipelineDeals.reduce((sum, d) => {
     const val = Number(d.deal_value || d.value) || 0;
     return sum + val;
   }, 0);
@@ -70,13 +66,11 @@ export default function SalesHeadOverview({
   const recentLeads = leads.slice(0, 5);
 
   const STAGES = [
-    { key: "new", label: "New", color: "bg-blue-500", count: deals.filter((d) => (d.pipeline_stage || d.stage) === "new").length },
-    { key: "contacted", label: "Contacted", color: "bg-cyan-500", count: deals.filter((d) => (d.pipeline_stage || d.stage) === "contacted").length },
-    { key: "qualified", label: "Meeting", color: "bg-indigo-500", count: deals.filter((d) => (d.pipeline_stage || d.stage) === "qualified").length },
-    { key: "proposal", label: "Quotation", color: "bg-purple-500", count: deals.filter((d) => (d.pipeline_stage || d.stage) === "proposal").length },
-    { key: "negotiation", label: "Negotiation", color: "bg-amber-500", count: deals.filter((d) => (d.pipeline_stage || d.stage) === "negotiation").length },
+    { key: "contacted", label: "Contacted", color: "bg-cyan-500", count: visiblePipelineDeals.filter((d) => (d.pipeline_stage || d.stage) === "contacted").length },
+    { key: "qualified", label: "Meeting", color: "bg-indigo-500", count: visiblePipelineDeals.filter((d) => (d.pipeline_stage || d.stage) === "qualified").length },
+    { key: "proposal", label: "Quotation", color: "bg-purple-500", count: visiblePipelineDeals.filter((d) => (d.pipeline_stage || d.stage) === "proposal").length },
+    { key: "negotiation", label: "Negotiation", color: "bg-amber-500", count: visiblePipelineDeals.filter((d) => (d.pipeline_stage || d.stage) === "negotiation").length },
     { key: "closed_won", label: "Won", color: "bg-emerald-500", count: wonDealsCount },
-    { key: "closed_lost", label: "Lost", color: "bg-rose-500", count: lostDealsCount },
   ];
 
   return (
@@ -175,19 +169,19 @@ export default function SalesHeadOverview({
               <TrendingUp className="w-5 h-5" />
             </div>
             <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300">
-              {deals.length} Active
+              {visiblePipelineDeals.length} Active
             </span>
           </div>
           <div className="mt-3">
             <div className="text-2xl font-black text-gray-900 dark:text-white">
-              {deals.length}
+              {visiblePipelineDeals.length}
             </div>
             <div className="text-xs font-semibold text-gray-500 dark:text-slate-400 mt-0.5">
               Pipeline Deals
             </div>
           </div>
           <div className="mt-3 flex items-center justify-between text-[11px] text-gray-400 border-t border-gray-100 dark:border-slate-800/80 pt-2.5">
-            <span>{wonDealsCount} Won · {lostDealsCount} Lost</span>
+            <span>{wonDealsCount} Won</span>
             <span className="text-emerald-600 font-bold group-hover:underline flex items-center gap-0.5">
               Kanban <ChevronRight className="w-3 h-3" />
             </span>

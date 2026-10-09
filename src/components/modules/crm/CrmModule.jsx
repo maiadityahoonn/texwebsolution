@@ -94,6 +94,8 @@ const PIPELINE_STAGES = [
   { id: "closed_won", label: "Closed Won", color: "bg-emerald-500" },
 ];
 
+const CLOSED_PIPELINE_STAGES = ["closed_won", "closed_lost"];
+
 const STAGE_LOSS_REASONS = {
   contacted: [
     "Unresponsive after 3+ Follow-ups (Ghosted)",
@@ -589,7 +591,7 @@ export default function CrmModule({
         page: pipelinePage,
         pageSize: pipelinePageSize,
         search: query,
-        stage: statusFilter === "archived" ? "closed_lost" : "",
+        stage: statusFilter === "won" ? "closed_won" : "",
         ...range,
       });
     }, 350);
@@ -682,7 +684,9 @@ export default function CrmModule({
     const lostCount = leads.filter((l) => l.status === "Lost").length;
     const lostDealsCount = deals.filter((d) => (d.pipeline_stage || d.stage) === "closed_lost").length;
     const rate = total > 0 ? Math.round((convertedCount / total) * 100) : 0;
-    const totalPipelineValue = deals.reduce((acc, d) => acc + (Number(d.deal_value || d.value) || 0), 0);
+    const totalPipelineValue = deals
+      .filter((d) => !CLOSED_PIPELINE_STAGES.includes(d.pipeline_stage || d.stage))
+      .reduce((acc, d) => acc + (Number(d.deal_value || d.value) || 0), 0);
     const wonValue = deals
       .filter((d) => (d.pipeline_stage || d.stage) === "closed_won")
       .reduce((acc, d) => acc + (Number(d.deal_value || d.value) || 0), 0);
@@ -754,10 +758,16 @@ export default function CrmModule({
     });
   }, [clients, customDateRange.from, customDateRange.to, dateFilter, leads, query, salesMeetings, selectedDate]);
 
-  const pipelineTotal = dealPagination?.count ?? deals.length;
-  const pipelineBasePageCount = Math.max(1, Math.ceil(Math.max(pipelineTotal, deals.length) / pipelinePageSize));
+  const visiblePipelineDeals = deals.filter((deal) => {
+    const stage = deal.pipeline_stage || deal.stage;
+    if (stage === "closed_lost") return false;
+    if (statusFilter === "won") return stage === "closed_won";
+    return true;
+  });
+  const pipelineTotal = visiblePipelineDeals.length;
+  const pipelineBasePageCount = Math.max(1, Math.ceil(Math.max(pipelineTotal, visiblePipelineDeals.length) / pipelinePageSize));
   const safePipelinePage = onFetchDealsPage ? Math.max(1, pipelinePage) : Math.min(pipelinePage, pipelineBasePageCount);
-  const pipelinePageCount = Math.max(safePipelinePage, pipelineBasePageCount, onFetchDealsPage && deals.length >= pipelinePageSize ? safePipelinePage + 1 : 1);
+  const pipelinePageCount = Math.max(safePipelinePage, pipelineBasePageCount, onFetchDealsPage && visiblePipelineDeals.length >= pipelinePageSize ? safePipelinePage + 1 : 1);
   const followUpTotal = followUpPagination?.count ?? filteredFollowUps.length;
   const followUpBasePageCount = Math.max(1, Math.ceil(Math.max(followUpTotal, filteredFollowUps.length) / followUpPageSize));
   const safeFollowUpPage = onFetchFollowUpsPage ? Math.max(1, followUpPage) : Math.min(followUpPage, followUpBasePageCount);
@@ -770,6 +780,81 @@ export default function CrmModule({
   const isPipelineLoading = Boolean(dealPagination?.loading);
   const isFollowUpsLoading = Boolean(followUpPagination?.loading);
   const isMeetingsLoading = Boolean(meetingPagination?.loading);
+
+  const pageStatusCards = useMemo(() => {
+    if (viewMode === "reports") return [];
+    if (viewMode === "leads") {
+      const archivedLoaded = leads.filter((lead) => ["Converted", "Lost", "Archived", "Closed Won"].includes(lead.status)).length;
+      const metaLoaded = leads.filter((lead) => String(lead.source || lead.platform || "").toLowerCase().includes("meta") || String(lead.source || "").toLowerCase().includes("instagram")).length;
+      return [
+        { label: "Active Leads", value: leadTotalForPagination, sub: `${filteredLeads.length} loaded on this page`, icon: Users, tone: "text-blue-600 bg-blue-50 dark:bg-blue-950/30" },
+        { label: "Meta Leads", value: metaLoaded, sub: "Loaded from current result", icon: Sparkles, tone: "text-pink-600 bg-pink-50 dark:bg-pink-950/30" },
+        { label: "Pipeline Ready", value: filteredLeads.filter((lead) => !["Lost", "Converted", "Archived"].includes(lead.status)).length, sub: "Can qualify to pipeline", icon: TrendingUp, tone: "text-orange-600 bg-orange-50 dark:bg-orange-950/30" },
+        { label: "Archived", value: archivedLoaded, sub: "Lost or converted leads", icon: ShieldAlert, tone: "text-rose-600 bg-rose-50 dark:bg-rose-950/30" },
+      ];
+    }
+    if (viewMode === "pipeline") {
+      const wonCount = visiblePipelineDeals.filter((deal) => (deal.pipeline_stage || deal.stage) === "closed_won").length;
+      const openCount = visiblePipelineDeals.length - wonCount;
+      const pipelineValue = visiblePipelineDeals.reduce((sum, deal) => sum + (Number(deal.deal_value || deal.value) || 0), 0);
+      const warmStaleDealsCount = deals.filter((deal) => !["closed_won", "closed_lost"].includes(deal.pipeline_stage || deal.stage) && new Date(deal.updated_at || deal.created_at || Date.now()).getTime() < Date.now() - 3 * 86400000).length;
+      return [
+        { label: "Open Deals", value: openCount, sub: "Active pipeline cards", icon: TrendingUp, tone: "text-emerald-600 bg-emerald-50 dark:bg-emerald-950/30" },
+        { label: "Won In Pipeline", value: wonCount, sub: "Visible before handover", icon: CheckCircle2, tone: "text-green-600 bg-green-50 dark:bg-green-950/30" },
+        { label: "Pipeline Value", value: `Rs. ${pipelineValue.toLocaleString("en-IN")}`, sub: "Visible deal value", icon: DollarSign, tone: "text-amber-600 bg-amber-50 dark:bg-amber-950/30" },
+        { label: "Stale Deals", value: warmStaleDealsCount, sub: "Idle for 3+ days", icon: AlertCircle, tone: "text-red-600 bg-red-50 dark:bg-red-950/30" },
+      ];
+    }
+    if (viewMode === "commercials") {
+      const quotationCount = proposals.length + quotations.length;
+      const agreementCount = agreements.length;
+      const sentCount = [...proposals, ...quotations, ...agreements].filter((item) => ["sent", "accepted", "signed"].includes(item.status)).length;
+      const approvedCount = [...proposals, ...quotations, ...agreements].filter((item) => ["accepted", "signed"].includes(item.status)).length;
+      return [
+        { label: "Quotations", value: quotationCount, sub: "Proposal/quotation docs", icon: FileText, tone: "text-orange-600 bg-orange-50 dark:bg-orange-950/30" },
+        { label: "Agreements", value: agreementCount, sub: "Client agreement docs", icon: CheckCircle2, tone: "text-indigo-600 bg-indigo-50 dark:bg-indigo-950/30" },
+        { label: "Sent", value: sentCount, sub: "Shared with client", icon: ExternalLink, tone: "text-blue-600 bg-blue-50 dark:bg-blue-950/30" },
+        { label: "Approved", value: approvedCount, sub: "Accepted or signed", icon: ShieldAlert, tone: "text-emerald-600 bg-emerald-50 dark:bg-emerald-950/30" },
+      ];
+    }
+    if (viewMode === "followups") {
+      const pending = filteredFollowUps.filter((item) => item.status === "pending").length;
+      const overdue = filteredFollowUps.filter((item) => item.status === "pending" && item.due_at && new Date(item.due_at).getTime() < Date.now()).length;
+      const done = filteredFollowUps.filter((item) => item.status === "done").length;
+      const missed = filteredFollowUps.filter((item) => item.status === "missed").length;
+      return [
+        { label: "Pending", value: pending, sub: "Need action", icon: Phone, tone: "text-amber-600 bg-amber-50 dark:bg-amber-950/30" },
+        { label: "Overdue", value: overdue, sub: "Past due time", icon: AlertCircle, tone: "text-red-600 bg-red-50 dark:bg-red-950/30" },
+        { label: "Completed", value: done, sub: "Marked done", icon: CheckCircle2, tone: "text-emerald-600 bg-emerald-50 dark:bg-emerald-950/30" },
+        { label: "Missed", value: missed, sub: "Needs reschedule", icon: XCircle, tone: "text-rose-600 bg-rose-50 dark:bg-rose-950/30" },
+      ];
+    }
+    if (viewMode === "sales_meetings") {
+      const scheduled = filteredSalesMeetings.filter((item) => item.status === "scheduled").length;
+      const completed = filteredSalesMeetings.filter((item) => item.status === "completed").length;
+      const noShow = filteredSalesMeetings.filter((item) => ["no_show", "cancelled"].includes(item.status)).length;
+      const today = filteredSalesMeetings.filter((item) => item.scheduled_at && new Date(item.scheduled_at).toDateString() === new Date().toDateString()).length;
+      return [
+        { label: "Scheduled", value: scheduled, sub: "Upcoming meetings", icon: Calendar, tone: "text-blue-600 bg-blue-50 dark:bg-blue-950/30" },
+        { label: "Today", value: today, sub: "Meetings today", icon: Phone, tone: "text-cyan-600 bg-cyan-50 dark:bg-cyan-950/30" },
+        { label: "Completed", value: completed, sub: "Done meetings", icon: CheckCircle2, tone: "text-emerald-600 bg-emerald-50 dark:bg-emerald-950/30" },
+        { label: "No Show", value: noShow, sub: "Missed/cancelled", icon: XCircle, tone: "text-rose-600 bg-rose-50 dark:bg-rose-950/30" },
+      ];
+    }
+    return [];
+  }, [
+    agreements,
+    deals,
+    filteredFollowUps,
+    filteredLeads,
+    filteredSalesMeetings,
+    leadTotalForPagination,
+    leads,
+    proposals,
+    quotations,
+    viewMode,
+    visiblePipelineDeals,
+  ]);
 
   const archivedDeals = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -1417,6 +1502,26 @@ export default function CrmModule({
           {crmActionButtons}
       </div>
 
+      {pageStatusCards.length > 0 && (
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+          {pageStatusCards.slice(0, 4).map((card) => {
+            const Icon = card.icon;
+            return (
+              <div key={card.label} className="p-4 rounded-2xl bg-white dark:bg-[#18150f] border border-gray-100 dark:border-[#3a3020] shadow-2xs min-w-0">
+                <div className="flex items-center justify-between gap-3 text-gray-500 dark:text-neutral-400 text-xs">
+                  <span className="font-semibold truncate">{card.label}</span>
+                  <span className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 ${card.tone}`}>
+                    <Icon className="w-4 h-4" />
+                  </span>
+                </div>
+                <div className="text-xl sm:text-2xl font-black mt-2 text-gray-900 dark:text-white truncate">{card.value}</div>
+                <div className="text-[11px] text-gray-500 dark:text-neutral-400 mt-1 font-medium truncate">{card.sub}</div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
       {viewMode === "reports" && (
       <>
       {/* 2. Key Metrics Bar */}
@@ -1579,7 +1684,7 @@ export default function CrmModule({
       )}
 
       {/* 3. Filter & Search Controls */}
-      {viewMode !== "pipeline" && viewMode !== "reports" && (
+      {viewMode !== "reports" && (
       <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 p-3 rounded-2xl bg-white dark:bg-[#18150f] border border-gray-100 dark:border-[#3a3020]">
         <div className="relative flex-1">
           <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
@@ -1615,8 +1720,8 @@ export default function CrmModule({
         {viewMode === "pipeline" && (
         <div className="flex items-center gap-2 overflow-x-auto no-scrollbar">
           {[
-            ["active", "Active Pipeline"],
-            ["archived", "Archive"],
+            ["active", "Active"],
+            ["won", "Won"],
           ].map(([value, label]) => (
             <button
               key={value}
@@ -1635,7 +1740,7 @@ export default function CrmModule({
       </div>
       )}
 
-      {viewMode !== "pipeline" && (
+      {viewMode !== "reports" && (
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 p-3 rounded-2xl bg-white dark:bg-[#18150f] border border-gray-100 dark:border-[#3a3020]">
         <div className="flex items-center gap-2 text-xs font-bold text-gray-500 dark:text-neutral-400">
           <Calendar className="w-4 h-4" />
@@ -1888,51 +1993,14 @@ export default function CrmModule({
         </div>
       )}
 
-      {/* 5. Sales Pipeline Kanban View */}
       {viewMode === "pipeline" && (
-        statusFilter === "archived" ? (
-          <div className="rounded-2xl bg-white dark:bg-[#18150f] border border-gray-100 dark:border-[#3a3020] overflow-hidden shadow-2xs">
-            {isPipelineLoading && archivedDeals.length === 0 ? (
-              <TableSkeleton rows={5} columns={5} />
-            ) : archivedDeals.length === 0 ? (
-              <div className="p-8 text-center text-sm text-gray-500 dark:text-neutral-400">No archived lost deals found.</div>
-            ) : (
-              <div className="overflow-x-auto table-scroll">
-                <table className="w-full text-left text-xs sm:text-sm border-collapse min-w-[760px]">
-                  <thead>
-                    <tr className="border-b border-gray-100 dark:border-[#3a3020] bg-gray-50/70 dark:bg-[#211d14] text-gray-500 dark:text-neutral-400 text-[11px] font-semibold uppercase tracking-wider">
-                      <th className="py-3 px-4">Deal</th>
-                      <th className="py-3 px-4">Value</th>
-                      <th className="py-3 px-4">Service</th>
-                      <th className="py-3 px-4">Loss Reason</th>
-                      <th className="py-3 px-4">Archived</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-100 dark:divide-[#3a3020]/60">
-                    {archivedDeals.map((deal) => (
-                      <tr key={deal.id} className="hover:bg-gray-50/60 dark:hover:bg-slate-800/40 transition">
-                        <td className="py-3.5 px-4 font-bold text-gray-900 dark:text-white">{deal.title}</td>
-                        <td className="py-3.5 px-4 font-mono font-bold text-orange-600">Rs. {(Number(deal.deal_value) || 0).toLocaleString("en-IN")}</td>
-                        <td className="py-3.5 px-4 text-gray-600 dark:text-neutral-300">{deal.service || "Tech Development"}</td>
-                        <td className="py-3.5 px-4 text-red-600 dark:text-red-400 max-w-[320px]">
-                          <span className="line-clamp-2">{deal.loss_reason || deal.notes || "Closed lost"}</span>
-                        </td>
-                        <td className="py-3.5 px-4 text-gray-500">{deal.updated_at?.slice(0, 10) || deal.created_at?.slice(0, 10) || "-"}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </div>
-        ) : (
         <>
-        {isPipelineLoading && deals.length === 0 ? (
+        {isPipelineLoading && visiblePipelineDeals.length === 0 ? (
           <PipelineSkeleton />
         ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3">
           {PIPELINE_STAGES.map((col) => {
-            const colDeals = deals.filter((d) => (d.pipeline_stage || "contacted") === col.id && matchesDateFilter(d, "created_at"));
+            const colDeals = visiblePipelineDeals.filter((d) => (d.pipeline_stage || "contacted") === col.id && matchesDateFilter(d, "created_at"));
             const colTotal = colDeals.reduce((sum, d) => sum + (Number(d.deal_value) || 0), 0);
 
             return (
@@ -2061,18 +2129,7 @@ export default function CrmModule({
                             <option value="proposal">Quotation</option>
                             <option value="negotiation">Negotiation</option>
                             <option value="closed_won">Won</option>
-                            <option value="closed_lost">Lost</option>
                           </select>
-
-                          <button
-                            type="button"
-                            onClick={() => openLostModal({ type: "deal", item: deal, stage: col.id })}
-                            className="p-1 rounded text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/30 text-[10px] font-semibold flex items-center gap-0.5 cursor-pointer"
-                            title="Mark Deal as Closed Lost"
-                          >
-                            <XCircle className="w-3 h-3" />
-                            <span>Lost</span>
-                          </button>
                         </div>
                         <div>
                           <button
@@ -2170,7 +2227,6 @@ export default function CrmModule({
           </div>
         </div>
         </>
-        )
       )}
 
       {viewMode === "commercials" && (
