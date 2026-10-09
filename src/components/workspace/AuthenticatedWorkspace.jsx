@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import dynamic from "next/dynamic";
-import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
 import {
@@ -672,9 +672,12 @@ export default function AuthenticatedWorkspace({ defaultSection = "overview" } =
   }
 
   const notificationBridgeRef = useRef(null);
+  const pushLiveSalesNotificationBridge = useCallback((...args) => {
+    notificationBridgeRef.current?.(...args);
+  }, []);
   const crmData = useCrmData({
     sessionUserId: sessionUser?.id,
-    pushLiveSalesNotification: (...args) => notificationBridgeRef.current?.(...args),
+    pushLiveSalesNotification: pushLiveSalesNotificationBridge,
   });
   const {
     leads,
@@ -712,6 +715,7 @@ export default function AuthenticatedWorkspace({ defaultSection = "overview" } =
     handleRealtimeAgreement,
     handleRealtimeInvoice,
   } = crmData;
+  const crmLeadCount = leadPagination?.count ?? leads.length;
   const [projectsData, setProjectsData] = useState([]);
   const [smmClients, setSmmClients] = useState([]);
   const [contentCalendar, setContentCalendar] = useState([]);
@@ -3633,10 +3637,10 @@ export default function AuthenticatedWorkspace({ defaultSection = "overview" } =
     return [
       { label: "Active Team & Interns", value: combinedMembers.length, sub: "Engineers, Mentors & Trainees", color: "text-gray-900 dark:text-white" },
       { label: "Active Project Tasks", value: activeTasks, sub: "Client Work Orders & Sprints", color: "text-red-600" },
-      { label: canUseCrm ? "Website Client Leads" : "Meetings", value: canUseCrm ? leads.length : meetings.length, sub: canUseCrm ? "Inbound Contact & CRM Requests" : "Live sessions and check-ins", color: "text-blue-600" },
+      { label: canUseCrm ? "Website Client Leads" : "Meetings", value: canUseCrm ? crmLeadCount : meetings.length, sub: canUseCrm ? "Inbound Contact & CRM Requests" : "Live sessions and check-ins", color: "text-blue-600" },
       { label: "Completed Deliverables", value: approvedTasks, sub: "Verified & Approved Milestones", color: "text-emerald-600" },
     ];
-  }, [canUseCrm, certificates.length, combinedMembers, deals, isAdminRole, isHrRole, isMentor, leads.length, meetings.length, profiles, projectsData.length, supportTicketsList, tasks]);
+  }, [canUseCrm, certificates.length, combinedMembers, crmLeadCount, deals, isAdminRole, isHrRole, isMentor, meetings.length, profiles, projectsData.length, supportTicketsList, tasks]);
 
   const metrics = dashboardMetrics;
 
@@ -3646,7 +3650,7 @@ export default function AuthenticatedWorkspace({ defaultSection = "overview" } =
     )).length;
     const items = [
       { key: "overview", label: "Dashboard", icon: Home, section: "overview", show: true },
-      { key: "crm", label: "CRM", icon: Target, section: "crm", show: canUseCrm, badge: leads.length },
+      { key: "crm", label: "CRM", icon: Target, section: "crm", show: canUseCrm, badge: crmLeadCount },
       { key: "pipeline", label: "Pipeline", icon: TrendingUp, section: "pipeline", show: canUseCrm, badge: deals.length },
       { key: "sales_followups", label: "Follow-ups", icon: Phone, section: "sales_followups", show: canUseCrm, badge: overdueFollowUps || salesFollowUps.filter((item) => item.status === "pending").length },
       { key: "sales_meetings", label: "Meetings", icon: Calendar, section: "sales_meetings", show: canUseCrm, badge: salesMeetings.filter((item) => item.status === "scheduled").length },
@@ -7190,9 +7194,9 @@ export default function AuthenticatedWorkspace({ defaultSection = "overview" } =
                       <Target className="w-5 h-5 shrink-0 stroke-[1.75] text-red-500" />
                       <span className="admin-sidebar-item-label">Leads</span>
                     </div>
-                    {leads.length > 0 && (
+                    {crmLeadCount > 0 && (
                       <span className="text-[11px] font-bold text-red-600 bg-red-50 dark:bg-red-950/40 px-2 py-0.5 rounded-full">
-                        {leads.length}
+                        {crmLeadCount > 99 ? "99+" : crmLeadCount}
                       </span>
                     )}
                   </button>

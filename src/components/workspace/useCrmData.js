@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { patchRealtimeList } from "@/components/workspace/realtimeListUtils";
 import {
   getAgreements,
@@ -28,7 +28,7 @@ export function useCrmData({ sessionUserId = "", pushLiveSalesNotification } = {
   const [meetingPagination, setMeetingPagination] = useState({ count: 0, page: 1, pageSize: 50, loading: false });
   const [invoicesList, setInvoicesList] = useState([]);
 
-  async function loadCrmData() {
+  const loadCrmData = useCallback(async function loadCrmData() {
     const [leadsRes, dealsRes, proposalsRes, quotationsRes, agreementsRes, followUpsRes, meetingsRes, invoicesRes] = await Promise.all([
       getCloudLeads({ page: 1, pageSize: 50, withCount: true }),
       getDeals({ page: 1, pageSize: 100, withCount: true }),
@@ -59,9 +59,9 @@ export function useCrmData({ sessionUserId = "", pushLiveSalesNotification } = {
       setMeetingPagination({ count: meetingsRes.count || 0, page: meetingsRes.page || 1, pageSize: meetingsRes.pageSize || 50, loading: false });
     }
     setInvoicesList(invoicesRes || []);
-  }
+  }, []);
 
-  async function handleFetchLeadsPage(params = {}) {
+  const handleFetchLeadsPage = useCallback(async function handleFetchLeadsPage(params = {}) {
     setLeadPagination((prev) => ({ ...prev, loading: true }));
     const result = await getCloudLeads({
       page: params.page || 1,
@@ -79,9 +79,9 @@ export function useCrmData({ sessionUserId = "", pushLiveSalesNotification } = {
       pageSize: result?.pageSize || params.pageSize || 10,
       loading: false,
     });
-  }
+  }, []);
 
-  async function handleFetchDealsPage(params = {}) {
+  const handleFetchDealsPage = useCallback(async function handleFetchDealsPage(params = {}) {
     setDealPagination((prev) => ({ ...prev, loading: true }));
     const result = await getDeals({
       page: params.page || 1,
@@ -99,9 +99,9 @@ export function useCrmData({ sessionUserId = "", pushLiveSalesNotification } = {
       pageSize: result?.pageSize || params.pageSize || 100,
       loading: false,
     });
-  }
+  }, []);
 
-  async function handleFetchFollowUpsPage(params = {}) {
+  const handleFetchFollowUpsPage = useCallback(async function handleFetchFollowUpsPage(params = {}) {
     setFollowUpPagination((prev) => ({ ...prev, loading: true }));
     const result = await getSalesFollowUps({
       page: params.page || 1,
@@ -119,9 +119,9 @@ export function useCrmData({ sessionUserId = "", pushLiveSalesNotification } = {
       pageSize: result?.pageSize || params.pageSize || 50,
       loading: false,
     });
-  }
+  }, []);
 
-  async function handleFetchMeetingsPage(params = {}) {
+  const handleFetchMeetingsPage = useCallback(async function handleFetchMeetingsPage(params = {}) {
     setMeetingPagination((prev) => ({ ...prev, loading: true }));
     const result = await getSalesMeetings({
       page: params.page || 1,
@@ -139,27 +139,27 @@ export function useCrmData({ sessionUserId = "", pushLiveSalesNotification } = {
       pageSize: result?.pageSize || params.pageSize || 50,
       loading: false,
     });
-  }
+  }, []);
 
-  function handleRealtimeLead(payload) {
+  const handleRealtimeLead = useCallback(function handleRealtimeLead(payload) {
     const insertedId = payload?.eventType === "INSERT" ? payload?.new?.id : null;
     const alreadyExists = insertedId ? leads.some((item) => item.id === insertedId) : false;
     patchRealtimeList(setLeads, payload, { limit: leadPagination.pageSize || 50 });
     if (payload?.eventType === "INSERT" && !alreadyExists) {
       setLeadPagination((prev) => ({ ...prev, count: Math.max((prev.count || 0) + 1, leads.length + 1) }));
     }
-  }
+  }, [leadPagination.pageSize, leads]);
 
-  function handleRealtimeDeal(payload) {
+  const handleRealtimeDeal = useCallback(function handleRealtimeDeal(payload) {
     const insertedId = payload?.eventType === "INSERT" ? payload?.new?.id : null;
     const alreadyExists = insertedId ? deals.some((item) => item.id === insertedId) : false;
     patchRealtimeList(setDeals, payload, { limit: dealPagination.pageSize || 100 });
     if (payload?.eventType === "INSERT" && !alreadyExists) {
       setDealPagination((prev) => ({ ...prev, count: Math.max((prev.count || 0) + 1, deals.length + 1) }));
     }
-  }
+  }, [dealPagination.pageSize, deals]);
 
-  function handleRealtimeFollowUp(payload, { notify = false } = {}) {
+  const handleRealtimeFollowUp = useCallback(function handleRealtimeFollowUp(payload, { notify = false } = {}) {
     const insertedId = payload?.eventType === "INSERT" ? payload?.new?.id : null;
     const alreadyExists = insertedId ? salesFollowUps.some((item) => item.id === insertedId) : false;
     patchRealtimeList(setSalesFollowUps, payload, {
@@ -173,9 +173,9 @@ export function useCrmData({ sessionUserId = "", pushLiveSalesNotification } = {
         }
       },
     });
-  }
+  }, [followUpPagination.pageSize, pushLiveSalesNotification, salesFollowUps, sessionUserId]);
 
-  function handleRealtimeSalesMeeting(payload, { notify = false } = {}) {
+  const handleRealtimeSalesMeeting = useCallback(function handleRealtimeSalesMeeting(payload, { notify = false } = {}) {
     const insertedId = payload?.eventType === "INSERT" ? payload?.new?.id : null;
     const alreadyExists = insertedId ? salesMeetings.some((item) => item.id === insertedId) : false;
     patchRealtimeList(setSalesMeetings, payload, {
@@ -189,19 +189,19 @@ export function useCrmData({ sessionUserId = "", pushLiveSalesNotification } = {
         }
       },
     });
-  }
+  }, [meetingPagination.pageSize, pushLiveSalesNotification, salesMeetings, sessionUserId]);
 
-  function handleRealtimeProposal(payload) {
+  const handleRealtimeProposal = useCallback(function handleRealtimeProposal(payload) {
     patchRealtimeList(setProposals, payload, { limit: 100 });
-  }
+  }, []);
 
-  function handleRealtimeAgreement(payload) {
+  const handleRealtimeAgreement = useCallback(function handleRealtimeAgreement(payload) {
     patchRealtimeList(setAgreements, payload, { limit: 100 });
-  }
+  }, []);
 
-  function handleRealtimeInvoice(payload) {
+  const handleRealtimeInvoice = useCallback(function handleRealtimeInvoice(payload) {
     patchRealtimeList(setInvoicesList, payload, { limit: 150 });
-  }
+  }, []);
 
   return {
     leads,

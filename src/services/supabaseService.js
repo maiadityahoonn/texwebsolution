@@ -47,6 +47,52 @@ function clampPageSize(value, fallback = 50, max = 200) {
   return Math.min(parsed, max);
 }
 
+async function fetchCrmListFromApi(resource, options = {}) {
+  if (typeof window === 'undefined') return null;
+  try {
+    const { data: sessionData } = await supabase.auth.getSession();
+    const token = sessionData?.session?.access_token;
+    if (!token) return null;
+    const params = new URLSearchParams();
+    params.set('resource', resource);
+    if (options.page) params.set('page', String(options.page));
+    if (options.pageSize) params.set('pageSize', String(options.pageSize));
+    if (options.search) params.set('search', options.search);
+    if (options.status) params.set('status', options.status);
+    if (options.stage) params.set('stage', options.stage);
+    if (options.dateFrom) params.set('dateFrom', options.dateFrom);
+    if (options.dateTo) params.set('dateTo', options.dateTo);
+    const response = await fetch(`/api/crm/list?${params.toString()}`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+    if (!response.ok) return null;
+    return response.json();
+  } catch (err) {
+    console.warn('CRM API list fetch skipped:', err.message);
+    return null;
+  }
+}
+
+const ARCHIVED_LEAD_STATUSES = ['Converted', 'Lost', 'Archived', 'Closed Won'];
+
+function toPostgrestInList(values = []) {
+  return `(${values.map((value) => `"${String(value).replace(/"/g, '\\"')}"`).join(',')})`;
+}
+
+async function getPipelineLeadIds() {
+  const { data, error } = await supabase
+    .from('deals')
+    .select('lead_id')
+    .not('lead_id', 'is', null);
+  if (error) {
+    console.warn('Pipeline lead filter skipped:', error.message);
+    return [];
+  }
+  return [...new Set((data || []).map((deal) => deal.lead_id).filter(Boolean))];
+}
+
 async function sendDealStageMetaEvent(deal, stage) {
   if (!deal?.lead_id) return;
   try {
@@ -79,12 +125,28 @@ export async function getCloudLeads(options = null) {
     const to = from + pageSize - 1;
     const withCount = Boolean(options?.withCount);
 
+    if (useOptions) {
+      const apiResult = await fetchCrmListFromApi('leads', { ...options, page, pageSize });
+      if (apiResult?.data) return withCount ? apiResult : apiResult.data;
+    }
+
     let query = supabase
       .from('leads')
       .select('*', withCount ? { count: 'exact' } : undefined)
       .order('created_at', { ascending: false });
 
-    if (options?.status && !['all', 'active', 'archived'].includes(options.status)) {
+    if (options?.status === 'active') {
+      const pipelineLeadIds = await getPipelineLeadIds();
+      query = query.not('status', 'in', toPostgrestInList(ARCHIVED_LEAD_STATUSES));
+      if (pipelineLeadIds.length > 0) {
+        query = query.not('id', 'in', toPostgrestInList(pipelineLeadIds));
+      }
+    } else if (options?.status === 'archived') {
+      const pipelineLeadIds = await getPipelineLeadIds();
+      const archivedStatusFilter = `status.in.${toPostgrestInList(ARCHIVED_LEAD_STATUSES)}`;
+      const pipelineFilter = pipelineLeadIds.length > 0 ? `id.in.${toPostgrestInList(pipelineLeadIds)}` : "";
+      query = query.or([archivedStatusFilter, pipelineFilter].filter(Boolean).join(','));
+    } else if (options?.status && options.status !== 'all') {
       query = query.eq('status', options.status);
     }
 
@@ -2190,6 +2252,11 @@ export async function getDeals(options = null) {
     const to = from + pageSize - 1;
     const withCount = Boolean(options?.withCount);
 
+    if (useOptions) {
+      const apiResult = await fetchCrmListFromApi('deals', { ...options, page, pageSize });
+      if (apiResult?.data) return withCount ? apiResult : apiResult.data;
+    }
+
     let query = supabase
       .from('deals')
       .select('*', withCount ? { count: 'exact' } : undefined)
@@ -2557,6 +2624,11 @@ export async function getSalesFollowUps(options = null) {
     const to = from + pageSize - 1;
     const withCount = Boolean(options?.withCount);
 
+    if (useOptions) {
+      const apiResult = await fetchCrmListFromApi('sales_followups', { ...options, page, pageSize });
+      if (apiResult?.data) return withCount ? apiResult : apiResult.data;
+    }
+
     let query = supabase
       .from('sales_followups')
       .select('*', withCount ? { count: 'exact' } : undefined)
@@ -2652,6 +2724,11 @@ export async function getSalesMeetings(options = null) {
     const from = (page - 1) * pageSize;
     const to = from + pageSize - 1;
     const withCount = Boolean(options?.withCount);
+
+    if (useOptions) {
+      const apiResult = await fetchCrmListFromApi('sales_meetings', { ...options, page, pageSize });
+      if (apiResult?.data) return withCount ? apiResult : apiResult.data;
+    }
 
     let query = supabase
       .from('sales_meetings')
