@@ -2852,7 +2852,7 @@ export default function CrmModule({
             ) : (
               <>
               <ResponsiveTableContainer>
-                <table className="w-full text-left text-xs sm:text-sm border-collapse min-w-[980px]">
+                <table className="w-full text-left text-xs sm:text-sm border-collapse min-w-[900px]">
                   <thead>
                     <tr className="border-b border-gray-100 dark:border-[#3a3020] bg-gray-50/70 dark:bg-[#211d14] text-gray-500 dark:text-neutral-400 text-[11px] font-semibold uppercase tracking-wider">
                       <th
@@ -2868,8 +2868,8 @@ export default function CrmModule({
                         </div>
                       </th>
                       <th className="py-3 px-4">Contact (Phone & Email)</th>
-                      <th className="py-3 px-4">Service Needed</th>
-                      <th className="py-3 px-4">Budget Range</th>
+                      <th className="py-3 px-3 w-[150px] max-w-[150px]">Service Needed</th>
+                      <th className="py-3 px-3 w-[145px] max-w-[145px]">Budget Range</th>
                       <th className="py-3 px-4">City / State</th>
                       <th className="py-3 px-4 text-right">Actions</th>
                     </tr>
@@ -2959,16 +2959,22 @@ export default function CrmModule({
                         </td>
 
                         {/* 3. Service Needed (what_service_are_you_looking_for?) */}
-                        <td className="py-3.5 px-4">
-                          <span className="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-semibold bg-gray-100 dark:bg-slate-800 text-gray-800 dark:text-neutral-200">
+                        <td className="py-3.5 px-3 w-[150px] max-w-[150px]">
+                          <span
+                            className="inline-flex items-center max-w-[126px] px-2 py-1 rounded-lg text-[11px] leading-tight font-semibold bg-gray-100 dark:bg-slate-800 text-gray-800 dark:text-neutral-200 align-middle whitespace-normal break-words line-clamp-2"
+                            title={lead.service || "General Inquiry"}
+                          >
                             {lead.service || "General Inquiry"}
                           </span>
                         </td>
 
                         {/* 4. Budget Range (choose_your_budget_range?) */}
-                        <td className="py-3.5 px-4">
+                        <td className="py-3.5 px-3 w-[145px] max-w-[145px]">
                           {budget !== "-" ? (
-                            <span className="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-bold bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 border border-emerald-200/60 dark:border-emerald-800/40">
+                            <span
+                              className="inline-flex items-center max-w-[122px] px-2 py-1 rounded-lg text-[11px] leading-tight font-bold bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 border border-emerald-200/60 dark:border-emerald-800/40 align-middle whitespace-normal break-words line-clamp-2"
+                              title={budget}
+                            >
                               {budget}
                             </span>
                           ) : (
@@ -6011,4 +6017,3 @@ export default function CrmModule({
     </div>
   );
 }
-
