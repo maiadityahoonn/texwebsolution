@@ -657,15 +657,22 @@ export default function CrmModule({
 
   const serverLeadTotal = leadPagination?.count ?? filteredLeads.length;
   const leadTotalForPagination = onFetchLeadsPage ? Math.max(serverLeadTotal, filteredLeads.length) : filteredLeads.length;
-  const leadPageCount = Math.max(1, Math.ceil(leadTotalForPagination / leadsPerPage));
-  const safeLeadPage = Math.min(leadPage, leadPageCount);
+  const leadBasePageCount = Math.max(1, Math.ceil(leadTotalForPagination / leadsPerPage));
+  const safeLeadPage = onFetchLeadsPage ? Math.max(1, leadPage) : Math.min(leadPage, leadBasePageCount);
+  const leadHasPossibleNextPage = Boolean(onFetchLeadsPage && filteredLeads.length >= leadsPerPage);
+  const leadPageCount = Math.max(safeLeadPage, leadBasePageCount, leadHasPossibleNextPage ? safeLeadPage + 1 : 1);
   const paginatedLeads = useMemo(() => {
     if (onFetchLeadsPage) return filteredLeads;
     const start = (safeLeadPage - 1) * leadsPerPage;
     return filteredLeads.slice(start, start + leadsPerPage);
   }, [filteredLeads, leadsPerPage, onFetchLeadsPage, safeLeadPage]);
-  const leadPageStart = leadTotalForPagination === 0 ? 0 : (safeLeadPage - 1) * leadsPerPage + 1;
-  const leadPageEnd = Math.min(leadTotalForPagination, safeLeadPage * leadsPerPage);
+  const loadedLeadEnd = onFetchLeadsPage
+    ? (safeLeadPage - 1) * leadsPerPage + filteredLeads.length
+    : Math.min(leadTotalForPagination, safeLeadPage * leadsPerPage);
+  const leadDisplayTotal = Math.max(leadTotalForPagination, loadedLeadEnd);
+  const leadTotalIsEstimated = Boolean(onFetchLeadsPage && filteredLeads.length >= leadsPerPage && leadDisplayTotal > leadTotalForPagination);
+  const leadPageStart = leadDisplayTotal === 0 ? 0 : (safeLeadPage - 1) * leadsPerPage + 1;
+  const leadPageEnd = Math.min(leadDisplayTotal, loadedLeadEnd || safeLeadPage * leadsPerPage);
 
   // Aggregate Metrics
   const stats = useMemo(() => {
@@ -748,14 +755,17 @@ export default function CrmModule({
   }, [clients, customDateRange.from, customDateRange.to, dateFilter, leads, query, salesMeetings, selectedDate]);
 
   const pipelineTotal = dealPagination?.count ?? deals.length;
-  const pipelinePageCount = Math.max(1, Math.ceil(Math.max(pipelineTotal, deals.length) / pipelinePageSize));
-  const safePipelinePage = Math.min(pipelinePage, pipelinePageCount);
+  const pipelineBasePageCount = Math.max(1, Math.ceil(Math.max(pipelineTotal, deals.length) / pipelinePageSize));
+  const safePipelinePage = onFetchDealsPage ? Math.max(1, pipelinePage) : Math.min(pipelinePage, pipelineBasePageCount);
+  const pipelinePageCount = Math.max(safePipelinePage, pipelineBasePageCount, onFetchDealsPage && deals.length >= pipelinePageSize ? safePipelinePage + 1 : 1);
   const followUpTotal = followUpPagination?.count ?? filteredFollowUps.length;
-  const followUpPageCount = Math.max(1, Math.ceil(Math.max(followUpTotal, filteredFollowUps.length) / followUpPageSize));
-  const safeFollowUpPage = Math.min(followUpPage, followUpPageCount);
+  const followUpBasePageCount = Math.max(1, Math.ceil(Math.max(followUpTotal, filteredFollowUps.length) / followUpPageSize));
+  const safeFollowUpPage = onFetchFollowUpsPage ? Math.max(1, followUpPage) : Math.min(followUpPage, followUpBasePageCount);
+  const followUpPageCount = Math.max(safeFollowUpPage, followUpBasePageCount, onFetchFollowUpsPage && filteredFollowUps.length >= followUpPageSize ? safeFollowUpPage + 1 : 1);
   const meetingTotal = meetingPagination?.count ?? filteredSalesMeetings.length;
-  const meetingPageCount = Math.max(1, Math.ceil(Math.max(meetingTotal, filteredSalesMeetings.length) / meetingPageSize));
-  const safeMeetingPage = Math.min(meetingPage, meetingPageCount);
+  const meetingBasePageCount = Math.max(1, Math.ceil(Math.max(meetingTotal, filteredSalesMeetings.length) / meetingPageSize));
+  const safeMeetingPage = onFetchMeetingsPage ? Math.max(1, meetingPage) : Math.min(meetingPage, meetingBasePageCount);
+  const meetingPageCount = Math.max(safeMeetingPage, meetingBasePageCount, onFetchMeetingsPage && filteredSalesMeetings.length >= meetingPageSize ? safeMeetingPage + 1 : 1);
   const isLeadsLoading = Boolean(leadPagination?.loading);
   const isPipelineLoading = Boolean(dealPagination?.loading);
   const isFollowUpsLoading = Boolean(followUpPagination?.loading);
@@ -1838,7 +1848,7 @@ export default function CrmModule({
               <div className="text-gray-500 dark:text-neutral-400">
                 {leadPagination?.loading ? "Loading leads..." : (
                   <>
-                    Showing <span className="font-bold text-gray-800 dark:text-white">{leadPageStart}</span>-<span className="font-bold text-gray-800 dark:text-white">{leadPageEnd}</span> of <span className="font-bold text-gray-800 dark:text-white">{leadTotalForPagination}</span> leads
+                    Showing <span className="font-bold text-gray-800 dark:text-white">{leadPageStart}</span>-<span className="font-bold text-gray-800 dark:text-white">{leadPageEnd}</span> of <span className="font-bold text-gray-800 dark:text-white">{leadDisplayTotal}{leadTotalIsEstimated ? "+" : ""}</span> leads
                   </>
                 )}
               </div>
