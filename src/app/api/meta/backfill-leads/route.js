@@ -1,6 +1,7 @@
 import { createClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
 import { cleanPhone, cleanText, getBearerToken, isBodyTooLarge, isJsonRequest, normalizeEmail } from "@/lib/apiSecurity";
+import { cacheDel } from "@/lib/upstashCache";
 
 const CRM_ROLES = new Set(["super_admin", "admin", "hr", "sales_head", "sales_executive", "telecaller"]);
 
@@ -212,8 +213,12 @@ export async function POST(request) {
       .from("leads")
       .update(updatePayload)
       .eq("id", lead.id)
-      .select("id, name, phone, email, service, meta_lead_id")
+      .select("*")
       .single();
+
+    if (!updateError && updatedLead) {
+      await cacheDel("crm:leads-summary:all");
+    }
 
     results.push({
       id: lead.id,
