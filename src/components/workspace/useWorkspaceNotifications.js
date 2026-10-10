@@ -6,10 +6,68 @@ import { safeInternalPath } from "@/lib/safeUrl";
 import { playNotificationSound } from "@/lib/notificationSound";
 import {
   deleteNotification,
+  getSalesFollowUps,
+  getSalesMeetings,
+  getAuthToken,
   markAllNotificationsRead,
   markNotificationRead,
   saveNotificationPreferences,
 } from "@/services/supabaseService";
+
+const REMINDER_WINDOW_MS = 10 * 60 * 1000;
+const REMINDER_SCAN_MS = 30_000;
+const MAX_REMINDER_KEYS = 500;
+
+function readStoredKeys(storageKey) {
+  if (typeof window === "undefined") return [];
+  try {
+    const parsed = JSON.parse(localStorage.getItem(storageKey) || "[]");
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+function writeStoredKeys(storageKey, keys) {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.setItem(storageKey, JSON.stringify(Array.from(new Set(keys)).slice(-MAX_REMINDER_KEYS)));
+  } catch {}
+}
+
+function mergeRowsById(...groups) {
+  const map = new Map();
+  groups.flat().forEach((item) => {
+    if (!item?.id) return;
+    map.set(item.id, { ...(map.get(item.id) || {}), ...item });
+  });
+  return Array.from(map.values());
+}
+
+function isUpcomingWithin(dateValue, now = Date.now()) {
+  if (!dateValue) return false;
+  const time = new Date(dateValue).getTime();
+  if (!Number.isFinite(time)) return false;
+  const diff = time - now;
+  return diff > 0 && diff <= REMINDER_WINDOW_MS;
+}
+
+function isPendingFollowUp(item) {
+  return String(item?.status || "").toLowerCase() === "pending";
+}
+
+function isScheduledMeeting(item) {
+  return ["scheduled", "pending", "upcoming"].includes(String(item?.status || "").toLowerCase());
+}
+
+function urlBase64ToUint8Array(base64String) {
+  const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
+  const base64 = `${base64String}${padding}`.replace(/-/g, "+").replace(/_/g, "/");
+  const rawData = window.atob(base64);
+  const outputArray = new Uint8Array(rawData.length);
+  for (let i = 0; i < rawData.length; i += 1) outputArray[i] = rawData.charCodeAt(i);
+  return outputArray;
+}
 
 export function useWorkspaceNotifications({
   sessionUser,
@@ -124,6 +182,58 @@ export function useWorkspaceNotifications({
   }, [sessionUser?.id]);
 
   useEffect(() => {
+    if (!sessionUser?.id || typeof window === "undefined") return undefined;
+    if (!("Notification" in window) || !("serviceWorker" in navigator) || !("PushManager" in window)) return undefined;
+
+    let cancelled = false;
+    const setupPushNotifications = async () => {
+      try {
+        const keyResponse = await fetch("/api/notifications/push-vapid-key", { cache: "no-store" });
+        const keyResult = await keyResponse.json().catch(() => ({}));
+        const publicKey = keyResult.publicKey || "";
+        if (!publicKey) return;
+
+        let permission = window.Notification.permission;
+        if (permission === "default") {
+          permission = await window.Notification.requestPermission();
+        }
+        if (cancelled || permission !== "granted") return;
+
+        const registration = await navigator.serviceWorker.ready;
+        let subscription = await registration.pushManager.getSubscription();
+        if (!subscription) {
+          subscription = await registration.pushManager.subscribe({
+            userVisibleOnly: true,
+            applicationServerKey: urlBase64ToUint8Array(publicKey),
+          });
+        }
+
+        const token = await getAuthToken();
+        if (!token || cancelled) return;
+        await fetch("/api/notifications/push-subscription", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            subscription: subscription.toJSON(),
+            user_agent: navigator.userAgent,
+          }),
+        });
+      } catch (error) {
+        console.warn("Push notification registration skipped:", error?.message || error);
+      }
+    };
+
+    const timer = setTimeout(setupPushNotifications, 1200);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [sessionUser?.id]);
+
+  useEffect(() => {
     if (!sessionUser?.id) return undefined;
 
     const storageKey = `texweb_overdue_followup_alerted_${sessionUser.id}`;
@@ -166,44 +276,78 @@ export function useWorkspaceNotifications({
   useEffect(() => {
     if (!sessionUser?.id) return undefined;
 
-    const storageKey = `texweb_sales_meeting_10min_alerted_${sessionUser.id}`;
-    const checkUpcomingSalesMeetings = () => {
+    const followUpStorageKey = `texweb_sales_followup_10min_alerted_${sessionUser.id}`;
+    const meetingStorageKey = `texweb_sales_meeting_10min_alerted_${sessionUser.id}`;
+    let cancelled = false;
+
+    const checkUpcomingReminders = async () => {
       const now = Date.now();
-      const upcoming = salesMeetings.filter((item) => {
-        if (item.status !== "scheduled" || !item.scheduled_at) return false;
-        const startsAt = new Date(item.scheduled_at).getTime();
-        const diff = startsAt - now;
-        return diff <= 10 * 60 * 1000 && diff > 0;
-      });
-      if (!upcoming.length) return;
+      const nowIso = new Date(now).toISOString();
+      const reminderEndIso = new Date(now + REMINDER_WINDOW_MS).toISOString();
+      let fetchedFollowUps = [];
+      let fetchedMeetings = [];
 
-      let alerted = [];
       try {
-        alerted = JSON.parse(localStorage.getItem(storageKey) || "[]");
-      } catch {
-        alerted = [];
-      }
-      const alertedSet = new Set(alerted);
-      const fresh = upcoming.filter((item) => !alertedSet.has(`${item.id}:${item.scheduled_at}`));
-      if (!fresh.length) return;
-
-      const first = fresh[0];
-      const title = fresh.length === 1 ? "Client meeting in 10 minutes" : `${fresh.length} client meetings soon`;
-      const message = fresh.length === 1
-        ? `${first.title || "Sales meeting"} starts at ${new Date(first.scheduled_at).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })}. Send WhatsApp or call the client now.`
-        : "Open Sales Meetings and confirm clients on WhatsApp/call.";
-      pushLiveSalesNotification(title, message, "meeting", "/workspace?section=sales_meetings");
-
-      const nextAlerted = Array.from(new Set([...alerted, ...fresh.map((item) => `${item.id}:${item.scheduled_at}`)])).slice(-300);
-      try {
-        localStorage.setItem(storageKey, JSON.stringify(nextAlerted));
+        const result = await getSalesFollowUps({
+          page: 1,
+          pageSize: 50,
+          status: "pending",
+          dateFrom: nowIso,
+          dateTo: reminderEndIso,
+        });
+        fetchedFollowUps = Array.isArray(result?.data) ? result.data : Array.isArray(result) ? result : [];
       } catch {}
+
+      try {
+        const result = await getSalesMeetings({
+          page: 1,
+          pageSize: 50,
+          dateFrom: nowIso,
+          dateTo: reminderEndIso,
+        });
+        fetchedMeetings = Array.isArray(result?.data) ? result.data : Array.isArray(result) ? result : [];
+      } catch {}
+
+      if (cancelled) return;
+
+      const upcomingFollowUps = mergeRowsById(salesFollowUps, fetchedFollowUps)
+        .filter((item) => isPendingFollowUp(item) && isUpcomingWithin(item.due_at, now));
+      const followUpAlerted = readStoredKeys(followUpStorageKey);
+      const followUpAlertedSet = new Set(followUpAlerted);
+      const freshFollowUps = upcomingFollowUps.filter((item) => !followUpAlertedSet.has(`${item.id}:${item.due_at}`));
+      if (freshFollowUps.length) {
+        const first = freshFollowUps[0];
+        const title = freshFollowUps.length === 1 ? "Follow-up reminder in 10 minutes" : `${freshFollowUps.length} follow-ups due soon`;
+        const message = freshFollowUps.length === 1
+          ? `${first.title || "Sales follow-up"} is due at ${new Date(first.due_at).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })}. Call or WhatsApp the client.`
+          : "Open Sales Follow-ups and complete the due calls/WhatsApp actions.";
+        pushLiveSalesNotification(title, message, "lead", "/workspace?section=sales_followups");
+        writeStoredKeys(followUpStorageKey, [...followUpAlerted, ...freshFollowUps.map((item) => `${item.id}:${item.due_at}`)]);
+      }
+
+      const upcomingMeetings = mergeRowsById(salesMeetings, fetchedMeetings)
+        .filter((item) => isScheduledMeeting(item) && isUpcomingWithin(item.scheduled_at, now));
+      const meetingAlerted = readStoredKeys(meetingStorageKey);
+      const meetingAlertedSet = new Set(meetingAlerted);
+      const freshMeetings = upcomingMeetings.filter((item) => !meetingAlertedSet.has(`${item.id}:${item.scheduled_at}`));
+      if (freshMeetings.length) {
+        const first = freshMeetings[0];
+        const title = freshMeetings.length === 1 ? "Client meeting in 10 minutes" : `${freshMeetings.length} client meetings soon`;
+        const message = freshMeetings.length === 1
+          ? `${first.title || "Sales meeting"} starts at ${new Date(first.scheduled_at).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })}. Send WhatsApp or call the client now.`
+          : "Open Sales Meetings and confirm clients on WhatsApp/call.";
+        pushLiveSalesNotification(title, message, "meeting", "/workspace?section=sales_meetings");
+        writeStoredKeys(meetingStorageKey, [...meetingAlerted, ...freshMeetings.map((item) => `${item.id}:${item.scheduled_at}`)]);
+      }
     };
 
-    checkUpcomingSalesMeetings();
-    const timer = setInterval(checkUpcomingSalesMeetings, 60_000);
-    return () => clearInterval(timer);
-  }, [salesMeetings, sessionUser?.id]);
+    checkUpcomingReminders();
+    const timer = setInterval(checkUpcomingReminders, REMINDER_SCAN_MS);
+    return () => {
+      cancelled = true;
+      clearInterval(timer);
+    };
+  }, [salesFollowUps, salesMeetings, sessionUser?.id]);
 
   return {
     notifications,

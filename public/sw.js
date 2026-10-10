@@ -79,7 +79,11 @@ self.addEventListener('fetch', (event) => {
 
 // Push Notification Listener (For future real-time task & meeting notifications)
 self.addEventListener('push', (event) => {
-  let data = { title: 'TexWeb Solution', body: 'New notification!', url: '/' };
+  let data = {
+    title: 'TexWeb Reminder',
+    body: 'A CRM follow-up or meeting reminder is waiting.',
+    url: '/workspace?section=alerts'
+  };
   try {
     data = event.data ? { ...data, ...event.data.json() } : data;
   } catch {

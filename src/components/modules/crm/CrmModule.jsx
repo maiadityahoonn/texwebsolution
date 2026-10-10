@@ -4401,7 +4401,12 @@ export default function CrmModule({
                           <div className="font-semibold text-gray-900 dark:text-white">{client?.name || lead?.name || "Unlinked"}</div>
                           <div className="text-[11px] text-gray-500">{client ? "Client" : lead ? "Lead" : "General"}</div>
                         </td>
-                        <td className="py-3.5 px-4 capitalize font-semibold text-gray-700 dark:text-neutral-200">{item.channel}</td>
+                        <td className="py-3.5 px-4">
+                          <div className="capitalize font-semibold text-gray-700 dark:text-neutral-200">{item.channel}</div>
+                          <div className="text-[11px] text-gray-500 dark:text-neutral-400 font-mono">
+                            {contactPhone || "-"}
+                          </div>
+                        </td>
                         <td className="py-3.5 px-4 text-gray-500 text-xs">{new Date(item.due_at).toLocaleString("en-IN")}</td>
                         <td className="py-3.5 px-4">
                           <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase ${
@@ -5036,7 +5041,7 @@ export default function CrmModule({
                   </button>
                 )}
 
-                {selectedLeadIsLost ? (
+                {selectedLeadIsLost && (
                   <button
                     type="button"
                     onClick={() => handleReopenLead(selectedLead, selectedLeadDeal)}
@@ -5045,18 +5050,6 @@ export default function CrmModule({
                   >
                     <RotateCcw className="w-3.5 h-3.5" />
                     <span>Restore Lead to Active</span>
-                  </button>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setSelectedLead(null);
-                      onConvertToClientAndProject?.(selectedLead);
-                    }}
-                    className="px-3.5 py-1.5 rounded-xl text-xs font-bold bg-orange-600 hover:bg-orange-700 text-white transition flex items-center gap-1.5 shadow-sm cursor-pointer"
-                  >
-                    <Briefcase className="w-3.5 h-3.5" />
-                    <span>Convert to Project</span>
                   </button>
                 )}
               </div>

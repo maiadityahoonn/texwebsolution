@@ -2049,6 +2049,12 @@ export default function AuthenticatedWorkspace({ defaultSection = "overview" } =
     return meta;
   }, [notifications]);
 
+  const blockingReminderNotifications = useMemo(() => {
+    return (notifications || [])
+      .filter((item) => !item.is_read && item?.metadata?.requires_ack && item?.metadata?.reminder)
+      .slice(0, 10);
+  }, [notifications]);
+
   // Sort batches dynamically: Most recent message appears on top (WhatsApp style)
   const sortedChatBatches = useMemo(() => {
     return [...availableChatBatches].sort((a, b) => {
@@ -16783,6 +16789,84 @@ export default function AuthenticatedWorkspace({ defaultSection = "overview" } =
                 className="px-4 py-2 rounded-xl bg-orange-600 hover:bg-orange-700 text-white text-sm font-black shadow-lg shadow-orange-600/20 transition cursor-pointer"
               >
                 Open CRM Leads
+              </button>
+            </div>
+          </div>
+        </ModalWrapper>
+      )}
+
+      {blockingReminderNotifications.length > 0 && (
+        <ModalWrapper
+          isDark={isDark}
+          title="Action reminder"
+          subtitle={`${blockingReminderNotifications.length} follow-up/meeting reminder${blockingReminderNotifications.length > 1 ? "s" : ""} need attention`}
+          maxWidth="max-w-xl"
+        >
+          <div className="space-y-3">
+            <div className="rounded-2xl border border-red-200 bg-red-50/90 dark:border-red-500/30 dark:bg-red-500/10 p-3">
+              <div className="flex items-start gap-3">
+                <span className="w-9 h-9 rounded-2xl bg-red-600 text-white flex items-center justify-center shrink-0">
+                  <Bell className="w-4 h-4" />
+                </span>
+                <div className="min-w-0">
+                  <p className="text-sm font-black text-gray-950 dark:text-white">Reminder dekhna required hai.</p>
+                  <p className="text-xs text-gray-600 dark:text-slate-300 mt-1">
+                    Follow-up/meeting time near hai. Is popup ko close karne ke liye reminder acknowledge karo ya related page open karo.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="max-h-[42vh] overflow-y-auto space-y-2 pr-1">
+              {blockingReminderNotifications.map((item) => (
+                <div
+                  key={item.id}
+                  className="rounded-2xl border border-gray-200 dark:border-slate-800 bg-white dark:bg-slate-950/60 p-3"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="text-sm font-black text-gray-950 dark:text-white truncate" title={item.title}>{item.title}</p>
+                      <p className="text-xs text-gray-600 dark:text-slate-300 mt-1 leading-relaxed">{item.message}</p>
+                    </div>
+                    <span className="shrink-0 rounded-full bg-red-50 text-red-700 dark:bg-red-500/10 dark:text-red-300 px-2.5 py-1 text-[10px] font-black uppercase">
+                      {item.type || "reminder"}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="flex flex-col sm:flex-row sm:justify-end gap-2 pt-2 border-t border-gray-100 dark:border-slate-800">
+              <button
+                type="button"
+                onClick={async () => {
+                  for (const item of blockingReminderNotifications) {
+                    await handleReadNotification(item);
+                  }
+                }}
+                className="px-4 py-2 rounded-xl border border-gray-200 dark:border-slate-700 text-sm font-bold text-gray-700 dark:text-slate-200 hover:bg-gray-50 dark:hover:bg-slate-800 transition cursor-pointer"
+              >
+                Acknowledge All
+              </button>
+              <button
+                type="button"
+                onClick={async () => {
+                  const first = blockingReminderNotifications[0];
+                  await handleReadNotification(first);
+                  if (first?.link_url) {
+                    try {
+                      const url = new URL(first.link_url, window.location.origin);
+                      selectSection(url.searchParams.get("section") || "alerts");
+                    } catch {
+                      selectSection("alerts");
+                    }
+                  } else {
+                    selectSection("alerts");
+                  }
+                }}
+                className="px-4 py-2 rounded-xl bg-orange-600 hover:bg-orange-700 text-white text-sm font-black shadow-lg shadow-orange-600/20 transition cursor-pointer"
+              >
+                Open Reminder
               </button>
             </div>
           </div>
