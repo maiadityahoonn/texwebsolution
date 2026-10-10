@@ -89,6 +89,17 @@ function sanitizeMetaPhone(phone) {
   return cleanPhone(clean) || clean;
 }
 
+function normalizeMetaBudgetName(val) {
+  if (!val) return "";
+  const b = String(val).toLowerCase().replace(/_/g, " ").trim();
+  if (b.includes("below") && b.includes("40")) return "Below Rs. 40,000";
+  if (b.includes("80") && b.includes("100")) return "Rs. 80,000 - Rs. 1,00,000";
+  if (b.includes("40") && b.includes("80")) return "Rs. 40,000 - Rs. 80,000";
+  if (b.includes("above") && b.includes("40")) return "Above Rs. 40,000";
+  if (b.includes("above") || b.includes("100")) return "Above Rs. 1,00,000";
+  return cleanText(val, 80).replace(/_/g, " ");
+}
+
 function firstValue(body, keys = []) {
   for (const key of keys) {
     const value = body?.[key];
@@ -205,7 +216,7 @@ export async function POST(request) {
       const phone = sanitizeMetaPhone(directPhone);
       const email = normalizeEmail(directEmail);
       const service = normalizeServiceName(firstValue(body, ["service", "service_required", "what_does_your_business_need?", "what_service_are_you_looking_for?"]));
-      const budget = normalizeBudgetName(firstValue(body, ["budget", "budget_range", "what_is_your_approximate_budget_for_this_project?", "choose_your_budget_range?"]));
+      const budget = normalizeMetaBudgetName(firstValue(body, ["budget", "budget_range", "what_is_your_approximate_budget_for_this_project?", "choose_your_budget_range?"]));
       const city = cleanText(firstValue(body, ["city", "शहर"]), 80);
       const state = cleanText(firstValue(body, ["state", "राज्य"]), 80);
       const platform = (body.platform === "fb" ? "Facebook" : body.platform === "ig" ? "Instagram" : "Meta Ads");
@@ -275,7 +286,7 @@ export async function POST(request) {
       const phone = sanitizeMetaPhone(body.phone || body.phone_number || body["मोबाइल"]);
       const email = normalizeEmail(body.email || body["ईमेल"]);
       const service = normalizeServiceName(body.service || body.service_required || body["what_does_your_business_need?"] || body["what_service_are_you_looking_for?"]);
-      const budget = normalizeBudgetName(body.budget || body.budget_range || body["what_is_your_approximate_budget_for_this_project?"] || body["choose_your_budget_range?"]);
+      const budget = normalizeMetaBudgetName(body.budget || body.budget_range || body["what_is_your_approximate_budget_for_this_project?"] || body["choose_your_budget_range?"]);
       const city = cleanText(body.city, 80);
       const state = cleanText(body.state, 80);
       const platform = (body.platform === "fb" ? "Facebook" : body.platform === "ig" ? "Instagram" : "Meta Ads");
@@ -371,7 +382,7 @@ export async function POST(request) {
                   const notes = [
                     leadData.ad_name ? `Ad: ${leadData.ad_name}` : null,
                     leadData.campaign_name ? `Campaign: ${leadData.campaign_name}` : null,
-                    budgetVal ? `Budget: ${normalizeBudgetName(budgetVal)}` : null,
+                    budgetVal ? `Budget: ${normalizeMetaBudgetName(budgetVal)}` : null,
                     city || state ? `Location: ${[city, state].filter(Boolean).join(", ")}` : null,
                     `Meta ID: ${leadgenId}`,
                   ].filter(Boolean).join(" | ");
@@ -388,6 +399,10 @@ export async function POST(request) {
                       ad_id: adId || null,
                       form_id: formId || null,
                       form_name: null,
+                      platform: "Meta Ads",
+                      budget_range: normalizeMetaBudgetName(budgetVal) || null,
+                      city: cleanText(city, 80) || null,
+                      state: cleanText(state, 80) || null,
                       raw_metadata: {
                         source: "meta_leadgen_webhook",
                         form_answers: Object.fromEntries(fieldData.map((field) => [field.name, field.values?.[0] || ""])),

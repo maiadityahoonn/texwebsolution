@@ -62,6 +62,7 @@ function normalizeBudgetName(value) {
   if (text.includes("below") && text.includes("40")) return "Below Rs. 40,000";
   if (text.includes("80") && text.includes("100")) return "Rs. 80,000 - Rs. 1,00,000";
   if (text.includes("40") && text.includes("80")) return "Rs. 40,000 - Rs. 80,000";
+  if (text.includes("above") && text.includes("40")) return "Above Rs. 40,000";
   if (text.includes("above") || text.includes("100")) return "Above Rs. 1,00,000";
   return cleanText(value, 100);
 }
