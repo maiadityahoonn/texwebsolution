@@ -46,25 +46,15 @@ function extractMetaLeadId(lead = {}) {
 }
 
 function normalizeServiceName(value) {
-  if (!value) return "Meta Inbound Lead";
-  const text = String(value).toLowerCase().replace(/[_-]/g, " ").trim();
-  if (text.includes("website") || text.includes("web")) return "Website Development";
-  if (text.includes("ai") || text.includes("bot") || text.includes("automation")) return "AI Automation & Bots";
-  if (text.includes("mobile") || text.includes("app")) return "Mobile App Development";
-  if (text.includes("digital") || text.includes("marketing") || text.includes("ads")) return "Digital Marketing & Ads";
-  if (text.includes("custom") || text.includes("software") || text.includes("crm")) return "Custom Software";
-  return cleanText(value, 120);
+  return cleanMetaAnswerLabel(value || "Meta Inbound Lead", 120);
 }
 
 function normalizeBudgetName(value) {
-  if (!value) return "";
-  const text = String(value).toLowerCase().replace(/[_-]/g, " ").trim();
-  if (text.includes("below") && text.includes("40")) return "Below Rs. 40,000";
-  if (text.includes("80") && text.includes("100")) return "Rs. 80,000 - Rs. 1,00,000";
-  if (text.includes("40") && text.includes("80")) return "Rs. 40,000 - Rs. 80,000";
-  if (text.includes("above") && text.includes("40")) return "Above Rs. 40,000";
-  if (text.includes("above") || text.includes("100")) return "Above Rs. 1,00,000";
-  return cleanText(value, 100);
+  return cleanMetaAnswerLabel(value, 100);
+}
+
+function cleanMetaAnswerLabel(value, max = 120) {
+  return cleanText(value, max);
 }
 
 function getField(fieldData = [], keys = []) {

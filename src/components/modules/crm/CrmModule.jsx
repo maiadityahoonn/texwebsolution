@@ -649,7 +649,7 @@ function getLeadRawFormAnswers(lead) {
   if (!answers || typeof answers !== "object" || Array.isArray(answers)) return [];
   return Object.entries(answers).map(([label, value]) => ({
     key: String(label || "").toLowerCase(),
-    label: String(label || "").replace(/_/g, " ").replace(/\s+/g, " ").trim(),
+    label: String(label || "").trim(),
     value: Array.isArray(value) ? value.join(", ") : value,
   }));
 }
@@ -4916,17 +4916,17 @@ export default function CrmModule({
                 Form Answers
               </span>
               {getLeadFormAnswers(selectedLead).length > 0 ? (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <div className="overflow-hidden rounded-lg border border-gray-100 dark:border-slate-700 bg-white/70 dark:bg-slate-900/40">
                   {getLeadFormAnswers(selectedLead).map((answer) => (
                     <div
                       key={answer.label}
-                      className="rounded-lg border border-gray-100 dark:border-slate-700 bg-white/70 dark:bg-slate-900/40 p-2 min-w-0"
+                      className="grid grid-cols-1 sm:grid-cols-[220px_minmax(0,1fr)] gap-1 sm:gap-3 px-3 py-2 border-b border-gray-100 dark:border-slate-700 last:border-b-0"
                     >
-                      <span className="text-[10px] text-gray-400 block truncate" title={answer.label}>
+                      <span className="text-[10px] sm:text-[11px] text-gray-400 font-bold break-all" title={answer.label}>
                         {answer.label}
                       </span>
                       <span
-                        className="font-semibold text-gray-800 dark:text-white block truncate"
+                        className="font-semibold text-gray-800 dark:text-white break-words font-mono"
                         title={answer.value}
                       >
                         {answer.value}

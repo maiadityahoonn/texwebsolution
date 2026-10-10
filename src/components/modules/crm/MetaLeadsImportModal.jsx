@@ -37,14 +37,7 @@ function cleanMetaPhone(val) {
 }
 
 function cleanMetaService(val) {
-  if (!val) return "Meta Inbound Lead";
-  const s = String(val).toLowerCase().replace(/_/g, " ").replace(/-/g, " ").trim();
-  if (s.includes("website") || s.includes("web")) return "Website Development";
-  if (s.includes("mobile") || s.includes("app")) return "Mobile App Development";
-  if (s.includes("digital") || s.includes("marketing") || s.includes("lead")) return "Digital Marketing & Ads";
-  if (s.includes("software") || s.includes("crm") || s.includes("manage")) return "Custom Software";
-  if (s.includes("automation") || s.includes("ai") || s.includes("bot")) return "AI Automation & Bots";
-  return String(val).replace(/_/g, " ").trim();
+  return cleanMetaAnswerLabel(val || "Meta Inbound Lead");
 }
 
 function cleanMetaBudget(val) {
@@ -67,14 +60,11 @@ function normalizeHeader(value) {
 }
 
 function cleanMetaBudgetValue(val) {
-  if (!val) return "";
-  const b = String(val).toLowerCase().replace(/_/g, " ").trim();
-  if (b.includes("below") && b.includes("40")) return "Below Rs. 40,000";
-  if (b.includes("80") && b.includes("100")) return "Rs. 80,000 - Rs. 1,00,000";
-  if (b.includes("40") && b.includes("80")) return "Rs. 40,000 - Rs. 80,000";
-  if (b.includes("above") && b.includes("40")) return "Above Rs. 40,000";
-  if (b.includes("above") || b.includes("100")) return "Above Rs. 1,00,000";
-  return String(val).replace(/_/g, " ");
+  return cleanMetaAnswerLabel(val);
+}
+
+function cleanMetaAnswerLabel(value) {
+  return String(value || "").trim();
 }
 
 function pickFirstValue(cols, indexes) {

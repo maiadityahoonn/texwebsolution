@@ -48,14 +48,7 @@ function getAdminClient() {
 
 // Format Meta Service value to human friendly text
 function normalizeServiceName(val) {
-  if (!val) return "General Inquiry";
-  const s = String(val).toLowerCase().replace(/_/g, " ").replace(/-/g, " ").trim();
-  if (s.includes("website") || s.includes("web")) return "Website Development";
-  if (s.includes("ai") || s.includes("bot") || s.includes("automation")) return "AI Automation & Bots";
-  if (s.includes("mobile") || s.includes("app")) return "Mobile App Development";
-  if (s.includes("digital") || s.includes("marketing")) return "Digital Marketing & Ads";
-  if (s.includes("custom") || s.includes("software")) return "Custom Software";
-  return cleanText(val, 100);
+  return cleanMetaAnswerLabel(val || "General Inquiry", 100);
 }
 
 // Format Meta Budget value to human friendly text
@@ -90,14 +83,11 @@ function sanitizeMetaPhone(phone) {
 }
 
 function normalizeMetaBudgetName(val) {
-  if (!val) return "";
-  const b = String(val).toLowerCase().replace(/_/g, " ").trim();
-  if (b.includes("below") && b.includes("40")) return "Below Rs. 40,000";
-  if (b.includes("80") && b.includes("100")) return "Rs. 80,000 - Rs. 1,00,000";
-  if (b.includes("40") && b.includes("80")) return "Rs. 40,000 - Rs. 80,000";
-  if (b.includes("above") && b.includes("40")) return "Above Rs. 40,000";
-  if (b.includes("above") || b.includes("100")) return "Above Rs. 1,00,000";
-  return cleanText(val, 80).replace(/_/g, " ");
+  return cleanMetaAnswerLabel(val, 80);
+}
+
+function cleanMetaAnswerLabel(value, max = 120) {
+  return cleanText(value, max);
 }
 
 function firstValue(body, keys = []) {
