@@ -2135,6 +2135,9 @@ const LOCAL_DEALS_KEY = 'texweb_cache_deals';
 const LOCAL_PROPOSALS_KEY = 'texweb_cache_proposals';
 const LOCAL_QUOTATIONS_KEY = 'texweb_cache_quotations';
 const LOCAL_AGREEMENTS_KEY = 'texweb_cache_agreements';
+const LOCAL_AI_THREADS_KEY = 'texweb_cache_ai_threads';
+const LOCAL_AI_MESSAGES_KEY = 'texweb_cache_ai_messages';
+const LOCAL_AI_DRAFTS_KEY = 'texweb_cache_ai_drafts';
 const LOCAL_SALES_FOLLOWUPS_KEY = 'texweb_cache_sales_followups';
 const LOCAL_SALES_MEETINGS_KEY = 'texweb_cache_sales_meetings';
 const LOCAL_PROJECTS_KEY = 'texweb_cache_projects';
@@ -2188,6 +2191,173 @@ const AGREEMENT_COLUMNS = ['agreement_number', 'deal_id', 'proposal_id', 'quotat
 const SALES_FOLLOWUP_COLUMNS = ['lead_id', 'deal_id', 'assigned_to', 'title', 'channel', 'due_at', 'status', 'priority', 'notes', 'completed_at', 'created_by'];
 const SALES_MEETING_COLUMNS = ['lead_id', 'deal_id', 'host_id', 'title', 'meeting_type', 'scheduled_at', 'duration_minutes', 'meeting_link', 'location', 'status', 'agenda', 'outcome', 'next_action', 'created_by'];
 const INVOICE_COLUMNS = ['invoice_number', 'deal_id', 'project_id', 'title', 'amount', 'tax_amount', 'total_amount', 'due_date', 'status', 'milestone_type', 'payment_terms', 'notes', 'pdf_url', 'created_by'];
+
+export async function getAiThread({ deal_id, document_type = 'quotation' } = {}) {
+  const localThreads = readLocalCache(LOCAL_AI_THREADS_KEY, []);
+  try {
+    if (!deal_id) return null;
+    const { data, error } = await supabase
+      .from('ai_document_threads')
+      .select('*')
+      .eq('deal_id', deal_id)
+      .eq('document_type', document_type)
+      .maybeSingle();
+    if (error) throw error;
+    if (data) {
+      writeLocalCache(LOCAL_AI_THREADS_KEY, mergeCloudAndLocal([data], localThreads));
+      return data;
+    }
+    return null;
+  } catch (err) {
+    console.warn('Fallback: getAiThread from cache:', err.message);
+    return localThreads.find((item) => item.deal_id === deal_id && item.document_type === document_type) || null;
+  }
+}
+
+export async function createAiThread(threadData = {}) {
+  try {
+    const payload = {
+      deal_id: threadData.deal_id || null,
+      lead_id: threadData.lead_id || null,
+      client_id: threadData.client_id || null,
+      document_type: threadData.document_type || 'quotation',
+      title: threadData.title || 'AI document thread',
+      created_by: threadData.created_by || null,
+    };
+    const { data, error } = await supabase
+      .from('ai_document_threads')
+      .insert([payload])
+      .select();
+    if (error) throw error;
+    const created = data?.[0] || payload;
+    writeLocalCache(LOCAL_AI_THREADS_KEY, [created, ...readLocalCache(LOCAL_AI_THREADS_KEY, [])]);
+    return created;
+  } catch (err) {
+    console.warn('Fallback: createAiThread in cache:', err.message);
+    const fallback = {
+      ...threadData,
+      id: `ai-thread-${Date.now()}`,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    };
+    writeLocalCache(LOCAL_AI_THREADS_KEY, [fallback, ...readLocalCache(LOCAL_AI_THREADS_KEY, [])]);
+    return fallback;
+  }
+}
+
+export async function getAiMessages(threadId) {
+  if (!threadId) return [];
+  try {
+    const { data, error } = await supabase
+      .from('ai_document_messages')
+      .select('*')
+      .eq('thread_id', threadId)
+      .order('created_at', { ascending: true })
+      .limit(200);
+    if (error) throw error;
+    const local = readLocalCache(LOCAL_AI_MESSAGES_KEY, []);
+    writeLocalCache(LOCAL_AI_MESSAGES_KEY, mergeCloudAndLocal(data || [], local));
+    return data || [];
+  } catch (err) {
+    console.warn('Fallback: getAiMessages from cache:', err.message);
+    return readLocalCache(LOCAL_AI_MESSAGES_KEY, []).filter((item) => item.thread_id === threadId);
+  }
+}
+
+export async function createAiMessage(messageData = {}) {
+  try {
+    const payload = {
+      thread_id: messageData.thread_id,
+      role: messageData.role || 'user',
+      content: messageData.content || '',
+      attachments: messageData.attachments || [],
+      created_by: messageData.created_by || null,
+    };
+    const { data, error } = await supabase
+      .from('ai_document_messages')
+      .insert([payload])
+      .select();
+    if (error) throw error;
+    const created = data?.[0] || payload;
+    writeLocalCache(LOCAL_AI_MESSAGES_KEY, [...readLocalCache(LOCAL_AI_MESSAGES_KEY, []), created]);
+    return created;
+  } catch (err) {
+    console.warn('Fallback: createAiMessage in cache:', err.message);
+    const fallback = {
+      ...messageData,
+      id: `ai-message-${Date.now()}-${Math.random().toString(16).slice(2)}`,
+      created_at: new Date().toISOString(),
+    };
+    writeLocalCache(LOCAL_AI_MESSAGES_KEY, [...readLocalCache(LOCAL_AI_MESSAGES_KEY, []), fallback]);
+    return fallback;
+  }
+}
+
+export async function createAiDraft(draftData = {}) {
+  try {
+    const payload = {
+      thread_id: draftData.thread_id || null,
+      deal_id: draftData.deal_id || null,
+      document_type: draftData.document_type || 'quotation',
+      title: draftData.title || '',
+      content: draftData.content || {},
+      status: draftData.status || 'draft',
+      sent_at: draftData.sent_at || null,
+      approved_at: draftData.approved_at || null,
+      created_by: draftData.created_by || null,
+    };
+    const { data, error } = await supabase
+      .from('ai_document_drafts')
+      .insert([payload])
+      .select();
+    if (error) throw error;
+    const created = data?.[0] || payload;
+    writeLocalCache(LOCAL_AI_DRAFTS_KEY, [created, ...readLocalCache(LOCAL_AI_DRAFTS_KEY, [])]);
+    return created;
+  } catch (err) {
+    console.warn('Fallback: createAiDraft in cache:', err.message);
+    const fallback = {
+      ...draftData,
+      id: `ai-draft-${Date.now()}`,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    };
+    writeLocalCache(LOCAL_AI_DRAFTS_KEY, [fallback, ...readLocalCache(LOCAL_AI_DRAFTS_KEY, [])]);
+    return fallback;
+  }
+}
+
+export async function generateAiDocumentDraft(payload = {}) {
+  const fallback = {
+    title: `${payload?.deal?.title || 'Client Project'} ${payload.documentType === 'agreement' ? 'Agreement' : 'Quotation'}`,
+    scope_of_work: payload.notes || payload?.deal?.notes || 'Requirement summary pending.',
+    deliverables: 'Project planning, implementation, QA, deployment support, and handover.',
+    commercial_terms: '40% advance, 30% milestone, 30% final before handover.',
+    notes: 'Template fallback draft.',
+  };
+  try {
+    const { data: sessionData } = await supabase.auth.getSession();
+    const token = sessionData?.session?.access_token;
+    const response = await fetch('/api/ai/document-draft', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: JSON.stringify(payload),
+    });
+    const result = await response.json();
+    if (!response.ok) throw new Error(result.error || 'AI draft request failed');
+    return result;
+  } catch (err) {
+    console.warn('AI document draft fallback:', err.message);
+    return {
+      draft: fallback,
+      assistantMessage: 'AI service unavailable; local template draft generated.',
+      mode: 'template',
+    };
+  }
+}
 
 export function createClientPortalToken() {
   const bytes = new Uint8Array(24);

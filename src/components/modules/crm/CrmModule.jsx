@@ -39,11 +39,21 @@ import {
   Video,
   ArrowDownAZ,
   Settings,
+  Mic,
+  Paperclip,
 } from "lucide-react";
 import ActivityTimeline from "../shared/ActivityTimeline";
 import MetaLeadsImportModal from "./MetaLeadsImportModal";
 import { playNotificationSound } from "@/lib/notificationSound";
-import { createInvoice } from "@/services/supabaseService";
+import {
+  createAiDraft,
+  createAiMessage,
+  createAiThread,
+  createInvoice,
+  generateAiDocumentDraft,
+  getAiMessages,
+  getAiThread,
+} from "@/services/supabaseService";
 
 function WhatsAppIcon({ className = "w-4 h-4" }) {
   return (
@@ -328,6 +338,141 @@ function CommercialsSkeleton() {
   );
 }
 
+function CommercialDocumentPreview({ form, type, deal, lead, client }) {
+  const isAgreement = type === "agreement";
+  const amount = Number(form.amount || deal?.deal_value || 0);
+  const docNumber = isAgreement ? form.agreement_number : form.quotation_number;
+  const contactName = client?.name || lead?.name || "Client Name";
+  const contactEmail = client?.email || lead?.email || "client@email.com";
+  const contactPhone = client?.phone || lead?.phone || "Client phone";
+
+  return (
+    <div className="rounded-2xl bg-gray-100 dark:bg-[#211d14] border border-gray-200 dark:border-[#3a3020] p-3 lg:sticky lg:top-3">
+      <div className="relative rounded-xl bg-white text-slate-900 shadow-sm border border-gray-200 overflow-hidden min-h-[620px]">
+        <div className="relative h-28 border-b-4 border-slate-950 overflow-hidden bg-white">
+          <div className="absolute -left-8 -top-8 grid grid-cols-6 gap-1 opacity-20">
+            {Array.from({ length: 36 }).map((_, index) => (
+              <span key={index} className="h-1.5 w-1.5 rounded-full bg-slate-500" />
+            ))}
+          </div>
+          <div className="absolute left-0 bottom-0 h-8 w-40 bg-slate-950 -skew-x-35 origin-bottom-left" />
+          <div className="absolute left-0 bottom-0 h-4 w-36 bg-red-600 -skew-x-35 origin-bottom-left translate-y-1" />
+          <div className="absolute right-0 top-0 h-full w-24 bg-slate-950 skew-x-35 translate-x-10" />
+          <div className="absolute right-0 top-7 h-5 w-32 bg-red-600 -skew-x-35 translate-x-3" />
+          <div className="relative z-10 flex h-full items-center justify-between gap-5 px-6">
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="h-14 w-14 rounded-xl bg-red-600 text-white flex items-center justify-center font-black text-2xl shadow-sm shrink-0">
+                TW
+              </div>
+              <div className="min-w-0">
+                <div className="text-2xl font-black leading-none tracking-tight text-slate-950">TEXWEB</div>
+                <div className="text-2xl font-black leading-none text-red-600">SOLUTION</div>
+                <div className="text-[10px] font-semibold text-slate-600 mt-1 truncate">Complete Digital Solutions for Your Business</div>
+              </div>
+            </div>
+            <div className="hidden sm:block h-16 w-px bg-slate-900/80" />
+            <div className="hidden sm:grid gap-1 text-[10px] font-semibold text-slate-700 shrink-0 pr-8">
+              {[
+                ["TEL", "0755-4601839"],
+                ["MAIL", "info@texwebsolution.in"],
+                ["WEB", "www.texwebsolution.in"],
+                ["PIN", "Kolkata | Bhopal"],
+              ].map(([icon, value]) => (
+                <div key={icon} className="flex items-center gap-2">
+                  <span className="h-5 w-5 rounded-full bg-red-600 text-white text-[8px] font-black flex items-center justify-center">{icon}</span>
+                  <span>{value}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        <div className="relative px-7 py-6 pb-28 min-h-[492px] overflow-hidden">
+          <div className="absolute inset-0 pointer-events-none">
+            <div className="absolute left-1/2 top-1/2 h-40 w-40 -translate-x-1/2 -translate-y-1/2 rounded-3xl bg-red-500/6 flex items-center justify-center text-white font-black text-6xl">
+              TW
+            </div>
+            <div className="absolute -left-20 bottom-14 h-40 w-[520px] rounded-[50%] border-t border-slate-200 rotate-[-14deg]" />
+            <div className="absolute -left-10 bottom-8 h-28 w-[520px] rounded-[50%] border-t border-red-200 rotate-[-10deg]" />
+            <div className="absolute -right-12 bottom-16 h-36 w-[420px] rounded-[50%] border-t border-slate-200 rotate-[-12deg]" />
+          </div>
+
+          <div className="relative z-10 space-y-4">
+            <div className="flex items-start justify-between gap-3 border-b border-slate-200 pb-3">
+              <div>
+                <div className="text-[10px] font-black uppercase tracking-wider text-red-600">{isAgreement ? "Agreement" : "Quotation"}</div>
+                <div className="text-lg font-black">{form.title || (isAgreement ? "Project Agreement" : "Project Quotation")}</div>
+              </div>
+              <div className="text-right text-[10px] text-slate-500">
+                <div className="font-black text-slate-900">{docNumber || "DOC-2026"}</div>
+                <div>{new Date().toLocaleDateString("en-IN")}</div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3 text-[11px]">
+              <div className="rounded-lg border border-slate-200 bg-white/80 p-3">
+                <div className="font-black uppercase text-slate-400 mb-1">Prepared For</div>
+                <div className="font-bold text-slate-900">{contactName}</div>
+                <div className="text-slate-500 break-words">{contactEmail}</div>
+                <div className="text-slate-500">{contactPhone}</div>
+              </div>
+              <div className="rounded-lg border border-slate-200 bg-white/80 p-3">
+                <div className="font-black uppercase text-slate-400 mb-1">Project</div>
+                <div className="font-bold text-slate-900">{deal?.title || form.title || "Client Project"}</div>
+                <div className="text-slate-500">{deal?.service || "Technology Services"}</div>
+                {!isAgreement && <div className="font-black text-emerald-700 mt-1">Rs. {amount.toLocaleString("en-IN")}</div>}
+              </div>
+            </div>
+
+            <div className="space-y-3 text-[11px] leading-relaxed">
+              <section>
+                <h4 className="text-[10px] font-black uppercase tracking-wider text-slate-400 mb-1">Scope of Work</h4>
+                <p className="whitespace-pre-wrap text-slate-700">{form.scope_of_work || "Scope will appear here."}</p>
+              </section>
+              <section>
+                <h4 className="text-[10px] font-black uppercase tracking-wider text-slate-400 mb-1">{isAgreement ? "Commercial Terms" : "Deliverables"}</h4>
+                <p className="whitespace-pre-wrap text-slate-700">{(isAgreement ? form.commercial_terms : form.deliverables) || "Details will appear here."}</p>
+              </section>
+              <section>
+                <h4 className="text-[10px] font-black uppercase tracking-wider text-slate-400 mb-1">Notes</h4>
+                <p className="whitespace-pre-wrap text-slate-600">{form.notes || "Review required before sending."}</p>
+              </section>
+            </div>
+
+            <div className="grid grid-cols-2 gap-8 text-[10px] pt-4">
+              <div>
+                <div className="h-10 border-b border-slate-300 mb-1" />
+                <div className="font-bold text-slate-600">TexWeb Authorized Signature</div>
+              </div>
+              <div>
+                <div className="h-10 border-b border-slate-300 mb-1" />
+                <div className="font-bold text-slate-600">Client Confirmation</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="absolute left-0 right-0 bottom-0 h-16 bg-slate-950 text-white overflow-hidden">
+          <div className="absolute left-0 top-0 h-8 w-32 bg-red-600 -skew-x-35 -translate-x-6" />
+          <div className="absolute right-0 top-0 h-full w-20 bg-red-600 skew-x-35 translate-x-8" />
+          <div className="relative z-10 h-full flex items-center justify-between gap-2 px-4 text-[9px]">
+            <div className="font-black leading-tight min-w-0">
+              <div>TexWeb Solution Private Limited</div>
+              <div className="font-semibold text-white/70">CIN: U85500WB2026PTC287896</div>
+            </div>
+            {["Website Development", "Mobile App Development", "E-commerce Solutions", "Digital Marketing", "SMM", "AI & Automation"].map((item) => (
+              <div key={item} className="hidden md:flex items-center gap-1 border-l border-red-600/70 pl-2 font-bold leading-tight">
+                <span className="h-4 w-4 rounded bg-red-600/20 text-red-400 flex items-center justify-center text-[8px]">+</span>
+                <span>{item}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 const PIPELINE_STAGES = [
   { id: "contacted", label: "Contacted", color: "bg-cyan-500" },
   { id: "qualified", label: "Meeting", color: "bg-indigo-500" },
@@ -463,6 +608,16 @@ function formatLeadAnswer(value) {
   return text;
 }
 
+function getLeadDisplayNotes(lead) {
+  const cleanParts = String(lead?.notes || "")
+    .split(/[|\n]+/)
+    .map((part) => part.trim())
+    .filter(Boolean)
+    .filter((part) => !/reason:\s*(error validating access token|session has expired|unsupported get request|missing permissions|graph api|oauth|access token)/i.test(part))
+    .filter((part) => !/error validating access token|session has expired|unsupported get request|missing permissions|oauth|access token/i.test(part));
+  return cleanParts.join(" | ");
+}
+
 function parseLeadNoteFields(lead) {
   const fields = [];
   String(lead?.notes || "")
@@ -487,6 +642,16 @@ function parseLeadNoteFields(lead) {
 function getLeadNoteValue(fields, labels) {
   const wanted = labels.map((label) => label.toLowerCase());
   return fields.find((field) => wanted.includes(field.key))?.value || "";
+}
+
+function getLeadRawFormAnswers(lead) {
+  const answers = lead?.raw_metadata?.form_answers || lead?.raw_metadata?.formAnswers || {};
+  if (!answers || typeof answers !== "object" || Array.isArray(answers)) return [];
+  return Object.entries(answers).map(([label, value]) => ({
+    key: String(label || "").toLowerCase(),
+    label: String(label || "").replace(/_/g, " ").replace(/\s+/g, " ").trim(),
+    value: Array.isArray(value) ? value.join(", ") : value,
+  }));
 }
 
 function getLeadFormAnswers(lead) {
@@ -522,9 +687,18 @@ function getLeadFormAnswers(lead) {
     "ad id",
     "adset id",
     "campaign id",
+    "reason",
   ]);
-  const extraFields = noteFields
+  const mergedFields = [...noteFields, ...getLeadRawFormAnswers(lead)];
+  const seen = new Set();
+  const extraFields = mergedFields
     .filter((field) => !reserved.has(field.key))
+    .filter((field) => {
+      const key = `${field.key}:${String(field.value || "").trim().toLowerCase()}`;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    })
     .map((field) => ({ label: field.label, value: field.value }));
   return [...baseFields, ...extraFields].map((field) => ({
     ...field,
@@ -734,6 +908,18 @@ export default function CrmModule({
     commercial_terms: "40% advance, 30% milestone, 30% final before handover.",
     status: "sent",
     notes: "Prepared by Sales Head for client approval.",
+  });
+  const [aiDocThread, setAiDocThread] = useState(null);
+  const [aiDocMessages, setAiDocMessages] = useState([]);
+  const [aiDocInput, setAiDocInput] = useState("");
+  const [aiDocAttachments, setAiDocAttachments] = useState([]);
+  const [aiDocDraft, setAiDocDraft] = useState(null);
+  const [aiDocLoading, setAiDocLoading] = useState(false);
+  const [aiDocListening, setAiDocListening] = useState(false);
+  const [aiDocTracking, setAiDocTracking] = useState({
+    status: "draft",
+    sent_at: "",
+    channel: "",
   });
   const [followUpForm, setFollowUpForm] = useState({
     title: "Follow up for quotation approval",
@@ -1853,7 +2039,257 @@ export default function CrmModule({
       quotation_number: `QT-2026-${Math.floor(1000 + Math.random() * 9000)}`,
       agreement_number: `AGR-2026-${Math.floor(1000 + Math.random() * 9000)}`,
     }));
+    setAiDocDraft(null);
+    setAiDocInput("");
+    setAiDocAttachments([]);
+    setAiDocTracking({ status: "draft", sent_at: "", channel: "" });
     setShowCommercialModal(true);
+  }
+
+  const aiDocumentType = commercialType === "agreement" ? "agreement" : "quotation";
+
+  useEffect(() => {
+    let cancelled = false;
+    async function loadAiThread() {
+      if (!showCommercialModal || !commercialForm.deal_id) return;
+      const linkedDeal = deals.find((item) => item.id === commercialForm.deal_id);
+      const threadTitle = `${linkedDeal?.title || commercialForm.title || "Client Document"} ${aiDocumentType}`;
+      let thread = await getAiThread({ deal_id: commercialForm.deal_id, document_type: aiDocumentType });
+      if (!thread) {
+        thread = await createAiThread({
+          deal_id: commercialForm.deal_id,
+          lead_id: linkedDeal?.lead_id || null,
+          client_id: linkedDeal?.client_id || null,
+          document_type: aiDocumentType,
+          title: threadTitle,
+        });
+      }
+      const messages = await getAiMessages(thread?.id);
+      if (cancelled) return;
+      setAiDocThread(thread);
+      setAiDocMessages(messages || []);
+    }
+    loadAiThread();
+    return () => {
+      cancelled = true;
+    };
+  }, [aiDocumentType, commercialForm.deal_id, showCommercialModal]);
+
+  function readFileAsDataUrl(file) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  }
+
+  async function handleAiAttachmentChange(files) {
+    const selected = Array.from(files || []).slice(0, 4);
+    const mapped = await Promise.all(selected.map(async (file) => ({
+      name: file.name,
+      type: file.type || "application/octet-stream",
+      size: file.size,
+      dataUrl: await readFileAsDataUrl(file),
+    })));
+    setAiDocAttachments((prev) => [...prev, ...mapped].slice(0, 6));
+  }
+
+  function startAiVoiceInput() {
+    if (typeof window === "undefined") return;
+    const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!Recognition) {
+      alert("Voice typing is not supported in this browser. Please type notes or upload an audio/text brief.");
+      return;
+    }
+    const recognition = new Recognition();
+    recognition.lang = "en-IN";
+    recognition.interimResults = false;
+    recognition.maxAlternatives = 1;
+    setAiDocListening(true);
+    recognition.onresult = (event) => {
+      const text = event.results?.[0]?.[0]?.transcript || "";
+      if (text) setAiDocInput((prev) => [prev, text].filter(Boolean).join(" "));
+    };
+    recognition.onerror = () => setAiDocListening(false);
+    recognition.onend = () => setAiDocListening(false);
+    recognition.start();
+  }
+
+  function applyAiDraftToCommercialForm(draft = aiDocDraft) {
+    if (!draft) return;
+    setCommercialForm((prev) => ({
+      ...prev,
+      title: draft.title || prev.title,
+      scope_of_work: draft.scope_of_work || prev.scope_of_work,
+      deliverables: draft.deliverables || prev.deliverables,
+      commercial_terms: draft.commercial_terms || prev.commercial_terms,
+      notes: [prev.notes, draft.notes].filter(Boolean).join("\n\n"),
+    }));
+  }
+
+  async function handleGenerateAiDocumentDraft() {
+    if (!commercialForm.deal_id || aiDocLoading) return;
+    const linkedDeal = deals.find((item) => item.id === commercialForm.deal_id);
+    const linkedLead = leads.find((item) => item.id === linkedDeal?.lead_id);
+    const linkedClient = clients.find((item) => item.id === linkedDeal?.client_id);
+    setAiDocLoading(true);
+    try {
+      const userMessage = {
+        thread_id: aiDocThread?.id,
+        role: "user",
+        content: aiDocInput || `Generate ${aiDocumentType} draft from current deal context.`,
+        attachments: aiDocAttachments.map(({ dataUrl, ...rest }) => rest),
+      };
+      const savedUserMessage = aiDocThread?.id ? await createAiMessage(userMessage) : userMessage;
+      const history = [...aiDocMessages, savedUserMessage].filter(Boolean);
+      setAiDocMessages(history);
+
+      const result = await generateAiDocumentDraft({
+        documentType: aiDocumentType,
+        deal: linkedDeal,
+        lead: linkedLead,
+        client: linkedClient,
+        notes: aiDocInput,
+        messages: history,
+        attachments: aiDocAttachments,
+      });
+      const draft = result?.draft || null;
+      setAiDocDraft(draft);
+      if (draft) applyAiDraftToCommercialForm(draft);
+      const assistantContent = [
+        result?.assistantMessage || "AI draft generated.",
+        draft?.title ? `Title: ${draft.title}` : null,
+        draft?.scope_of_work ? `Scope: ${draft.scope_of_work}` : null,
+      ].filter(Boolean).join("\n\n");
+      const savedAssistant = aiDocThread?.id
+        ? await createAiMessage({ thread_id: aiDocThread.id, role: "assistant", content: assistantContent })
+        : { role: "assistant", content: assistantContent, created_at: new Date().toISOString() };
+      setAiDocMessages((prev) => [...prev, savedAssistant]);
+      if (draft) {
+        await createAiDraft({
+          thread_id: aiDocThread?.id || null,
+          deal_id: commercialForm.deal_id,
+          document_type: aiDocumentType,
+          title: draft.title,
+          content: draft,
+          status: "draft",
+        });
+      }
+      setAiDocInput("");
+    } finally {
+      setAiDocLoading(false);
+    }
+  }
+
+  function handlePreviewCommercialPdf() {
+    const selectedDeal = deals.find((deal) => deal.id === commercialForm.deal_id);
+    const selectedLead = leads.find((lead) => lead.id === selectedDeal?.lead_id);
+    const selectedClient = clients.find((client) => client.id === selectedDeal?.client_id);
+    const isAgreement = commercialType === "agreement";
+    const amount = Number(commercialForm.amount || selectedDeal?.deal_value || 0);
+    const docNumber = isAgreement ? commercialForm.agreement_number : commercialForm.quotation_number;
+    const contactName = selectedClient?.name || selectedLead?.name || "Client Name";
+    const contactEmail = selectedClient?.email || selectedLead?.email || "client@email.com";
+    const contactPhone = selectedClient?.phone || selectedLead?.phone || "Client phone";
+    const escapeHtml = (value = "") =>
+      String(value)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+    const paragraph = (value, fallback) => escapeHtml(value || fallback).replace(/\n/g, "<br />");
+    const preview = `<!doctype html>
+      <html>
+        <head>
+          <meta charset="utf-8" />
+          <title>${escapeHtml(commercialForm.title || (isAgreement ? "Agreement" : "Quotation"))}</title>
+          <style>
+            * { box-sizing: border-box; }
+            body { margin: 0; background: #e5e7eb; font-family: Arial, sans-serif; color: #0f172a; }
+            .page { width: 794px; min-height: 1123px; margin: 24px auto; background: #fff; position: relative; overflow: hidden; box-shadow: 0 18px 60px rgba(15,23,42,.18); }
+            .header { height: 150px; border-bottom: 7px solid #071521; position: relative; overflow: hidden; }
+            .dots { position: absolute; left: 0; top: 0; width: 115px; height: 115px; opacity: .2; background-image: radial-gradient(#64748b 3px, transparent 4px); background-size: 16px 16px; }
+            .leftDark { position: absolute; left: -45px; bottom: 0; width: 220px; height: 42px; background: #071521; transform: skewX(35deg); }
+            .leftRed { position: absolute; left: -35px; bottom: 18px; width: 170px; height: 20px; background: #ef0000; transform: skewX(35deg); }
+            .rightDark { position: absolute; right: -60px; top: 0; width: 135px; height: 150px; background: #071521; transform: skewX(-34deg); }
+            .rightRed { position: absolute; right: -10px; top: 65px; width: 185px; height: 20px; background: #ef0000; transform: skewX(-34deg); }
+            .brand { position: relative; z-index: 2; display: flex; align-items: center; justify-content: space-between; height: 100%; padding: 26px 72px 22px 92px; gap: 28px; }
+            .logoWrap { display: flex; align-items: center; gap: 18px; }
+            .logo { width: 78px; height: 78px; border-radius: 14px; background: #e60000; color: white; display: flex; align-items: center; justify-content: center; font-size: 34px; font-weight: 900; letter-spacing: -4px; }
+            .name1 { font-size: 43px; font-weight: 900; line-height: .86; letter-spacing: -2px; }
+            .name2 { font-size: 40px; font-weight: 900; line-height: .9; color: #e60000; letter-spacing: -1px; }
+            .tag { margin-top: 5px; font-size: 14px; font-weight: 600; color: #334155; }
+            .divider { width: 2px; height: 82px; background: #071521; }
+            .contact { display: grid; gap: 8px; min-width: 210px; font-size: 16px; font-weight: 600; color: #1f2937; }
+            .contact div { display: flex; align-items: center; gap: 12px; }
+            .badge { width: 25px; height: 25px; border-radius: 50%; background: #e60000; color: white; display: inline-flex; align-items: center; justify-content: center; font-size: 9px; font-weight: 900; }
+            .content { position: relative; min-height: 850px; padding: 48px 58px 145px; }
+            .watermark { position: absolute; left: 50%; top: 48%; transform: translate(-50%, -50%); width: 250px; height: 250px; border-radius: 34px; background: rgba(239,0,0,.07); color: white; display: flex; align-items: center; justify-content: center; font-size: 96px; font-weight: 900; letter-spacing: -14px; }
+            .curve1, .curve2, .curve3 { position: absolute; border-top: 1px solid #e2e8f0; border-radius: 50%; transform: rotate(-12deg); }
+            .curve1 { left: -120px; bottom: 130px; width: 700px; height: 220px; }
+            .curve2 { left: -80px; bottom: 90px; width: 690px; height: 160px; border-color: #fecaca; }
+            .curve3 { right: -100px; bottom: 120px; width: 540px; height: 180px; }
+            .contentInner { position: relative; z-index: 2; }
+            .docHead { display: flex; justify-content: space-between; gap: 20px; border-bottom: 1px solid #cbd5e1; padding-bottom: 18px; margin-bottom: 18px; }
+            .docType { color: #e60000; font-size: 13px; text-transform: uppercase; font-weight: 900; letter-spacing: .12em; }
+            h1 { margin: 4px 0 0; font-size: 24px; }
+            .meta { text-align: right; font-size: 13px; color: #64748b; line-height: 1.6; }
+            .meta strong { color: #0f172a; }
+            .cards { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 20px; }
+            .card { border: 1px solid #e2e8f0; border-radius: 10px; padding: 14px; background: rgba(255,255,255,.86); font-size: 13px; line-height: 1.6; }
+            .label { font-size: 11px; color: #94a3b8; text-transform: uppercase; font-weight: 900; margin-bottom: 4px; }
+            .section { margin-top: 18px; font-size: 13px; line-height: 1.7; }
+            .section h2 { font-size: 12px; text-transform: uppercase; letter-spacing: .12em; color: #64748b; margin: 0 0 6px; }
+            .signatures { display: grid; grid-template-columns: 1fr 1fr; gap: 70px; margin-top: 52px; font-size: 12px; font-weight: 700; color: #475569; }
+            .signLine { height: 48px; border-bottom: 1px solid #94a3b8; margin-bottom: 8px; }
+            .footer { position: absolute; left: 0; right: 0; bottom: 0; height: 78px; background: #071521; color: white; display: flex; align-items: center; gap: 18px; padding: 0 28px; font-size: 11px; overflow: hidden; }
+            .footer:before { content: ""; position: absolute; left: -35px; top: 0; width: 145px; height: 36px; background: #e60000; transform: skewX(35deg); }
+            .footer:after { content: ""; position: absolute; right: -30px; top: 0; width: 90px; height: 78px; background: #e60000; transform: skewX(-35deg); }
+            .company { position: relative; z-index: 2; min-width: 230px; font-weight: 900; font-size: 14px; }
+            .cin { color: rgba(255,255,255,.75); font-size: 11px; margin-top: 5px; }
+            .service { position: relative; z-index: 2; border-left: 1px solid rgba(239,0,0,.7); padding-left: 12px; font-weight: 700; line-height: 1.25; }
+            @media print { body { background: white; } .page { margin: 0; box-shadow: none; } }
+          </style>
+        </head>
+        <body>
+          <main class="page">
+            <header class="header">
+              <div class="dots"></div><div class="leftDark"></div><div class="leftRed"></div><div class="rightDark"></div><div class="rightRed"></div>
+              <div class="brand">
+                <div class="logoWrap"><div class="logo">TW</div><div><div class="name1">TEXWEB</div><div class="name2">SOLUTION</div><div class="tag">Complete Digital Solutions for Your Business</div></div></div>
+                <div class="divider"></div>
+                <div class="contact">
+                  <div><span class="badge">TEL</span>0755-4601839</div>
+                  <div><span class="badge">MAIL</span>info@texwebsolution.in</div>
+                  <div><span class="badge">WEB</span>www.texwebsolution.in</div>
+                  <div><span class="badge">PIN</span>Kolkata | Bhopal</div>
+                </div>
+              </div>
+            </header>
+            <section class="content">
+              <div class="watermark">TW</div><div class="curve1"></div><div class="curve2"></div><div class="curve3"></div>
+              <div class="contentInner">
+                <div class="docHead"><div><div class="docType">${isAgreement ? "Agreement" : "Quotation"}</div><h1>${escapeHtml(commercialForm.title || (isAgreement ? "Project Agreement" : "Project Quotation"))}</h1></div><div class="meta"><strong>${escapeHtml(docNumber || "DOC-2026")}</strong><br />${new Date().toLocaleDateString("en-IN")}</div></div>
+                <div class="cards">
+                  <div class="card"><div class="label">Prepared For</div><strong>${escapeHtml(contactName)}</strong><br />${escapeHtml(contactEmail)}<br />${escapeHtml(contactPhone)}</div>
+                  <div class="card"><div class="label">Project</div><strong>${escapeHtml(selectedDeal?.title || commercialForm.title || "Client Project")}</strong><br />${escapeHtml(selectedDeal?.service || "Technology Services")}${!isAgreement ? `<br /><strong>Rs. ${amount.toLocaleString("en-IN")}</strong>` : ""}</div>
+                </div>
+                <div class="section"><h2>Scope of Work</h2>${paragraph(commercialForm.scope_of_work, "Scope will appear here.")}</div>
+                <div class="section"><h2>${isAgreement ? "Commercial Terms" : "Deliverables"}</h2>${paragraph(isAgreement ? commercialForm.commercial_terms : commercialForm.deliverables, "Details will appear here.")}</div>
+                <div class="section"><h2>Notes</h2>${paragraph(commercialForm.notes, "Review required before sending.")}</div>
+                <div class="signatures"><div><div class="signLine"></div>TexWeb Authorized Signature</div><div><div class="signLine"></div>Client Confirmation</div></div>
+              </div>
+            </section>
+            <footer class="footer"><div class="company">TexWeb Solution Private Limited<div class="cin">CIN: U85500WB2026PTC287896</div></div><div class="service">Website<br />Development</div><div class="service">Mobile App<br />Development</div><div class="service">E-commerce<br />Solutions</div><div class="service">Digital<br />Marketing</div><div class="service">SMM<br />(Social Media)</div><div class="service">AI &<br />Automation</div></footer>
+          </main>
+        </body>
+      </html>`;
+    const blob = new Blob([preview], { type: "text/html;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    window.open(url, "_blank", "noopener,noreferrer");
+    setTimeout(() => URL.revokeObjectURL(url), 30000);
   }
 
   function openInvoiceModal(deal = null) {
@@ -1992,12 +2428,12 @@ export default function CrmModule({
     }
   }
 
-  function handleCreateCommercialSubmit(e, sendWhatsApp = false) {
+  async function handleCreateCommercialSubmit(e, sendWhatsApp = false) {
     if (e && e.preventDefault) e.preventDefault();
     if (!commercialForm.deal_id) return;
     const amount = parseFloat(commercialForm.amount) || 0;
     if (commercialType !== "agreement") {
-      onCreateProposal?.({
+      await onCreateProposal?.({
         deal_id: commercialForm.deal_id || null,
         title: commercialForm.title,
         amount,
@@ -2008,7 +2444,7 @@ export default function CrmModule({
         notes: commercialForm.notes,
       });
     } else {
-      onCreateAgreement?.({
+      await onCreateAgreement?.({
         agreement_number: commercialForm.agreement_number,
         deal_id: commercialForm.deal_id || null,
         proposal_id: commercialForm.proposal_id || null,
@@ -2029,6 +2465,26 @@ export default function CrmModule({
         notes: commercialForm.notes,
       });
     }
+    await createAiDraft({
+      thread_id: aiDocThread?.id || null,
+      deal_id: commercialForm.deal_id || null,
+      document_type: aiDocumentType,
+      title: commercialForm.title,
+      content: {
+        title: commercialForm.title,
+        scope_of_work: commercialForm.scope_of_work,
+        deliverables: commercialForm.deliverables,
+        commercial_terms: commercialForm.commercial_terms,
+        notes: commercialForm.notes,
+      },
+      status: sendWhatsApp ? "sent" : commercialForm.status || "draft",
+      sent_at: sendWhatsApp || commercialForm.status === "sent" ? new Date().toISOString() : null,
+    });
+    setAiDocTracking({
+      status: sendWhatsApp ? "sent" : commercialForm.status || "draft",
+      sent_at: sendWhatsApp || commercialForm.status === "sent" ? new Date().toISOString() : "",
+      channel: sendWhatsApp ? "whatsapp" : "",
+    });
     setShowCommercialModal(false);
     if (sendWhatsApp) {
       sendDocWhatsApp(commercialForm, commercialType);
@@ -4483,12 +4939,12 @@ export default function CrmModule({
               )}
             </div>
 
-            {selectedLead.notes && (
+            {getLeadDisplayNotes(selectedLead) && (
               <div className="p-3 rounded-xl bg-gray-50 dark:bg-slate-800/60 text-xs">
                 <span className="text-gray-400 text-[10px] block font-semibold uppercase mb-1">
                   Inquiry Notes
                 </span>
-                <p className="text-gray-700 dark:text-neutral-300">{selectedLead.notes}</p>
+                <p className="text-gray-700 dark:text-neutral-300">{getLeadDisplayNotes(selectedLead)}</p>
               </div>
             )}
 
@@ -4907,7 +5363,7 @@ export default function CrmModule({
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
           <form
             onSubmit={handleCreateCommercialSubmit}
-            className="w-full max-w-2xl max-h-[90vh] overflow-y-auto no-scrollbar rounded-2xl bg-white dark:bg-[#18150f] border border-gray-200 dark:border-[#3a3020] shadow-2xl p-5 space-y-4"
+            className="w-full max-w-6xl max-h-[92vh] overflow-y-auto no-scrollbar rounded-2xl bg-white dark:bg-[#18150f] border border-gray-200 dark:border-[#3a3020] shadow-2xl p-5 space-y-4"
           >
             <div className="flex items-center justify-between border-b border-gray-100 dark:border-[#3a3020] pb-3">
               <div>
@@ -4937,6 +5393,130 @@ export default function CrmModule({
               ))}
             </div>
 
+            <div className="rounded-2xl border border-orange-100 dark:border-orange-900/40 bg-orange-50/40 dark:bg-orange-950/10 p-3 space-y-3">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <div>
+                  <div className="flex items-center gap-2 text-sm font-black text-gray-900 dark:text-white">
+                    <Sparkles className="w-4 h-4 text-orange-600" />
+                    AI Draft Assistant
+                  </div>
+                  <p className="text-[11px] text-gray-500 dark:text-neutral-400">
+                    Isolated history for this deal and {commercialType === "agreement" ? "agreement" : "quotation"} only.
+                  </p>
+                </div>
+                <div className="flex items-center gap-1.5 text-[10px] font-bold">
+                  <span className="px-2 py-1 rounded-full bg-white dark:bg-slate-900 border border-orange-100 dark:border-orange-900/40 text-orange-700 dark:text-orange-300">
+                    {aiDocTracking.status || "draft"}
+                  </span>
+                  {aiDocTracking.sent_at && (
+                    <span className="px-2 py-1 rounded-full bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-300">
+                      Sent tracked
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 lg:grid-cols-[1fr_0.9fr] gap-3">
+                <div className="space-y-2">
+                  <textarea
+                    rows={4}
+                    value={aiDocInput}
+                    onChange={(e) => setAiDocInput(e.target.value)}
+                    placeholder="Type requirement notes, meeting summary, pricing instruction, special terms..."
+                    className="w-full px-3 py-2 rounded-xl bg-white dark:bg-slate-900 border border-orange-100 dark:border-orange-900/40 text-xs focus:outline-hidden focus:ring-2 focus:ring-orange-500"
+                  />
+                  <div className="flex flex-wrap items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={startAiVoiceInput}
+                      className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 border transition cursor-pointer ${
+                        aiDocListening
+                          ? "bg-red-50 text-red-700 border-red-200"
+                          : "bg-white dark:bg-slate-900 text-gray-700 dark:text-neutral-200 border-orange-100 dark:border-orange-900/40"
+                      }`}
+                    >
+                      <Mic className="w-3.5 h-3.5" />
+                      {aiDocListening ? "Listening..." : "Voice"}
+                    </button>
+                    <label className="px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 bg-white dark:bg-slate-900 text-gray-700 dark:text-neutral-200 border border-orange-100 dark:border-orange-900/40 cursor-pointer">
+                      <Paperclip className="w-3.5 h-3.5" />
+                      Upload Doc/Image
+                      <input
+                        type="file"
+                        multiple
+                        accept=".pdf,.txt,.doc,.docx,image/png,image/jpeg,image/webp"
+                        className="hidden"
+                        onChange={(e) => handleAiAttachmentChange(e.target.files)}
+                      />
+                    </label>
+                    <button
+                      type="button"
+                      onClick={handleGenerateAiDocumentDraft}
+                      disabled={aiDocLoading || !commercialForm.deal_id}
+                      className="px-3 py-1.5 rounded-xl text-xs font-black bg-orange-600 hover:bg-orange-700 text-white disabled:opacity-50 disabled:cursor-not-allowed transition cursor-pointer flex items-center gap-1.5"
+                    >
+                      <Sparkles className="w-3.5 h-3.5" />
+                      {aiDocLoading ? "Generating..." : "Generate Draft"}
+                    </button>
+                  </div>
+                  {aiDocAttachments.length > 0 && (
+                    <div className="flex flex-wrap gap-1.5">
+                      {aiDocAttachments.map((item, index) => (
+                        <span key={`${item.name}-${index}`} className="px-2 py-1 rounded-lg bg-white dark:bg-slate-900 border border-orange-100 dark:border-orange-900/40 text-[10px] font-semibold text-gray-600 dark:text-neutral-300">
+                          {item.name}
+                        </span>
+                      ))}
+                      <button type="button" onClick={() => setAiDocAttachments([])} className="text-[10px] font-bold text-red-600 px-2">
+                        Clear
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                <div className="rounded-xl bg-white dark:bg-slate-900 border border-orange-100 dark:border-orange-900/40 p-2.5 min-h-[150px] max-h-[240px] overflow-y-auto space-y-2">
+                  {aiDocMessages.length === 0 && !aiDocDraft ? (
+                    <div className="h-full min-h-[120px] flex items-center justify-center text-center text-[11px] text-gray-400 px-4">
+                      Client-specific AI chat history will appear here. It will not mix with other deals.
+                    </div>
+                  ) : (
+                    <>
+                      {aiDocMessages.slice(-6).map((msg, index) => (
+                        <div key={msg.id || index} className={`p-2 rounded-lg text-[11px] ${
+                          msg.role === "assistant"
+                            ? "bg-orange-50 dark:bg-orange-950/30 text-gray-700 dark:text-neutral-200"
+                            : "bg-gray-50 dark:bg-slate-800 text-gray-700 dark:text-neutral-200"
+                        }`}>
+                          <div className="font-black uppercase text-[9px] text-gray-400 mb-1">{msg.role}</div>
+                          <div className="whitespace-pre-wrap line-clamp-5">{msg.content}</div>
+                        </div>
+                      ))}
+                    </>
+                  )}
+                </div>
+              </div>
+
+              {aiDocDraft && (
+                <div className="rounded-xl bg-white dark:bg-slate-900 border border-orange-100 dark:border-orange-900/40 p-3 text-xs space-y-2">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="font-black text-gray-900 dark:text-white">Editable AI Draft Preview</div>
+                    <button
+                      type="button"
+                      onClick={() => applyAiDraftToCommercialForm()}
+                      className="px-2.5 py-1 rounded-lg bg-emerald-600 text-white text-[10px] font-black cursor-pointer"
+                    >
+                      Insert Again
+                    </button>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px] text-gray-600 dark:text-neutral-300">
+                    <div><span className="font-bold">Title:</span> {aiDocDraft.title}</div>
+                    <div><span className="font-bold">Terms:</span> {aiDocDraft.commercial_terms}</div>
+                    <div className="sm:col-span-2"><span className="font-bold">Scope:</span> {aiDocDraft.scope_of_work}</div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_420px] gap-4 items-start">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
               <div>
                 <label className="block font-medium mb-1 text-gray-700 dark:text-neutral-300">Linked Deal *</label>
@@ -5063,6 +5643,14 @@ export default function CrmModule({
                 />
               </div>
             </div>
+            <CommercialDocumentPreview
+              form={commercialForm}
+              type={commercialType}
+              deal={deals.find((deal) => deal.id === commercialForm.deal_id)}
+              lead={leads.find((lead) => lead.id === deals.find((deal) => deal.id === commercialForm.deal_id)?.lead_id)}
+              client={clients.find((client) => client.id === deals.find((deal) => deal.id === commercialForm.deal_id)?.client_id)}
+            />
+            </div>
 
             <div className="flex flex-wrap items-center justify-end gap-2 pt-3 border-t border-gray-100 dark:border-[#3a3020]">
               <button
@@ -5077,6 +5665,14 @@ export default function CrmModule({
                 className="px-4 py-2 rounded-xl text-xs font-bold bg-orange-600 hover:bg-orange-700 text-white transition shadow-sm cursor-pointer shrink-0"
               >
                 Save {commercialType === "agreement" ? "Agreement" : "Quotation"}
+              </button>
+              <button
+                type="button"
+                onClick={handlePreviewCommercialPdf}
+                className="px-4 py-2 rounded-xl text-xs font-bold bg-slate-900 hover:bg-slate-800 text-white transition shadow-sm cursor-pointer shrink-0 flex items-center gap-1.5"
+              >
+                <Eye className="w-3.5 h-3.5 shrink-0" />
+                <span>Preview PDF</span>
               </button>
               <button
                 type="button"

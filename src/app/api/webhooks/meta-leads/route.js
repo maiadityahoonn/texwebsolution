@@ -70,6 +70,19 @@ function normalizeBudgetName(val) {
 }
 
 // Clean phone string (handles "p:+91...", etc.)
+function isMetaTechnicalError(message = "") {
+  const text = String(message || "").toLowerCase();
+  return (
+    text.includes("error validating access token") ||
+    text.includes("session has expired") ||
+    text.includes("unsupported get request") ||
+    text.includes("missing permissions") ||
+    text.includes("oauth") ||
+    text.includes("graph api") ||
+    text.includes("access token")
+  );
+}
+
 function sanitizeMetaPhone(phone) {
   if (!phone) return "";
   let clean = String(phone).replace(/^p:/i, "").trim();
@@ -110,11 +123,12 @@ function collectFormAnswers(body) {
 }
 
 async function insertMetaPlaceholderLead(admin, { leadgenId, formId, adId, reason }) {
+  const safeReason = reason && !isMetaTechnicalError(reason) ? cleanText(reason, 220) : "";
   const notes = [
     `Leadgen ID: ${leadgenId}`,
     `Form ID: ${formId || "N/A"}`,
     `Ad ID: ${adId || "N/A"}`,
-    reason ? `Reason: ${cleanText(reason, 220)}` : null,
+    safeReason ? `Reason: ${safeReason}` : null,
   ].filter(Boolean).join(" | ");
 
   return admin.from("leads").insert([
@@ -323,22 +337,33 @@ export async function POST(request) {
               try {
                 // Fetch lead details from Meta Graph API
                 const apiVersion = process.env.META_CAPI_API_VERSION || "v26.0";
+                const graphFields = "id,created_time,field_data,ad_id,form_id,ad_name,campaign_name,form_name";
                 const metaRes = await fetch(
-                  `https://graph.facebook.com/${apiVersion}/${leadgenId}?access_token=${pageAccessToken}`
+                  `https://graph.facebook.com/${apiVersion}/${leadgenId}?fields=${encodeURIComponent(graphFields)}&access_token=${encodeURIComponent(pageAccessToken)}`
                 );
                 if (metaRes.ok) {
                   const leadData = await metaRes.json();
                   const fieldData = leadData.field_data || [];
 
                   const getField = (keys) => {
-                    const match = fieldData.find((f) => keys.includes(f.name.toLowerCase()));
+                    const wanted = keys.map((key) => String(key).toLowerCase());
+                    const match = fieldData.find((f) => wanted.includes(String(f.name || "").toLowerCase()));
                     return match?.values?.[0] || "";
                   };
 
-                  const fullName = getField(["full_name", "name", "first_name"]);
-                  const email = getField(["email"]);
-                  const phone = sanitizeMetaPhone(getField(["phone_number", "phone"]));
-                  const serviceVal = getField(["what_does_your_business_need?", "what_service_are_you_looking_for?", "service", "service_required"]);
+                  const fullName = getField(["full_name", "name", "first_name", "पूरा_नाम"]);
+                  const email = getField(["email", "ईमेल"]);
+                  const phone = sanitizeMetaPhone(getField(["phone_number", "phone", "mobile", "मोबाइल"]));
+                  const serviceVal = getField([
+                    "what_does_your_business_need?",
+                    "what_service_are_you_looking_for?",
+                    "what_type_of_app_are_you_looking_to_build?",
+                    "what_would_you_like_to_improve_or_manage_with_software?",
+                    "which_area_would_you_like_to_automate?",
+                    "what_is_your_main_digital_marketing_goal?",
+                    "service",
+                    "service_required",
+                  ]);
                   const budgetVal = getField(["what_is_your_approximate_budget_for_this_project?", "choose_your_budget_range?", "budget", "budget_range"]);
                   const city = getField(["city"]);
                   const state = getField(["state"]);
