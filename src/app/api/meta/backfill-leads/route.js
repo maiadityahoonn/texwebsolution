@@ -165,18 +165,29 @@ export async function POST(request) {
   let query = admin
     .from("leads")
     .select("*")
-    .ilike("source", "%Meta%")
     .order("created_at", { ascending: false })
-    .limit(requestedIds.length ? 100 : limit);
+    .limit(requestedIds.length ? 2000 : limit);
+
+  if (!requestedIds.length) {
+    query = query.ilike("source", "%Meta%");
+  }
 
   const { data: leads, error } = await query;
   if (error) return NextResponse.json({ error: error.message }, { status: 400 });
 
+  const matchedByRequestedId = new Map();
   const candidates = (leads || [])
     .map((lead) => ({ lead, metaLeadId: extractMetaLeadId(lead) }))
     .filter(({ metaLeadId }) => metaLeadId)
     .filter(({ metaLeadId }) => !requestedIds.length || requestedIds.includes(metaLeadId))
-    .slice(0, limit);
+    .filter((item) => {
+      if (!requestedIds.length) return true;
+      if (matchedByRequestedId.has(item.metaLeadId)) return false;
+      matchedByRequestedId.set(item.metaLeadId, item);
+      return true;
+    })
+    .slice(0, requestedIds.length ? requestedIds.length : limit);
+  const missingRequestedIds = requestedIds.filter((id) => !matchedByRequestedId.has(id));
 
   const apiVersion = process.env.META_CAPI_API_VERSION || "v26.0";
   const results = [];
@@ -218,6 +229,7 @@ export async function POST(request) {
     checked: candidates.length,
     updated: results.filter((item) => item.ok).length,
     failed: results.filter((item) => !item.ok).length,
+    missing: missingRequestedIds,
     results,
   });
 }

@@ -314,44 +314,74 @@ export async function createCloudLeadsBatch(leadsArray) {
 
     const { data: existingLeads } = await supabase
       .from('leads')
-      .select('email,phone,notes');
+      .select('id,email,phone,notes,meta_lead_id');
 
-    const existingMetaIds = new Set((existingLeads || []).map(extractMetaLeadKey).filter(Boolean));
-    const existingContacts = new Set(
-      (existingLeads || [])
-        .map((lead) => `${String(lead.email || "").toLowerCase()}|${String(lead.phone || "").replace(/\D/g, "")}`)
-        .filter((key) => key !== "|")
-    );
-    const seenMetaIds = new Set();
-    const seenContacts = new Set();
-    const payloads = incomingPayloads.filter((lead) => {
+    const contactKeyForLead = (lead) =>
+      `${String(lead.email || "").toLowerCase()}|${String(lead.phone || "").replace(/\D/g, "")}`;
+    const existingByMetaId = new Map();
+    const existingByContact = new Map();
+    (existingLeads || []).forEach((lead) => {
       const metaId = extractMetaLeadKey(lead);
-      const contactKey = `${String(lead.email || "").toLowerCase()}|${String(lead.phone || "").replace(/\D/g, "")}`;
-      const hasContact = contactKey !== "|";
-      if (metaId && (existingMetaIds.has(metaId) || seenMetaIds.has(metaId))) return false;
-      if (!metaId && hasContact && (existingContacts.has(contactKey) || seenContacts.has(contactKey))) return false;
-      if (metaId) seenMetaIds.add(metaId);
-      if (hasContact) seenContacts.add(contactKey);
-      return true;
+      const contactKey = contactKeyForLead(lead);
+      if (metaId && !existingByMetaId.has(metaId)) existingByMetaId.set(metaId, lead);
+      if (contactKey !== "|" && !existingByContact.has(contactKey)) existingByContact.set(contactKey, lead);
     });
 
-    if (!payloads.length) return [];
-
-    const { data, error } = await supabase
-      .from('leads')
-      .insert(payloads)
-      .select();
-
-    if (!error && Array.isArray(data)) {
-      data.forEach((lead) => sendMetaCrmEvent(lead, lead.status));
-      return data;
-    }
+    const uniqueIncoming = [];
+    const seenIncomingKeys = new Set();
+    incomingPayloads.forEach((lead) => {
+      const metaId = extractMetaLeadKey(lead);
+      const contactKey = contactKeyForLead(lead);
+      const key = metaId || (contactKey !== "|" ? contactKey : `row:${uniqueIncoming.length}`);
+      if (seenIncomingKeys.has(key)) return;
+      seenIncomingKeys.add(key);
+      uniqueIncoming.push(lead);
+    });
 
     const results = [];
-    for (const p of payloads) {
-      const res = await createCloudLead(p);
-      if (res) results.push(res);
+    const inserts = [];
+
+    for (const payload of uniqueIncoming) {
+      const metaId = extractMetaLeadKey(payload);
+      const contactKey = contactKeyForLead(payload);
+      const existing = (metaId && existingByMetaId.get(metaId)) || (contactKey !== "|" ? existingByContact.get(contactKey) : null);
+      if (!existing?.id) {
+        inserts.push(payload);
+        continue;
+      }
+
+      const { data: updated, error: updateError } = await supabase
+        .from('leads')
+        .update({ ...payload, updated_at: new Date().toISOString() })
+        .eq('id', existing.id)
+        .select()
+        .single();
+
+      if (!updateError && updated) {
+        results.push(updated);
+        sendMetaCrmEvent(updated, updated.status);
+      } else {
+        console.warn('Lead import update skipped:', updateError?.message);
+      }
     }
+
+    if (inserts.length) {
+      const { data, error } = await supabase
+        .from('leads')
+        .insert(inserts)
+        .select();
+
+      if (!error && Array.isArray(data)) {
+        data.forEach((lead) => sendMetaCrmEvent(lead, lead.status));
+        results.push(...data);
+      } else {
+        for (const p of inserts) {
+          const res = await createCloudLead(p);
+          if (res) results.push(res);
+        }
+      }
+    }
+
     return results;
   } catch (err) {
     console.error('Error in createCloudLeadsBatch:', err.message);
