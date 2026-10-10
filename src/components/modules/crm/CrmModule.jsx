@@ -645,9 +645,23 @@ function getLeadNoteValue(fields, labels) {
 }
 
 function getLeadRawFormAnswers(lead) {
-  const answers = lead?.raw_metadata?.form_answers || lead?.raw_metadata?.formAnswers || {};
+  let metadata = lead?.raw_metadata || {};
+  if (typeof metadata === "string") {
+    try {
+      metadata = JSON.parse(metadata);
+    } catch (_) {
+      metadata = {};
+    }
+  }
+  const answers = metadata?.form_answers || metadata?.formAnswers || metadata?.original_payload || {};
   if (!answers || typeof answers !== "object" || Array.isArray(answers)) return [];
-  return Object.entries(answers).map(([label, value]) => ({
+  return Object.entries(answers)
+    .filter(([label, value]) => {
+      if (!label) return false;
+      if (value === undefined || value === null) return false;
+      return String(Array.isArray(value) ? value.join(", ") : value).trim() !== "";
+    })
+    .map(([label, value]) => ({
     key: String(label || "").toLowerCase(),
     label: String(label || "").trim(),
     value: Array.isArray(value) ? value.join(", ") : value,
@@ -656,6 +670,7 @@ function getLeadRawFormAnswers(lead) {
 
 function getLeadFormAnswers(lead) {
   const noteFields = parseLeadNoteFields(lead);
+  const rawAnswerFields = getLeadRawFormAnswers(lead);
   const baseFields = [
     { label: "Service Looking For", value: lead?.service || getLeadNoteValue(noteFields, ["Service"]) },
     { label: "Budget Range", value: getLeadNoteValue(noteFields, ["Budget"]) || getLeadBudget(lead) },
@@ -689,10 +704,9 @@ function getLeadFormAnswers(lead) {
     "campaign id",
     "reason",
   ]);
-  const mergedFields = [...noteFields, ...getLeadRawFormAnswers(lead)];
+  const mergedFields = [...noteFields.filter((field) => !reserved.has(field.key)), ...rawAnswerFields];
   const seen = new Set();
   const extraFields = mergedFields
-    .filter((field) => !reserved.has(field.key))
     .filter((field) => {
       const key = `${field.key}:${String(field.value || "").trim().toLowerCase()}`;
       if (seen.has(key)) return false;
