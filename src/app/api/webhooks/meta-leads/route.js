@@ -337,7 +337,7 @@ export async function POST(request) {
               try {
                 // Fetch lead details from Meta Graph API
                 const apiVersion = process.env.META_CAPI_API_VERSION || "v26.0";
-                const graphFields = "id,created_time,field_data,ad_id,form_id,ad_name,campaign_name,form_name";
+                const graphFields = "id,created_time,field_data,ad_id,form_id,ad_name,campaign_name";
                 const metaRes = await fetch(
                   `https://graph.facebook.com/${apiVersion}/${leadgenId}?fields=${encodeURIComponent(graphFields)}&access_token=${encodeURIComponent(pageAccessToken)}`
                 );
@@ -387,7 +387,7 @@ export async function POST(request) {
                       meta_lead_id: leadgenId,
                       ad_id: adId || null,
                       form_id: formId || null,
-                      form_name: cleanText(leadData.form_name, 120) || null,
+                      form_name: null,
                       raw_metadata: {
                         source: "meta_leadgen_webhook",
                         form_answers: Object.fromEntries(fieldData.map((field) => [field.name, field.values?.[0] || ""])),

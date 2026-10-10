@@ -106,7 +106,6 @@ function payloadFromMetaLead(lead, metaLeadId, leadData = {}) {
   const notes = [
     leadData.ad_name ? `Ad: ${cleanText(leadData.ad_name, 140)}` : null,
     leadData.campaign_name ? `Campaign: ${cleanText(leadData.campaign_name, 140)}` : null,
-    leadData.form_name ? `Form: ${cleanText(leadData.form_name, 140)}` : null,
     budget ? `Budget: ${budget}` : null,
     city || state ? `Location: ${[city, state].filter(Boolean).join(", ")}` : null,
     `Meta ID: ${metaLeadId}`,
@@ -123,7 +122,7 @@ function payloadFromMetaLead(lead, metaLeadId, leadData = {}) {
     meta_lead_id: metaLeadId,
     ad_id: cleanText(leadData.ad_id || lead.ad_id, 80) || null,
     form_id: cleanText(leadData.form_id || lead.form_id, 80) || null,
-    form_name: cleanText(leadData.form_name || lead.form_name, 140) || null,
+    form_name: lead.form_name || null,
     budget_range: budget || lead.budget_range || null,
     city: cleanText(city || lead.city, 80) || null,
     state: cleanText(state || lead.state, 80) || null,
@@ -183,7 +182,7 @@ export async function POST(request) {
   const results = [];
 
   for (const { lead, metaLeadId } of candidates) {
-    const fields = "id,created_time,field_data,ad_id,form_id,ad_name,campaign_name,form_name";
+    const fields = "id,created_time,field_data,ad_id,form_id,ad_name,campaign_name";
     const url = `https://graph.facebook.com/${apiVersion}/${metaLeadId}?fields=${encodeURIComponent(fields)}&access_token=${encodeURIComponent(pageAccessToken)}`;
     const response = await fetch(url);
     const metaResult = await response.json().catch(() => ({}));
