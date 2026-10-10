@@ -37,8 +37,14 @@ function cleanMetaPhone(val) {
 }
 
 function cleanMetaService(val) {
-  if (!val) return "Website Development";
-  return String(val).trim();
+  if (!val) return "Meta Inbound Lead";
+  const s = String(val).toLowerCase().replace(/_/g, " ").replace(/-/g, " ").trim();
+  if (s.includes("website") || s.includes("web")) return "Website Development";
+  if (s.includes("mobile") || s.includes("app")) return "Mobile App Development";
+  if (s.includes("digital") || s.includes("marketing") || s.includes("lead")) return "Digital Marketing & Ads";
+  if (s.includes("software") || s.includes("crm") || s.includes("manage")) return "Custom Software";
+  if (s.includes("automation") || s.includes("ai") || s.includes("bot")) return "AI Automation & Bots";
+  return String(val).replace(/_/g, " ").trim();
 }
 
 function cleanMetaBudget(val) {
@@ -58,6 +64,25 @@ function normalizeHeader(value) {
     .replace(/[\s_-]+/g, "")
     .replace(/[?().]/g, "")
     .trim();
+}
+
+function cleanMetaBudgetValue(val) {
+  if (!val) return "";
+  const b = String(val).toLowerCase().replace(/_/g, " ").trim();
+  if (b.includes("below") && b.includes("40")) return "Below Rs. 40,000";
+  if (b.includes("80") && b.includes("100")) return "Rs. 80,000 - Rs. 1,00,000";
+  if (b.includes("40") && b.includes("80")) return "Rs. 40,000 - Rs. 80,000";
+  if (b.includes("above") && b.includes("40")) return "Above Rs. 40,000";
+  if (b.includes("above") || b.includes("100")) return "Above Rs. 1,00,000";
+  return String(val).replace(/_/g, " ");
+}
+
+function pickFirstValue(cols, indexes) {
+  for (const idx of indexes) {
+    const value = idx !== -1 ? cols[idx] : "";
+    if (value && String(value).trim()) return value;
+  }
+  return "";
 }
 
 function splitDelimitedLine(line, delimiter) {
@@ -129,6 +154,16 @@ export default function MetaLeadsImportModal({ isOpen, onClose, onImport, isDark
     const phoneIdx = findIdx(["phone_number", "phone", "mobile", "मोबाइल"]);
     const serviceIdx = findIdx(["what_service_are_you_looking_for", "service"]);
     const budgetIdx = findIdx(["choose_your_budget_range", "budget"]);
+    const conditionalServiceIndexes = [
+      findIdx(["what_does_your_business_need"]),
+      findIdx(["what_service_are_you_looking_for"]),
+      findIdx(["what_type_of_app_are_you_looking_to_build"]),
+      findIdx(["what_would_you_like_to_improve_or_manage_with_software"]),
+      findIdx(["which_area_would_you_like_to_automate"]),
+      findIdx(["what_is_your_main_digital_marketing_goal"]),
+      serviceIdx,
+    ];
+    const conditionalBudgetIdx = findIdx(["what_is_your_approximate_budget_for_this_project", "choose_your_budget_range", "budget"]);
     const platformIdx = findIdx(["platform"]);
     const campaignIdx = findIdx(["campaign_name", "campaign"]);
     const adIdx = findIdx(["ad_name", "ad"]);
@@ -138,6 +173,10 @@ export default function MetaLeadsImportModal({ isOpen, onClose, onImport, isDark
     const cityIdx = findIdx(["city"]);
     const stateIdx = findIdx(["state"]);
     const idIdx = findIdx(["id"]);
+    const adIdIdx = findIdx(["ad_id"]);
+    const adsetIdIdx = findIdx(["adset_id"]);
+    const campaignIdIdx = findIdx(["campaign_id"]);
+    const formIdIdx = findIdx(["form_id"]);
 
     const results = [];
 
@@ -148,8 +187,8 @@ export default function MetaLeadsImportModal({ isOpen, onClose, onImport, isDark
       const rawName = nameIdx !== -1 ? cols[nameIdx] : "";
       const rawEmail = emailIdx !== -1 ? cols[emailIdx] : "";
       const rawPhone = phoneIdx !== -1 ? cols[phoneIdx] : "";
-      const rawService = serviceIdx !== -1 ? cols[serviceIdx] : "";
-      const rawBudget = budgetIdx !== -1 ? cols[budgetIdx] : "";
+      const rawService = pickFirstValue(cols, conditionalServiceIndexes);
+      const rawBudget = conditionalBudgetIdx !== -1 ? cols[conditionalBudgetIdx] : (budgetIdx !== -1 ? cols[budgetIdx] : "");
       const rawPlatform = platformIdx !== -1 ? cols[platformIdx] : "ig";
       const rawCampaign = campaignIdx !== -1 ? cols[campaignIdx] : "";
       const rawAd = adIdx !== -1 ? cols[adIdx] : "";
@@ -159,12 +198,17 @@ export default function MetaLeadsImportModal({ isOpen, onClose, onImport, isDark
       const rawCity = cityIdx !== -1 ? cols[cityIdx] : "";
       const rawState = stateIdx !== -1 ? cols[stateIdx] : "";
       const rawMetaId = idIdx !== -1 ? cols[idIdx] : "";
+      const rawFormAnswers = Object.fromEntries(
+        headers
+          .map((header, index) => [header, cols[index] || ""])
+          .filter(([header, value]) => header && String(value || "").trim())
+      );
 
       if (!rawName && !rawPhone && !rawEmail) continue;
 
       const cleanedPhone = cleanMetaPhone(rawPhone);
       const cleanedService = cleanMetaService(rawService);
-      const cleanedBudget = cleanMetaBudget(rawBudget);
+      const cleanedBudget = cleanMetaBudgetValue(rawBudget);
 
       const platformLabel = rawPlatform === "fb" ? "Facebook" : rawPlatform === "ig" ? "Instagram" : "Meta Ads";
 
@@ -187,6 +231,19 @@ export default function MetaLeadsImportModal({ isOpen, onClose, onImport, isDark
         source: `Meta Ads (${platformLabel})`,
         status: "New",
         notes: notesParts.join(" | ") || "Inbound inquiry via Meta Ads",
+        meta_lead_id: rawMetaId.replace(/^l:/i, "") || null,
+        ad_id: adIdIdx !== -1 ? cols[adIdIdx] : null,
+        adset_id: adsetIdIdx !== -1 ? cols[adsetIdIdx] : null,
+        campaign_id: campaignIdIdx !== -1 ? cols[campaignIdIdx] : null,
+        form_id: formIdIdx !== -1 ? cols[formIdIdx] : null,
+        form_name: rawForm || null,
+        platform: rawPlatform === "fb" ? "Facebook" : rawPlatform === "ig" ? "Instagram" : rawPlatform || "Meta Ads",
+        budget_range: cleanedBudget || null,
+        raw_metadata: {
+          source: "meta_excel_import",
+          form_answers: rawFormAnswers,
+          original_payload: rawFormAnswers,
+        },
         // for preview display
         city: rawCity,
         state: rawState,

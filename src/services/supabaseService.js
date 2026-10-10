@@ -299,6 +299,17 @@ export async function createCloudLeadsBatch(leadsArray) {
       source: l.source || "Meta Ads",
       status: l.status || "New",
       notes: l.notes || "",
+      meta_lead_id: l.meta_lead_id || null,
+      ad_id: l.ad_id || null,
+      adset_id: l.adset_id || null,
+      campaign_id: l.campaign_id || null,
+      form_id: l.form_id || null,
+      form_name: l.form_name || null,
+      platform: l.platform || null,
+      budget_range: l.budget_range || l.budget || null,
+      city: l.city || null,
+      state: l.state || null,
+      raw_metadata: l.raw_metadata || null,
     }));
 
     const { data: existingLeads } = await supabase
