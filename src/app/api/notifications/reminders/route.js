@@ -6,7 +6,7 @@ import { safeInternalPath } from "@/lib/safeUrl";
 
 export const dynamic = "force-dynamic";
 
-const REMINDER_WINDOW_MS = 10 * 60 * 1000;
+const MAX_REMINDER_LOOKAHEAD_MS = 24 * 60 * 60 * 1000;
 const REMINDER_GRACE_MS = 2 * 60 * 1000;
 const MAX_ITEMS_PER_SCAN = 100;
 
@@ -94,6 +94,18 @@ async function verifyCaller(admin, request) {
 function recordTime(record, field) {
   const time = new Date(record?.[field] || "").getTime();
   return Number.isFinite(time) ? time : null;
+}
+
+function getReminderMinutes(record) {
+  const minutes = Number.parseInt(record?.reminder_before_minutes, 10);
+  return Number.isFinite(minutes) && minutes >= 0 ? Math.min(minutes, 24 * 60) : 10;
+}
+
+function shouldSendReminder(record, field, now) {
+  const time = recordTime(record, field);
+  if (!time) return false;
+  const reminderAt = time - getReminderMinutes(record) * 60_000;
+  return reminderAt <= now && now <= time + REMINDER_GRACE_MS;
 }
 
 function reminderTitle(sourceType, count = 1) {
@@ -190,13 +202,14 @@ async function createReminder(admin, sourceType, record, userId, actorId) {
   const scheduledField = sourceType === "sales_meeting" ? "scheduled_at" : "due_at";
   const scheduledFor = record?.[scheduledField];
   if (!record?.id || !scheduledFor || !userId) return { skipped: "missing_required_data" };
+  const reminderMinutes = getReminderMinutes(record);
 
   const { data: eventRow, error: eventError } = await admin
     .from("notification_reminder_events")
     .insert([{
       source_type: sourceType,
       source_id: record.id,
-      reminder_type: "10min",
+      reminder_type: `${reminderMinutes}min`,
       scheduled_for: scheduledFor,
       user_id: userId,
     }])
@@ -224,7 +237,8 @@ async function createReminder(admin, sourceType, record, userId, actorId) {
       metadata: {
         requires_ack: true,
         reminder: true,
-        reminder_type: "10min",
+        reminder_type: `${reminderMinutes}min`,
+        reminder_before_minutes: reminderMinutes,
         source_type: sourceType,
         source_id: record.id,
         scheduled_for: scheduledFor,
@@ -250,13 +264,13 @@ async function createReminder(admin, sourceType, record, userId, actorId) {
 async function scanReminders(admin, actorId = null) {
   const now = Date.now();
   const fromIso = new Date(now - REMINDER_GRACE_MS).toISOString();
-  const toIso = new Date(now + REMINDER_WINDOW_MS).toISOString();
+  const toIso = new Date(now + MAX_REMINDER_LOOKAHEAD_MS).toISOString();
   const fallbackSalesUsers = await getFallbackSalesUsers(admin);
 
   const [{ data: followUps }, { data: meetings }] = await Promise.all([
     admin
       .from("sales_followups")
-      .select("id, assigned_to, created_by, title, due_at, status")
+      .select("id, assigned_to, created_by, title, due_at, status, reminder_before_minutes")
       .eq("status", "pending")
       .gte("due_at", fromIso)
       .lte("due_at", toIso)
@@ -264,7 +278,7 @@ async function scanReminders(admin, actorId = null) {
       .limit(MAX_ITEMS_PER_SCAN),
     admin
       .from("sales_meetings")
-      .select("id, host_id, created_by, title, scheduled_at, status")
+      .select("id, host_id, created_by, title, scheduled_at, status, reminder_before_minutes")
       .in("status", ["scheduled", "pending", "upcoming"])
       .gte("scheduled_at", fromIso)
       .lte("scheduled_at", toIso)
@@ -273,8 +287,12 @@ async function scanReminders(admin, actorId = null) {
   ]);
 
   const records = [
-    ...(followUps || []).map((record) => ({ sourceType: "sales_followup", record })),
-    ...(meetings || []).map((record) => ({ sourceType: "sales_meeting", record })),
+    ...(followUps || [])
+      .filter((record) => shouldSendReminder(record, "due_at", now))
+      .map((record) => ({ sourceType: "sales_followup", record })),
+    ...(meetings || [])
+      .filter((record) => shouldSendReminder(record, "scheduled_at", now))
+      .map((record) => ({ sourceType: "sales_meeting", record })),
   ];
 
   const results = [];

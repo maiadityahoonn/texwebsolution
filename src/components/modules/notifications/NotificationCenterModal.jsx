@@ -139,8 +139,14 @@ export default function NotificationCenterModal({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-black/60 backdrop-blur-xs">
-      <div className="w-full max-w-xl max-h-[85vh] rounded-2xl bg-white dark:bg-[#18150f] border border-gray-200 dark:border-[#3a3020] shadow-2xl flex flex-col overflow-hidden">
+    <div
+      data-modal-overlay="true"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+      className="fixed inset-0 z-[90] flex items-center justify-center p-3 sm:p-5 bg-black/60 backdrop-blur-xs overscroll-contain animate-in fade-in duration-200"
+    >
+      <div className="w-full max-w-xl max-h-[82vh] rounded-2xl bg-white dark:bg-[#18150f] border border-gray-200 dark:border-[#3a3020] shadow-2xl flex flex-col overflow-hidden">
         {/* Header */}
         <div className="p-4 sm:p-5 border-b border-gray-100 dark:border-[#3a3020] flex items-center justify-between shrink-0">
           <div className="flex items-center gap-2.5">

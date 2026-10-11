@@ -49,9 +49,9 @@ export default function LeadCaptureModal() {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-sm animate-fadeIn font-poppins">
+    <div data-modal-overlay="true" className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-sm animate-fadeIn font-poppins overscroll-contain">
       <div 
-        className="relative w-full max-w-md bg-white rounded-3xl shadow-2xl border border-gray-100 overflow-hidden text-gray-900 max-h-[92vh] overflow-y-auto transform transition-all duration-300 animate-scaleUp"
+        className="relative w-full max-w-md bg-white rounded-3xl shadow-2xl border border-gray-100 overflow-hidden text-gray-900 max-h-[82vh] overflow-y-auto no-scrollbar transform transition-all duration-300 animate-scaleUp"
         style={{ fontFamily: "Matter, sans-serif" }}
       >
         {/* Top Decorative Gradient Line */}

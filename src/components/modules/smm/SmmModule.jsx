@@ -73,6 +73,55 @@ const PLATFORM_ICONS = {
   twitter: TwitterIcon,
   other: Share2,
 };
+const TIME_HOUR_OPTIONS = Array.from({ length: 12 }, (_, index) => String(index + 1).padStart(2, "0"));
+const TIME_MINUTE_OPTIONS = Array.from({ length: 60 }, (_, index) => String(index).padStart(2, "0"));
+
+function toLocalDateTimeInput(value = new Date()) {
+  const date = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  const local = new Date(date.getTime() - date.getTimezoneOffset() * 60_000);
+  return local.toISOString().slice(0, 16);
+}
+
+function datePart(value) {
+  return String(value || "").slice(0, 10);
+}
+
+function timePart(value) {
+  return String(value || "").slice(11, 16);
+}
+
+function timeParts12(value) {
+  const [hourRaw = "10", minuteRaw = "00"] = timePart(value).split(":");
+  const hour24 = Math.min(23, Math.max(0, Number.parseInt(hourRaw, 10) || 10));
+  const minute = Math.min(59, Math.max(0, Number.parseInt(minuteRaw, 10) || 0));
+  return {
+    hour: String(hour24 % 12 || 12).padStart(2, "0"),
+    minute: String(minute).padStart(2, "0"),
+    meridiem: hour24 >= 12 ? "PM" : "AM",
+  };
+}
+
+function buildTimeFrom12Hour(hour, minute, meridiem) {
+  let nextHour = Math.min(12, Math.max(1, Number.parseInt(hour, 10) || 10));
+  const nextMinute = Math.min(59, Math.max(0, Number.parseInt(minute, 10) || 0));
+  if (meridiem === "PM" && nextHour !== 12) nextHour += 12;
+  if (meridiem === "AM" && nextHour === 12) nextHour = 0;
+  return `${String(nextHour).padStart(2, "0")}:${String(nextMinute).padStart(2, "0")}`;
+}
+
+function combineDateTimeParts(currentValue, part, nextValue) {
+  const today = toLocalDateTimeInput(new Date()).slice(0, 10);
+  const currentDate = datePart(currentValue) || today;
+  const currentTime = timePart(currentValue) || "10:00";
+  return `${part === "date" ? nextValue || today : currentDate}T${part === "time" ? nextValue || "10:00" : currentTime}`;
+}
+
+function combineTime12Parts(currentValue, patch) {
+  const current = timeParts12(currentValue);
+  const next = { ...current, ...patch };
+  return combineDateTimeParts(currentValue, "time", buildTimeFrom12Hour(next.hour, next.minute, next.meridiem));
+}
 
 export default function SmmModule({
   smmClients = [],
@@ -96,7 +145,7 @@ export default function SmmModule({
     platform: "instagram",
     content_type: "carousel",
     copy_text: "",
-    scheduled_at: new Date(Date.now() + 86400000).toISOString().slice(0, 16),
+    scheduled_at: toLocalDateTimeInput(new Date(Date.now() + 86400000)),
     status: "draft",
   });
 
@@ -133,7 +182,7 @@ export default function SmmModule({
       platform: "instagram",
       content_type: "carousel",
       copy_text: "",
-      scheduled_at: new Date(Date.now() + 86400000).toISOString().slice(0, 16),
+      scheduled_at: toLocalDateTimeInput(new Date(Date.now() + 86400000)),
       status: "draft",
     });
   }
@@ -400,23 +449,34 @@ export default function SmmModule({
 
       {/* 6. Add Content Modal */}
       {showAddContentModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
+        <div data-modal-overlay="true" className="fixed inset-0 z-[80] flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-xs overscroll-contain animate-in fade-in duration-200">
           <form
             onSubmit={handleCreateContentSubmit}
-            className="w-full max-w-md rounded-2xl bg-white dark:bg-[#18150f] border border-gray-200 dark:border-[#3a3020] shadow-2xl p-5 space-y-4"
+            className="w-full max-w-lg max-h-[82vh] rounded-3xl bg-white dark:bg-[#18150f] border border-gray-200/80 dark:border-[#3a3020] shadow-2xl flex flex-col overflow-hidden transition-all animate-in zoom-in-95 duration-200"
           >
-            <div className="flex items-center justify-between border-b border-gray-100 dark:border-[#3a3020] pb-3">
-              <h3 className="font-bold text-base text-gray-900 dark:text-white">Create Content Item</h3>
+            {/* Header */}
+            <div className="flex items-center justify-between px-5 py-3.5 border-b border-gray-100 dark:border-[#3a3020] bg-linear-to-r from-orange-50/70 via-amber-50/25 to-transparent dark:from-orange-950/25 dark:via-transparent dark:to-transparent shrink-0">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-orange-500 text-white flex items-center justify-center shadow-md shadow-orange-500/25 shrink-0">
+                  <Share2 className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-base sm:text-lg text-gray-900 dark:text-white leading-tight">Create Content Item</h3>
+                  <p className="text-xs text-gray-500 dark:text-neutral-400 mt-0.5">Draft post, reel hook, or carousel copy</p>
+                </div>
+              </div>
               <button
                 type="button"
                 onClick={() => setShowAddContentModal(false)}
-                className="p-1 rounded-lg text-gray-400"
+                className="p-1.5 rounded-xl text-gray-400 hover:text-gray-700 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-slate-800 transition cursor-pointer"
+                aria-label="Close modal"
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
 
-            <div className="space-y-3 text-xs">
+            {/* Body */}
+            <div className="p-5 space-y-3.5 text-xs flex-1 overflow-y-auto no-scrollbar">
               <div>
                 <label className="block font-medium mb-1">Content Title / Hook *</label>
                 <input
@@ -464,15 +524,51 @@ export default function SmmModule({
               </div>
 
               <div>
-                <label className="block font-medium mb-1">Scheduled Date & Time</label>
-                <input
-                  type="datetime-local"
-                  value={newContentForm.scheduled_at}
-                  onChange={(e) =>
-                    setNewContentForm({ ...newContentForm, scheduled_at: e.target.value })
-                  }
-                  className="w-full px-3 py-2 rounded-xl bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700"
-                />
+                <label className="block font-medium mb-1">Scheduled Date</label>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  <input
+                    type="date"
+                    value={datePart(newContentForm.scheduled_at)}
+                    onChange={(e) =>
+                      setNewContentForm({ ...newContentForm, scheduled_at: combineDateTimeParts(newContentForm.scheduled_at, "date", e.target.value) })
+                    }
+                    className="w-full px-3 py-2 rounded-xl bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700"
+                  />
+                  <div className="grid grid-cols-[1fr_1fr_auto] gap-2">
+                    <select
+                      value={timeParts12(newContentForm.scheduled_at).hour}
+                      onChange={(e) =>
+                        setNewContentForm({ ...newContentForm, scheduled_at: combineTime12Parts(newContentForm.scheduled_at, { hour: e.target.value }) })
+                      }
+                      className="w-full px-3 py-2 rounded-xl bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700"
+                    >
+                      {TIME_HOUR_OPTIONS.map((hour) => (
+                        <option key={hour} value={hour}>{hour}</option>
+                      ))}
+                    </select>
+                    <select
+                      value={timeParts12(newContentForm.scheduled_at).minute}
+                      onChange={(e) =>
+                        setNewContentForm({ ...newContentForm, scheduled_at: combineTime12Parts(newContentForm.scheduled_at, { minute: e.target.value }) })
+                      }
+                      className="w-full px-3 py-2 rounded-xl bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700"
+                    >
+                      {TIME_MINUTE_OPTIONS.map((minute) => (
+                        <option key={minute} value={minute}>{minute}</option>
+                      ))}
+                    </select>
+                    <select
+                      value={timeParts12(newContentForm.scheduled_at).meridiem}
+                      onChange={(e) =>
+                        setNewContentForm({ ...newContentForm, scheduled_at: combineTime12Parts(newContentForm.scheduled_at, { meridiem: e.target.value }) })
+                      }
+                      className="px-3 py-2 rounded-xl bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 font-bold"
+                    >
+                      <option value="AM">AM</option>
+                      <option value="PM">PM</option>
+                    </select>
+                  </div>
+                </div>
               </div>
 
               <div>
@@ -487,19 +583,21 @@ export default function SmmModule({
               </div>
             </div>
 
-            <div className="flex items-center justify-end gap-2 pt-3 border-t border-gray-100 dark:border-[#3a3020]">
+            {/* Footer Buttons */}
+            <div className="flex items-center justify-end gap-2.5 px-5 py-3 border-t border-gray-100 dark:border-[#3a3020] bg-gray-50/60 dark:bg-[#1a1712] shrink-0">
               <button
                 type="button"
                 onClick={() => setShowAddContentModal(false)}
-                className="px-3.5 py-2 rounded-xl text-xs font-semibold text-gray-500"
+                className="px-4 py-2.5 rounded-xl text-xs font-semibold text-gray-700 dark:text-neutral-300 hover:bg-gray-100 dark:hover:bg-slate-800 border border-gray-200 dark:border-slate-700 transition cursor-pointer"
               >
                 Cancel
               </button>
               <button
                 type="submit"
-                className="px-4 py-2 rounded-xl text-xs font-bold bg-orange-600 hover:bg-orange-700 text-white shadow-sm"
+                className="px-5 py-2.5 rounded-xl text-xs font-bold bg-linear-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white shadow-md shadow-orange-500/25 hover:shadow-lg transition flex items-center gap-2 cursor-pointer"
               >
-                Save Content
+                <Check className="w-4 h-4" />
+                <span>Save Content</span>
               </button>
             </div>
           </form>
@@ -508,23 +606,34 @@ export default function SmmModule({
 
       {/* 7. Add SMM Client Modal */}
       {showAddClientModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
+        <div data-modal-overlay="true" className="fixed inset-0 z-[80] flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-xs overscroll-contain animate-in fade-in duration-200">
           <form
             onSubmit={handleCreateClientSubmit}
-            className="w-full max-w-md rounded-2xl bg-white dark:bg-[#18150f] border border-gray-200 dark:border-[#3a3020] shadow-2xl p-5 space-y-4"
+            className="w-full max-w-lg max-h-[82vh] rounded-3xl bg-white dark:bg-[#18150f] border border-gray-200/80 dark:border-[#3a3020] shadow-2xl flex flex-col overflow-hidden transition-all animate-in zoom-in-95 duration-200"
           >
-            <div className="flex items-center justify-between border-b border-gray-100 dark:border-[#3a3020] pb-3">
-              <h3 className="font-bold text-base text-gray-900 dark:text-white">New SMM Client Tier</h3>
+            {/* Header */}
+            <div className="flex items-center justify-between px-5 py-3.5 border-b border-gray-100 dark:border-[#3a3020] bg-linear-to-r from-orange-50/70 via-amber-50/25 to-transparent dark:from-orange-950/25 dark:via-transparent dark:to-transparent shrink-0">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-orange-500 text-white flex items-center justify-center shadow-md shadow-orange-500/25 shrink-0">
+                  <Calendar className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-base sm:text-lg text-gray-900 dark:text-white leading-tight">New SMM Client Tier</h3>
+                  <p className="text-xs text-gray-500 dark:text-neutral-400 mt-0.5">Configure deliverable targets and retainer tier</p>
+                </div>
+              </div>
               <button
                 type="button"
                 onClick={() => setShowAddClientModal(false)}
-                className="p-1 rounded-lg text-gray-400"
+                className="p-1.5 rounded-xl text-gray-400 hover:text-gray-700 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-slate-800 transition cursor-pointer"
+                aria-label="Close modal"
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
 
-            <div className="space-y-3 text-xs">
+            {/* Body */}
+            <div className="p-5 space-y-3.5 text-xs flex-1 overflow-y-auto no-scrollbar">
               <div>
                 <label className="block font-medium mb-1">Client Account *</label>
                 <select
@@ -578,19 +687,21 @@ export default function SmmModule({
               </div>
             </div>
 
-            <div className="flex items-center justify-end gap-2 pt-3 border-t border-gray-100 dark:border-[#3a3020]">
+            {/* Footer Buttons */}
+            <div className="flex items-center justify-end gap-2.5 px-5 py-3 border-t border-gray-100 dark:border-[#3a3020] bg-gray-50/60 dark:bg-[#1a1712] shrink-0">
               <button
                 type="button"
                 onClick={() => setShowAddClientModal(false)}
-                className="px-3.5 py-2 rounded-xl text-xs font-semibold text-gray-500"
+                className="px-4 py-2.5 rounded-xl text-xs font-semibold text-gray-700 dark:text-neutral-300 hover:bg-gray-100 dark:hover:bg-slate-800 border border-gray-200 dark:border-slate-700 transition cursor-pointer"
               >
                 Cancel
               </button>
               <button
                 type="submit"
-                className="px-4 py-2 rounded-xl text-xs font-bold bg-orange-600 hover:bg-orange-700 text-white shadow-sm"
+                className="px-5 py-2.5 rounded-xl text-xs font-bold bg-linear-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white shadow-md shadow-orange-500/25 hover:shadow-lg transition flex items-center gap-2 cursor-pointer"
               >
-                Save SMM Client
+                <Check className="w-4 h-4" />
+                <span>Save SMM Client</span>
               </button>
             </div>
           </form>

@@ -371,6 +371,50 @@ function localDate(value) {
   });
 }
 
+function localDateInputPart(value) {
+  return String(value || "").slice(0, 10);
+}
+
+function localTimeInputPart(value) {
+  return String(value || "").slice(11, 16);
+}
+
+const WORKSPACE_TIME_HOUR_OPTIONS = Array.from({ length: 12 }, (_, index) => String(index + 1).padStart(2, "0"));
+const WORKSPACE_TIME_MINUTE_OPTIONS = Array.from({ length: 60 }, (_, index) => String(index).padStart(2, "0"));
+
+function localTimeParts12(value) {
+  const [hourRaw = "10", minuteRaw = "00"] = localTimeInputPart(value).split(":");
+  const hour24 = Math.min(23, Math.max(0, Number.parseInt(hourRaw, 10) || 10));
+  const minute = Math.min(59, Math.max(0, Number.parseInt(minuteRaw, 10) || 0));
+  return {
+    hour: String(hour24 % 12 || 12).padStart(2, "0"),
+    minute: String(minute).padStart(2, "0"),
+    meridiem: hour24 >= 12 ? "PM" : "AM",
+  };
+}
+
+function buildLocalTimeFrom12Hour(hour, minute, meridiem) {
+  let nextHour = Math.min(12, Math.max(1, Number.parseInt(hour, 10) || 10));
+  const nextMinute = Math.min(59, Math.max(0, Number.parseInt(minute, 10) || 0));
+  if (meridiem === "PM" && nextHour !== 12) nextHour += 12;
+  if (meridiem === "AM" && nextHour === 12) nextHour = 0;
+  return `${String(nextHour).padStart(2, "0")}:${String(nextMinute).padStart(2, "0")}`;
+}
+
+function combineLocalDateTimeInput(currentValue, part, nextValue) {
+  const today = new Date();
+  const fallbackDate = today.toISOString().slice(0, 10);
+  const date = part === "date" ? nextValue : localDateInputPart(currentValue) || fallbackDate;
+  const time = part === "time" ? nextValue : localTimeInputPart(currentValue) || "10:00";
+  return `${date || fallbackDate}T${time || "10:00"}`;
+}
+
+function combineLocalTime12Parts(currentValue, patch) {
+  const current = localTimeParts12(currentValue);
+  const next = { ...current, ...patch };
+  return combineLocalDateTimeInput(currentValue, "time", buildLocalTimeFrom12Hour(next.hour, next.minute, next.meridiem));
+}
+
 function deadlineState(task) {
   if (!task?.deadline) return "Upcoming";
   if (["approved", "completed"].includes(task.status)) return "Completed";
@@ -478,6 +522,32 @@ export default function AuthenticatedWorkspace({ defaultSection = "overview" } =
       .querySelector('meta[name="theme-color"]')
       ?.setAttribute("content", isDark ? "#100f0b" : "#ffffff");
   }, [isDark]);
+
+  // Global modal background scroll lock: Automatically prevents background page scrolling when any modal is open
+  useEffect(() => {
+    const syncModalLock = () => {
+      const activeModal = document.querySelector(
+        '[data-modal-overlay="true"], .fixed.inset-0[class*="z-50"], .fixed.inset-0[class*="z-60"], .fixed.inset-0[class*="z-70"], .fixed.inset-0[class*="z-80"], .fixed.inset-0[class*="z-90"], .fixed.inset-0[class*="z-["]'
+      );
+      if (activeModal) {
+        document.body.classList.add("modal-open");
+        document.documentElement.classList.add("modal-open");
+      } else {
+        document.body.classList.remove("modal-open");
+        document.documentElement.classList.remove("modal-open");
+      }
+    };
+
+    const observer = new MutationObserver(syncModalLock);
+    observer.observe(document.body, { childList: true, subtree: true });
+    syncModalLock();
+
+    return () => {
+      observer.disconnect();
+      document.body.classList.remove("modal-open");
+      document.documentElement.classList.remove("modal-open");
+    };
+  }, []);
 
   const [authMode, setAuthMode] = useState("signin");
   const [sessionUser, setSessionUser] = useState(null);
@@ -15404,7 +15474,49 @@ export default function AuthenticatedWorkspace({ defaultSection = "overview" } =
             <InputField label="Meeting Title" value={meetingForm.title} onChange={(v) => setMeetingForm({ ...meetingForm, title: v })} required />
             <InputField label="Topic / Agenda" value={meetingForm.topic} onChange={(v) => setMeetingForm({ ...meetingForm, topic: v })} required />
             <InputField label="Google Meet Link" type="url" value={meetingForm.meeting_link} onChange={(v) => setMeetingForm({ ...meetingForm, meeting_link: v })} required />
-            <InputField label="Date & Time" type="datetime-local" value={meetingForm.scheduled_at} onChange={(v) => setMeetingForm({ ...meetingForm, scheduled_at: v })} required />
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <InputField
+                label="Date"
+                type="date"
+                value={localDateInputPart(meetingForm.scheduled_at)}
+                onChange={(v) => setMeetingForm({ ...meetingForm, scheduled_at: combineLocalDateTimeInput(meetingForm.scheduled_at, "date", v) })}
+                required
+              />
+              <div>
+                <label className="block font-semibold text-gray-700 dark:text-slate-300 mb-1">Time *</label>
+                <div className="grid grid-cols-[1fr_1fr_auto] gap-2">
+                  <select
+                    required
+                    value={localTimeParts12(meetingForm.scheduled_at).hour}
+                    onChange={(e) => setMeetingForm({ ...meetingForm, scheduled_at: combineLocalTime12Parts(meetingForm.scheduled_at, { hour: e.target.value }) })}
+                    className="w-full px-3 py-2 rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 focus:outline-none focus:border-red-500"
+                  >
+                    {WORKSPACE_TIME_HOUR_OPTIONS.map((hour) => (
+                      <option key={hour} value={hour}>{hour}</option>
+                    ))}
+                  </select>
+                  <select
+                    required
+                    value={localTimeParts12(meetingForm.scheduled_at).minute}
+                    onChange={(e) => setMeetingForm({ ...meetingForm, scheduled_at: combineLocalTime12Parts(meetingForm.scheduled_at, { minute: e.target.value }) })}
+                    className="w-full px-3 py-2 rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 focus:outline-none focus:border-red-500"
+                  >
+                    {WORKSPACE_TIME_MINUTE_OPTIONS.map((minute) => (
+                      <option key={minute} value={minute}>{minute}</option>
+                    ))}
+                  </select>
+                  <select
+                    required
+                    value={localTimeParts12(meetingForm.scheduled_at).meridiem}
+                    onChange={(e) => setMeetingForm({ ...meetingForm, scheduled_at: combineLocalTime12Parts(meetingForm.scheduled_at, { meridiem: e.target.value }) })}
+                    className="px-3 py-2 rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 font-bold focus:outline-none focus:border-red-500"
+                  >
+                    <option value="AM">AM</option>
+                    <option value="PM">PM</option>
+                  </select>
+                </div>
+              </div>
+            </div>
             <SelectField
               label="Batch"
               value={meetingForm.batch_id}
@@ -17047,13 +17159,14 @@ function WorkspaceModuleSkeleton({ title = "Loading workspace" }) {
 function ModalWrapper({ isDark, title, subtitle, children, onClose, maxWidth = "max-w-lg" }) {
   return (
     <div
-      className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-sm flex items-center justify-center p-2 sm:p-4 md:p-6 overflow-y-auto"
+      data-modal-overlay="true"
+      className="fixed inset-0 z-[80] bg-slate-950/70 backdrop-blur-sm flex items-center justify-center p-2 sm:p-4 md:p-6 overflow-y-auto overscroll-contain"
       onClick={(e) => {
         if (e.target === e.currentTarget && onClose) onClose();
       }}
     >
       <div
-        className={`border rounded-2xl sm:rounded-3xl p-3 sm:p-5 md:p-6 ${maxWidth} w-full shadow-2xl relative my-auto max-h-[92dvh] flex flex-col overflow-hidden transition-all ${
+        className={`border rounded-2xl sm:rounded-3xl p-3 sm:p-5 md:p-6 ${maxWidth} w-full shadow-2xl relative my-auto max-h-[82vh] flex flex-col overflow-hidden transition-all ${
           isDark ? "bg-[#18150f] border-[#3a3020] text-[#f4ead2]" : "bg-white border-gray-200 text-gray-900"
         }`}
       >

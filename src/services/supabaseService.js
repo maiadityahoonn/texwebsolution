@@ -2229,8 +2229,8 @@ function pickPayload(source = {}, allowed = []) {
 const PROPOSAL_COLUMNS = ['deal_id', 'title', 'amount', 'status', 'scope_of_work', 'deliverables', 'document_url', 'sent_at', 'accepted_at', 'created_by'];
 const QUOTATION_COLUMNS = ['quotation_number', 'deal_id', 'subtotal', 'discount', 'tax', 'total', 'status', 'items', 'valid_until', 'notes', 'created_by'];
 const AGREEMENT_COLUMNS = ['agreement_number', 'deal_id', 'proposal_id', 'quotation_id', 'title', 'scope_of_work', 'deliverables', 'commercial_terms', 'payment_milestones', 'start_date', 'end_date', 'status', 'document_url', 'signed_at', 'notes', 'created_by'];
-const SALES_FOLLOWUP_COLUMNS = ['lead_id', 'deal_id', 'assigned_to', 'title', 'channel', 'due_at', 'status', 'priority', 'notes', 'completed_at', 'created_by'];
-const SALES_MEETING_COLUMNS = ['lead_id', 'deal_id', 'host_id', 'title', 'meeting_type', 'scheduled_at', 'duration_minutes', 'meeting_link', 'location', 'status', 'agenda', 'outcome', 'next_action', 'created_by'];
+const SALES_FOLLOWUP_COLUMNS = ['lead_id', 'deal_id', 'assigned_to', 'title', 'channel', 'due_at', 'reminder_before_minutes', 'status', 'priority', 'notes', 'completed_at', 'created_by'];
+const SALES_MEETING_COLUMNS = ['lead_id', 'deal_id', 'host_id', 'title', 'meeting_type', 'scheduled_at', 'reminder_before_minutes', 'duration_minutes', 'meeting_link', 'location', 'status', 'agenda', 'outcome', 'next_action', 'created_by'];
 const INVOICE_COLUMNS = ['invoice_number', 'deal_id', 'project_id', 'title', 'amount', 'tax_amount', 'total_amount', 'due_date', 'status', 'milestone_type', 'payment_terms', 'notes', 'pdf_url', 'created_by'];
 
 export async function getAiThread({ deal_id, document_type = 'quotation' } = {}) {
@@ -2523,8 +2523,15 @@ export async function getDeals(options = null) {
     if (options?.stage && options.stage !== 'all') {
       query = query.eq('pipeline_stage', options.stage);
     }
-    if (options?.dateFrom) query = query.gte('created_at', options.dateFrom);
-    if (options?.dateTo) query = query.lte('created_at', options.dateTo);
+    if (options?.dateFrom || options?.dateTo) {
+      if (options?.dateFrom && options?.dateTo) {
+        query = query.or(`and(created_at.gte.${options.dateFrom},created_at.lte.${options.dateTo}),and(updated_at.gte.${options.dateFrom},updated_at.lte.${options.dateTo})`);
+      } else if (options?.dateFrom) {
+        query = query.or(`created_at.gte.${options.dateFrom},updated_at.gte.${options.dateFrom}`);
+      } else if (options?.dateTo) {
+        query = query.or(`created_at.lte.${options.dateTo},updated_at.lte.${options.dateTo}`);
+      }
+    }
     const search = String(options?.search || '').trim();
     if (search) {
       const like = `%${escapeSupabaseLike(search)}%`;
@@ -2597,6 +2604,7 @@ export async function createDeal(dealData) {
       service: dealData.service || 'Web Development',
       assigned_to: dealData.assigned_to || null,
       expected_close_date: dealData.expected_close_date || null,
+      reminder_before_minutes: Number(dealData.reminder_before_minutes) || 10,
       loss_reason: dealData.loss_reason || null,
       notes: dealData.notes || '',
     };

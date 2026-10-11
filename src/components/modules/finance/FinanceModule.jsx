@@ -7,6 +7,7 @@ import {
   Plus,
   Search,
   CheckCircle2,
+  Check,
   Clock,
   AlertTriangle,
   FileText,
@@ -646,24 +647,37 @@ export default function FinanceModule({
 
       {/* 5. Add Quotation Modal */}
       {showCommercialModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
+        <div data-modal-overlay="true" className="fixed inset-0 z-[80] flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-xs overscroll-contain animate-in fade-in duration-200">
           <form
             onSubmit={handleCreateCommercialSubmit}
-            className="w-full max-w-2xl max-h-[90vh] overflow-y-auto no-scrollbar rounded-2xl bg-white dark:bg-[#18150f] border border-gray-200 dark:border-[#3a3020] shadow-2xl p-5 space-y-4"
+            className="w-full max-w-2xl max-h-[82vh] rounded-3xl bg-white dark:bg-[#18150f] border border-gray-200/80 dark:border-[#3a3020] shadow-2xl flex flex-col overflow-hidden transition-all animate-in zoom-in-95 duration-200"
           >
-            <div className="flex items-center justify-between border-b border-gray-100 dark:border-[#3a3020] pb-3">
-              <div>
-                <h3 className="font-bold text-base text-gray-900 dark:text-white">Create Commercial Document</h3>
-                <p className="text-[11px] text-gray-400">Quotation before agreement and invoice.</p>
+            {/* Header */}
+            <div className="flex items-center justify-between px-5 py-3.5 border-b border-gray-100 dark:border-[#3a3020] bg-linear-to-r from-orange-50/70 via-amber-50/25 to-transparent dark:from-orange-950/25 dark:via-transparent dark:to-transparent shrink-0">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-orange-500 text-white flex items-center justify-center shadow-md shadow-orange-500/25 shrink-0">
+                  <FileText className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-base sm:text-lg text-gray-900 dark:text-white leading-tight">Create Commercial Document</h3>
+                  <p className="text-xs text-gray-500 dark:text-neutral-400 mt-0.5">Quotation before agreement and invoice</p>
+                </div>
               </div>
-              <button type="button" onClick={() => setShowCommercialModal(false)} className="p-1 rounded-lg text-gray-400">
+              <button
+                type="button"
+                onClick={() => setShowCommercialModal(false)}
+                className="p-1.5 rounded-xl text-gray-400 hover:text-gray-700 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-slate-800 transition cursor-pointer"
+                aria-label="Close modal"
+              >
                 <X className="w-4 h-4" />
               </button>
             </div>
 
-            <div className="rounded-xl bg-orange-50 dark:bg-orange-950/30 border border-orange-200 dark:border-orange-900/50 px-3 py-2 text-xs font-bold text-orange-700 dark:text-orange-300">
-              Quotation is the Sales document.
-            </div>
+            {/* Body */}
+            <div className="p-5 space-y-4 text-xs flex-1 overflow-y-auto no-scrollbar">
+              <div className="rounded-xl bg-orange-50 dark:bg-orange-950/30 border border-orange-200 dark:border-orange-900/50 px-3 py-2 text-xs font-bold text-orange-700 dark:text-orange-300">
+                Quotation is the Sales document.
+              </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
               <div>
@@ -738,18 +752,28 @@ export default function FinanceModule({
                 />
               </div>
             </div>
+            </div>
 
-            <div className="flex flex-wrap items-center justify-end gap-2 pt-3 border-t border-gray-100 dark:border-[#3a3020]">
-              <button type="button" onClick={() => setShowCommercialModal(false)} className="px-3.5 py-2 rounded-xl text-xs font-semibold text-gray-500 cursor-pointer">
+            {/* Footer */}
+            <div className="flex flex-wrap items-center justify-end gap-2.5 px-5 py-3 border-t border-gray-100 dark:border-[#3a3020] bg-gray-50/60 dark:bg-[#1a1712] shrink-0">
+              <button
+                type="button"
+                onClick={() => setShowCommercialModal(false)}
+                className="px-4 py-2.5 rounded-xl text-xs font-semibold text-gray-700 dark:text-neutral-300 hover:bg-gray-100 dark:hover:bg-slate-800 border border-gray-200 dark:border-slate-700 transition cursor-pointer"
+              >
                 Cancel
               </button>
-              <button type="submit" className="px-4 py-2 rounded-xl text-xs font-bold bg-orange-600 hover:bg-orange-700 text-white shadow-sm cursor-pointer shrink-0">
-                Save Document
+              <button
+                type="submit"
+                className="px-5 py-2.5 rounded-xl text-xs font-bold bg-linear-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white shadow-md shadow-orange-500/25 hover:shadow-lg transition flex items-center gap-1.5 cursor-pointer shrink-0"
+              >
+                <FileText className="w-3.5 h-3.5 shrink-0" />
+                <span>Save Document</span>
               </button>
               <button
                 type="button"
                 onClick={(e) => handleCreateCommercialSubmit(e, true)}
-                className="px-4 py-2 rounded-xl text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm flex items-center gap-1.5 cursor-pointer shrink-0"
+                className="px-5 py-2.5 rounded-xl text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white shadow-md shadow-emerald-500/25 hover:shadow-lg transition flex items-center gap-1.5 cursor-pointer shrink-0"
               >
                 <WhatsAppIcon className="w-3.5 h-3.5 shrink-0" />
                 <span>Save & WhatsApp</span>
@@ -761,23 +785,34 @@ export default function FinanceModule({
 
       {/* 6. Add Invoice Modal */}
       {showAddInvoiceModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
+        <div data-modal-overlay="true" className="fixed inset-0 z-[80] flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-xs overscroll-contain animate-in fade-in duration-200">
           <form
             onSubmit={handleCreateInvoiceSubmit}
-            className="w-full max-w-md rounded-2xl bg-white dark:bg-[#18150f] border border-gray-200 dark:border-[#3a3020] shadow-2xl p-5 space-y-4"
+            className="w-full max-w-xl max-h-[82vh] rounded-3xl bg-white dark:bg-[#18150f] border border-gray-200/80 dark:border-[#3a3020] shadow-2xl flex flex-col overflow-hidden transition-all animate-in zoom-in-95 duration-200"
           >
-            <div className="flex items-center justify-between border-b border-gray-100 dark:border-[#3a3020] pb-3">
-              <h3 className="font-bold text-base text-gray-900 dark:text-white">Generate Invoice</h3>
+            {/* Header */}
+            <div className="flex items-center justify-between px-5 py-3.5 border-b border-gray-100 dark:border-[#3a3020] bg-linear-to-r from-purple-50/70 via-indigo-50/25 to-transparent dark:from-purple-950/25 dark:via-transparent dark:to-transparent shrink-0">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-purple-600 text-white flex items-center justify-center shadow-md shadow-purple-500/25 shrink-0">
+                  <DollarSign className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-base sm:text-lg text-gray-900 dark:text-white leading-tight">Generate Tax Invoice</h3>
+                  <p className="text-xs text-gray-500 dark:text-neutral-400 mt-0.5">Create and issue official milestone tax invoice</p>
+                </div>
+              </div>
               <button
                 type="button"
                 onClick={() => setShowAddInvoiceModal(false)}
-                className="p-1 rounded-lg text-gray-400"
+                className="p-1.5 rounded-xl text-gray-400 hover:text-gray-700 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-slate-800 transition cursor-pointer"
+                aria-label="Close modal"
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
 
-            <div className="space-y-3 text-xs">
+            {/* Body */}
+            <div className="p-5 space-y-3.5 text-xs flex-1 overflow-y-auto no-scrollbar">
               <div className="grid grid-cols-2 gap-2">
                 <div>
                   <label className="block font-medium mb-1">Invoice Number</label>
@@ -853,24 +888,26 @@ export default function FinanceModule({
               </div>
             </div>
 
-            <div className="flex flex-wrap items-center justify-end gap-2 pt-3 border-t border-gray-100 dark:border-[#3a3020]">
+            {/* Footer */}
+            <div className="flex flex-wrap items-center justify-end gap-2.5 px-5 py-3 border-t border-gray-100 dark:border-[#3a3020] bg-gray-50/60 dark:bg-[#1a1712] shrink-0">
               <button
                 type="button"
                 onClick={() => setShowAddInvoiceModal(false)}
-                className="px-3.5 py-2 rounded-xl text-xs font-semibold text-gray-500 cursor-pointer"
+                className="px-4 py-2.5 rounded-xl text-xs font-semibold text-gray-700 dark:text-neutral-300 hover:bg-gray-100 dark:hover:bg-slate-800 border border-gray-200 dark:border-slate-700 transition cursor-pointer"
               >
                 Cancel
               </button>
               <button
                 type="submit"
-                className="px-4 py-2 rounded-xl text-xs font-bold bg-orange-600 hover:bg-orange-700 text-white shadow-sm cursor-pointer shrink-0"
+                className="px-5 py-2.5 rounded-xl text-xs font-bold bg-linear-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white shadow-md shadow-purple-500/25 hover:shadow-lg transition flex items-center gap-1.5 cursor-pointer shrink-0"
               >
-                Issue Invoice
+                <DollarSign className="w-3.5 h-3.5 shrink-0" />
+                <span>Issue Invoice</span>
               </button>
               <button
                 type="button"
                 onClick={(e) => handleCreateInvoiceSubmit(e, true)}
-                className="px-4 py-2 rounded-xl text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm flex items-center gap-1.5 cursor-pointer shrink-0"
+                className="px-5 py-2.5 rounded-xl text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white shadow-md shadow-emerald-500/25 hover:shadow-lg transition flex items-center gap-1.5 cursor-pointer shrink-0"
               >
                 <WhatsAppIcon className="w-3.5 h-3.5 shrink-0" />
                 <span>Issue & WhatsApp</span>
@@ -882,45 +919,53 @@ export default function FinanceModule({
 
       {/* 6. Record Payment Modal */}
       {recordPaymentModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
+        <div data-modal-overlay="true" className="fixed inset-0 z-[90] flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-xs overscroll-contain animate-in fade-in duration-200">
           <form
             onSubmit={handleRecordPaymentSubmit}
-            className="w-full max-w-sm rounded-2xl bg-white dark:bg-[#18150f] border border-gray-200 dark:border-[#3a3020] shadow-2xl p-5 space-y-4"
+            className="w-full max-w-md max-h-[82vh] rounded-3xl bg-white dark:bg-[#18150f] border border-gray-200/80 dark:border-[#3a3020] shadow-2xl flex flex-col overflow-hidden transition-all animate-in zoom-in-95 duration-200"
           >
-            <div className="flex items-center justify-between border-b border-gray-100 dark:border-[#3a3020] pb-3">
-              <div>
-                <h3 className="font-bold text-sm text-gray-900 dark:text-white">Record Payment</h3>
-                <span className="text-[11px] text-gray-400 font-mono">
-                  {recordPaymentModal.invoice_number}
-                </span>
+            {/* Header */}
+            <div className="flex items-center justify-between px-5 py-3.5 border-b border-gray-100 dark:border-[#3a3020] bg-linear-to-r from-emerald-50/70 via-teal-50/25 to-transparent dark:from-emerald-950/25 dark:via-transparent dark:to-transparent shrink-0">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-emerald-600 text-white flex items-center justify-center shadow-md shadow-emerald-500/25 shrink-0">
+                  <CreditCard className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-base sm:text-lg text-gray-900 dark:text-white leading-tight">Record Payment</h3>
+                  <p className="text-xs text-gray-500 dark:text-neutral-400 mt-0.5 font-mono">
+                    Invoice: {recordPaymentModal.invoice_number}
+                  </p>
+                </div>
               </div>
               <button
                 type="button"
                 onClick={() => setRecordPaymentModal(null)}
-                className="p-1 rounded-lg text-gray-400"
+                className="p-1.5 rounded-xl text-gray-400 hover:text-gray-700 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-slate-800 transition cursor-pointer"
+                aria-label="Close modal"
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
 
-            <div className="space-y-3 text-xs">
+            {/* Body */}
+            <div className="p-5 space-y-3.5 text-xs flex-1 overflow-y-auto no-scrollbar">
               <div>
-                <label className="block font-medium mb-1">Amount Received (₹) *</label>
+                <label className="block font-semibold mb-1 text-gray-700 dark:text-neutral-300">Amount Received (₹) *</label>
                 <input
                   type="number"
                   required
                   value={paymentForm.amount}
                   onChange={(e) => setPaymentForm({ ...paymentForm, amount: e.target.value })}
-                  className="w-full px-3 py-2 rounded-xl bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 font-mono font-bold"
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-gray-50/80 dark:bg-slate-800/80 border border-gray-200 dark:border-slate-700 font-mono font-bold text-gray-900 dark:text-white focus:bg-white dark:focus:bg-slate-800 focus:outline-hidden focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500 transition shadow-2xs"
                 />
               </div>
 
               <div>
-                <label className="block font-medium mb-1">Payment Method</label>
+                <label className="block font-semibold mb-1 text-gray-700 dark:text-neutral-300">Payment Method</label>
                 <select
                   value={paymentForm.payment_method}
                   onChange={(e) => setPaymentForm({ ...paymentForm, payment_method: e.target.value })}
-                  className="w-full px-3 py-2 rounded-xl bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700"
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-gray-50/80 dark:bg-slate-800/80 border border-gray-200 dark:border-slate-700 text-gray-900 dark:text-white focus:bg-white dark:focus:bg-slate-800 focus:outline-hidden focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500 transition shadow-2xs"
                 >
                   <option value="bank_transfer">Bank Transfer (NEFT/RTGS/IMPS)</option>
                   <option value="upi">UPI (GPay / PhonePe / Paytm)</option>
@@ -930,41 +975,43 @@ export default function FinanceModule({
               </div>
 
               <div>
-                <label className="block font-medium mb-1">Transaction Ref / UTR *</label>
+                <label className="block font-semibold mb-1 text-gray-700 dark:text-neutral-300">Transaction Ref / UTR *</label>
                 <input
                   type="text"
                   required
                   value={paymentForm.reference_id}
                   onChange={(e) => setPaymentForm({ ...paymentForm, reference_id: e.target.value })}
                   placeholder="e.g. UTR-9823482741"
-                  className="w-full px-3 py-2 rounded-xl bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 font-mono"
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-gray-50/80 dark:bg-slate-800/80 border border-gray-200 dark:border-slate-700 font-mono text-gray-900 dark:text-white focus:bg-white dark:focus:bg-slate-800 focus:outline-hidden focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500 transition shadow-2xs"
                 />
               </div>
 
               <div>
-                <label className="block font-medium mb-1">Date</label>
+                <label className="block font-semibold mb-1 text-gray-700 dark:text-neutral-300">Date</label>
                 <input
                   type="date"
                   value={paymentForm.payment_date}
                   onChange={(e) => setPaymentForm({ ...paymentForm, payment_date: e.target.value })}
-                  className="w-full px-3 py-2 rounded-xl bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700"
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-gray-50/80 dark:bg-slate-800/80 border border-gray-200 dark:border-slate-700 text-gray-900 dark:text-white focus:bg-white dark:focus:bg-slate-800 focus:outline-hidden focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500 transition shadow-2xs"
                 />
               </div>
             </div>
 
-            <div className="flex items-center justify-end gap-2 pt-3 border-t border-gray-100 dark:border-[#3a3020]">
+            {/* Footer Buttons */}
+            <div className="flex items-center justify-end gap-2.5 px-5 py-3 border-t border-gray-100 dark:border-[#3a3020] bg-gray-50/60 dark:bg-[#1a1712] shrink-0">
               <button
                 type="button"
                 onClick={() => setRecordPaymentModal(null)}
-                className="px-3.5 py-2 rounded-xl text-xs font-semibold text-gray-500"
+                className="px-4 py-2.5 rounded-xl text-xs font-semibold text-gray-700 dark:text-neutral-300 hover:bg-gray-100 dark:hover:bg-slate-800 border border-gray-200 dark:border-slate-700 transition cursor-pointer"
               >
                 Cancel
               </button>
               <button
                 type="submit"
-                className="px-4 py-2 rounded-xl text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm"
+                className="px-5 py-2.5 rounded-xl text-xs font-bold bg-linear-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white shadow-md shadow-emerald-500/25 hover:shadow-lg transition flex items-center gap-2 cursor-pointer"
               >
-                Confirm Settlement
+                <Check className="w-4 h-4" />
+                <span>Confirm Settlement</span>
               </button>
             </div>
           </form>

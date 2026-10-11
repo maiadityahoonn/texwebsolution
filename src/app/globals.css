@@ -240,15 +240,28 @@ label,
   }
 }
 
-/* Custom Hide Scrollbar Utility (Scrolls smoothly without visible scrollbar) */
-.no-scrollbar::-webkit-scrollbar {
+/* Global Hide Scrollbar (Scrolls smoothly without visible scrollbar anywhere on the website) */
+html,
+body,
+*,
+*::before,
+*::after {
+  scrollbar-width: none !important;
+  -ms-overflow-style: none !important;
+}
+
+::-webkit-scrollbar,
+*::-webkit-scrollbar,
+.no-scrollbar::-webkit-scrollbar,
+.scrollbar-none::-webkit-scrollbar {
   display: none !important;
   width: 0 !important;
   height: 0 !important;
   background: transparent !important;
 }
 
-.no-scrollbar {
+.no-scrollbar,
+.scrollbar-none {
   -ms-overflow-style: none !important;
   scrollbar-width: none !important;
 }
@@ -934,15 +947,58 @@ nav,
   }
 }
 
-/* Hide scrollbar while preserving scroll functionality */
+/* Hide scrollbar globally across the entire website while preserving full scroll functionality */
+html,
+body,
+*,
+*::before,
+*::after {
+  scrollbar-width: none !important;
+  -ms-overflow-style: none !important;
+}
+
+::-webkit-scrollbar,
+*::-webkit-scrollbar,
+html::-webkit-scrollbar,
+body::-webkit-scrollbar,
 .no-scrollbar::-webkit-scrollbar,
 .scrollbar-none::-webkit-scrollbar {
-  display: none;
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+  background: transparent !important;
 }
-.no-scrollbar,
-.scrollbar-none {
-  -ms-overflow-style: none;
-  scrollbar-width: none;
+
+::-webkit-scrollbar-thumb,
+*::-webkit-scrollbar-thumb {
+  display: none !important;
+  background: transparent !important;
+}
+
+::-webkit-scrollbar-track,
+*::-webkit-scrollbar-track {
+  display: none !important;
+  background: transparent !important;
+}
+
+/* Prevent background website page from scrolling when any modal is open */
+html.modal-open,
+body.modal-open {
+  overflow: hidden !important;
+  height: 100% !important;
+  overscroll-behavior: none !important;
+}
+
+body.modal-open main,
+body.modal-open #workspace-main {
+  overflow: hidden !important;
+  overscroll-behavior: none !important;
+}
+
+/* Modal overlay & scrollable dialog containers prevent scroll chaining to background */
+[data-modal-overlay="true"],
+.modal-overlay {
+  overscroll-behavior: contain !important;
 }
 
 /* Smooth native-app style chat open animation for mobile */

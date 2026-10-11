@@ -35,12 +35,16 @@ import {
   HelpCircle,
   ChevronLeft,
   ChevronRight,
+  ChevronDown,
+  History,
   Eye,
   Video,
   ArrowDownAZ,
   Settings,
   Mic,
   Paperclip,
+  IndianRupee,
+  Layers,
 } from "lucide-react";
 import ActivityTimeline from "../shared/ActivityTimeline";
 import MetaLeadsImportModal from "./MetaLeadsImportModal";
@@ -60,6 +64,399 @@ function WhatsAppIcon({ className = "w-4 h-4" }) {
     <svg className={className} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
       <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z" />
     </svg>
+  );
+}
+
+const DEFAULT_REMINDER_MINUTES = 10;
+const REMINDER_OPTIONS = [
+  [5, "5 min before"],
+  [10, "10 min before"],
+  [15, "15 min before"],
+  [30, "30 min before"],
+  [60, "1 hour before"],
+  [120, "2 hours before"],
+  [1440, "1 day before"],
+];
+const DURATION_OPTIONS = [
+  [15, "15 min"],
+  [30, "30 min"],
+  [45, "45 min"],
+  [60, "1 hour"],
+  [90, "1.5 hours"],
+  [120, "2 hours"],
+];
+const TIME_HOUR_OPTIONS = Array.from({ length: 12 }, (_, index) => String(index + 1).padStart(2, "0"));
+const TIME_MINUTE_OPTIONS = Array.from({ length: 60 }, (_, index) => String(index).padStart(2, "0"));
+
+function toLocalDateTimeInput(value = new Date()) {
+  const date = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  const local = new Date(date.getTime() - date.getTimezoneOffset() * 60_000);
+  return local.toISOString().slice(0, 16);
+}
+
+function datePart(value) {
+  return String(value || "").slice(0, 10);
+}
+
+function timePart(value) {
+  return String(value || "").slice(11, 16);
+}
+
+function timeParts12(value) {
+  const [hourRaw = "10", minuteRaw = "00"] = timePart(value).split(":");
+  const hour24 = Math.min(23, Math.max(0, Number.parseInt(hourRaw, 10) || 10));
+  const minute = Math.min(59, Math.max(0, Number.parseInt(minuteRaw, 10) || 0));
+  return {
+    hour: String(hour24 % 12 || 12).padStart(2, "0"),
+    minute: String(minute).padStart(2, "0"),
+    meridiem: hour24 >= 12 ? "PM" : "AM",
+  };
+}
+
+function buildTimeFrom12Hour(hour, minute, meridiem) {
+  let nextHour = Math.min(12, Math.max(1, Number.parseInt(hour, 10) || 10));
+  const nextMinute = Math.min(59, Math.max(0, Number.parseInt(minute, 10) || 0));
+  if (meridiem === "PM" && nextHour !== 12) nextHour += 12;
+  if (meridiem === "AM" && nextHour === 12) nextHour = 0;
+  return `${String(nextHour).padStart(2, "0")}:${String(nextMinute).padStart(2, "0")}`;
+}
+
+function combineDateTimeParts(currentValue, part, nextValue) {
+  const today = toLocalDateTimeInput(new Date()).slice(0, 10);
+  const currentDate = datePart(currentValue) || today;
+  const currentTime = timePart(currentValue) || "10:00";
+  const nextDate = part === "date" ? nextValue : currentDate;
+  const nextTime = part === "time" ? nextValue : currentTime;
+  return `${nextDate || today}T${nextTime || "10:00"}`;
+}
+
+function combineTime12Parts(currentValue, patch) {
+  const current = timeParts12(currentValue);
+  const next = { ...current, ...patch };
+  return combineDateTimeParts(currentValue, "time", buildTimeFrom12Hour(next.hour, next.minute, next.meridiem));
+}
+
+function SplitDateTimeField({
+  label = "Schedule",
+  value,
+  onChange,
+  required = false,
+  reminderValue,
+  onReminderChange,
+  showReminder = true,
+  className = "",
+}) {
+  const selectedTime = timeParts12(value);
+  return (
+    <div className={`p-3.5 sm:p-4 rounded-2xl bg-gray-50/70 dark:bg-[#1a1712]/70 border border-gray-200/80 dark:border-[#3a3020] space-y-3 ${className}`}>
+      {label ? (
+        <div className="flex items-center gap-1.5 font-semibold text-gray-800 dark:text-neutral-200 text-xs">
+          <Calendar className="w-3.5 h-3.5 text-emerald-500" />
+          <span>{label}</span>
+          {required && <span className="text-red-500">*</span>}
+        </div>
+      ) : null}
+
+      <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 items-end">
+        {/* Date Field */}
+        <div className="sm:col-span-5 space-y-1.5">
+          <span className="block text-[10px] font-bold uppercase tracking-wider text-gray-400">
+            Date {required ? "*" : ""}
+          </span>
+          <input
+            type="date"
+            required={required}
+            value={datePart(value)}
+            onChange={(e) => onChange?.(combineDateTimeParts(value, "date", e.target.value))}
+            className="w-full h-10 px-3 rounded-xl bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 text-gray-900 dark:text-white text-xs font-medium focus:bg-white dark:focus:bg-slate-800 focus:outline-hidden focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500 transition shadow-2xs"
+          />
+        </div>
+
+        {/* Time Field */}
+        <div className="sm:col-span-7 space-y-1.5">
+          <span className="block text-[10px] font-bold uppercase tracking-wider text-gray-400">
+            Time (12-Hour) {required ? "*" : ""}
+          </span>
+          <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)_minmax(0,72px)] gap-1.5 items-center h-10">
+            <select
+              required={required}
+              value={selectedTime.hour}
+              onChange={(e) => onChange?.(combineTime12Parts(value, { hour: e.target.value }))}
+              aria-label="Hour"
+              className="w-full h-full px-2 rounded-xl bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 text-gray-900 dark:text-white text-center font-bold text-xs focus:bg-white dark:focus:bg-slate-800 focus:outline-hidden focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500 transition shadow-2xs cursor-pointer"
+            >
+              {TIME_HOUR_OPTIONS.map((hour) => (
+                <option key={hour} value={hour}>{hour}</option>
+              ))}
+            </select>
+            <span className="text-gray-400 dark:text-neutral-500 font-black text-xs shrink-0">:</span>
+            <select
+              required={required}
+              value={selectedTime.minute}
+              onChange={(e) => onChange?.(combineTime12Parts(value, { minute: e.target.value }))}
+              aria-label="Minute"
+              className="w-full h-full px-2 rounded-xl bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 text-gray-900 dark:text-white text-center font-bold text-xs focus:bg-white dark:focus:bg-slate-800 focus:outline-hidden focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500 transition shadow-2xs cursor-pointer"
+            >
+              {TIME_MINUTE_OPTIONS.map((minute) => (
+                <option key={minute} value={minute}>{minute}</option>
+              ))}
+            </select>
+            <select
+              required={required}
+              value={selectedTime.meridiem}
+              onChange={(e) => onChange?.(combineTime12Parts(value, { meridiem: e.target.value }))}
+              aria-label="AM or PM"
+              className="w-full h-full px-2 rounded-xl bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 text-emerald-600 dark:text-emerald-400 font-bold text-xs text-center focus:bg-white dark:focus:bg-slate-800 focus:outline-hidden focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500 transition shadow-2xs cursor-pointer"
+            >
+              <option value="AM">AM</option>
+              <option value="PM">PM</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      {showReminder ? (
+        <div className="space-y-1.5 pt-0.5">
+          <span className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-gray-400">
+            <Clock className="w-3 h-3 text-emerald-500" />
+            <span>Reminder Notification</span>
+          </span>
+          <select
+            value={Number(reminderValue ?? DEFAULT_REMINDER_MINUTES)}
+            onChange={(e) => onReminderChange?.(Number(e.target.value))}
+            className="w-full h-10 px-3.5 rounded-xl bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 text-xs font-semibold text-gray-900 dark:text-white focus:bg-white dark:focus:bg-slate-800 focus:outline-hidden focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500 transition shadow-2xs cursor-pointer"
+          >
+            {REMINDER_OPTIONS.map(([minutes, labelText]) => (
+              <option key={minutes} value={minutes}>{labelText}</option>
+            ))}
+          </select>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function DurationSelectField({ label = null, value, onChange, className = "" }) {
+  return (
+    <div className={className}>
+      {label ? (
+        <label className="flex items-center gap-1.5 font-semibold text-gray-700 dark:text-neutral-200 mb-1.5">
+          <Clock className="w-3.5 h-3.5 text-indigo-500" />
+          <span>{label}</span>
+        </label>
+      ) : null}
+      <select
+        value={Number(value || 60)}
+        onChange={(e) => onChange?.(Number(e.target.value))}
+        className="w-full px-3.5 py-2.5 rounded-xl bg-gray-50/80 dark:bg-slate-800/80 border border-gray-200 dark:border-slate-700 text-gray-900 dark:text-white font-medium focus:bg-white dark:focus:bg-slate-800 focus:outline-hidden focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500 transition shadow-2xs cursor-pointer text-xs"
+      >
+        {DURATION_OPTIONS.map(([minutes, labelText]) => (
+          <option key={minutes} value={minutes}>{labelText}</option>
+        ))}
+      </select>
+    </div>
+  );
+}
+
+function SearchableLeadSelect({
+  leads = [],
+  value = "",
+  onChange,
+  placeholder = "Search lead by name, phone...",
+  label = null,
+  required = false,
+  className = "",
+}) {
+  const [isOpen, setIsOpen] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
+  const dropdownRef = useRef(null);
+  const searchInputRef = useRef(null);
+
+  const selectedLead = useMemo(() => {
+    return leads.find((l) => l.id === value) || null;
+  }, [leads, value]);
+
+  const filteredLeads = useMemo(() => {
+    const term = searchTerm.trim().toLowerCase();
+    if (!term) return leads;
+    return leads.filter((lead) => {
+      const name = (lead.name || "").toLowerCase();
+      const phone = (lead.phone || "").toLowerCase();
+      const company = (lead.company || "").toLowerCase();
+      const service = (lead.service || "").toLowerCase();
+      return name.includes(term) || phone.includes(term) || company.includes(term) || service.includes(term);
+    });
+  }, [leads, searchTerm]);
+
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setIsOpen(false);
+      }
+    }
+    if (isOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+      setTimeout(() => searchInputRef.current?.focus(), 50);
+    }
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [isOpen]);
+
+  return (
+    <div className={`relative ${className}`} ref={dropdownRef}>
+      {label && (
+        <label className="flex items-center gap-1.5 font-semibold text-gray-700 dark:text-neutral-200 mb-1.5">
+          <Users className="w-3.5 h-3.5 text-orange-500" />
+          <span>{label}</span>
+          {required && <span className="text-red-500">*</span>}
+        </label>
+      )}
+
+      {/* Trigger Button */}
+      <div
+        role="button"
+        tabIndex={0}
+        onClick={() => {
+          setIsOpen(!isOpen);
+          if (!isOpen) setSearchTerm("");
+        }}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            setIsOpen(!isOpen);
+            if (!isOpen) setSearchTerm("");
+          }
+        }}
+        className={`w-full px-3.5 py-2.5 rounded-xl bg-gray-50/80 dark:bg-slate-800/80 border ${
+          isOpen ? "border-orange-500 ring-2 ring-orange-500/20 bg-white dark:bg-slate-800" : "border-gray-200 dark:border-slate-700"
+        } text-gray-900 dark:text-white font-medium flex items-center justify-between gap-2 cursor-pointer transition shadow-2xs text-xs select-none`}
+      >
+        <div className="flex items-center gap-2 min-w-0 truncate">
+          <Users className="w-3.5 h-3.5 text-gray-400 shrink-0" />
+          {selectedLead ? (
+            <div className="truncate flex items-center gap-1.5">
+              <span className="font-bold text-gray-900 dark:text-white truncate">{selectedLead.name}</span>
+              {selectedLead.company && (
+                <span className="text-gray-400 text-[10px] truncate">({selectedLead.company})</span>
+              )}
+              {selectedLead.phone && (
+                <span className="text-gray-400 font-mono text-[10px] truncate">· {selectedLead.phone}</span>
+              )}
+            </div>
+          ) : (
+            <span className="text-gray-400">{placeholder || "No lead selected"}</span>
+          )}
+        </div>
+        <div className="flex items-center gap-1 shrink-0">
+          {selectedLead && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onChange?.("", null);
+              }}
+              className="p-0.5 rounded-md text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 hover:bg-gray-200 dark:hover:bg-slate-700 transition"
+              title="Clear selection"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          )}
+          <ChevronDown className={`w-3.5 h-3.5 text-gray-400 transition-transform ${isOpen ? "rotate-180" : ""}`} />
+        </div>
+      </div>
+
+      {/* Dropdown Menu */}
+      {isOpen && (
+        <div className="absolute left-0 right-0 top-full mt-1.5 z-50 rounded-2xl bg-white dark:bg-[#1f1b14] border border-gray-200 dark:border-[#3a3020] shadow-xl overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+          {/* Search Input Bar */}
+          <div className="p-2 border-b border-gray-100 dark:border-[#3a3020] bg-gray-50/70 dark:bg-[#282218]">
+            <div className="relative">
+              <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400" />
+              <input
+                ref={searchInputRef}
+                type="text"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                placeholder="Type name, phone, or service to search..."
+                className="w-full pl-8 pr-7 py-1.5 text-xs rounded-lg bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 text-gray-900 dark:text-white placeholder-gray-400 focus:outline-hidden focus:ring-1 focus:ring-orange-500 font-medium"
+              />
+              {searchTerm && (
+                <button
+                  type="button"
+                  onClick={() => setSearchTerm("")}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 cursor-pointer"
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Leads List */}
+          <div className="max-h-56 overflow-y-auto divide-y divide-gray-50 dark:divide-[#2e2619] text-xs">
+            {/* Option to clear / No lead */}
+            <div
+              role="button"
+              tabIndex={0}
+              onClick={() => {
+                onChange?.("", null);
+                setIsOpen(false);
+              }}
+              className={`px-3 py-2 flex items-center justify-between cursor-pointer hover:bg-gray-50 dark:hover:bg-slate-800/60 transition ${
+                !value ? "bg-orange-50/60 dark:bg-orange-950/20 text-orange-600 font-bold" : "text-gray-500"
+              }`}
+            >
+              <span>No lead selected</span>
+              {!value && <Check className="w-3.5 h-3.5 text-orange-600 shrink-0" />}
+            </div>
+
+            {filteredLeads.length === 0 ? (
+              <div className="p-4 text-center text-gray-400 text-xs">
+                No leads matching &quot;{searchTerm}&quot;
+              </div>
+            ) : (
+              filteredLeads.map((lead) => {
+                const isSelected = lead.id === value;
+                return (
+                  <div
+                    key={lead.id}
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => {
+                      onChange?.(lead.id, lead);
+                      setIsOpen(false);
+                    }}
+                    className={`px-3 py-2 flex items-center justify-between gap-2 cursor-pointer hover:bg-orange-50/40 dark:hover:bg-orange-950/20 transition ${
+                      isSelected ? "bg-orange-50/80 dark:bg-orange-950/40 text-orange-600 font-bold" : "text-gray-800 dark:text-neutral-200"
+                    }`}
+                  >
+                    <div className="min-w-0">
+                      <div className="font-semibold text-gray-900 dark:text-white truncate flex items-center gap-1.5">
+                        <span className="truncate">{lead.name}</span>
+                        {lead.company && (
+                          <span className="text-[10px] text-gray-400 font-normal truncate">({lead.company})</span>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2 text-[10px] text-gray-400 font-normal mt-0.5">
+                        {lead.phone && <span className="font-mono">{lead.phone}</span>}
+                        {lead.service && (
+                          <span className="px-1.5 py-0.2 rounded bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-neutral-300">
+                            {lead.service}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    {isSelected && <Check className="w-4 h-4 text-orange-600 shrink-0" />}
+                  </div>
+                );
+              })
+            )}
+          </div>
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -726,6 +1123,103 @@ function getFollowUpWhatsappMessage(item, lead, client) {
   return `Hi ${name}, quick follow-up from TexWeb Solution regarding ${context}. Please let me know a good time to close the next step.`;
 }
 
+const FOLLOWUP_STAGES = [
+  { id: "pending", label: "Pending" },
+  { id: "in_discussion", label: "In Discussion" },
+  { id: "quote_sent", label: "Quotation Sent" },
+  { id: "done", label: "Completed (Done)" },
+  { id: "missed", label: "Missed" },
+  { id: "cancelled", label: "Cancelled" },
+];
+
+const MEETING_STAGES = [
+  { id: "scheduled", label: "Scheduled" },
+  { id: "completed", label: "Completed (Conducted)" },
+  { id: "no_show", label: "No Show" },
+  { id: "rescheduled", label: "Rescheduled" },
+  { id: "cancelled", label: "Cancelled" },
+];
+
+function formatStatusLabel(status) {
+  if (!status) return "Pending";
+  const map = {
+    pending: "Pending",
+    done: "Completed",
+    completed: "Completed",
+    missed: "Missed",
+    no_show: "No Show",
+    scheduled: "Scheduled",
+    cancelled: "Cancelled",
+    in_discussion: "In Discussion",
+    quote_sent: "Quote Sent",
+    rescheduled: "Rescheduled",
+    converted: "Converted",
+  };
+  return map[status] || status.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+function parseNotesHistory(rawNotes) {
+  if (!rawNotes || typeof rawNotes !== "string") return [];
+  const trimmed = rawNotes.trim();
+  if (!trimmed) return [];
+
+  const blocks = trimmed.split(/\n{2,}/);
+  const parsed = [];
+
+  blocks.forEach((block, idx) => {
+    const text = block.trim();
+    if (!text) return;
+
+    // Pattern: [11 Oct 2026, 06:45 PM • Completed]: Note body
+    const match = text.match(/^\[(.*?)(?:\s*[•\-|]\s*(?:Status:\s*)?(.*?))?\]:\s*([\s\S]*)$/i);
+    if (match) {
+      parsed.push({
+        id: `entry-${idx}`,
+        timestamp: match[1]?.trim() || "",
+        stage: match[2]?.trim() || "",
+        note: match[3]?.trim() || "",
+        raw: text,
+      });
+    } else {
+      parsed.push({
+        id: `entry-${idx}`,
+        timestamp: idx === 0 && blocks.length > 1 ? "Latest Note" : "Note",
+        stage: "",
+        note: text,
+        raw: text,
+      });
+    }
+  });
+
+  return parsed;
+}
+
+function getLatestNoteSnippet(rawNotes) {
+  if (!rawNotes || typeof rawNotes !== "string") return "";
+  const history = parseNotesHistory(rawNotes);
+  if (history.length > 0) {
+    return history[0].note || history[0].raw;
+  }
+  return rawNotes.split("\n")[0] || "";
+}
+
+function getMeetingFullNotes(item) {
+  if (!item) return "";
+  const parts = [];
+  if (item.outcome) parts.push(item.outcome);
+  if (item.agenda) parts.push(`Agenda: ${item.agenda}`);
+  if (item.next_action) parts.push(`Next Action: ${item.next_action}`);
+  return parts.join("\n\n") || "No agenda or notes logged yet.";
+}
+
+function getLatestMeetingSnippet(item) {
+  if (!item) return "";
+  if (item.outcome) {
+    return getLatestNoteSnippet(item.outcome);
+  }
+  return item.agenda || item.next_action || "Sales meeting scheduled";
+}
+
 export default function CrmModule({
   leads = [],
   deals = [],
@@ -856,15 +1350,20 @@ export default function CrmModule({
   const [rescheduleTarget, setRescheduleTarget] = useState(null);
   const [salesMeetingRescheduleTarget, setSalesMeetingRescheduleTarget] = useState(null);
   const [rescheduleForm, setRescheduleForm] = useState({
-    due_at: new Date(Date.now() + 86400000).toISOString().slice(0, 16),
+    due_at: toLocalDateTimeInput(new Date(Date.now() + 86400000)),
+    reminder_before_minutes: DEFAULT_REMINDER_MINUTES,
     notes: "",
     meeting_link: "",
   });
+  const [stageModalTarget, setStageModalTarget] = useState(null); // { item, type: 'followup' | 'meeting' }
+  const [stageModalStatus, setStageModalStatus] = useState("");
+  const [stageModalNote, setStageModalNote] = useState("");
   const [showLostModal, setShowLostModal] = useState(false);
   const [lostTarget, setLostTarget] = useState(null);
   const [commercialType, setCommercialType] = useState("proposal");
   const [editingLead, setEditingLead] = useState(null);
   const [selectedDeal, setSelectedDeal] = useState(null);
+  const [dealModalTab, setDealModalTab] = useState("overview"); // 'overview' | 'lead' | 'meetings' | 'followups' | 'timeline'
   const [editingDeal, setEditingDeal] = useState(null);
   const [editDealForm, setEditDealForm] = useState({
     title: "",
@@ -883,7 +1382,9 @@ export default function CrmModule({
     pipeline_stage: "contacted",
     deal_value: "100000",
     service: "Web Development",
-    meeting_scheduled_at: new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString().slice(0, 16),
+    meeting_scheduled_at: toLocalDateTimeInput(new Date(Date.now() + 2 * 60 * 60 * 1000)),
+    reminder_before_minutes: DEFAULT_REMINDER_MINUTES,
+    duration_minutes: 60,
     meeting_link: defaultMeetLink,
     notes: "",
   });
@@ -941,7 +1442,8 @@ export default function CrmModule({
     client_id: "",
     deal_id: "",
     channel: "whatsapp",
-    due_at: new Date(Date.now() + 86400000).toISOString().slice(0, 16),
+    due_at: toLocalDateTimeInput(new Date(Date.now() + 86400000)),
+    reminder_before_minutes: DEFAULT_REMINDER_MINUTES,
     priority: "medium",
     notes: "",
   });
@@ -951,8 +1453,9 @@ export default function CrmModule({
     client_id: "",
     deal_id: "",
     meeting_type: "discovery",
-    scheduled_at: new Date(Date.now() + 86400000).toISOString().slice(0, 16),
-    duration_minutes: 30,
+    scheduled_at: toLocalDateTimeInput(new Date(Date.now() + 86400000)),
+    reminder_before_minutes: DEFAULT_REMINDER_MINUTES,
+    duration_minutes: 60,
     meeting_link: defaultMeetLink,
     agenda: "Requirement discovery, budget, timeline, decision maker, and next action.",
   });
@@ -994,7 +1497,7 @@ export default function CrmModule({
     if (dateFilter === "month") return time >= now - 30 * 86400000;
     if (dateFilter === "year") return time >= now - 365 * 86400000;
     if (dateFilter === "custom") {
-      const from = customDateRange.from ? new Date(customDateRange.from).getTime() : null;
+      const from = customDateRange.from ? new Date(`${customDateRange.from}T00:00:00`).getTime() : null;
       const to = customDateRange.to ? new Date(`${customDateRange.to}T23:59:59`).getTime() : null;
       return (!from || time >= from) && (!to || time <= to);
     }
@@ -1407,8 +1910,30 @@ export default function CrmModule({
   const isReportsLoading = Boolean(isLoading && leads.length === 0 && deals.length === 0 && followUps.length === 0);
   const isCommercialsLoading = Boolean(isLoading && proposals.length === 0 && quotations.length === 0 && agreements.length === 0);
 
+  const dateFilteredLeadsForStats = useMemo(() => {
+    return leads.filter((lead) => matchesDateFilter(lead, "created_at"));
+  }, [customDateRange.from, customDateRange.to, dateFilter, leads, selectedDate]);
+
+  const dateFilteredPipelineDealsForStats = useMemo(() => {
+    return allPipelineDeals.filter((deal) => (
+      dateFilter === "all" ||
+      matchesDateFilter(deal, "created_at") ||
+      matchesDateFilter(deal, "updated_at")
+    ));
+  }, [allPipelineDeals, customDateRange.from, customDateRange.to, dateFilter, selectedDate]);
+
+  const dateFilteredFollowUpsForStats = useMemo(() => {
+    return followUps.filter((item) => matchesDateFilter(item, "due_at"));
+  }, [customDateRange.from, customDateRange.to, dateFilter, followUps, selectedDate]);
+
+  const dateFilteredMeetingsForStats = useMemo(() => {
+    return salesMeetings.filter((item) => matchesDateFilter(item, "scheduled_at"));
+  }, [customDateRange.from, customDateRange.to, dateFilter, salesMeetings, selectedDate]);
+
   const leadSummaryMetrics = useMemo(() => {
-    const totalLeads = leadSummary?.total ?? (leadPagination?.count || leads.length);
+    const totalLeads = dateFilter === "all"
+      ? (leadSummary?.total ?? (leadPagination?.count || dateFilteredLeadsForStats.length))
+      : (leadPagination?.count ?? leadSummary?.total ?? dateFilteredLeadsForStats.length);
 
     const wonDealLeadIds = new Set(
       deals.filter((d) => (d.pipeline_stage || d.stage) === "closed_won").map((d) => d.lead_id).filter(Boolean)
@@ -1421,35 +1946,27 @@ export default function CrmModule({
     );
 
     // 1. Converted / Won Leads
-    const convertedFromLeads = leads.filter((l) => {
+    const convertedFromLeads = dateFilteredLeadsForStats.filter((l) => {
       if (wonDealLeadIds.has(l.id)) return true;
       if (activePipelineLeadIds.has(l.id) || lostDealLeadIds.has(l.id)) return false;
       return l.status === "Converted" || l.status === "Closed Won";
     }).length;
-    const standaloneWonDeals = deals.filter((d) => (d.pipeline_stage || d.stage) === "closed_won" && !d.lead_id).length;
-    const wonDealsCount = deals.filter((d) => (d.pipeline_stage || d.stage) === "closed_won").length;
-    const convertedCount = Math.max(wonDealsCount, convertedFromLeads + standaloneWonDeals);
+    const convertedCount = convertedFromLeads;
 
     // 2. Lost Leads
-    const lostFromLeads = leads.filter((l) => {
+    const lostFromLeads = dateFilteredLeadsForStats.filter((l) => {
       if (lostDealLeadIds.has(l.id)) return true;
       if (activePipelineLeadIds.has(l.id) || wonDealLeadIds.has(l.id)) return false;
       return l.status === "Lost";
     }).length;
-    const standaloneLostDeals = deals.filter((d) => (d.pipeline_stage || d.stage) === "closed_lost" && !d.lead_id).length;
-    const lostDealsCount = deals.filter((d) => (d.pipeline_stage || d.stage) === "closed_lost").length;
-    const lostCount = Math.max(lostDealsCount, lostFromLeads + standaloneLostDeals);
+    const lostCount = lostFromLeads;
 
     // 3. In Pipeline (Deal Stage)
-    const openDealsCount = deals.filter(
-      (d) => !CLOSED_PIPELINE_STAGES.includes(d.pipeline_stage || d.stage)
-    ).length;
-    const pipelineLeadsFromLoaded = leads.filter((l) => {
+    const pipelineCount = dateFilteredLeadsForStats.filter((l) => {
       if (activePipelineLeadIds.has(l.id)) return true;
       if (wonDealLeadIds.has(l.id) || lostDealLeadIds.has(l.id)) return false;
       return ["Contacted", "Qualified", "Proposal Sent", "In Pipeline", "Negotiation", "In Progress"].includes(l.status);
     }).length;
-    const pipelineCount = Math.max(openDealsCount, pipelineLeadsFromLoaded);
 
     // 4. Active Inquiries (Raw incoming leads not in pipeline and not decided)
     const activeCount = Math.max(0, totalLeads - pipelineCount - convertedCount - lostCount);
@@ -1473,7 +1990,7 @@ export default function CrmModule({
       winRateNumber,
       winRateDisplay,
     };
-  }, [deals, leadPagination?.count, leadSummary, leads]);
+  }, [dateFilter, dateFilteredLeadsForStats, deals, leadPagination?.count, leadSummary]);
 
   const pageStatusCards = useMemo(() => {
     if (viewMode === "reports") return [];
@@ -1558,26 +2075,26 @@ export default function CrmModule({
       ];
     }
     if (viewMode === "pipeline") {
-      const activeDeals = allPipelineDeals.filter(
+      const activeDeals = dateFilteredPipelineDealsForStats.filter(
         (deal) => !CLOSED_PIPELINE_STAGES.includes(deal.pipeline_stage || deal.stage)
       );
-      const wonDeals = allPipelineDeals.filter(
+      const wonDeals = dateFilteredPipelineDealsForStats.filter(
         (deal) => (deal.pipeline_stage || deal.stage) === "closed_won"
       );
-      const lostDeals = allPipelineDeals.filter(
+      const lostDeals = dateFilteredPipelineDealsForStats.filter(
         (deal) => (deal.pipeline_stage || deal.stage) === "closed_lost"
       );
 
       const openCount = activeDeals.length;
       const wonCount = wonDeals.length;
       const lostCount = lostDeals.length;
-      const totalDealsCount = allPipelineDeals.length;
+      const totalDealsCount = dateFilteredPipelineDealsForStats.length;
       const decidedCount = wonCount + lostCount;
 
       const activeValue = activeDeals.reduce((sum, d) => sum + (Number(d.deal_value || d.value) || 0), 0);
       const wonValue = wonDeals.reduce((sum, d) => sum + (Number(d.deal_value || d.value) || 0), 0);
       const lostValue = lostDeals.reduce((sum, d) => sum + (Number(d.deal_value || d.value) || 0), 0);
-      const totalValue = allPipelineDeals.reduce((sum, d) => sum + (Number(d.deal_value || d.value) || 0), 0);
+      const totalValue = dateFilteredPipelineDealsForStats.reduce((sum, d) => sum + (Number(d.deal_value || d.value) || 0), 0);
 
       const winRateNumber = decidedCount > 0 ? (wonCount / decidedCount) * 100 : 0;
       const winRateDisplay = winRateNumber % 1 === 0 ? `${winRateNumber}%` : `${winRateNumber.toFixed(1)}%`;
@@ -1654,7 +2171,7 @@ export default function CrmModule({
     }
     if (viewMode === "followups") {
       const now = Date.now();
-      const allFollowUps = followUps.filter((item) => matchesDateFilter(item, "due_at"));
+      const allFollowUps = dateFilteredFollowUpsForStats;
       const totalCount = allFollowUps.length;
       const allPending = allFollowUps.filter((item) => item.status === "pending");
       const overdueCount = allPending.filter((item) => item.due_at && new Date(item.due_at).getTime() < now).length;
@@ -1718,7 +2235,7 @@ export default function CrmModule({
       ];
     }
     if (viewMode === "sales_meetings") {
-      const allMeetings = salesMeetings.filter((item) => matchesDateFilter(item, "scheduled_at"));
+      const allMeetings = dateFilteredMeetingsForStats;
       const totalCount = allMeetings.length;
       const scheduledCount = allMeetings.filter((item) => item.status === "scheduled").length;
       const completedCount = allMeetings.filter((item) => item.status === "completed").length;
@@ -1790,6 +2307,9 @@ export default function CrmModule({
     return [];
   }, [
     agreements,
+    dateFilteredFollowUpsForStats,
+    dateFilteredMeetingsForStats,
+    dateFilteredPipelineDealsForStats,
     deals,
     filteredFollowUps,
     filteredLeads,
@@ -2017,7 +2537,8 @@ export default function CrmModule({
       deal_id: deal.id,
       meeting_type: "discovery",
       scheduled_at: deal.meeting_scheduled_at ? new Date(deal.meeting_scheduled_at).toISOString() : getMeetingStartIso(),
-      duration_minutes: 30,
+      duration_minutes: Number(deal.duration_minutes) || 60,
+      reminder_before_minutes: Number(deal.reminder_before_minutes) || DEFAULT_REMINDER_MINUTES,
       meeting_link: deal.meeting_link || defaultMeetLink || "https://meet.google.com/new",
       agenda: "Auto-created when lead was moved into sales pipeline. Confirm requirements, budget, timeline, and decision maker.",
       status: "scheduled",
@@ -2512,6 +3033,7 @@ export default function CrmModule({
       ...followUpForm,
       lead_id: followUpForm.lead_id || null,
       deal_id: followUpForm.deal_id || null,
+      reminder_before_minutes: Number(followUpForm.reminder_before_minutes) || DEFAULT_REMINDER_MINUTES,
       due_at: new Date(followUpForm.due_at).toISOString(),
       status: "pending",
     });
@@ -2526,7 +3048,8 @@ export default function CrmModule({
       client_id: "",
       deal_id: deal.id || "",
       channel: "whatsapp",
-      due_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().slice(0, 16),
+      due_at: toLocalDateTimeInput(new Date(Date.now() + 24 * 60 * 60 * 1000)),
+      reminder_before_minutes: DEFAULT_REMINDER_MINUTES,
       priority: "medium",
       notes: `Manual follow-up from ${PIPELINE_STAGES.find((stage) => stage.id === (deal.pipeline_stage || "contacted"))?.label || "pipeline"} stage.`,
     });
@@ -2540,32 +3063,117 @@ export default function CrmModule({
       client_id: "",
       deal_id: "",
       channel: lead?.phone ? "whatsapp" : "phone",
-      due_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().slice(0, 16),
+      due_at: toLocalDateTimeInput(new Date(Date.now() + 24 * 60 * 60 * 1000)),
+      reminder_before_minutes: DEFAULT_REMINDER_MINUTES,
       priority: "medium",
       notes: `Manual follow-up from lead page for ${lead?.service || "inquiry"}.`,
     });
     setShowFollowUpModal(true);
   }
 
+  function openDealFollowUpModal(deal, lead = null) {
+    const l = lead || leads.find((item) => item.id === deal?.lead_id);
+    setFollowUpForm({
+      title: `Follow up: ${deal?.title || l?.name || "Deal"}`,
+      lead_id: deal?.lead_id || l?.id || "",
+      client_id: deal?.client_id || "",
+      deal_id: deal?.id || "",
+      channel: l?.phone ? "whatsapp" : "phone",
+      due_at: toLocalDateTimeInput(new Date(Date.now() + 24 * 60 * 60 * 1000)),
+      reminder_before_minutes: DEFAULT_REMINDER_MINUTES,
+      priority: "medium",
+      notes: `Follow-up for pipeline deal: ${deal?.title || "Deal"}.`,
+    });
+    setShowFollowUpModal(true);
+  }
+
+  function openDealMeetingModal(deal, lead = null) {
+    const l = lead || leads.find((item) => item.id === deal?.lead_id);
+    setSalesMeetingForm({
+      lead_id: deal?.lead_id || l?.id || "",
+      deal_id: deal?.id || "",
+      title: `Meeting: ${deal?.title || l?.name || "Deal"}`,
+      scheduled_at: toLocalDateTimeInput(new Date(Date.now() + 24 * 60 * 60 * 1000)),
+      duration_minutes: 30,
+      meeting_link: defaultMeetLink || "https://meet.google.com/new",
+      reminder_before_minutes: DEFAULT_REMINDER_MINUTES,
+      agenda: `Discuss requirements for ${deal?.service || "project"}`,
+      notes: "",
+    });
+    setShowSalesMeetingModal(true);
+  }
+
   function handleCreateSalesMeetingSubmit(e) {
     e.preventDefault();
     if (!salesMeetingForm.title || !salesMeetingForm.scheduled_at) return;
+    const finalMeetLink = salesMeetingForm.meeting_link?.trim() || defaultMeetLink || "https://meet.google.com/new";
     onCreateSalesMeeting?.({
       ...salesMeetingForm,
+      meeting_link: finalMeetLink,
       lead_id: salesMeetingForm.lead_id || null,
       deal_id: salesMeetingForm.deal_id || null,
       duration_minutes: Number(salesMeetingForm.duration_minutes) || 30,
+      reminder_before_minutes: Number(salesMeetingForm.reminder_before_minutes) || DEFAULT_REMINDER_MINUTES,
       scheduled_at: new Date(salesMeetingForm.scheduled_at).toISOString(),
       status: "scheduled",
     });
     setShowSalesMeetingModal(false);
   }
 
+  function openStageModal(item, type, prefillStatus = null) {
+    setStageModalTarget({ item, type });
+    setStageModalStatus(prefillStatus || item.status || (type === "meeting" ? "scheduled" : "pending"));
+    setStageModalNote("");
+  }
+
+  function handleSaveStageModal(e, isQuickDoneWithoutNote = false) {
+    if (e?.preventDefault) e.preventDefault();
+    if (!stageModalTarget) return;
+
+    const { item, type } = stageModalTarget;
+    const isDone = type === "meeting" ? stageModalStatus === "completed" : stageModalStatus === "done";
+    const nowStr = new Date().toLocaleString("en-IN", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: true,
+    });
+
+    const formattedStage = formatStatusLabel(stageModalStatus);
+    const noteText = isQuickDoneWithoutNote
+      ? "Marked as completed"
+      : stageModalNote.trim() || (isDone ? "Marked as completed" : `Stage updated to ${formattedStage}`);
+
+    const newHistoryEntry = `[${nowStr} • ${formattedStage}]: ${noteText}`;
+
+    if (type === "followup") {
+      const updatedNotes = [newHistoryEntry, item.notes].filter(Boolean).join("\n\n");
+      onUpdateFollowUp?.(item.id, {
+        status: stageModalStatus,
+        completed_at: isDone ? new Date().toISOString() : item.completed_at || null,
+        notes: updatedNotes,
+      });
+    } else if (type === "meeting") {
+      const updatedOutcome = [newHistoryEntry, item.outcome].filter(Boolean).join("\n\n");
+      onUpdateSalesMeeting?.(item.id, {
+        status: stageModalStatus,
+        outcome: updatedOutcome,
+        next_action: isDone ? (noteText || item.next_action || "") : item.next_action,
+      });
+    }
+
+    setStageModalTarget(null);
+    setStageModalNote("");
+  }
+
   function openRescheduleModal(item) {
     setRescheduleTarget(item);
     setSalesMeetingRescheduleTarget(null);
     setRescheduleForm({
-      due_at: new Date(Date.now() + 86400000).toISOString().slice(0, 16),
+      due_at: toLocalDateTimeInput(new Date(Date.now() + 86400000)),
+      reminder_before_minutes: Number(item.reminder_before_minutes) || DEFAULT_REMINDER_MINUTES,
       notes: item.notes || "",
       meeting_link: "",
     });
@@ -2576,7 +3184,8 @@ export default function CrmModule({
     setSalesMeetingRescheduleTarget(item);
     setRescheduleTarget(null);
     setRescheduleForm({
-      due_at: item.scheduled_at ? new Date(item.scheduled_at).toISOString().slice(0, 16) : new Date(Date.now() + 86400000).toISOString().slice(0, 16),
+      due_at: item.scheduled_at ? toLocalDateTimeInput(item.scheduled_at) : toLocalDateTimeInput(new Date(Date.now() + 86400000)),
+      reminder_before_minutes: Number(item.reminder_before_minutes) || DEFAULT_REMINDER_MINUTES,
       notes: item.agenda || item.outcome || "",
       meeting_link: item.meeting_link || defaultMeetLink || "https://meet.google.com/new",
     });
@@ -2589,7 +3198,8 @@ export default function CrmModule({
       onUpdateSalesMeeting?.(salesMeetingRescheduleTarget.id, {
         status: "scheduled",
         scheduled_at: new Date(rescheduleForm.due_at).toISOString(),
-        meeting_link: rescheduleForm.meeting_link || salesMeetingRescheduleTarget.meeting_link || "",
+        reminder_before_minutes: Number(rescheduleForm.reminder_before_minutes) || DEFAULT_REMINDER_MINUTES,
+        meeting_link: rescheduleForm.meeting_link?.trim() || salesMeetingRescheduleTarget.meeting_link || defaultMeetLink || "https://meet.google.com/new",
         agenda: rescheduleForm.notes || salesMeetingRescheduleTarget.agenda || "",
       });
       setShowRescheduleModal(false);
@@ -2600,12 +3210,28 @@ export default function CrmModule({
     onUpdateFollowUp?.(rescheduleTarget.id, {
       status: "pending",
       due_at: new Date(rescheduleForm.due_at).toISOString(),
+      reminder_before_minutes: Number(rescheduleForm.reminder_before_minutes) || DEFAULT_REMINDER_MINUTES,
       notes: [rescheduleForm.notes, `Rescheduled from ${new Date(rescheduleTarget.due_at).toLocaleString("en-IN")}`]
         .filter(Boolean)
         .join("\n"),
     });
     setShowRescheduleModal(false);
     setRescheduleTarget(null);
+  }
+
+  async function handleSaveMeetingSettings() {
+    const trimmed = defaultMeetLink?.trim() || "https://meet.google.com/new";
+    setDefaultMeetLink(trimmed);
+    if (typeof window !== "undefined") {
+      localStorage.setItem("texweb_sales_default_meet_link", trimmed);
+    }
+    const targetMeetings = salesMeetings.filter(
+      (item) => item.status === "scheduled" || !item.meeting_link || item.meeting_link === "https://meet.google.com/new"
+    );
+    for (const meeting of targetMeetings) {
+      await onUpdateSalesMeeting?.(meeting.id, { meeting_link: trimmed });
+    }
+    setShowMeetingSettingsModal(false);
   }
 
   function openLostModal(target) {
@@ -2731,7 +3357,9 @@ export default function CrmModule({
       pipeline_stage: "contacted",
       deal_value: "100000",
       service: lead?.service || "Web Development",
-      meeting_scheduled_at: new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString().slice(0, 16),
+      meeting_scheduled_at: toLocalDateTimeInput(new Date(Date.now() + 2 * 60 * 60 * 1000)),
+      reminder_before_minutes: DEFAULT_REMINDER_MINUTES,
+      duration_minutes: 60,
       meeting_link: defaultMeetLink || "https://meet.google.com/new",
       notes: lead ? `Created from lead: ${lead.name} (${lead.phone || ""})` : "",
     });
@@ -2756,6 +3384,7 @@ export default function CrmModule({
       deal_value: Number(newDealForm.deal_value) || 0,
       client_id: null,
       lead_id: newDealForm.lead_id || null,
+      reminder_before_minutes: Number(newDealForm.reminder_before_minutes) || DEFAULT_REMINDER_MINUTES,
       expected_close_date: newDealForm.meeting_scheduled_at ? newDealForm.meeting_scheduled_at.slice(0, 10) : null,
       notes: [
         newDealForm.notes,
@@ -2767,8 +3396,9 @@ export default function CrmModule({
       await scheduleAutoMeetingForDeal({
         ...newDealForm,
         ...created,
-        meeting_scheduled_at: newDealForm.meeting_scheduled_at,
-        meeting_link: newDealForm.meeting_link,
+      meeting_scheduled_at: newDealForm.meeting_scheduled_at,
+      reminder_before_minutes: Number(newDealForm.reminder_before_minutes) || DEFAULT_REMINDER_MINUTES,
+      meeting_link: newDealForm.meeting_link,
       });
     }
     if ((created?.pipeline_stage || "contacted") === "closed_won") {
@@ -2782,7 +3412,9 @@ export default function CrmModule({
       pipeline_stage: "contacted",
       deal_value: "100000",
       service: "Web Development",
-      meeting_scheduled_at: new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString().slice(0, 16),
+      meeting_scheduled_at: toLocalDateTimeInput(new Date(Date.now() + 2 * 60 * 60 * 1000)),
+      reminder_before_minutes: DEFAULT_REMINDER_MINUTES,
+      duration_minutes: 60,
       meeting_link: defaultMeetLink || "https://meet.google.com/new",
       notes: "",
     });
@@ -2864,7 +3496,13 @@ export default function CrmModule({
           <span>Meet Settings</span>
         </button>
         <button
-          onClick={() => setShowSalesMeetingModal(true)}
+          onClick={() => {
+            setSalesMeetingForm((prev) => ({
+              ...prev,
+              meeting_link: defaultMeetLink || "https://meet.google.com/new",
+            }));
+            setShowSalesMeetingModal(true);
+          }}
           className="flex shrink-0 items-center gap-1.5 px-3.5 py-2 rounded-xl bg-orange-600 hover:bg-orange-700 text-white font-semibold text-xs transition shadow-sm cursor-pointer"
         >
           <Plus className="w-4 h-4" />
@@ -3422,12 +4060,12 @@ export default function CrmModule({
             ) : (
               <>
               <ResponsiveTableContainer>
-                <table className="w-full text-left text-xs sm:text-sm border-collapse min-w-[900px]">
+                <table className="w-full text-left text-xs sm:text-sm border-collapse min-w-[1020px]">
                   <thead>
                     <tr className="border-b border-gray-100 dark:border-[#3a3020] bg-gray-50/70 dark:bg-[#211d14] text-gray-500 dark:text-neutral-400 text-[11px] font-semibold uppercase tracking-wider">
                       <th
                         onClick={() => setLeadSortOrder(leadSortOrder === "asc" ? "desc" : "asc")}
-                        className="py-3 px-4 cursor-pointer hover:text-orange-600 transition select-none"
+                        className="py-3 px-4 min-w-[220px] cursor-pointer hover:text-orange-600 transition select-none"
                         title="Click to sort alphabetically"
                       >
                         <div className="flex items-center gap-1.5">
@@ -3437,11 +4075,10 @@ export default function CrmModule({
                           {leadSortOrder === "desc" && <span className="text-[9px] font-bold text-orange-600 lowercase">z-a</span>}
                         </div>
                       </th>
-                      <th className="py-3 px-4">Contact (Phone & Email)</th>
-                      <th className="py-3 px-3 w-[150px] max-w-[150px]">Service Needed</th>
-                      <th className="py-3 px-3 w-[145px] max-w-[145px]">Budget Range</th>
-                      <th className="py-3 px-4">City / State</th>
-                      <th className="py-3 px-4 text-right">Actions</th>
+                      <th className="py-3 px-4 min-w-[210px] whitespace-nowrap">Contact (Phone & Email)</th>
+                      <th className="py-3 px-3 min-w-[160px] whitespace-nowrap">Service Needed</th>
+                      <th className="py-3 px-3 min-w-[130px] whitespace-nowrap">Budget Range</th>
+                      <th className="py-3 px-4 text-right min-w-[250px] whitespace-nowrap">Actions</th>
                     </tr>
                   </thead>
                 <tbody className="divide-y divide-gray-100 dark:divide-[#3a3020]/60">
@@ -3456,6 +4093,12 @@ export default function CrmModule({
                     const isLost = hasLostDeal || (!linkedDeal && lead.status === "Lost");
                     const lossReason = isLost ? getLeadLossReason(lead, linkedDeal) : null;
                     const stageLabel = linkedDeal ? (PIPELINE_STAGES.find((s) => s.id === (linkedDeal.pipeline_stage || linkedDeal.stage))?.label || "Pipeline") : null;
+                    const nextLeadMeeting = salesMeetings
+                      .filter((m) => m.lead_id === lead.id && !["cancelled", "completed", "no_show"].includes(m.status))
+                      .sort((a, b) => new Date(a.scheduled_at || 0).getTime() - new Date(b.scheduled_at || 0).getTime())[0];
+                    const nextLeadFollowUp = followUps
+                      .filter((f) => f.lead_id === lead.id && f.status === "pending")
+                      .sort((a, b) => new Date(a.due_at || 0).getTime() - new Date(b.due_at || 0).getTime())[0];
 
                     return (
                       <tr
@@ -3463,9 +4106,16 @@ export default function CrmModule({
                         className="hover:bg-gray-50/60 dark:hover:bg-slate-800/40 transition group"
                       >
                         {/* 1. Full Name */}
-                        <td className="py-3.5 px-4">
+                        <td className="py-3.5 px-4 min-w-[220px]">
                           <div className="font-semibold text-gray-900 dark:text-white flex items-center gap-2 flex-wrap">
-                            <span>{lead.name}</span>
+                            <button
+                              type="button"
+                              onClick={() => setSelectedLead(lead)}
+                              className="font-semibold text-gray-900 dark:text-white hover:text-orange-600 dark:hover:text-orange-400 transition text-left cursor-pointer"
+                              title="Click to view Lead details & timeline"
+                            >
+                              {lead.name}
+                            </button>
                             {isConverted && (
                               <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9.5px] font-bold bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-200/60 shrink-0">
                                 <CheckCircle2 className="w-2.5 h-2.5 text-emerald-500" />
@@ -3483,6 +4133,34 @@ export default function CrmModule({
                                 <XCircle className="w-2.5 h-2.5 text-rose-500" />
                                 <span>Lost</span>
                               </span>
+                            )}
+                            {nextLeadMeeting && (
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setViewMode("sales_meetings");
+                                }}
+                                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9.5px] font-bold bg-blue-50 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300 border border-blue-200/60 shrink-0 cursor-pointer hover:bg-blue-100 transition"
+                                title={`Scheduled Meeting: ${nextLeadMeeting.title} (${new Date(nextLeadMeeting.scheduled_at).toLocaleString("en-IN")})`}
+                              >
+                                <Video className="w-2.5 h-2.5 text-blue-500" />
+                                <span>Meet: {new Date(nextLeadMeeting.scheduled_at).toLocaleDateString("en-IN", { day: "2-digit", month: "short" })}</span>
+                              </button>
+                            )}
+                            {nextLeadFollowUp && (
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setViewMode("followups");
+                                }}
+                                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9.5px] font-bold bg-amber-50 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-200/60 shrink-0 cursor-pointer hover:bg-amber-100 transition"
+                                title={`Pending Follow-up: ${nextLeadFollowUp.title} (${new Date(nextLeadFollowUp.due_at).toLocaleString("en-IN")})`}
+                              >
+                                <Clock className="w-2.5 h-2.5 text-amber-500" />
+                                <span>Follow-up: {new Date(nextLeadFollowUp.due_at).toLocaleDateString("en-IN", { day: "2-digit", month: "short" })}</span>
+                              </button>
                             )}
                             {lead.source?.toLowerCase().includes("meta") && (
                               <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9.5px] font-bold bg-pink-50 text-pink-700 dark:bg-pink-950/60 dark:text-pink-300 border border-pink-200/60 shrink-0">
@@ -3504,7 +4182,7 @@ export default function CrmModule({
                               <AlertCircle className="w-3.5 h-3.5 text-rose-500 shrink-0 mt-0.5" />
                               <div className="leading-tight">
                                 <span className="font-bold text-[10px] uppercase text-rose-800 dark:text-rose-200 block mb-0.5">Lost Reason:</span>
-                                <span className="line-clamp-2 text-rose-700 dark:text-rose-300 font-medium" title={lossReason || "Not specified"}>
+                                <span className="whitespace-pre-line break-words text-rose-700 dark:text-rose-300 font-medium" title={lossReason || "Not specified"}>
                                   {lossReason || "No specific reason provided"}
                                 </span>
                               </div>
@@ -3513,59 +4191,56 @@ export default function CrmModule({
                         </td>
 
                         {/* 2. Contact Info (Phone & Email) */}
-                        <td className="py-3.5 px-4">
+                        <td className="py-3.5 px-4 min-w-[210px]">
                           {lead.phone && (
-                            <div className="flex items-center gap-1.5 font-mono text-gray-800 dark:text-slate-200 font-medium">
-                              <Phone className="w-3 h-3 text-emerald-500 shrink-0" />
-                              <span>{lead.phone}</span>
-                            </div>
+                            <a
+                              href={`tel:${lead.phone.replace(/[^0-9+]/g, "")}`}
+                              className="group/phone inline-flex items-center gap-1.5 font-mono text-gray-800 dark:text-slate-200 font-medium whitespace-nowrap hover:text-emerald-600 dark:hover:text-emerald-400 transition cursor-pointer"
+                              title={`Click to call ${lead.phone}`}
+                            >
+                              <Phone className="w-3.5 h-3.5 text-emerald-500 group-hover/phone:scale-110 transition shrink-0" />
+                              <span className="group-hover/phone:underline">{lead.phone}</span>
+                            </a>
                           )}
                           {lead.email && (
-                            <div className="flex items-center gap-1.5 text-[11px] text-gray-500 dark:text-neutral-400 mt-0.5">
-                              <Mail className="w-3 h-3 text-gray-400 shrink-0" />
-                              <span className="truncate max-w-[160px]">{lead.email}</span>
-                            </div>
+                            <a
+                              href={`mailto:${lead.email}`}
+                              className="group/email flex items-center gap-1.5 text-[11px] text-gray-500 dark:text-neutral-400 mt-0.5 whitespace-nowrap hover:text-blue-600 dark:hover:text-blue-400 transition cursor-pointer"
+                              title={`Click to email ${lead.email}`}
+                            >
+                              <Mail className="w-3 h-3 text-gray-400 group-hover/email:text-blue-500 group-hover/email:scale-110 transition shrink-0" />
+                              <span className="truncate max-w-[190px] group-hover/email:underline" title={lead.email}>{lead.email}</span>
+                            </a>
                           )}
                         </td>
 
                         {/* 3. Service Needed (what_service_are_you_looking_for?) */}
-                        <td className="py-3.5 px-3 w-[150px] max-w-[150px]">
+                        <td className="py-3.5 px-3 min-w-[160px]">
                           <span
-                            className="inline-flex items-center max-w-[126px] px-2 py-1 rounded-lg text-[11px] leading-tight font-semibold bg-gray-100 dark:bg-slate-800 text-gray-800 dark:text-neutral-200 align-middle whitespace-normal break-words line-clamp-2"
+                            className="inline-flex items-center px-2 py-1 rounded-lg text-[11px] leading-snug font-semibold bg-gray-100 dark:bg-slate-800 text-gray-800 dark:text-neutral-200 align-middle whitespace-normal break-words"
                             title={lead.service || "General Inquiry"}
                           >
-                            {lead.service || "General Inquiry"}
+                            {lead.service ? lead.service.replace(/_/g, " ") : "General Inquiry"}
                           </span>
                         </td>
 
                         {/* 4. Budget Range (choose_your_budget_range?) */}
-                        <td className="py-3.5 px-3 w-[145px] max-w-[145px]">
+                        <td className="py-3.5 px-3 min-w-[130px] whitespace-nowrap">
                           {budget !== "-" ? (
                             <span
-                              className="inline-flex items-center max-w-[122px] px-2 py-1 rounded-lg text-[11px] leading-tight font-bold bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 border border-emerald-200/60 dark:border-emerald-800/40 align-middle whitespace-normal break-words line-clamp-2"
+                              className="inline-flex items-center px-2 py-1 rounded-lg text-[11px] leading-snug font-bold bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 border border-emerald-200/60 dark:border-emerald-800/40 align-middle whitespace-nowrap"
                               title={budget}
                             >
-                              {budget}
+                              {budget.replace(/_/g, " ")}
                             </span>
                           ) : (
                             <span className="text-gray-400 text-xs">-</span>
                           )}
                         </td>
 
-                        {/* 5. City & State */}
-                        <td className="py-3.5 px-4 text-xs font-medium text-gray-700 dark:text-slate-300">
-                          {location !== "-" ? (
-                            <div className="flex items-center gap-1">
-                              <Building2 className="w-3 h-3 text-blue-500 shrink-0" />
-                              <span>{location}</span>
-                            </div>
-                          ) : (
-                            <span className="text-gray-400">-</span>
-                          )}
-                        </td>
-
-                      <td className="py-3.5 px-4 text-right">
-                        <div className="flex items-center justify-end gap-1.5 flex-nowrap whitespace-nowrap">
+                        {/* 5. Actions */}
+                        <td className="py-3.5 px-4 text-right min-w-[250px] whitespace-nowrap">
+                          <div className="flex items-center justify-end gap-1.5 shrink-0 whitespace-nowrap">
                           {/* 1. WhatsApp Button */}
                           {lead.phone && (
                             <button
@@ -3827,11 +4502,11 @@ export default function CrmModule({
                 <div className="flex-1 space-y-2 overflow-y-auto no-scrollbar">
                   {colDeals.map((deal) => {
                     const dealFollowUps = followUps
-                      .filter((item) => item.deal_id === deal.id && item.status === "pending")
+                      .filter((item) => (item.deal_id === deal.id || (deal.lead_id && item.lead_id === deal.lead_id)) && item.status === "pending")
                       .sort((a, b) => new Date(a.due_at || 0).getTime() - new Date(b.due_at || 0).getTime());
                     const nextFollowUp = dealFollowUps[0];
                     const nextMeeting = salesMeetings
-                      .filter((item) => item.deal_id === deal.id && !["cancelled", "completed", "no_show"].includes(item.status))
+                      .filter((item) => (item.deal_id === deal.id || (deal.lead_id && item.lead_id === deal.lead_id)) && item.status === "scheduled")
                       .sort((a, b) => new Date(a.scheduled_at || 0).getTime() - new Date(b.scheduled_at || 0).getTime())[0];
                     const latestQuotation = getLatestLinkedDoc([...proposals, ...quotations], deal);
                     const latestAgreement = getLatestLinkedDoc(agreements, deal);
@@ -3888,7 +4563,10 @@ export default function CrmModule({
                       draggable
                       onDragStart={() => setDraggedDealId(deal.id)}
                       onDragEnd={() => setDraggedDealId(null)}
-                      onClick={() => setSelectedDeal(deal)}
+                      onClick={() => {
+                        setSelectedDeal(deal);
+                        setDealModalTab("overview");
+                      }}
                       className="group relative p-2.5 rounded-xl bg-white dark:bg-[#1a1711] border border-gray-200/90 dark:border-[#382f20] hover:border-orange-500/80 hover:shadow-md transition-all duration-150 space-y-2 cursor-pointer select-none"
                     >
                       {/* 1. Header: Avatar + Client Name + Value + Edit button */}
@@ -3954,25 +4632,49 @@ export default function CrmModule({
                           <span className="truncate">Won · Client & Project Active</span>
                         </div>
                       ) : col.id === "closed_lost" ? (
-                        <div className="flex items-center gap-1.5 text-[10px] font-medium text-rose-700 dark:text-rose-300 bg-rose-50/70 dark:bg-rose-950/30 px-2 py-1 rounded-lg border border-rose-200/40 line-clamp-1" title={deal.loss_reason}>
-                          <XCircle className="w-3 h-3 text-rose-500 shrink-0" />
-                          <span className="truncate">{deal.loss_reason || "Deal dropped"}</span>
+                        <div className="flex items-start gap-1.5 text-[10px] font-medium text-rose-700 dark:text-rose-300 bg-rose-50/70 dark:bg-rose-950/30 px-2 py-1 rounded-lg border border-rose-200/40" title={deal.loss_reason}>
+                          <XCircle className="w-3 h-3 text-rose-500 shrink-0 mt-0.5" />
+                          <span className="break-words">{deal.loss_reason || "Deal dropped"}</span>
                         </div>
-                      ) : meetingDateStr ? (
-                        <div className="flex items-center gap-1.5 text-[10px] font-medium text-blue-700 dark:text-blue-300 bg-blue-50/80 dark:bg-blue-950/30 px-2 py-1 rounded-lg border border-blue-200/40">
-                          <Calendar className="w-3 h-3 text-blue-500 shrink-0" />
-                          <span className="truncate">Meet: {meetingDateStr}</span>
+                      ) : (
+                        <div className="space-y-1">
+                          {meetingDateStr && (
+                            <div className="flex items-center justify-between gap-1 text-[10px] font-medium text-blue-700 dark:text-blue-300 bg-blue-50/80 dark:bg-blue-950/30 px-2 py-1 rounded-lg border border-blue-200/40">
+                              <div className="flex items-center gap-1.5 truncate">
+                                <Video className="w-3 h-3 text-blue-500 shrink-0" />
+                                <span className="truncate font-semibold">Meet: {meetingDateStr}</span>
+                              </div>
+                              {nextMeeting?.scheduled_at && new Date(nextMeeting.scheduled_at).toDateString() === new Date().toDateString() && (
+                                <span className="px-1 py-0.2 rounded text-[8px] font-black uppercase bg-blue-200 dark:bg-blue-800 text-blue-800 dark:text-blue-100 shrink-0">
+                                  Today
+                                </span>
+                              )}
+                            </div>
+                          )}
+                          {followUpDateStr && (
+                            <div className="flex items-center justify-between gap-1 text-[10px] font-medium text-amber-700 dark:text-amber-300 bg-amber-50/80 dark:bg-amber-950/30 px-2 py-1 rounded-lg border border-amber-200/40">
+                              <div className="flex items-center gap-1.5 truncate">
+                                <Clock className="w-3 h-3 text-amber-500 shrink-0" />
+                                <span className="truncate font-semibold">Follow-up: {followUpDateStr}</span>
+                              </div>
+                              {new Date(nextFollowUp.due_at).getTime() < Date.now() ? (
+                                <span className="px-1 py-0.2 rounded text-[8px] font-black uppercase bg-red-100 text-red-600 shrink-0">
+                                  Overdue
+                                </span>
+                              ) : new Date(nextFollowUp.due_at).toDateString() === new Date().toDateString() ? (
+                                <span className="px-1 py-0.2 rounded text-[8px] font-black uppercase bg-amber-200 dark:bg-amber-800 text-amber-800 dark:text-amber-100 shrink-0">
+                                  Today
+                                </span>
+                              ) : null}
+                            </div>
+                          )}
+                          {!meetingDateStr && !followUpDateStr && customNotes && (
+                            <div className="text-[10px] text-gray-500 dark:text-neutral-400 px-1 italic whitespace-pre-line break-words">
+                              {customNotes}
+                            </div>
+                          )}
                         </div>
-                      ) : followUpDateStr ? (
-                        <div className="flex items-center gap-1.5 text-[10px] font-medium text-amber-700 dark:text-amber-300 bg-amber-50/80 dark:bg-amber-950/30 px-2 py-1 rounded-lg border border-amber-200/40">
-                          <Clock className="w-3 h-3 text-amber-500 shrink-0" />
-                          <span className="truncate">Follow-up: {followUpDateStr}</span>
-                        </div>
-                      ) : customNotes ? (
-                        <div className="text-[10px] text-gray-500 dark:text-neutral-400 line-clamp-1 px-1 italic">
-                          {customNotes}
-                        </div>
-                      ) : null}
+                      )}
 
                       {/* 4. Action Toolbar */}
                       <div className="pt-1.5 border-t border-gray-100 dark:border-[#2e2619] space-y-1.5">
@@ -4259,15 +4961,15 @@ export default function CrmModule({
               </div>
             ) : (
               <ResponsiveTableContainer>
-                <table className="w-full text-left text-xs sm:text-sm border-collapse min-w-[860px]">
+                <table className="w-full text-left text-xs sm:text-sm border-collapse min-w-[960px]">
                   <thead>
                     <tr className="border-b border-gray-100 dark:border-[#3a3020] bg-gray-50/70 dark:bg-[#211d14] text-gray-500 dark:text-neutral-400 text-[11px] font-semibold uppercase tracking-wider">
-                      <th className="py-3 px-4">Document</th>
-                      <th className="py-3 px-4">Deal</th>
-                      <th className="py-3 px-4">Value / Terms</th>
-                      <th className="py-3 px-4">Status</th>
-                      <th className="py-3 px-4">Date</th>
-                      <th className="py-3 px-4 text-right">Actions</th>
+                      <th className="py-3 px-4 min-w-[180px]">Document</th>
+                      <th className="py-3 px-4 min-w-[150px]">Deal</th>
+                      <th className="py-3 px-4 min-w-[160px]">Value / Terms</th>
+                      <th className="py-3 px-4 min-w-[110px] whitespace-nowrap">Status</th>
+                      <th className="py-3 px-4 min-w-[110px] whitespace-nowrap">Date</th>
+                      <th className="py-3 px-4 text-right min-w-[160px] whitespace-nowrap">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100 dark:divide-[#3a3020]/60">
@@ -4279,21 +4981,21 @@ export default function CrmModule({
 
                       return (
                         <tr key={`${doc.docType}-${doc.id}`} className="hover:bg-gray-50/60 dark:hover:bg-slate-800/40 transition">
-                          <td className="py-3.5 px-4">
+                          <td className="py-3.5 px-4 min-w-[180px]">
                             <div className="font-bold text-gray-900 dark:text-white">{label || "Commercial Document"}</div>
                             <div className="text-[11px] text-gray-500 capitalize">{doc.docType}</div>
                           </td>
-                          <td className="py-3.5 px-4">
+                          <td className="py-3.5 px-4 min-w-[150px]">
                             <div className="font-semibold text-gray-900 dark:text-white">{deal?.title || "Linked Deal"}</div>
                             <div className="text-[11px] text-gray-500">{deal?.pipeline_stage || "Pipeline deal"}</div>
                           </td>
-                          <td className="py-3.5 px-4">
+                          <td className="py-3.5 px-4 min-w-[160px]">
                             <div className="font-mono font-bold text-gray-900 dark:text-white">
                               {doc.docType === "agreement" ? (doc.commercial_terms || "Payment milestones") : `Rs. ${amount.toLocaleString("en-IN")}`}
                             </div>
-                            {doc.scope_of_work && <div className="text-[11px] text-gray-500 line-clamp-1">{doc.scope_of_work}</div>}
+                            {doc.scope_of_work && <div className="text-[11px] text-gray-500 dark:text-neutral-400 whitespace-pre-line break-words mt-0.5 leading-relaxed">{doc.scope_of_work}</div>}
                           </td>
-                          <td className="py-3.5 px-4">
+                          <td className="py-3.5 px-4 min-w-[110px] whitespace-nowrap">
                             <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase ${
                               ["accepted", "signed"].includes(doc.status)
                                 ? "bg-emerald-50 text-emerald-600"
@@ -4304,11 +5006,11 @@ export default function CrmModule({
                               {doc.status || "draft"}
                             </span>
                           </td>
-                          <td className="py-3.5 px-4 text-gray-500 text-xs">
+                          <td className="py-3.5 px-4 min-w-[110px] whitespace-nowrap text-gray-500 text-xs">
                             {doc.valid_until || doc.start_date || doc.sent_at?.slice(0, 10) || doc.created_at?.slice(0, 10) || "-"}
                           </td>
-                          <td className="py-3.5 px-4 text-right">
-                            <div className="flex items-center justify-end gap-1.5">
+                          <td className="py-3.5 px-4 text-right min-w-[160px] whitespace-nowrap">
+                            <div className="flex items-center justify-end gap-1.5 shrink-0 whitespace-nowrap">
                               <button
                                 type="button"
                                 onClick={() => sendDocWhatsApp(doc, doc.docType)}
@@ -4369,15 +5071,15 @@ export default function CrmModule({
           ) : (
             <>
             <ResponsiveTableContainer>
-              <table className="w-full text-left text-xs sm:text-sm border-collapse min-w-[760px]">
+              <table className="w-full text-left text-xs sm:text-sm border-collapse min-w-[980px]">
                 <thead>
                   <tr className="border-b border-gray-100 dark:border-[#3a3020] bg-gray-50/70 dark:bg-[#211d14] text-gray-500 dark:text-neutral-400 text-[11px] font-semibold uppercase tracking-wider">
-                    <th className="py-3 px-4">Follow-up</th>
-                    <th className="py-3 px-4">Linked Account</th>
-                    <th className="py-3 px-4">Channel</th>
-                    <th className="py-3 px-4">Due</th>
-                    <th className="py-3 px-4">Status</th>
-                    <th className="py-3 px-4 text-right">Actions</th>
+                    <th className="py-3 px-4 min-w-[200px]">Follow-up</th>
+                    <th className="py-3 px-4 min-w-[140px]">Linked Account</th>
+                    <th className="py-3 px-4 min-w-[120px]">Channel</th>
+                    <th className="py-3 px-4 min-w-[150px] whitespace-nowrap">Due</th>
+                    <th className="py-3 px-4 min-w-[110px] whitespace-nowrap">Status</th>
+                    <th className="py-3 px-4 text-right min-w-[210px] whitespace-nowrap">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100 dark:divide-[#3a3020]/60">
@@ -4388,14 +5090,25 @@ export default function CrmModule({
                     const isOverdue = item.status === "pending" && new Date(item.due_at).getTime() < Date.now();
                     return (
                       <tr key={item.id} className={`hover:bg-gray-50/60 dark:hover:bg-slate-800/40 transition ${isOverdue ? "bg-red-50/40 dark:bg-red-950/10" : ""}`}>
-                        <td className="py-3.5 px-4">
+                        <td className="py-3.5 px-4 max-w-[280px]">
                           <div className="flex items-center gap-2">
-                            <div className="font-bold text-gray-900 dark:text-white">{item.title}</div>
+                            <div className="font-bold text-gray-900 dark:text-white truncate" title={item.title}>{item.title}</div>
                             {isOverdue && (
-                              <span className="px-2 py-0.5 rounded-full bg-red-100 text-red-600 text-[10px] font-black uppercase">Overdue</span>
+                              <span className="px-2 py-0.5 rounded-full bg-red-100 text-red-600 text-[10px] font-black uppercase shrink-0">Overdue</span>
                             )}
                           </div>
-                          <div className="text-[11px] text-gray-500 line-clamp-1">{item.notes || "Sales follow-up"}</div>
+                          {/* Truncated stage & note preview with current stage in hover tooltip - non-clickable */}
+                          <div
+                            title={`Stage: ${formatStatusLabel(item.status)}${getLatestNoteSnippet(item.notes) ? ` - ${getLatestNoteSnippet(item.notes)}` : ""}`}
+                            className="text-[11px] text-gray-500 dark:text-neutral-400 truncate mt-0.5 flex items-center gap-1.5"
+                          >
+                            <span className="font-semibold text-gray-700 dark:text-neutral-300 shrink-0">
+                              [{formatStatusLabel(item.status)}]:
+                            </span>
+                            <span className="truncate">
+                              {getLatestNoteSnippet(item.notes) || "No notes"}
+                            </span>
+                          </div>
                         </td>
                         <td className="py-3.5 px-4">
                           <div className="font-semibold text-gray-900 dark:text-white">{client?.name || lead?.name || "Unlinked"}</div>
@@ -4403,18 +5116,26 @@ export default function CrmModule({
                         </td>
                         <td className="py-3.5 px-4">
                           <div className="capitalize font-semibold text-gray-700 dark:text-neutral-200">{item.channel}</div>
-                          <div className="text-[11px] text-gray-500 dark:text-neutral-400 font-mono">
-                            {contactPhone || "-"}
-                          </div>
+                          {contactPhone ? (
+                            <a
+                              href={`tel:${contactPhone.replace(/[^0-9+]/g, "")}`}
+                              className="text-[11px] text-gray-500 dark:text-neutral-400 font-mono hover:text-emerald-600 dark:hover:text-emerald-400 hover:underline block"
+                              title={`Click to call ${contactPhone}`}
+                            >
+                              {contactPhone}
+                            </a>
+                          ) : (
+                            <div className="text-[11px] text-gray-400 font-mono">-</div>
+                          )}
                         </td>
-                        <td className="py-3.5 px-4 text-gray-500 text-xs">{new Date(item.due_at).toLocaleString("en-IN")}</td>
-                        <td className="py-3.5 px-4">
+                        <td className="py-3.5 px-4 text-gray-500 text-xs whitespace-nowrap">{new Date(item.due_at).toLocaleString("en-IN")}</td>
+                        <td className="py-3.5 px-4 whitespace-nowrap min-w-[110px]">
                           <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase ${
                             item.status === "done" ? "bg-emerald-50 text-emerald-600" : item.status === "missed" || isOverdue ? "bg-red-50 text-red-600" : "bg-amber-50 text-amber-600"
                           }`}>{item.status}</span>
                         </td>
-                        <td className="py-3.5 px-4 text-right">
-                          <div className="flex items-center justify-end gap-1.5">
+                        <td className="py-3.5 px-4 text-right whitespace-nowrap min-w-[210px]">
+                          <div className="flex items-center justify-end gap-1.5 shrink-0">
                             {contactPhone && (
                               <button
                                 onClick={() => {
@@ -4429,19 +5150,31 @@ export default function CrmModule({
                                 <WhatsAppIcon className="w-3.5 h-3.5" />
                               </button>
                             )}
+                            {/* Dedicated Stage & History Modal Button */}
+                            <button
+                              type="button"
+                              onClick={() => openStageModal(item, "followup")}
+                              className="p-1.5 rounded-lg text-indigo-600 bg-indigo-50 dark:bg-indigo-950/40 hover:bg-indigo-100 transition shrink-0 cursor-pointer"
+                              title="Stage & Notes History"
+                              aria-label="Stage & Notes History"
+                            >
+                              <History className="w-3.5 h-3.5" />
+                            </button>
                             {item.status === "pending" && (
                               <>
                                 <button
-                                  onClick={() => onUpdateFollowUp?.(item.id, { status: "done", completed_at: new Date().toISOString() })}
-                                  className="p-1.5 rounded-lg text-white bg-emerald-600 hover:bg-emerald-700 transition shrink-0"
-                                  title="Mark as Done"
+                                  type="button"
+                                  onClick={() => openStageModal(item, "followup", "done")}
+                                  className="p-1.5 rounded-lg text-white bg-emerald-600 hover:bg-emerald-700 transition shrink-0 cursor-pointer"
+                                  title="Mark as Done (record completion note)"
                                   aria-label="Mark as Done"
                                 >
                                   <Check className="w-3.5 h-3.5" />
                                 </button>
                                 <button
-                                  onClick={() => onUpdateFollowUp?.(item.id, { status: "missed", notes: [item.notes, `Missed at ${new Date().toLocaleString("en-IN")}`].filter(Boolean).join("\n") })}
-                                  className="p-1.5 rounded-lg text-red-600 bg-red-50 dark:bg-red-950/40 hover:bg-red-100 transition shrink-0"
+                                  type="button"
+                                  onClick={() => openStageModal(item, "followup", "missed")}
+                                  className="p-1.5 rounded-lg text-red-600 bg-red-50 dark:bg-red-950/40 hover:bg-red-100 transition shrink-0 cursor-pointer"
                                   title="Mark as Missed"
                                   aria-label="Mark as Missed"
                                 >
@@ -4605,7 +5338,13 @@ export default function CrmModule({
                 )}
                 <button
                   type="button"
-                  onClick={() => setShowSalesMeetingModal(true)}
+                  onClick={() => {
+                    setSalesMeetingForm((prev) => ({
+                      ...prev,
+                      meeting_link: defaultMeetLink || "https://meet.google.com/new",
+                    }));
+                    setShowSalesMeetingModal(true);
+                  }}
                   className="px-3.5 py-1.5 rounded-xl text-xs font-semibold bg-orange-600 hover:bg-orange-700 text-white transition cursor-pointer"
                 >
                   Schedule Meeting
@@ -4615,15 +5354,15 @@ export default function CrmModule({
           ) : (
             <>
             <ResponsiveTableContainer>
-              <table className="w-full text-left text-xs sm:text-sm border-collapse min-w-[820px]">
+              <table className="w-full text-left text-xs sm:text-sm border-collapse min-w-[1040px]">
                 <thead>
                   <tr className="border-b border-gray-100 dark:border-[#3a3020] bg-gray-50/70 dark:bg-[#211d14] text-gray-500 dark:text-neutral-400 text-[11px] font-semibold uppercase tracking-wider">
-                    <th className="py-3 px-4">Meeting</th>
-                    <th className="py-3 px-4">Linked Account</th>
-                    <th className="py-3 px-4">Type</th>
-                    <th className="py-3 px-4">Schedule</th>
-                    <th className="py-3 px-4">Status</th>
-                    <th className="py-3 px-4 text-right">Actions</th>
+                    <th className="py-3 px-4 min-w-[220px]">Meeting</th>
+                    <th className="py-3 px-4 min-w-[140px]">Linked Account</th>
+                    <th className="py-3 px-4 min-w-[100px]">Type</th>
+                    <th className="py-3 px-4 min-w-[150px] whitespace-nowrap">Schedule</th>
+                    <th className="py-3 px-4 min-w-[120px] whitespace-nowrap">Status</th>
+                    <th className="py-3 px-4 text-right min-w-[260px] whitespace-nowrap">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100 dark:divide-[#3a3020]/60">
@@ -4634,23 +5373,37 @@ export default function CrmModule({
                     const scheduledTime = item.scheduled_at ? new Date(item.scheduled_at).getTime() : 0;
                     const isOverdue = item.status === "scheduled" && scheduledTime > 0 && scheduledTime < Date.now();
                     const isToday = item.scheduled_at && new Date(item.scheduled_at).toDateString() === new Date().toDateString();
+                    const effectiveMeetLink = (item.meeting_link && item.meeting_link !== "https://meet.google.com/new")
+                      ? item.meeting_link
+                      : (defaultMeetLink || item.meeting_link || "https://meet.google.com/new");
                     return (
                       <tr key={item.id} className={`hover:bg-gray-50/60 dark:hover:bg-slate-800/40 transition ${isOverdue ? "bg-red-50/40 dark:bg-red-950/10" : ""}`}>
-                        <td className="py-3.5 px-4">
+                        <td className="py-3.5 px-4 max-w-[280px]">
                           <div className="flex items-center gap-2">
-                            <div className="font-bold text-gray-900 dark:text-white">{item.title}</div>
+                            <div className="font-bold text-gray-900 dark:text-white truncate" title={item.title}>{item.title}</div>
                             {isOverdue && (
-                              <span className="px-2 py-0.5 rounded-full bg-red-100 dark:bg-red-950/40 text-red-600 dark:text-red-400 text-[10px] font-black uppercase">
+                              <span className="px-2 py-0.5 rounded-full bg-red-100 dark:bg-red-950/40 text-red-600 dark:text-red-400 text-[10px] font-black uppercase shrink-0">
                                 Passed
                               </span>
                             )}
                             {!isOverdue && isToday && item.status === "scheduled" && (
-                              <span className="px-2 py-0.5 rounded-full bg-cyan-100 dark:bg-cyan-950/40 text-cyan-700 dark:text-cyan-300 text-[10px] font-black uppercase">
+                              <span className="px-2 py-0.5 rounded-full bg-cyan-100 dark:bg-cyan-950/40 text-cyan-700 dark:text-cyan-300 text-[10px] font-black uppercase shrink-0">
                                 Today
                               </span>
                             )}
                           </div>
-                          <div className="text-[11px] text-gray-500 line-clamp-1">{item.agenda || item.next_action || "Sales meeting"}</div>
+                          {/* Truncated stage & agenda/outcome note preview with current stage in hover tooltip - non-clickable */}
+                          <div
+                            title={`Stage: ${item.status === "no_show" ? "No Show" : formatStatusLabel(item.status)}${getLatestMeetingSnippet(item) ? ` - ${getLatestMeetingSnippet(item)}` : ""}`}
+                            className="text-[11px] text-gray-500 dark:text-neutral-400 truncate mt-0.5 flex items-center gap-1.5"
+                          >
+                            <span className="font-semibold text-gray-700 dark:text-neutral-300 shrink-0">
+                              [{item.status === "no_show" ? "No Show" : formatStatusLabel(item.status)}]:
+                            </span>
+                            <span className="truncate">
+                              {getLatestMeetingSnippet(item) || "Sales meeting"}
+                            </span>
+                          </div>
                         </td>
                         <td className="py-3.5 px-4">
                           {lead ? (
@@ -4668,11 +5421,11 @@ export default function CrmModule({
                           <div className="text-[11px] text-gray-500">{client ? "Client" : lead ? "Lead" : "General"}</div>
                         </td>
                         <td className="py-3.5 px-4 capitalize font-semibold text-gray-700 dark:text-neutral-200">{item.meeting_type}</td>
-                        <td className="py-3.5 px-4 text-gray-500 text-xs">
+                        <td className="py-3.5 px-4 text-gray-500 text-xs whitespace-nowrap">
                           <div>{new Date(item.scheduled_at).toLocaleString("en-IN")}</div>
                           <div className="text-[11px] text-gray-400">{item.duration_minutes || 30} mins</div>
                         </td>
-                        <td className="py-3.5 px-4">
+                        <td className="py-3.5 px-4 whitespace-nowrap min-w-[120px]">
                           <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase ${
                             item.status === "completed"
                               ? "bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-300"
@@ -4682,11 +5435,11 @@ export default function CrmModule({
                               ? "bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300"
                               : "bg-blue-50 text-blue-600 dark:bg-blue-950/40 dark:text-blue-300"
                           }`}>
-                            {item.status === "no_show" ? "No Show" : item.status}
+                            {item.status === "no_show" ? "No Show" : formatStatusLabel(item.status)}
                           </span>
                         </td>
-                        <td className="py-3.5 px-4 text-right">
-                          <div className="flex items-center justify-end gap-1.5">
+                        <td className="py-3.5 px-4 text-right whitespace-nowrap min-w-[260px]">
+                          <div className="flex items-center justify-end gap-1.5 shrink-0">
                             {contactPhone && (
                               <>
                                 <button
@@ -4694,7 +5447,8 @@ export default function CrmModule({
                                   onClick={() => {
                                     const cleanPhone = contactPhone.replace(/[^0-9]/g, "");
                                     const name = client?.name || lead?.name || "there";
-                                    const text = encodeURIComponent(`Hi ${name}, quick check regarding our sales meeting "${item.title}". Please let me know if you need any info before our discussion.`);
+                                    const linkNote = effectiveMeetLink ? ` Meeting link: ${effectiveMeetLink}` : "";
+                                    const text = encodeURIComponent(`Hi ${name}, quick check regarding our sales meeting "${item.title}".${linkNote} Please let me know if you need any info before our discussion.`);
                                     window.open(`https://wa.me/${cleanPhone}?text=${text}`, "_blank", "noopener,noreferrer");
                                   }}
                                   className="p-1.5 rounded-lg text-emerald-600 bg-emerald-50 dark:bg-emerald-950/40 hover:bg-emerald-100 transition shrink-0 cursor-pointer"
@@ -4713,18 +5467,28 @@ export default function CrmModule({
                                 </a>
                               </>
                             )}
-                            {item.meeting_link && item.status !== "completed" && item.status !== "no_show" && item.status !== "cancelled" && (
+                            {effectiveMeetLink && item.status !== "completed" && item.status !== "no_show" && item.status !== "cancelled" && (
                               <a
-                                href={item.meeting_link.startsWith("http") ? item.meeting_link : `https://${item.meeting_link}`}
+                                href={effectiveMeetLink.startsWith("http") ? effectiveMeetLink : `https://${effectiveMeetLink}`}
                                 target="_blank"
                                 rel="noreferrer"
-                                className="p-1.5 rounded-lg text-white bg-blue-600 hover:bg-blue-700 transition shrink-0 inline-flex items-center justify-center cursor-pointer"
-                                title="Join Meeting"
+                                className="p-1.5 rounded-lg text-white bg-blue-600 hover:bg-blue-700 transition shrink-0 inline-flex items-center justify-center cursor-pointer shadow-2xs"
+                                title={`Join Meeting (${effectiveMeetLink})`}
                                 aria-label="Join Meeting"
                               >
                                 <Video className="w-3.5 h-3.5" />
                               </a>
                             )}
+                            {/* Dedicated Stage & History Modal Button */}
+                            <button
+                              type="button"
+                              onClick={() => openStageModal(item, "meeting")}
+                              className="p-1.5 rounded-lg text-indigo-600 bg-indigo-50 dark:bg-indigo-950/40 hover:bg-indigo-100 transition shrink-0 cursor-pointer"
+                              title="Stage & Notes History"
+                              aria-label="Stage & Notes History"
+                            >
+                              <History className="w-3.5 h-3.5" />
+                            </button>
                             {item.status === "scheduled" && (
                               <>
                                 <button
@@ -4738,16 +5502,16 @@ export default function CrmModule({
                                 </button>
                                 <button
                                   type="button"
-                                  onClick={() => onUpdateSalesMeeting?.(item.id, { status: "completed" })}
+                                  onClick={() => openStageModal(item, "meeting", "completed")}
                                   className="p-1.5 rounded-lg text-white bg-emerald-600 hover:bg-emerald-700 transition shrink-0 cursor-pointer"
-                                  title="Mark as Completed"
+                                  title="Mark as Completed (record outcome note)"
                                   aria-label="Mark as Completed"
                                 >
                                   <Check className="w-3.5 h-3.5" />
                                 </button>
                                 <button
                                   type="button"
-                                  onClick={() => onUpdateSalesMeeting?.(item.id, { status: "no_show" })}
+                                  onClick={() => openStageModal(item, "meeting", "no_show")}
                                   className="p-1.5 rounded-lg text-red-600 bg-red-50 dark:bg-red-950/40 hover:bg-red-100 transition shrink-0 cursor-pointer"
                                   title="Mark as No Show"
                                   aria-label="Mark as No Show"
@@ -4875,9 +5639,15 @@ export default function CrmModule({
 
       {/* 6. Lead Detail Drawer / Modal with Activity Timeline */}
       {selectedLead && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-xs">
-          <div className="w-full max-w-lg max-h-[92vh] rounded-2xl bg-white dark:bg-[#18150f] border border-gray-200 dark:border-[#3a3020] shadow-2xl flex flex-col overflow-hidden">
-            <div className="flex items-center justify-between border-b border-gray-100 dark:border-[#3a3020] p-5 pb-3 shrink-0">
+        <div
+          data-modal-overlay="true"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setSelectedLead(null);
+          }}
+          className="fixed inset-0 z-[80] flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-xs overscroll-contain animate-in fade-in duration-200"
+        >
+          <div className="w-full max-w-lg max-h-[82vh] rounded-2xl bg-white dark:bg-[#18150f] border border-gray-200 dark:border-[#3a3020] shadow-2xl flex flex-col overflow-hidden">
+            <div className="flex items-center justify-between border-b border-gray-100 dark:border-[#3a3020] p-4 sm:p-5 pb-3 shrink-0">
               <div>
                 <h3 className="font-bold text-base text-gray-900 dark:text-white">{selectedLead.name}</h3>
                 <span className="text-xs text-gray-500 dark:text-neutral-400">Lead Details & Timeline</span>
@@ -4890,19 +5660,37 @@ export default function CrmModule({
               </button>
             </div>
 
-            <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
+            <div className="flex-1 overflow-y-auto px-4 sm:px-5 py-4 space-y-4 no-scrollbar">
             <div className="grid grid-cols-2 gap-3 text-xs">
               <div className="p-2.5 rounded-xl bg-gray-50 dark:bg-slate-800/60">
                 <span className="text-gray-400 text-[10px] block">Phone Number</span>
-                <span className="font-semibold text-gray-800 dark:text-white font-mono">
-                  {selectedLead.phone || "N/A"}
-                </span>
+                {selectedLead.phone ? (
+                  <a
+                    href={`tel:${selectedLead.phone.replace(/[^0-9+]/g, "")}`}
+                    className="font-semibold text-emerald-600 dark:text-emerald-400 hover:underline font-mono inline-flex items-center gap-1.5 mt-0.5 cursor-pointer"
+                    title={`Click to call ${selectedLead.phone}`}
+                  >
+                    <Phone className="w-3.5 h-3.5 shrink-0" />
+                    <span>{selectedLead.phone}</span>
+                  </a>
+                ) : (
+                  <span className="font-semibold text-gray-400 font-mono">N/A</span>
+                )}
               </div>
               <div className="p-2.5 rounded-xl bg-gray-50 dark:bg-slate-800/60">
                 <span className="text-gray-400 text-[10px] block">Email Address</span>
-                <span className="font-semibold text-gray-800 dark:text-white truncate block" title={selectedLead.email}>
-                  {selectedLead.email || "N/A"}
-                </span>
+                {selectedLead.email ? (
+                  <a
+                    href={`mailto:${selectedLead.email}`}
+                    className="font-semibold text-blue-600 dark:text-blue-400 hover:underline truncate inline-flex items-center gap-1.5 mt-0.5 max-w-full cursor-pointer"
+                    title={`Click to email ${selectedLead.email}`}
+                  >
+                    <Mail className="w-3.5 h-3.5 shrink-0" />
+                    <span className="truncate">{selectedLead.email}</span>
+                  </a>
+                ) : (
+                  <span className="font-semibold text-gray-400">N/A</span>
+                )}
               </div>
               <div className="p-2.5 rounded-xl bg-gray-50 dark:bg-slate-800/60">
                 <span className="text-gray-400 text-[10px] block">Service Required</span>
@@ -4977,6 +5765,100 @@ export default function CrmModule({
                   <p className="text-rose-700 dark:text-rose-300 font-semibold leading-relaxed">
                     {selectedLeadLossReason || "No specific reason was provided when marking this lead as lost."}
                   </p>
+                </div>
+              </div>
+            )}
+
+            {(selectedLeadActivity.meetings.length > 0 || selectedLeadActivity.followUps.length > 0) && (
+              <div className="space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <h4 className="text-xs font-bold text-gray-900 dark:text-white uppercase tracking-wider">
+                    Linked Engagements ({selectedLeadActivity.meetings.length + selectedLeadActivity.followUps.length})
+                  </h4>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        openLeadFollowUpModal(selectedLead);
+                        setSelectedLead(null);
+                      }}
+                      className="text-[11px] font-bold text-blue-600 dark:text-blue-400 hover:underline cursor-pointer"
+                    >
+                      + Follow-up
+                    </button>
+                    <span className="text-gray-300">·</span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSalesMeetingForm((prev) => ({
+                          ...prev,
+                          lead_id: selectedLead.id,
+                          title: `Sales call: ${selectedLead.name}`,
+                          meeting_link: defaultMeetLink || "https://meet.google.com/new",
+                        }));
+                        setShowSalesMeetingModal(true);
+                        setSelectedLead(null);
+                      }}
+                      className="text-[11px] font-bold text-orange-600 dark:text-orange-400 hover:underline cursor-pointer"
+                    >
+                      + Meeting
+                    </button>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  {selectedLeadActivity.meetings.slice(0, 2).map((m) => (
+                    <div
+                      key={m.id}
+                      title={`Stage: ${m.status === "no_show" ? "No Show" : formatStatusLabel(m.status)}${getLatestMeetingSnippet(m) ? ` - ${getLatestMeetingSnippet(m)}` : ""}`}
+                      className="p-2.5 rounded-xl border border-blue-100 dark:border-blue-900/40 bg-blue-50/50 dark:bg-blue-950/20 text-xs space-y-1"
+                    >
+                      <div className="flex items-center justify-between gap-1">
+                        <span className="font-bold text-blue-900 dark:text-blue-200 truncate flex items-center gap-1">
+                          <Video className="w-3 h-3 text-blue-500 shrink-0" />
+                          <span className="truncate">{m.title}</span>
+                        </span>
+                        <span className="px-1.5 py-0.5 rounded text-[9px] font-bold uppercase bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 shrink-0">
+                          {m.status}
+                        </span>
+                      </div>
+                      <div className="text-[11px] text-gray-500 dark:text-neutral-400 flex items-center justify-between">
+                        <span>{new Date(m.scheduled_at).toLocaleDateString("en-IN", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}</span>
+                        {m.meeting_link && (
+                          <a
+                            href={m.meeting_link.startsWith("http") ? m.meeting_link : `https://${m.meeting_link}`}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="font-bold text-blue-600 hover:underline"
+                          >
+                            Join
+                          </a>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+
+                  {selectedLeadActivity.followUps.slice(0, 2).map((f) => (
+                    <div
+                      key={f.id}
+                      title={`Stage: ${formatStatusLabel(f.status)}${getLatestNoteSnippet(f.notes) ? ` - ${getLatestNoteSnippet(f.notes)}` : ""}`}
+                      className="p-2.5 rounded-xl border border-amber-100 dark:border-amber-900/40 bg-amber-50/50 dark:bg-amber-950/20 text-xs space-y-1"
+                    >
+                      <div className="flex items-center justify-between gap-1">
+                        <span className="font-bold text-amber-900 dark:text-amber-200 truncate flex items-center gap-1">
+                          <Clock className="w-3 h-3 text-amber-500 shrink-0" />
+                          <span className="truncate">{f.title}</span>
+                        </span>
+                        <span className="px-1.5 py-0.5 rounded text-[9px] font-bold uppercase bg-amber-100 dark:bg-amber-900/50 text-amber-700 dark:text-amber-300 shrink-0">
+                          {f.status}
+                        </span>
+                      </div>
+                      <div className="text-[11px] text-gray-500 dark:text-neutral-400 flex items-center justify-between">
+                        <span>{new Date(f.due_at).toLocaleDateString("en-IN", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}</span>
+                        <span className="capitalize font-semibold text-gray-600 dark:text-neutral-300">{f.channel}</span>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </div>
             )}
@@ -5060,26 +5942,40 @@ export default function CrmModule({
 
       {/* 7. Add Lead Modal */}
       {showAddLeadModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
+        <div data-modal-overlay="true" className="fixed inset-0 z-[90] flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-xs overscroll-contain animate-in fade-in duration-200">
           <form
             onSubmit={handleAddLeadSubmit}
-            className="w-full max-w-md rounded-2xl bg-white dark:bg-[#18150f] border border-gray-200 dark:border-[#3a3020] shadow-2xl p-5 space-y-4"
+            className="w-full max-w-xl max-h-[82vh] rounded-3xl bg-white dark:bg-[#18150f] border border-gray-200/80 dark:border-[#3a3020] shadow-2xl flex flex-col overflow-hidden transition-all animate-in zoom-in-95 duration-200"
           >
-            <div className="flex items-center justify-between border-b border-gray-100 dark:border-[#3a3020] pb-3">
-              <h3 className="font-bold text-base text-gray-900 dark:text-white">Add New Lead</h3>
+            {/* Header */}
+            <div className="flex items-center justify-between px-5 py-3.5 border-b border-gray-100 dark:border-[#3a3020] bg-linear-to-r from-orange-50/70 via-amber-50/25 to-transparent dark:from-orange-950/25 dark:via-transparent dark:to-transparent shrink-0">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-orange-500 text-white flex items-center justify-center shadow-md shadow-orange-500/25 shrink-0">
+                  <Users className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-base sm:text-lg text-gray-900 dark:text-white leading-tight">Add New Lead</h3>
+                  <p className="text-xs text-gray-500 dark:text-neutral-400 mt-0.5">Capture inbound inquiry or outbound sales prospect</p>
+                </div>
+              </div>
               <button
                 type="button"
                 onClick={() => setShowAddLeadModal(false)}
-                className="p-1 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-800 text-gray-500"
+                className="p-1.5 rounded-xl text-gray-400 hover:text-gray-700 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-slate-800 transition cursor-pointer"
+                aria-label="Close modal"
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
 
-            <div className="space-y-3 text-xs">
-              <div>
-                <label className="block font-medium mb-1 text-gray-700 dark:text-neutral-300">
-                  Full Name *
+            {/* Body */}
+            <div className="p-5 space-y-3.5 text-xs flex-1 overflow-y-auto no-scrollbar">
+              {/* Full Name */}
+              <div className="space-y-1.5">
+                <label className="flex items-center gap-1.5 font-semibold text-gray-700 dark:text-neutral-200">
+                  <Users className="w-3.5 h-3.5 text-orange-500" />
+                  <span>Full Name</span>
+                  <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="text"
@@ -5087,59 +5983,68 @@ export default function CrmModule({
                   value={newLeadForm.name}
                   onChange={(e) => setNewLeadForm({ ...newLeadForm, name: e.target.value })}
                   placeholder="e.g. Rahul Sharma"
-                  className="w-full px-3 py-2 rounded-xl bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 focus:outline-hidden focus:ring-2 focus:ring-orange-500"
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-gray-50/80 dark:bg-slate-800/80 border border-gray-200 dark:border-slate-700 focus:bg-white dark:focus:bg-slate-800 focus:outline-hidden focus:ring-2 focus:ring-orange-500/30 focus:border-orange-500 text-gray-900 dark:text-white transition shadow-2xs font-medium"
                 />
               </div>
 
-              <div>
-                <label className="block font-medium mb-1 text-gray-700 dark:text-neutral-300">
-                  Phone Number *
-                </label>
-                <input
-                  type="tel"
-                  required
-                  value={newLeadForm.phone}
-                  onChange={(e) => setNewLeadForm({ ...newLeadForm, phone: e.target.value })}
-                  placeholder="e.g. +91 98765 43210"
-                  className="w-full px-3 py-2 rounded-xl bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 focus:outline-hidden focus:ring-2 focus:ring-orange-500 font-mono"
-                />
+              {/* Phone & Email */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                <div className="space-y-1.5">
+                  <label className="flex items-center gap-1.5 font-semibold text-gray-700 dark:text-neutral-200">
+                    <Phone className="w-3.5 h-3.5 text-emerald-500" />
+                    <span>Phone Number</span>
+                    <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="tel"
+                    required
+                    value={newLeadForm.phone}
+                    onChange={(e) => setNewLeadForm({ ...newLeadForm, phone: e.target.value })}
+                    placeholder="e.g. +91 98765 43210"
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-gray-50/80 dark:bg-slate-800/80 border border-gray-200 dark:border-slate-700 focus:bg-white dark:focus:bg-slate-800 focus:outline-hidden focus:ring-2 focus:ring-orange-500/30 focus:border-orange-500 text-gray-900 dark:text-white transition shadow-2xs font-mono font-medium"
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="flex items-center gap-1.5 font-semibold text-gray-700 dark:text-neutral-200">
+                    <Mail className="w-3.5 h-3.5 text-blue-500" />
+                    <span>Email Address</span>
+                  </label>
+                  <input
+                    type="email"
+                    value={newLeadForm.email}
+                    onChange={(e) => setNewLeadForm({ ...newLeadForm, email: e.target.value })}
+                    placeholder="e.g. rahul@example.com"
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-gray-50/80 dark:bg-slate-800/80 border border-gray-200 dark:border-slate-700 focus:bg-white dark:focus:bg-slate-800 focus:outline-hidden focus:ring-2 focus:ring-orange-500/30 focus:border-orange-500 text-gray-900 dark:text-white transition shadow-2xs font-medium"
+                  />
+                </div>
               </div>
 
-              <div>
-                <label className="block font-medium mb-1 text-gray-700 dark:text-neutral-300">
-                  Email Address
-                </label>
-                <input
-                  type="email"
-                  value={newLeadForm.email}
-                  onChange={(e) => setNewLeadForm({ ...newLeadForm, email: e.target.value })}
-                  placeholder="e.g. rahul@example.com"
-                  className="w-full px-3 py-2 rounded-xl bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 focus:outline-hidden focus:ring-2 focus:ring-orange-500"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <label className="block font-medium mb-1 text-gray-700 dark:text-neutral-300">
-                    Service
+              {/* Service & Source */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                <div className="space-y-1.5">
+                  <label className="flex items-center gap-1.5 font-semibold text-gray-700 dark:text-neutral-200">
+                    <Briefcase className="w-3.5 h-3.5 text-indigo-500" />
+                    <span>Service Required</span>
                   </label>
                   <input
                     type="text"
                     value={newLeadForm.service}
                     onChange={(e) => setNewLeadForm({ ...newLeadForm, service: e.target.value })}
-                    placeholder="Customer filled service"
-                    className="w-full px-3 py-2 rounded-xl bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 focus:outline-hidden"
+                    placeholder="e.g. Web Development"
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-gray-50/80 dark:bg-slate-800/80 border border-gray-200 dark:border-slate-700 focus:bg-white dark:focus:bg-slate-800 focus:outline-hidden focus:ring-2 focus:ring-orange-500/30 focus:border-orange-500 text-gray-900 dark:text-white transition shadow-2xs font-medium"
                   />
                 </div>
 
-                <div>
-                  <label className="block font-medium mb-1 text-gray-700 dark:text-neutral-300">
-                    Source
+                <div className="space-y-1.5">
+                  <label className="flex items-center gap-1.5 font-semibold text-gray-700 dark:text-neutral-200">
+                    <Target className="w-3.5 h-3.5 text-amber-500" />
+                    <span>Lead Source</span>
                   </label>
                   <select
                     value={newLeadForm.source}
                     onChange={(e) => setNewLeadForm({ ...newLeadForm, source: e.target.value })}
-                    className="w-full px-3 py-2 rounded-xl bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 focus:outline-hidden"
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-gray-50/80 dark:bg-slate-800/80 border border-gray-200 dark:border-slate-700 focus:bg-white dark:focus:bg-slate-800 focus:outline-hidden focus:ring-2 focus:ring-orange-500/30 focus:border-orange-500 text-gray-900 dark:text-white font-medium transition shadow-2xs"
                   >
                     <option value="Website">Website</option>
                     <option value="Meta Ads">Meta Ads</option>
@@ -5151,33 +6056,37 @@ export default function CrmModule({
                 </div>
               </div>
 
-              <div>
-                <label className="block font-medium mb-1 text-gray-700 dark:text-neutral-300">
-                  Notes / Requirements
+              {/* Notes / Requirements */}
+              <div className="space-y-1.5">
+                <label className="flex items-center gap-1.5 font-semibold text-gray-700 dark:text-neutral-200">
+                  <MessageSquare className="w-3.5 h-3.5 text-purple-500" />
+                  <span>Notes / Requirements</span>
                 </label>
                 <textarea
-                  rows={2}
+                  rows={3}
                   value={newLeadForm.notes}
                   onChange={(e) => setNewLeadForm({ ...newLeadForm, notes: e.target.value })}
-                  placeholder="Customer requirements summary..."
-                  className="w-full px-3 py-2 rounded-xl bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 focus:outline-hidden"
+                  placeholder="Customer requirements summary, budget discussed, timeline..."
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-gray-50/80 dark:bg-slate-800/80 border border-gray-200 dark:border-slate-700 focus:bg-white dark:focus:bg-slate-800 focus:outline-hidden focus:ring-2 focus:ring-orange-500/30 focus:border-orange-500 text-gray-900 dark:text-white transition shadow-2xs font-normal text-xs resize-y"
                 />
               </div>
             </div>
 
-            <div className="flex items-center justify-end gap-2 pt-3 border-t border-gray-100 dark:border-[#3a3020]">
+            {/* Footer Buttons */}
+            <div className="flex items-center justify-end gap-2.5 px-5 py-3 border-t border-gray-100 dark:border-[#3a3020] bg-gray-50/60 dark:bg-[#1a1712] shrink-0">
               <button
                 type="button"
                 onClick={() => setShowAddLeadModal(false)}
-                className="px-3.5 py-2 rounded-xl text-xs font-semibold text-gray-600 dark:text-neutral-300 hover:bg-gray-100 dark:hover:bg-slate-800 transition"
+                className="px-4 py-2.5 rounded-xl text-xs font-semibold text-gray-700 dark:text-neutral-300 hover:bg-gray-100 dark:hover:bg-slate-800 border border-gray-200 dark:border-slate-700 transition cursor-pointer"
               >
                 Cancel
               </button>
               <button
                 type="submit"
-                className="px-4 py-2 rounded-xl text-xs font-bold bg-orange-600 hover:bg-orange-700 text-white transition shadow-sm"
+                className="px-5 py-2.5 rounded-xl text-xs font-bold bg-linear-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white shadow-md shadow-orange-500/25 hover:shadow-lg transition flex items-center gap-2 cursor-pointer"
               >
-                Save Lead
+                <Plus className="w-4 h-4" />
+                <span>Save Lead</span>
               </button>
             </div>
           </form>
@@ -5186,34 +6095,39 @@ export default function CrmModule({
 
       {/* 7b. Add Deal to Pipeline Modal */}
       {showAddDealModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
+        <div data-modal-overlay="true" className="fixed inset-0 z-[90] flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-xs overscroll-contain animate-in fade-in duration-200">
           <form
             onSubmit={handleCreateDealSubmit}
-            className="w-full max-w-lg rounded-3xl bg-white dark:bg-[#18150f] border border-gray-200 dark:border-[#3a3020] shadow-2xl p-5 sm:p-6 space-y-4 max-h-[90vh] overflow-y-auto"
+            className="w-full max-w-xl max-h-[82vh] rounded-3xl bg-white dark:bg-[#18150f] border border-gray-200/80 dark:border-[#3a3020] shadow-2xl flex flex-col overflow-hidden transition-all animate-in zoom-in-95 duration-200"
           >
-            <div className="flex items-center justify-between border-b border-gray-100 dark:border-[#3a3020] pb-3">
-              <div className="flex items-center gap-2.5">
-                <span className="p-2 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
+            {/* Header */}
+            <div className="flex items-center justify-between px-5 py-3.5 border-b border-gray-100 dark:border-[#3a3020] bg-linear-to-r from-emerald-50/70 via-teal-50/25 to-transparent dark:from-emerald-950/25 dark:via-transparent dark:to-transparent shrink-0">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-emerald-600 text-white flex items-center justify-center shadow-md shadow-emerald-500/25 shrink-0">
                   <TrendingUp className="w-5 h-5" />
-                </span>
+                </div>
                 <div>
-                  <h3 className="font-bold text-base text-gray-900 dark:text-white">New Sales Pipeline Deal</h3>
-                  <p className="text-[11px] text-gray-500 dark:text-neutral-400">Add an active commercial opportunity with value forecast</p>
+                  <h3 className="font-bold text-base sm:text-lg text-gray-900 dark:text-white leading-tight">New Sales Pipeline Deal</h3>
+                  <p className="text-xs text-gray-500 dark:text-neutral-400 mt-0.5">Add an active commercial opportunity with value forecast</p>
                 </div>
               </div>
               <button
                 type="button"
                 onClick={() => setShowAddDealModal(false)}
-                className="p-1 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-800 text-gray-400 hover:text-gray-600 cursor-pointer"
+                className="p-1.5 rounded-xl text-gray-400 hover:text-gray-700 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-slate-800 transition cursor-pointer"
+                aria-label="Close modal"
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
 
-            <div className="space-y-3.5 text-xs">
-              <div>
-                <label className="block font-bold mb-1 text-gray-700 dark:text-neutral-300">
-                  Deal Title *
+            {/* Form Content Body */}
+            <div className="p-5 space-y-3.5 text-xs flex-1 overflow-y-auto no-scrollbar">
+              <div className="space-y-1.5">
+                <label className="flex items-center gap-1.5 font-semibold text-gray-700 dark:text-neutral-200">
+                  <Briefcase className="w-3.5 h-3.5 text-emerald-500" />
+                  <span>Deal Title</span>
+                  <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="text"
@@ -5221,17 +6135,19 @@ export default function CrmModule({
                   value={newDealForm.title}
                   onChange={(e) => setNewDealForm({ ...newDealForm, title: e.target.value })}
                   placeholder="e.g. Acme Corp - E-Commerce Website & Portal"
-                  className="w-full px-3 py-2 rounded-xl bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 focus:outline-hidden focus:ring-2 focus:ring-emerald-500"
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-gray-50/80 dark:bg-slate-800/80 border border-gray-200 dark:border-slate-700 text-gray-900 dark:text-white placeholder-gray-400 focus:bg-white dark:focus:bg-slate-800 focus:outline-hidden focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500 transition shadow-2xs font-medium"
                 />
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="block font-bold mb-1 text-gray-700 dark:text-neutral-300">
-                    Average Deal Value (INR) *
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                <div className="space-y-1.5">
+                  <label className="flex items-center gap-1.5 font-semibold text-gray-700 dark:text-neutral-200">
+                    <IndianRupee className="w-3.5 h-3.5 text-emerald-500" />
+                    <span>Average Deal Value (INR)</span>
+                    <span className="text-red-500">*</span>
                   </label>
                   <div className="relative">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 font-bold">Rs.</span>
+                    <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 font-bold">Rs.</span>
                     <input
                       type="number"
                       required
@@ -5239,53 +6155,66 @@ export default function CrmModule({
                       value={newDealForm.deal_value}
                       onChange={(e) => setNewDealForm({ ...newDealForm, deal_value: e.target.value })}
                       placeholder="100000"
-                      className="w-full pl-10 pr-3 py-2 rounded-xl bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 font-mono font-bold text-gray-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-emerald-500"
+                      className="w-full pl-11 pr-3.5 py-2.5 rounded-xl bg-gray-50/80 dark:bg-slate-800/80 border border-gray-200 dark:border-slate-700 font-mono font-bold text-gray-900 dark:text-white focus:bg-white dark:focus:bg-slate-800 focus:outline-hidden focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500 transition shadow-2xs"
                     />
                   </div>
                 </div>
 
-                <div>
-                  <label className="block font-bold mb-1 text-gray-700 dark:text-neutral-300">
-                    Pipeline Stage *
+                <div className="space-y-1.5">
+                  <label className="flex items-center gap-1.5 font-semibold text-gray-700 dark:text-neutral-200">
+                    <Layers className="w-3.5 h-3.5 text-indigo-500" />
+                    <span>Pipeline Stage</span>
+                    <span className="text-red-500">*</span>
                   </label>
-                  <div className="w-full px-3 py-2 rounded-xl bg-gray-100 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 font-semibold text-gray-700 dark:text-neutral-200">
-                    Contacted
+                  <div className="w-full px-3.5 py-2.5 rounded-xl bg-emerald-50/60 dark:bg-emerald-950/20 border border-emerald-200/80 dark:border-emerald-900/40 font-bold text-emerald-700 dark:text-emerald-300 flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                    <span>Contacted</span>
                   </div>
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="block font-medium mb-1 text-gray-700 dark:text-neutral-300">
-                    Service
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                <div className="space-y-1.5">
+                  <label className="flex items-center gap-1.5 font-semibold text-gray-700 dark:text-neutral-200">
+                    <FileText className="w-3.5 h-3.5 text-blue-500" />
+                    <span>Service</span>
+                    <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="text"
                     value={newDealForm.service}
                     onChange={(e) => setNewDealForm({ ...newDealForm, service: e.target.value })}
                     required
-                    placeholder="Customer filled service"
-                    className="w-full px-3 py-2 rounded-xl bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 focus:outline-hidden"
+                    placeholder="e.g. Web Development"
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-gray-50/80 dark:bg-slate-800/80 border border-gray-200 dark:border-slate-700 text-gray-900 dark:text-white placeholder-gray-400 focus:bg-white dark:focus:bg-slate-800 focus:outline-hidden focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500 transition shadow-2xs font-medium"
                   />
                 </div>
 
-                <div>
-                  <label className="block font-medium mb-1 text-gray-700 dark:text-neutral-300">
-                    Meeting Date & Time
-                  </label>
-                  <input
-                    type="datetime-local"
-                    required
-                    value={newDealForm.meeting_scheduled_at}
-                    onChange={(e) => setNewDealForm({ ...newDealForm, meeting_scheduled_at: e.target.value })}
-                    className="w-full px-3 py-2 rounded-xl bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 focus:outline-hidden"
+                <div className="space-y-1.5">
+                  <DurationSelectField
+                    label="Meeting Duration"
+                    value={newDealForm.duration_minutes}
+                    onChange={(value) => setNewDealForm({ ...newDealForm, duration_minutes: value })}
                   />
                 </div>
               </div>
 
+              {/* Meeting Schedule - Full Width Card */}
               <div>
-                <label className="block font-medium mb-1 text-gray-700 dark:text-neutral-300">
-                  Google Meet Link
+                <SplitDateTimeField
+                  label="Meeting Schedule"
+                  required
+                  value={newDealForm.meeting_scheduled_at}
+                  onChange={(value) => setNewDealForm({ ...newDealForm, meeting_scheduled_at: value })}
+                  reminderValue={newDealForm.reminder_before_minutes}
+                  onReminderChange={(value) => setNewDealForm({ ...newDealForm, reminder_before_minutes: value })}
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="flex items-center gap-1.5 font-semibold text-gray-700 dark:text-neutral-200">
+                  <Video className="w-3.5 h-3.5 text-blue-500" />
+                  <span>Google Meet Link</span>
                 </label>
                 <input
                   type="url"
@@ -5293,70 +6222,70 @@ export default function CrmModule({
                   readOnly
                   value={newDealForm.meeting_link}
                   placeholder="https://meet.google.com/..."
-                  className="w-full px-3 py-2 rounded-xl bg-gray-100 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 text-gray-500 dark:text-neutral-400 cursor-not-allowed"
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-gray-100 dark:bg-slate-800/60 border border-gray-200 dark:border-slate-700 text-gray-500 dark:text-neutral-400 font-mono text-xs cursor-not-allowed"
                 />
               </div>
 
-              <div>
-                <div>
-                  <label className="block font-medium mb-1 text-gray-700 dark:text-neutral-300">Linked Lead</label>
-                  {newDealForm.lead_id ? (
-                    <div className="px-3 py-2 rounded-xl bg-gray-100 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 text-gray-700 dark:text-neutral-200 font-semibold">
-                      {leads.find((l) => l.id === newDealForm.lead_id)?.name || "Selected lead"} - read only
-                    </div>
-                  ) : (
-                    <select
-                      value={newDealForm.lead_id}
-                      onChange={(e) => {
-                        const selId = e.target.value;
-                        const matchedLead = leads.find((l) => l.id === selId);
-                        setNewDealForm({
-                          ...newDealForm,
-                          lead_id: selId,
-                          title: newDealForm.title || (matchedLead ? `${matchedLead.name} - ${matchedLead.service || "Project"}` : ""),
-                          service: matchedLead?.service || newDealForm.service,
-                        });
-                      }}
-                      required
-                      className="w-full px-3 py-2 rounded-xl bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 focus:outline-hidden truncate"
+              <div className="space-y-1.5">
+                <label className="flex items-center gap-1.5 font-semibold text-gray-700 dark:text-neutral-200">
+                  <Users className="w-3.5 h-3.5 text-orange-500" />
+                  <span>Linked Lead</span>
+                </label>
+                {newDealForm.lead_id ? (
+                  <div className="px-3.5 py-2.5 rounded-xl bg-gray-50/80 dark:bg-slate-800/80 border border-gray-200 dark:border-slate-700 text-gray-900 dark:text-white font-semibold flex items-center justify-between">
+                    <span className="truncate">{leads.find((l) => l.id === newDealForm.lead_id)?.name || "Selected lead"}</span>
+                    <button
+                      type="button"
+                      onClick={() => setNewDealForm({ ...newDealForm, lead_id: "" })}
+                      className="text-[11px] font-bold text-orange-600 dark:text-orange-400 hover:underline shrink-0 ml-2 cursor-pointer"
                     >
-                      <option value="">-- No Linked Lead --</option>
-                      {leads.map((l) => (
-                        <option key={l.id} value={l.id}>
-                          {l.name} ({l.service || "Inquiry"})
-                        </option>
-                      ))}
-                    </select>
-                  )}
-                </div>
+                      Change
+                    </button>
+                  </div>
+                ) : (
+                  <SearchableLeadSelect
+                    leads={leads}
+                    value={newDealForm.lead_id}
+                    onChange={(selId, matchedLead) => {
+                      setNewDealForm({
+                        ...newDealForm,
+                        lead_id: selId,
+                        title: newDealForm.title || (matchedLead ? `${matchedLead.name} - ${matchedLead.service || "Project"}` : ""),
+                        service: matchedLead?.service || newDealForm.service,
+                      });
+                    }}
+                    placeholder="Search lead by name, phone..."
+                  />
+                )}
               </div>
 
-              <div>
-                <label className="block font-medium mb-1 text-gray-700 dark:text-neutral-300">
-                  Deal Notes / Strategy
+              <div className="space-y-1.5">
+                <label className="flex items-center gap-1.5 font-semibold text-gray-700 dark:text-neutral-200">
+                  <MessageSquare className="w-3.5 h-3.5 text-purple-500" />
+                  <span>Deal Notes / Strategy</span>
                 </label>
                 <textarea
                   rows={2}
-                  required
                   value={newDealForm.notes}
                   onChange={(e) => setNewDealForm({ ...newDealForm, notes: e.target.value })}
                   placeholder="Key deliverables, client expectations, stakeholders involved..."
-                  className="w-full px-3 py-2 rounded-xl bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 focus:outline-hidden"
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-gray-50/80 dark:bg-slate-800/80 border border-gray-200 dark:border-slate-700 text-gray-900 dark:text-white placeholder-gray-400 focus:bg-white dark:focus:bg-slate-800 focus:outline-hidden focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500 transition shadow-2xs font-normal text-xs resize-y"
                 />
               </div>
             </div>
 
-            <div className="flex items-center justify-end gap-2 pt-3 border-t border-gray-100 dark:border-[#3a3020]">
+            {/* Footer */}
+            <div className="flex items-center justify-end gap-2.5 px-5 py-3 border-t border-gray-100 dark:border-[#3a3020] bg-gray-50/60 dark:bg-[#1a1712] shrink-0">
               <button
                 type="button"
                 onClick={() => setShowAddDealModal(false)}
-                className="px-3.5 py-2 rounded-xl text-xs font-semibold text-gray-600 dark:text-neutral-300 hover:bg-gray-100 dark:hover:bg-slate-800 transition cursor-pointer"
+                className="px-4 py-2.5 rounded-xl text-xs font-semibold text-gray-700 dark:text-neutral-300 hover:bg-gray-100 dark:hover:bg-slate-800 border border-gray-200 dark:border-slate-700 transition cursor-pointer"
               >
                 Cancel
               </button>
               <button
                 type="submit"
-                className="px-4 py-2 rounded-xl text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white transition shadow-sm flex items-center gap-1.5 cursor-pointer"
+                className="px-5 py-2.5 rounded-xl text-xs font-bold bg-linear-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white shadow-md shadow-emerald-500/25 hover:shadow-lg transition flex items-center gap-2 cursor-pointer"
               >
                 <Plus className="w-4 h-4" />
                 <span>Create Pipeline Deal</span>
@@ -5367,20 +6296,34 @@ export default function CrmModule({
       )}
 
       {showCommercialModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
+        <div data-modal-overlay="true" className="fixed inset-0 z-[90] flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-xs overscroll-contain animate-in fade-in duration-200">
           <form
             onSubmit={handleCreateCommercialSubmit}
-            className="w-full max-w-6xl max-h-[92vh] overflow-y-auto no-scrollbar rounded-2xl bg-white dark:bg-[#18150f] border border-gray-200 dark:border-[#3a3020] shadow-2xl p-5 space-y-4"
+            className="w-full max-w-6xl max-h-[82vh] rounded-3xl bg-white dark:bg-[#18150f] border border-gray-200/80 dark:border-[#3a3020] shadow-2xl flex flex-col overflow-hidden transition-all animate-in zoom-in-95 duration-200"
           >
-            <div className="flex items-center justify-between border-b border-gray-100 dark:border-[#3a3020] pb-3">
-              <div>
-                <h3 className="font-bold text-base text-gray-900 dark:text-white">Sales Quotation / Agreement</h3>
-                <p className="text-[11px] text-gray-400">Quotation is the Sales document; agreement is final signing before deal won.</p>
+            {/* Header */}
+            <div className="flex items-center justify-between px-5 py-3.5 border-b border-gray-100 dark:border-[#3a3020] bg-linear-to-r from-orange-50/70 via-amber-50/25 to-transparent dark:from-orange-950/25 dark:via-transparent dark:to-transparent shrink-0">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-orange-500 text-white flex items-center justify-center shadow-md shadow-orange-500/25 shrink-0">
+                  <FileText className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-base sm:text-lg text-gray-900 dark:text-white leading-tight">Sales Quotation / Agreement</h3>
+                  <p className="text-xs text-gray-500 dark:text-neutral-400 mt-0.5">Quotation is the sales document; agreement is final signing before deal won</p>
+                </div>
               </div>
-              <button type="button" onClick={() => setShowCommercialModal(false)} className="p-1 rounded-lg text-gray-400">
+              <button
+                type="button"
+                onClick={() => setShowCommercialModal(false)}
+                className="p-1.5 rounded-xl text-gray-400 hover:text-gray-700 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-slate-800 transition cursor-pointer"
+                aria-label="Close modal"
+              >
                 <X className="w-4 h-4" />
               </button>
             </div>
+
+            {/* Body */}
+            <div className="p-5 space-y-4 text-xs flex-1 overflow-y-auto no-scrollbar">
 
             <div className="flex items-center gap-1 p-1 rounded-xl bg-gray-100 dark:bg-slate-800 text-xs">
               {[
@@ -5655,36 +6598,38 @@ export default function CrmModule({
               type={commercialType}
               deal={deals.find((deal) => deal.id === commercialForm.deal_id)}
               lead={leads.find((lead) => lead.id === deals.find((deal) => deal.id === commercialForm.deal_id)?.lead_id)}
-              client={clients.find((client) => client.id === deals.find((deal) => deal.id === commercialForm.deal_id)?.client_id)}
             />
             </div>
+            </div>
 
-            <div className="flex flex-wrap items-center justify-end gap-2 pt-3 border-t border-gray-100 dark:border-[#3a3020]">
+            {/* Footer */}
+            <div className="flex flex-wrap items-center justify-end gap-2.5 px-5 py-3 border-t border-gray-100 dark:border-[#3a3020] bg-gray-50/60 dark:bg-[#1a1712] shrink-0">
               <button
                 type="button"
                 onClick={() => setShowCommercialModal(false)}
-                className="px-3.5 py-2 rounded-xl text-xs font-semibold text-gray-600 dark:text-neutral-300 hover:bg-gray-100 dark:hover:bg-slate-800 transition cursor-pointer"
+                className="px-4 py-2.5 rounded-xl text-xs font-semibold text-gray-700 dark:text-neutral-300 hover:bg-gray-100 dark:hover:bg-slate-800 border border-gray-200 dark:border-slate-700 transition cursor-pointer"
               >
                 Cancel
               </button>
               <button
-                type="submit"
-                className="px-4 py-2 rounded-xl text-xs font-bold bg-orange-600 hover:bg-orange-700 text-white transition shadow-sm cursor-pointer shrink-0"
-              >
-                Save {commercialType === "agreement" ? "Agreement" : "Quotation"}
-              </button>
-              <button
                 type="button"
                 onClick={handlePreviewCommercialPdf}
-                className="px-4 py-2 rounded-xl text-xs font-bold bg-slate-900 hover:bg-slate-800 text-white transition shadow-sm cursor-pointer shrink-0 flex items-center gap-1.5"
+                className="px-4 py-2.5 rounded-xl text-xs font-bold bg-slate-900 hover:bg-slate-800 text-white transition shadow-sm cursor-pointer shrink-0 flex items-center gap-1.5"
               >
                 <Eye className="w-3.5 h-3.5 shrink-0" />
                 <span>Preview PDF</span>
               </button>
               <button
+                type="submit"
+                className="px-5 py-2.5 rounded-xl text-xs font-bold bg-linear-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white shadow-md shadow-orange-500/25 hover:shadow-lg transition flex items-center gap-1.5 cursor-pointer shrink-0"
+              >
+                <FileText className="w-3.5 h-3.5 shrink-0" />
+                <span>Save {commercialType === "agreement" ? "Agreement" : "Quotation"}</span>
+              </button>
+              <button
                 type="button"
                 onClick={(e) => handleCreateCommercialSubmit(e, true)}
-                className="px-4 py-2 rounded-xl text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white transition shadow-sm flex items-center gap-1.5 cursor-pointer shrink-0"
+                className="px-5 py-2.5 rounded-xl text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white shadow-md shadow-emerald-500/25 hover:shadow-lg transition flex items-center gap-1.5 cursor-pointer shrink-0"
               >
                 <WhatsAppIcon className="w-3.5 h-3.5 shrink-0" />
                 <span>Save & WhatsApp</span>
@@ -5696,29 +6641,34 @@ export default function CrmModule({
 
       {/* Sales Invoice Modal */}
       {showInvoiceModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
+        <div data-modal-overlay="true" className="fixed inset-0 z-[90] flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-xs overscroll-contain animate-in fade-in duration-200">
           <form
             onSubmit={handleCreateInvoiceSubmit}
-            className="w-full max-w-lg max-h-[90vh] overflow-y-auto no-scrollbar rounded-2xl bg-white dark:bg-[#18150f] border border-gray-200 dark:border-[#3a3020] shadow-2xl p-5 space-y-4"
+            className="w-full max-w-xl max-h-[82vh] rounded-3xl bg-white dark:bg-[#18150f] border border-gray-200/80 dark:border-[#3a3020] shadow-2xl flex flex-col overflow-hidden transition-all animate-in zoom-in-95 duration-200"
           >
-            <div className="flex items-center justify-between border-b border-gray-100 dark:border-[#3a3020] pb-3">
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-xl bg-purple-50 dark:bg-purple-950/60 border border-purple-200/60 dark:border-purple-800/50 flex items-center justify-center text-purple-600 dark:text-purple-400 shrink-0">
-                  <DollarSign className="w-4 h-4" />
+            {/* Header */}
+            <div className="flex items-center justify-between px-5 py-3.5 border-b border-gray-100 dark:border-[#3a3020] bg-linear-to-r from-purple-50/70 via-indigo-50/25 to-transparent dark:from-purple-950/25 dark:via-transparent dark:to-transparent shrink-0">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-purple-600 text-white flex items-center justify-center shadow-md shadow-purple-500/25 shrink-0">
+                  <DollarSign className="w-5 h-5" />
                 </div>
                 <div>
-                  <h3 className="font-bold text-base text-gray-900 dark:text-white">Generate Sales Invoice</h3>
-                  <p className="text-[11px] text-gray-400">Create and issue an official tax invoice linked to this pipeline deal.</p>
+                  <h3 className="font-bold text-base sm:text-lg text-gray-900 dark:text-white leading-tight">Generate Sales Invoice</h3>
+                  <p className="text-xs text-gray-500 dark:text-neutral-400 mt-0.5">Create and issue an official tax invoice linked to this pipeline deal</p>
                 </div>
               </div>
               <button
                 type="button"
                 onClick={() => setShowInvoiceModal(false)}
-                className="p-1 rounded-lg text-gray-400 hover:text-gray-600 dark:hover:text-neutral-200 transition cursor-pointer"
+                className="p-1.5 rounded-xl text-gray-400 hover:text-gray-700 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-slate-800 transition cursor-pointer"
+                aria-label="Close modal"
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
+
+            {/* Body */}
+            <div className="p-5 space-y-3.5 text-xs flex-1 overflow-y-auto no-scrollbar">
 
             {/* Linked Deal Context Card */}
             {invoiceDeal && (
@@ -5827,17 +6777,20 @@ export default function CrmModule({
               </div>
             </div>
 
-            <div className="flex flex-wrap items-center justify-end gap-2 pt-3 border-t border-gray-100 dark:border-[#3a3020]">
+            </div>
+
+            {/* Footer */}
+            <div className="flex flex-wrap items-center justify-end gap-2.5 px-5 py-3 border-t border-gray-100 dark:border-[#3a3020] bg-gray-50/60 dark:bg-[#1a1712] shrink-0">
               <button
                 type="button"
                 onClick={() => setShowInvoiceModal(false)}
-                className="px-3.5 py-2 rounded-xl text-xs font-semibold text-gray-600 dark:text-neutral-300 hover:bg-gray-100 dark:hover:bg-slate-800 transition cursor-pointer"
+                className="px-4 py-2.5 rounded-xl text-xs font-semibold text-gray-700 dark:text-neutral-300 hover:bg-gray-100 dark:hover:bg-slate-800 border border-gray-200 dark:border-slate-700 transition cursor-pointer"
               >
                 Cancel
               </button>
               <button
                 type="submit"
-                className="px-4 py-2 rounded-xl text-xs font-bold bg-purple-600 hover:bg-purple-700 text-white transition shadow-sm flex items-center gap-1.5 cursor-pointer shrink-0"
+                className="px-5 py-2.5 rounded-xl text-xs font-bold bg-linear-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white shadow-md shadow-purple-500/25 hover:shadow-lg transition flex items-center gap-1.5 cursor-pointer shrink-0"
               >
                 <DollarSign className="w-3.5 h-3.5 shrink-0" />
                 <span>Issue Invoice</span>
@@ -5845,7 +6798,7 @@ export default function CrmModule({
               <button
                 type="button"
                 onClick={(e) => handleCreateInvoiceSubmit(e, true)}
-                className="px-4 py-2 rounded-xl text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white transition shadow-sm flex items-center gap-1.5 cursor-pointer shrink-0"
+                className="px-5 py-2.5 rounded-xl text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white shadow-md shadow-emerald-500/25 hover:shadow-lg transition flex items-center gap-1.5 cursor-pointer shrink-0"
               >
                 <WhatsAppIcon className="w-3.5 h-3.5 shrink-0" />
                 <span>Issue & WhatsApp</span>
@@ -5856,190 +6809,695 @@ export default function CrmModule({
       )}
 
       {showFollowUpModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
-          <form onSubmit={handleCreateFollowUpSubmit} className="w-full max-w-xl rounded-2xl bg-white dark:bg-[#18150f] border border-gray-200 dark:border-[#3a3020] shadow-2xl p-5 space-y-4">
-            <div className="flex items-center justify-between border-b border-gray-100 dark:border-[#3a3020] pb-3">
-              <h3 className="font-bold text-base text-gray-900 dark:text-white">Create Sales Follow-up</h3>
-              <button type="button" onClick={() => setShowFollowUpModal(false)} className="p-1 rounded-lg text-gray-400"><X className="w-4 h-4" /></button>
+        <div data-modal-overlay="true" className="fixed inset-0 z-[90] flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200 overscroll-contain">
+          <form
+            onSubmit={handleCreateFollowUpSubmit}
+            className="w-full max-w-xl max-h-[82vh] rounded-3xl bg-white dark:bg-[#18150f] border border-gray-200/80 dark:border-[#3a3020] shadow-2xl flex flex-col overflow-hidden transition-all animate-in zoom-in-95 duration-200"
+          >
+            {/* Header */}
+            <div className="flex items-center justify-between px-5 py-3.5 border-b border-gray-100 dark:border-[#3a3020] bg-linear-to-r from-blue-50/60 via-indigo-50/20 to-transparent dark:from-blue-950/25 dark:via-transparent dark:to-transparent shrink-0">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-blue-600 text-white flex items-center justify-center shadow-md shadow-blue-500/25 shrink-0">
+                  <Phone className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-base sm:text-lg text-gray-900 dark:text-white leading-tight">Create Sales Follow-up</h3>
+                  <p className="text-xs text-gray-500 dark:text-neutral-400 mt-0.5">Schedule timely follow-up & track prospect responses</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowFollowUpModal(false)}
+                className="p-1.5 rounded-xl text-gray-400 hover:text-gray-700 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-slate-800 transition cursor-pointer"
+                aria-label="Close modal"
+              >
+                <X className="w-4 h-4" />
+              </button>
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
-              <div className="sm:col-span-2">
-                <label className="block font-medium mb-1">Title *</label>
-                <input required value={followUpForm.title} onChange={(e) => setFollowUpForm({ ...followUpForm, title: e.target.value })} className="w-full px-3 py-2 rounded-xl bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700" />
+
+            {/* Form Fields */}
+            <div className="p-5 space-y-3.5 text-xs flex-1 overflow-y-auto no-scrollbar">
+              <div className="space-y-1.5">
+                <label className="flex items-center gap-1.5 font-semibold text-gray-700 dark:text-neutral-200">
+                  <FileText className="w-3.5 h-3.5 text-blue-500" />
+                  <span>Title</span>
+                  <span className="text-red-500">*</span>
+                </label>
+                <input
+                  required
+                  value={followUpForm.title}
+                  onChange={(e) => setFollowUpForm({ ...followUpForm, title: e.target.value })}
+                  placeholder="e.g. Follow up for quotation approval"
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-gray-50/80 dark:bg-slate-800/80 border border-gray-200 dark:border-slate-700 text-gray-900 dark:text-white placeholder-gray-400 focus:bg-white dark:focus:bg-slate-800 focus:outline-hidden focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 transition shadow-2xs font-medium"
+                />
               </div>
-              <div>
-                <label className="block font-medium mb-1">Lead</label>
-                <select value={followUpForm.lead_id} onChange={(e) => setFollowUpForm({ ...followUpForm, lead_id: e.target.value })} className="w-full px-3 py-2 rounded-xl bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700">
-                  <option value="">No lead</option>
-                  {leads.map((lead) => <option key={lead.id} value={lead.id}>{lead.name}</option>)}
-                </select>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                <div className="space-y-1.5">
+                  <label className="flex items-center gap-1.5 font-semibold text-gray-700 dark:text-neutral-200">
+                    <Users className="w-3.5 h-3.5 text-orange-500" />
+                    <span>Lead</span>
+                  </label>
+                  <SearchableLeadSelect
+                    leads={leads}
+                    value={followUpForm.lead_id}
+                    onChange={(leadId, lead) => {
+                      setFollowUpForm({
+                        ...followUpForm,
+                        lead_id: leadId,
+                        title: followUpForm.title === "Follow up for quotation approval" || !followUpForm.title
+                          ? (lead ? `Follow up: ${lead.name}` : followUpForm.title)
+                          : followUpForm.title,
+                      });
+                    }}
+                    placeholder="Search by name, phone..."
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="flex items-center gap-1.5 font-semibold text-gray-700 dark:text-neutral-200">
+                    <MessageSquare className="w-3.5 h-3.5 text-emerald-500" />
+                    <span>Channel</span>
+                  </label>
+                  <select
+                    value={followUpForm.channel}
+                    onChange={(e) => setFollowUpForm({ ...followUpForm, channel: e.target.value })}
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-gray-50/80 dark:bg-slate-800/80 border border-gray-200 dark:border-slate-700 text-gray-900 dark:text-white font-medium focus:bg-white dark:focus:bg-slate-800 focus:outline-hidden focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 transition shadow-2xs cursor-pointer"
+                  >
+                    <option value="whatsapp">WhatsApp</option>
+                    <option value="phone">Phone Call</option>
+                    <option value="email">Email</option>
+                    <option value="meeting">In-Person / Meeting</option>
+                    <option value="other">Other</option>
+                  </select>
+                </div>
               </div>
+
               {followUpForm.deal_id && (
-                <div className="sm:col-span-2">
-                  <label className="block font-medium mb-1">Linked Pipeline Deal</label>
-                  <div className="px-3 py-2 rounded-xl bg-gray-100 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 text-gray-700 dark:text-neutral-200 font-semibold">
-                    {deals.find((deal) => deal.id === followUpForm.deal_id)?.title || "Selected pipeline deal"} - read only
+                <div className="p-3 rounded-2xl bg-blue-50/60 dark:bg-blue-950/20 border border-blue-200/60 dark:border-blue-900/40 space-y-1">
+                  <div className="flex items-center gap-1.5 text-[11px] font-bold text-blue-700 dark:text-blue-300 uppercase tracking-wider">
+                    <Briefcase className="w-3.5 h-3.5" />
+                    <span>Linked Pipeline Deal (Read Only)</span>
+                  </div>
+                  <div className="font-semibold text-gray-800 dark:text-neutral-200 text-xs">
+                    {deals.find((deal) => deal.id === followUpForm.deal_id)?.title || "Selected pipeline deal"}
                   </div>
                 </div>
               )}
+
               <div>
-                <label className="block font-medium mb-1">Channel</label>
-                <select value={followUpForm.channel} onChange={(e) => setFollowUpForm({ ...followUpForm, channel: e.target.value })} className="w-full px-3 py-2 rounded-xl bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700">
-                  <option value="phone">Phone</option>
-                  <option value="whatsapp">WhatsApp</option>
-                  <option value="email">Email</option>
-                  <option value="meeting">Meeting</option>
-                  <option value="other">Other</option>
-                </select>
+                <SplitDateTimeField
+                  label="Due Schedule"
+                  required
+                  value={followUpForm.due_at}
+                  onChange={(value) => setFollowUpForm({ ...followUpForm, due_at: value })}
+                  reminderValue={followUpForm.reminder_before_minutes}
+                  onReminderChange={(value) => setFollowUpForm({ ...followUpForm, reminder_before_minutes: value })}
+                />
               </div>
-              <div>
-                <label className="block font-medium mb-1">Due Date & Time *</label>
-                <input type="datetime-local" required value={followUpForm.due_at} onChange={(e) => setFollowUpForm({ ...followUpForm, due_at: e.target.value })} className="w-full px-3 py-2 rounded-xl bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700" />
-              </div>
-              <div className="sm:col-span-2">
-                <label className="block font-medium mb-1">Notes</label>
-                <textarea rows={3} value={followUpForm.notes} onChange={(e) => setFollowUpForm({ ...followUpForm, notes: e.target.value })} className="w-full px-3 py-2 rounded-xl bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700" />
+
+              <div className="space-y-1.5">
+                <label className="flex items-center gap-1.5 font-semibold text-gray-700 dark:text-neutral-200">
+                  <FileText className="w-3.5 h-3.5 text-purple-500" />
+                  <span>Notes & Action Plan</span>
+                </label>
+                <textarea
+                  rows={3}
+                  value={followUpForm.notes}
+                  onChange={(e) => setFollowUpForm({ ...followUpForm, notes: e.target.value })}
+                  placeholder="e.g. Call client to discuss revised quotation, milestone breakdown, and timeline confirmation..."
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-gray-50/80 dark:bg-slate-800/80 border border-gray-200 dark:border-slate-700 text-gray-900 dark:text-white placeholder-gray-400 focus:bg-white dark:focus:bg-slate-800 focus:outline-hidden focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 transition shadow-2xs font-normal text-xs resize-y"
+                />
               </div>
             </div>
-            <div className="flex justify-end gap-2 pt-3 border-t border-gray-100 dark:border-[#3a3020]">
-              <button type="button" onClick={() => setShowFollowUpModal(false)} className="px-3.5 py-2 rounded-xl text-xs font-semibold text-gray-600 dark:text-neutral-300">Cancel</button>
-              <button type="submit" className="px-4 py-2 rounded-xl text-xs font-bold bg-blue-600 hover:bg-blue-700 text-white">Save Follow-up</button>
+
+            {/* Footer */}
+            <div className="flex items-center justify-end gap-2.5 px-5 py-3 border-t border-gray-100 dark:border-[#3a3020] bg-gray-50/60 dark:bg-[#1a1712] shrink-0">
+              <button
+                type="button"
+                onClick={() => setShowFollowUpModal(false)}
+                className="px-4 py-2.5 rounded-xl text-xs font-semibold text-gray-700 dark:text-neutral-300 hover:bg-gray-100 dark:hover:bg-slate-800 border border-gray-200 dark:border-slate-700 transition cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                className="px-5 py-2.5 rounded-xl text-xs font-bold bg-linear-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-md shadow-blue-500/25 hover:shadow-lg transition flex items-center gap-2 cursor-pointer"
+              >
+                <CheckCircle2 className="w-4 h-4" />
+                <span>Save Follow-up</span>
+              </button>
             </div>
           </form>
         </div>
       )}
 
       {showRescheduleModal && (rescheduleTarget || salesMeetingRescheduleTarget) && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
-          <form onSubmit={handleRescheduleSubmit} className="w-full max-w-lg rounded-2xl bg-white dark:bg-[#18150f] border border-gray-200 dark:border-[#3a3020] shadow-2xl p-5 space-y-4">
-            <div className="flex items-center justify-between border-b border-gray-100 dark:border-[#3a3020] pb-3">
-              <div>
-                <h3 className="font-bold text-base text-gray-900 dark:text-white">
-                  {salesMeetingRescheduleTarget ? "Reschedule Meeting" : "Reschedule Follow-up"}
-                </h3>
-                <p className="text-xs text-gray-500 dark:text-neutral-400 mt-0.5">{(salesMeetingRescheduleTarget || rescheduleTarget)?.title}</p>
+        <div data-modal-overlay="true" className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200 overscroll-contain">
+          <form
+            onSubmit={handleRescheduleSubmit}
+            className="w-full max-w-lg max-h-[82vh] rounded-3xl bg-white dark:bg-[#18150f] border border-gray-200/80 dark:border-[#3a3020] shadow-2xl flex flex-col overflow-hidden transition-all animate-in zoom-in-95 duration-200"
+          >
+            {/* Header */}
+            <div className="flex items-center justify-between px-5 py-3.5 border-b border-gray-100 dark:border-[#3a3020] bg-linear-to-r from-amber-50/60 via-orange-50/20 to-transparent dark:from-amber-950/25 dark:via-transparent dark:to-transparent shrink-0">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-amber-500 text-white flex items-center justify-center shadow-md shadow-amber-500/25 shrink-0">
+                  <RotateCcw className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-base sm:text-lg text-gray-900 dark:text-white leading-tight">
+                    {salesMeetingRescheduleTarget ? "Reschedule Meeting" : "Reschedule Follow-up"}
+                  </h3>
+                  <p className="text-xs text-gray-500 dark:text-neutral-400 mt-0.5 truncate max-w-xs">
+                    {(salesMeetingRescheduleTarget || rescheduleTarget)?.title}
+                  </p>
+                </div>
               </div>
-              <button type="button" onClick={() => setShowRescheduleModal(false)} className="p-1 rounded-lg text-gray-400"><X className="w-4 h-4" /></button>
+              <button
+                type="button"
+                onClick={() => setShowRescheduleModal(false)}
+                className="p-1.5 rounded-xl text-gray-400 hover:text-gray-700 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-slate-800 transition cursor-pointer"
+                aria-label="Close modal"
+              >
+                <X className="w-4 h-4" />
+              </button>
             </div>
-            <div className="space-y-3 text-xs">
+
+            {/* Body */}
+            <div className="p-5 space-y-3.5 text-xs flex-1 overflow-y-auto no-scrollbar">
               <div>
-                <label className="block font-medium mb-1">{salesMeetingRescheduleTarget ? "New Meeting Date & Time *" : "New Due Date & Time *"}</label>
-                <input
-                  type="datetime-local"
+                <SplitDateTimeField
+                  label={salesMeetingRescheduleTarget ? "New Meeting Schedule" : "New Due Schedule"}
                   required
                   value={rescheduleForm.due_at}
-                  onChange={(e) => setRescheduleForm({ ...rescheduleForm, due_at: e.target.value })}
-                  className="w-full px-3 py-2 rounded-xl bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700"
+                  onChange={(value) => setRescheduleForm({ ...rescheduleForm, due_at: value })}
+                  reminderValue={rescheduleForm.reminder_before_minutes}
+                  onReminderChange={(value) => setRescheduleForm({ ...rescheduleForm, reminder_before_minutes: value })}
                 />
               </div>
+
               {salesMeetingRescheduleTarget && (
-                <div>
-                  <label className="block font-medium mb-1">Google Meet Link</label>
+                <div className="space-y-1.5">
+                  <label className="flex items-center gap-1.5 font-semibold text-gray-700 dark:text-neutral-200">
+                    <Video className="w-3.5 h-3.5 text-blue-500" />
+                    <span>Google Meet Link</span>
+                  </label>
                   <input
                     type="url"
                     value={rescheduleForm.meeting_link}
                     onChange={(e) => setRescheduleForm({ ...rescheduleForm, meeting_link: e.target.value })}
-                    className="w-full px-3 py-2 rounded-xl bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700"
+                    placeholder="https://meet.google.com/..."
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-gray-50/80 dark:bg-slate-800/80 border border-gray-200 dark:border-slate-700 text-gray-900 dark:text-white placeholder-gray-400 focus:bg-white dark:focus:bg-slate-800 focus:outline-hidden focus:ring-2 focus:ring-amber-500/30 focus:border-amber-500 transition shadow-2xs font-medium"
                   />
                 </div>
               )}
-              <div>
-                <label className="block font-medium mb-1">Notes</label>
+
+              <div className="space-y-1.5">
+                <label className="flex items-center gap-1.5 font-semibold text-gray-700 dark:text-neutral-200">
+                  <FileText className="w-3.5 h-3.5 text-purple-500" />
+                  <span>Reschedule Notes / Reason</span>
+                </label>
                 <textarea
                   rows={3}
                   value={rescheduleForm.notes}
                   onChange={(e) => setRescheduleForm({ ...rescheduleForm, notes: e.target.value })}
-                  className="w-full px-3 py-2 rounded-xl bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700"
+                  placeholder="e.g. Client requested a different time slot due to meeting conflict..."
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-gray-50/80 dark:bg-slate-800/80 border border-gray-200 dark:border-slate-700 text-gray-900 dark:text-white placeholder-gray-400 focus:bg-white dark:focus:bg-slate-800 focus:outline-hidden focus:ring-2 focus:ring-amber-500/30 focus:border-amber-500 transition shadow-2xs font-normal text-xs resize-y"
                 />
               </div>
             </div>
-            <div className="flex justify-end gap-2 pt-3 border-t border-gray-100 dark:border-[#3a3020]">
-              <button type="button" onClick={() => setShowRescheduleModal(false)} className="px-3.5 py-2 rounded-xl text-xs font-semibold text-gray-600 dark:text-neutral-300">Cancel</button>
-              <button type="submit" className="px-4 py-2 rounded-xl text-xs font-bold bg-blue-600 hover:bg-blue-700 text-white">Reschedule</button>
+
+            {/* Footer */}
+            <div className="flex items-center justify-end gap-2.5 px-5 py-3 border-t border-gray-100 dark:border-[#3a3020] bg-gray-50/60 dark:bg-[#1a1712] shrink-0">
+              <button
+                type="button"
+                onClick={() => setShowRescheduleModal(false)}
+                className="px-4 py-2.5 rounded-xl text-xs font-semibold text-gray-700 dark:text-neutral-300 hover:bg-gray-100 dark:hover:bg-slate-800 border border-gray-200 dark:border-slate-700 transition cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                className="px-5 py-2.5 rounded-xl text-xs font-bold bg-linear-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white shadow-md shadow-amber-500/25 hover:shadow-lg transition flex items-center gap-2 cursor-pointer"
+              >
+                <RotateCcw className="w-4 h-4" />
+                <span>Confirm Reschedule</span>
+              </button>
             </div>
           </form>
         </div>
       )}
 
-      {showMeetingSettingsModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
-          <div className="w-full max-w-lg rounded-2xl bg-white dark:bg-[#18150f] border border-gray-200 dark:border-[#3a3020] shadow-2xl p-5 space-y-4">
-            <div className="flex items-center justify-between border-b border-gray-100 dark:border-[#3a3020] pb-3">
-              <div>
-                <h3 className="font-bold text-base text-gray-900 dark:text-white">Meeting Settings</h3>
-                <p className="text-xs text-gray-500 dark:text-neutral-400 mt-0.5">Default Google Meet link used in pipeline meetings.</p>
+      {/* Dedicated Stage & Notes History Modal */}
+      {stageModalTarget && (
+        <div data-modal-overlay="true" className="fixed inset-0 z-[90] flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200 overscroll-contain">
+          <div className="w-full max-w-xl rounded-3xl bg-white dark:bg-[#18150f] border border-gray-200/80 dark:border-[#3a3020] shadow-2xl overflow-hidden transition-all animate-in zoom-in-95 duration-200 flex flex-col max-h-[82vh]">
+            {/* Header */}
+            <div className="flex items-center justify-between px-5 py-3.5 border-b border-gray-100 dark:border-[#3a3020] bg-linear-to-r from-orange-50/70 via-amber-50/30 to-transparent dark:from-orange-950/20 dark:via-transparent dark:to-transparent shrink-0">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="w-10 h-10 rounded-2xl bg-orange-600 text-white flex items-center justify-center shadow-md shadow-orange-500/25 shrink-0">
+                  <History className="w-5 h-5" />
+                </div>
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full bg-orange-100 dark:bg-orange-950/40 text-orange-700 dark:text-orange-300">
+                      {stageModalTarget.type === "meeting" ? "Meeting Stage & History" : "Follow-up Stage & History"}
+                    </span>
+                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${
+                      ["done", "completed"].includes(stageModalTarget.item.status)
+                        ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300"
+                        : ["missed", "no_show"].includes(stageModalTarget.item.status)
+                        ? "bg-rose-100 text-rose-700 dark:bg-rose-950/40 dark:text-rose-300"
+                        : "bg-blue-100 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300"
+                    }`}>
+                      Current: {formatStatusLabel(stageModalTarget.item.status)}
+                    </span>
+                  </div>
+                  <h3 className="font-bold text-base sm:text-lg text-gray-900 dark:text-white truncate mt-0.5">
+                    {stageModalTarget.item.title}
+                  </h3>
+                </div>
               </div>
-              <button type="button" onClick={() => setShowMeetingSettingsModal(false)} className="p-1 rounded-lg text-gray-400"><X className="w-4 h-4" /></button>
+              <button
+                type="button"
+                onClick={() => {
+                  setStageModalTarget(null);
+                  setStageModalNote("");
+                }}
+                className="p-1.5 rounded-xl text-gray-400 hover:text-gray-700 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-slate-800 transition cursor-pointer shrink-0"
+                aria-label="Close modal"
+              >
+                <X className="w-4 h-4" />
+              </button>
             </div>
-            <div className="space-y-2 text-xs">
-              <label className="block font-medium text-gray-700 dark:text-neutral-300">Default Google Meet Link</label>
+
+            {/* Body */}
+            <div className="p-5 space-y-3.5 overflow-y-auto flex-1 text-xs no-scrollbar">
+              {/* Linked Account Card */}
+              {(() => {
+                const lead = leads.find((l) => l.id === stageModalTarget.item.lead_id);
+                const client = clients.find((c) => c.id === stageModalTarget.item.client_id);
+                const contact = lead || client;
+                const contactPhone = client?.phone || lead?.phone || "";
+                return (
+                  <div className="p-3.5 rounded-2xl bg-gray-50/80 dark:bg-slate-800/50 border border-gray-200/70 dark:border-slate-700/60 flex items-center justify-between gap-3 flex-wrap">
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-8 h-8 rounded-xl bg-orange-100 dark:bg-orange-950/40 text-orange-600 dark:text-orange-400 flex items-center justify-center font-bold text-xs shrink-0">
+                        {contact?.name?.charAt(0)?.toUpperCase() || "C"}
+                      </div>
+                      <div>
+                        <div className="font-bold text-gray-900 dark:text-white">{contact?.name || "Unlinked Contact"}</div>
+                        <div className="text-[11px] text-gray-500 font-mono">{contactPhone || contact?.email || "No contact info"}</div>
+                      </div>
+                    </div>
+                    <div className="text-right text-[11px] text-gray-500">
+                      <div className="font-semibold text-gray-700 dark:text-neutral-300">
+                        {stageModalTarget.type === "meeting"
+                          ? (stageModalTarget.item.scheduled_at ? new Date(stageModalTarget.item.scheduled_at).toLocaleString("en-IN") : "-")
+                          : (stageModalTarget.item.due_at ? new Date(stageModalTarget.item.due_at).toLocaleString("en-IN") : "-")}
+                      </div>
+                      <div>{stageModalTarget.type === "meeting" ? `Duration: ${stageModalTarget.item.duration_minutes || 30}m` : `Channel: ${stageModalTarget.item.channel || "General"}`}</div>
+                    </div>
+                  </div>
+                );
+              })()}
+
+              {/* Stage Update Section */}
+              <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border-2 border-orange-200/70 dark:border-orange-950/50 space-y-3.5 shadow-2xs">
+                <div>
+                  <label className="block font-bold text-gray-900 dark:text-white mb-2">
+                    Select New Stage / Status
+                  </label>
+                  <div className="flex flex-wrap gap-1.5">
+                    {(stageModalTarget.type === "meeting" ? MEETING_STAGES : FOLLOWUP_STAGES).map((stage) => {
+                      const isSelected = stageModalStatus === stage.id;
+                      return (
+                        <button
+                          key={stage.id}
+                          type="button"
+                          onClick={() => setStageModalStatus(stage.id)}
+                          className={`px-3 py-1.5 rounded-xl font-bold text-xs transition border cursor-pointer ${
+                            isSelected
+                              ? "bg-orange-600 text-white border-orange-600 shadow-sm"
+                              : "bg-gray-50 dark:bg-slate-800 text-gray-700 dark:text-neutral-300 border-gray-200 dark:border-slate-700 hover:bg-gray-100"
+                          }`}
+                        >
+                          {stage.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Note Field */}
+                <div className="space-y-1.5">
+                  <label className="font-bold text-gray-800 dark:text-neutral-200 flex items-center gap-1.5">
+                    <FileText className="w-3.5 h-3.5 text-orange-600" />
+                    <span>
+                      {["done", "completed"].includes(stageModalStatus)
+                        ? "Done Note / Outcome (Required for Done History)"
+                        : "Update Note / Discussion Remarks"}
+                    </span>
+                    {["done", "completed"].includes(stageModalStatus) && (
+                      <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 dark:bg-emerald-950/40 px-2 py-0.5 rounded-full">
+                        Done History
+                      </span>
+                    )}
+                  </label>
+                  <textarea
+                    rows={3}
+                    value={stageModalNote}
+                    onChange={(e) => setStageModalNote(e.target.value)}
+                    placeholder={
+                      ["done", "completed"].includes(stageModalStatus)
+                        ? "Describe completion details (e.g. Client agreed on quotation, advance payment scheduled for Monday...)"
+                        : "Add update note (e.g. Spoke with Rahul, sent company deck, follow-up scheduled...)"
+                    }
+                    className={`w-full px-3.5 py-2.5 rounded-xl border text-xs text-gray-900 dark:text-white placeholder-gray-400 focus:outline-hidden focus:ring-2 transition resize-y ${
+                      ["done", "completed"].includes(stageModalStatus)
+                        ? "bg-emerald-50/30 dark:bg-emerald-950/20 border-emerald-300 dark:border-emerald-800 focus:ring-emerald-500/30 focus:border-emerald-500"
+                        : "bg-gray-50/80 dark:bg-slate-800/80 border-gray-200 dark:border-slate-700 focus:ring-orange-500/30 focus:border-orange-500"
+                    }`}
+                  />
+                  <p className="text-[11px] text-gray-500 dark:text-neutral-400">
+                    {["done", "completed"].includes(stageModalStatus)
+                      ? "This note will be permanently logged in the history timeline so you remember why & how it was completed."
+                      : "Timestamp, selected stage, and this note will be appended into the history timeline."}
+                  </p>
+                </div>
+              </div>
+
+              {/* History Timeline */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Clock className="w-4 h-4 text-orange-600" />
+                    <span className="font-bold text-gray-900 dark:text-white">
+                      Previous Notes & Stage History
+                    </span>
+                  </div>
+                  {(() => {
+                    const hist = stageModalTarget.type === "meeting"
+                      ? parseNotesHistory(getMeetingFullNotes(stageModalTarget.item))
+                      : parseNotesHistory(stageModalTarget.item.notes);
+                    return hist.length > 0 ? (
+                      <span className="px-2 py-0.5 rounded-full bg-gray-100 dark:bg-slate-800 text-[10px] font-bold text-gray-600 dark:text-neutral-400">
+                        {hist.length} updates logged
+                      </span>
+                    ) : null;
+                  })()}
+                </div>
+
+                {(() => {
+                  const hist = stageModalTarget.type === "meeting"
+                    ? parseNotesHistory(getMeetingFullNotes(stageModalTarget.item))
+                    : parseNotesHistory(stageModalTarget.item.notes);
+
+                  if (hist.length === 0) {
+                    return (
+                      <div className="p-6 text-center rounded-2xl bg-gray-50/60 dark:bg-slate-800/30 border border-dashed border-gray-200 dark:border-slate-700 text-gray-400 text-xs">
+                        No previous stage history or notes found yet.
+                      </div>
+                    );
+                  }
+
+                  return (
+                    <div className="space-y-2.5 max-h-60 overflow-y-auto pr-1">
+                      {hist.map((entry, idx) => (
+                        <div
+                          key={entry.id || idx}
+                          className="p-3 rounded-xl bg-gray-50 dark:bg-slate-800/70 border border-gray-200/80 dark:border-slate-700/80 space-y-1"
+                        >
+                          <div className="flex items-center justify-between gap-2 flex-wrap text-[11px]">
+                            <div className="flex items-center gap-1.5">
+                              <span className="font-bold text-gray-800 dark:text-neutral-200">
+                                {entry.timestamp}
+                              </span>
+                              {entry.stage && (
+                                <span className="px-2 py-0.5 rounded-full bg-orange-100 dark:bg-orange-950/40 text-orange-700 dark:text-orange-300 font-bold text-[10px] uppercase">
+                                  {entry.stage}
+                                </span>
+                              )}
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                navigator.clipboard.writeText(entry.note || entry.raw);
+                              }}
+                              className="text-gray-400 hover:text-gray-600 dark:hover:text-neutral-200 transition cursor-pointer"
+                              title="Copy note"
+                            >
+                              <Copy className="w-3 h-3" />
+                            </button>
+                          </div>
+                          <div className="text-xs text-gray-700 dark:text-neutral-300 whitespace-pre-wrap leading-relaxed">
+                            {entry.note || entry.raw}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  );
+                })()}
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="flex items-center justify-end gap-2.5 px-5 py-3 border-t border-gray-100 dark:border-[#3a3020] bg-gray-50/60 dark:bg-[#1a1712] shrink-0">
+              <button
+                type="button"
+                onClick={() => {
+                  setStageModalTarget(null);
+                  setStageModalNote("");
+                }}
+                className="px-4 py-2 rounded-xl text-xs font-semibold text-gray-700 dark:text-neutral-300 hover:bg-gray-100 dark:hover:bg-slate-800 border border-gray-200 dark:border-slate-700 transition cursor-pointer"
+              >
+                Cancel
+              </button>
+              {["done", "completed"].includes(stageModalStatus) && (
+                <button
+                  type="button"
+                  onClick={() => handleSaveStageModal(null, true)}
+                  className="px-4 py-2 rounded-xl text-xs font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 hover:bg-emerald-100 transition cursor-pointer"
+                >
+                  Quick Done (without note)
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={(e) => handleSaveStageModal(e, false)}
+                className={`px-5 py-2 rounded-xl text-xs font-bold text-white shadow-md transition flex items-center gap-1.5 cursor-pointer ${
+                  ["done", "completed"].includes(stageModalStatus)
+                    ? "bg-emerald-600 hover:bg-emerald-700 shadow-emerald-500/25"
+                    : "bg-orange-600 hover:bg-orange-700 shadow-orange-500/25"
+                }`}
+              >
+                <Check className="w-3.5 h-3.5" />
+                <span>
+                  {["done", "completed"].includes(stageModalStatus)
+                    ? "Save & Mark Done"
+                    : "Save Stage & Note"}
+                </span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showMeetingSettingsModal && (
+        <div data-modal-overlay="true" className="fixed inset-0 z-[90] flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200 overscroll-contain">
+          <div className="w-full max-w-lg rounded-3xl bg-white dark:bg-[#18150f] border border-gray-200/80 dark:border-[#3a3020] shadow-2xl overflow-hidden transition-all animate-in zoom-in-95 duration-200">
+            <div className="flex items-center justify-between px-6 py-4.5 border-b border-gray-100 dark:border-[#3a3020] bg-linear-to-r from-gray-50 via-slate-50 to-transparent dark:from-slate-900/40 dark:via-transparent dark:to-transparent">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-gray-800 dark:bg-slate-700 text-white flex items-center justify-center shadow-md shrink-0">
+                  <Settings className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-base text-gray-900 dark:text-white">Meeting Settings</h3>
+                  <p className="text-xs text-gray-500 dark:text-neutral-400 mt-0.5">Default Google Meet link used in pipeline meetings.</p>
+                </div>
+              </div>
+              <button type="button" onClick={() => setShowMeetingSettingsModal(false)} className="p-2 rounded-xl text-gray-400 hover:text-gray-700 dark:hover:text-white transition cursor-pointer"><X className="w-4 h-4" /></button>
+            </div>
+            <div className="p-6 space-y-3 text-xs">
+              <label className="block font-semibold text-gray-700 dark:text-neutral-200">Default Google Meet Link</label>
               <input
                 type="url"
                 required
                 value={defaultMeetLink}
                 onChange={(e) => setDefaultMeetLink(e.target.value)}
                 placeholder="https://meet.google.com/..."
-                className="w-full px-3 py-2 rounded-xl bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700"
+                className="w-full px-3.5 py-2.5 rounded-xl bg-gray-50/80 dark:bg-slate-800/80 border border-gray-200 dark:border-slate-700 text-gray-900 dark:text-white placeholder-gray-400 focus:bg-white dark:focus:bg-slate-800 focus:outline-hidden focus:ring-2 focus:ring-orange-500/30 focus:border-orange-500 transition shadow-2xs font-medium"
               />
+              <p className="text-[11px] text-gray-500 dark:text-neutral-400">
+                This link is automatically applied to all sales meetings and shown in the meetings table.
+              </p>
             </div>
-            <div className="flex justify-end gap-2 pt-3 border-t border-gray-100 dark:border-[#3a3020]">
-              <button type="button" onClick={() => setDefaultMeetLink("https://meet.google.com/new")} className="px-3.5 py-2 rounded-xl text-xs font-semibold text-gray-600 dark:text-neutral-300">Reset</button>
-              <button type="button" onClick={() => setShowMeetingSettingsModal(false)} className="px-4 py-2 rounded-xl text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white">Save</button>
+            <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-gray-100 dark:border-[#3a3020] bg-gray-50/60 dark:bg-[#1a1712]">
+              <button type="button" onClick={() => setDefaultMeetLink("https://meet.google.com/new")} className="px-4 py-2.5 rounded-xl text-xs font-semibold text-gray-700 dark:text-neutral-300 hover:bg-gray-100 dark:hover:bg-slate-800 border border-gray-200 dark:border-slate-700 transition cursor-pointer">Reset Default</button>
+              <button type="button" onClick={handleSaveMeetingSettings} className="px-5 py-2.5 rounded-xl text-xs font-bold bg-orange-600 hover:bg-orange-700 text-white shadow-md shadow-orange-500/25 transition cursor-pointer flex items-center gap-1.5">
+                <Check className="w-3.5 h-3.5" />
+                <span>Save & Sync to All Meetings</span>
+              </button>
             </div>
           </div>
         </div>
       )}
 
       {showSalesMeetingModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
-          <form onSubmit={handleCreateSalesMeetingSubmit} className="w-full max-w-xl rounded-2xl bg-white dark:bg-[#18150f] border border-gray-200 dark:border-[#3a3020] shadow-2xl p-5 space-y-4">
-            <div className="flex items-center justify-between border-b border-gray-100 dark:border-[#3a3020] pb-3">
-              <h3 className="font-bold text-base text-gray-900 dark:text-white">Schedule Sales Meeting</h3>
-              <button type="button" onClick={() => setShowSalesMeetingModal(false)} className="p-1 rounded-lg text-gray-400"><X className="w-4 h-4" /></button>
+        <div data-modal-overlay="true" className="fixed inset-0 z-[90] flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200 overscroll-contain">
+          <form
+            onSubmit={handleCreateSalesMeetingSubmit}
+            className="w-full max-w-xl max-h-[82vh] rounded-3xl bg-white dark:bg-[#18150f] border border-gray-200/80 dark:border-[#3a3020] shadow-2xl flex flex-col overflow-hidden transition-all animate-in zoom-in-95 duration-200"
+          >
+            {/* Header */}
+            <div className="flex items-center justify-between px-5 py-3.5 border-b border-gray-100 dark:border-[#3a3020] bg-linear-to-r from-emerald-50/60 via-teal-50/20 to-transparent dark:from-emerald-950/25 dark:via-transparent dark:to-transparent shrink-0">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-emerald-600 text-white flex items-center justify-center shadow-md shadow-emerald-500/25 shrink-0">
+                  <Video className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-base sm:text-lg text-gray-900 dark:text-white leading-tight">Schedule Sales Meeting</h3>
+                  <p className="text-xs text-gray-500 dark:text-neutral-400 mt-0.5">Set up discovery, proposal, or closing call with prospect</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowSalesMeetingModal(false)}
+                className="p-1.5 rounded-xl text-gray-400 hover:text-gray-700 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-slate-800 transition cursor-pointer"
+                aria-label="Close modal"
+              >
+                <X className="w-4 h-4" />
+              </button>
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
-              <div className="sm:col-span-2">
-                <label className="block font-medium mb-1">Title *</label>
-                <input required value={salesMeetingForm.title} onChange={(e) => setSalesMeetingForm({ ...salesMeetingForm, title: e.target.value })} className="w-full px-3 py-2 rounded-xl bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700" />
+
+            {/* Form Fields */}
+            <div className="p-5 space-y-3.5 text-xs flex-1 overflow-y-auto no-scrollbar">
+              <div className="space-y-1.5">
+                <label className="flex items-center gap-1.5 font-semibold text-gray-700 dark:text-neutral-200">
+                  <FileText className="w-3.5 h-3.5 text-emerald-500" />
+                  <span>Title</span>
+                  <span className="text-red-500">*</span>
+                </label>
+                <input
+                  required
+                  value={salesMeetingForm.title}
+                  onChange={(e) => setSalesMeetingForm({ ...salesMeetingForm, title: e.target.value })}
+                  placeholder="e.g. Client requirement discovery call"
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-gray-50/80 dark:bg-slate-800/80 border border-gray-200 dark:border-slate-700 text-gray-900 dark:text-white placeholder-gray-400 focus:bg-white dark:focus:bg-slate-800 focus:outline-hidden focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500 transition shadow-2xs font-medium"
+                />
               </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                <div className="space-y-1.5">
+                  <label className="flex items-center gap-1.5 font-semibold text-gray-700 dark:text-neutral-200">
+                    <Users className="w-3.5 h-3.5 text-orange-500" />
+                    <span>Lead</span>
+                  </label>
+                  <SearchableLeadSelect
+                    leads={leads}
+                    value={salesMeetingForm.lead_id}
+                    onChange={(leadId, lead) => {
+                      setSalesMeetingForm({
+                        ...salesMeetingForm,
+                        lead_id: leadId,
+                        title: salesMeetingForm.title === "Client requirement discovery call" || !salesMeetingForm.title
+                          ? (lead ? `Sales call: ${lead.name}` : salesMeetingForm.title)
+                          : salesMeetingForm.title,
+                      });
+                    }}
+                    placeholder="Search by name, phone..."
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="flex items-center gap-1.5 font-semibold text-gray-700 dark:text-neutral-200">
+                    <Target className="w-3.5 h-3.5 text-blue-500" />
+                    <span>Meeting Type</span>
+                  </label>
+                  <select
+                    value={salesMeetingForm.meeting_type}
+                    onChange={(e) => setSalesMeetingForm({ ...salesMeetingForm, meeting_type: e.target.value })}
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-gray-50/80 dark:bg-slate-800/80 border border-gray-200 dark:border-slate-700 text-gray-900 dark:text-white font-medium focus:bg-white dark:focus:bg-slate-800 focus:outline-hidden focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500 transition shadow-2xs cursor-pointer"
+                  >
+                    <option value="discovery">Discovery</option>
+                    <option value="requirement">Requirement</option>
+                    <option value="proposal">Quotation</option>
+                    <option value="negotiation">Negotiation</option>
+                    <option value="handover">Handover</option>
+                    <option value="other">Other</option>
+                  </select>
+                </div>
+              </div>
+
               <div>
-                <label className="block font-medium mb-1">Lead</label>
-                <select value={salesMeetingForm.lead_id} onChange={(e) => setSalesMeetingForm({ ...salesMeetingForm, lead_id: e.target.value })} className="w-full px-3 py-2 rounded-xl bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700">
-                  <option value="">No lead</option>
-                  {leads.map((lead) => <option key={lead.id} value={lead.id}>{lead.name}</option>)}
-                </select>
+                <SplitDateTimeField
+                  label="Schedule"
+                  required
+                  value={salesMeetingForm.scheduled_at}
+                  onChange={(value) => setSalesMeetingForm({ ...salesMeetingForm, scheduled_at: value })}
+                  reminderValue={salesMeetingForm.reminder_before_minutes}
+                  onReminderChange={(value) => setSalesMeetingForm({ ...salesMeetingForm, reminder_before_minutes: value })}
+                />
               </div>
-              <div>
-                <label className="block font-medium mb-1">Meeting Type</label>
-                <select value={salesMeetingForm.meeting_type} onChange={(e) => setSalesMeetingForm({ ...salesMeetingForm, meeting_type: e.target.value })} className="w-full px-3 py-2 rounded-xl bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700">
-                  <option value="discovery">Discovery</option>
-                  <option value="requirement">Requirement</option>
-                  <option value="proposal">Quotation</option>
-                  <option value="negotiation">Negotiation</option>
-                  <option value="handover">Handover</option>
-                  <option value="other">Other</option>
-                </select>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                <div className="space-y-1.5">
+                  <label className="flex items-center gap-1.5 font-semibold text-gray-700 dark:text-neutral-200">
+                    <Video className="w-3.5 h-3.5 text-blue-500" />
+                    <span>Meeting Link</span>
+                  </label>
+                  <input
+                    value={salesMeetingForm.meeting_link}
+                    onChange={(e) => setSalesMeetingForm({ ...salesMeetingForm, meeting_link: e.target.value })}
+                    placeholder="https://meet.google.com/..."
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-gray-50/80 dark:bg-slate-800/80 border border-gray-200 dark:border-slate-700 text-gray-900 dark:text-white placeholder-gray-400 focus:bg-white dark:focus:bg-slate-800 focus:outline-hidden focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500 transition shadow-2xs font-medium"
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="flex items-center gap-1.5 font-semibold text-gray-700 dark:text-neutral-200">
+                    <Clock className="w-3.5 h-3.5 text-amber-500" />
+                    <span>Duration</span>
+                  </label>
+                  <DurationSelectField
+                    label={null}
+                    value={salesMeetingForm.duration_minutes}
+                    onChange={(value) => setSalesMeetingForm({ ...salesMeetingForm, duration_minutes: value })}
+                  />
+                </div>
               </div>
-              <div>
-                <label className="block font-medium mb-1">Schedule *</label>
-                <input type="datetime-local" required value={salesMeetingForm.scheduled_at} onChange={(e) => setSalesMeetingForm({ ...salesMeetingForm, scheduled_at: e.target.value })} className="w-full px-3 py-2 rounded-xl bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700" />
-              </div>
-              <div>
-                <label className="block font-medium mb-1">Meeting Link</label>
-                <input value={salesMeetingForm.meeting_link} onChange={(e) => setSalesMeetingForm({ ...salesMeetingForm, meeting_link: e.target.value })} placeholder="https://meet.google.com/..." className="w-full px-3 py-2 rounded-xl bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700" />
-              </div>
-              <div>
-                <label className="block font-medium mb-1">Duration</label>
-                <input type="number" value={salesMeetingForm.duration_minutes} onChange={(e) => setSalesMeetingForm({ ...salesMeetingForm, duration_minutes: e.target.value })} className="w-full px-3 py-2 rounded-xl bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700" />
-              </div>
-              <div className="sm:col-span-2">
-                <label className="block font-medium mb-1">Agenda</label>
-                <textarea rows={3} value={salesMeetingForm.agenda} onChange={(e) => setSalesMeetingForm({ ...salesMeetingForm, agenda: e.target.value })} className="w-full px-3 py-2 rounded-xl bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700" />
+
+              <div className="space-y-1.5">
+                <label className="flex items-center gap-1.5 font-semibold text-gray-700 dark:text-neutral-200">
+                  <FileText className="w-3.5 h-3.5 text-purple-500" />
+                  <span>Agenda & Discussion Plan</span>
+                </label>
+                <textarea
+                  rows={3}
+                  value={salesMeetingForm.agenda}
+                  onChange={(e) => setSalesMeetingForm({ ...salesMeetingForm, agenda: e.target.value })}
+                  placeholder="e.g. Requirement discovery, budget, timeline, decision maker, and next action."
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-gray-50/80 dark:bg-slate-800/80 border border-gray-200 dark:border-slate-700 text-gray-900 dark:text-white placeholder-gray-400 focus:bg-white dark:focus:bg-slate-800 focus:outline-hidden focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500 transition shadow-2xs font-normal text-xs resize-y"
+                />
               </div>
             </div>
-            <div className="flex justify-end gap-2 pt-3 border-t border-gray-100 dark:border-[#3a3020]">
-              <button type="button" onClick={() => setShowSalesMeetingModal(false)} className="px-3.5 py-2 rounded-xl text-xs font-semibold text-gray-600 dark:text-neutral-300">Cancel</button>
-              <button type="submit" className="px-4 py-2 rounded-xl text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white">Schedule Meeting</button>
+
+            {/* Footer */}
+            <div className="flex items-center justify-end gap-2.5 px-5 py-3 border-t border-gray-100 dark:border-[#3a3020] bg-gray-50/60 dark:bg-[#1a1712] shrink-0">
+              <button
+                type="button"
+                onClick={() => setShowSalesMeetingModal(false)}
+                className="px-4 py-2.5 rounded-xl text-xs font-semibold text-gray-700 dark:text-neutral-300 hover:bg-gray-100 dark:hover:bg-slate-800 border border-gray-200 dark:border-slate-700 transition cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                className="px-5 py-2.5 rounded-xl text-xs font-bold bg-linear-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white shadow-md shadow-emerald-500/25 hover:shadow-lg transition flex items-center gap-2 cursor-pointer"
+              >
+                <Calendar className="w-4 h-4" />
+                <span>Schedule Meeting</span>
+              </button>
             </div>
           </form>
         </div>
@@ -6047,31 +7505,40 @@ export default function CrmModule({
 
       {/* 8. Edit Lead Modal */}
       {editingLead && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
+        <div data-modal-overlay="true" className="fixed inset-0 z-[90] flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-xs overscroll-contain animate-in fade-in duration-200">
           <form
             onSubmit={handleSaveEdit}
-            className="w-full max-w-md rounded-2xl bg-white dark:bg-[#18150f] border border-gray-200 dark:border-[#3a3020] shadow-2xl p-5 space-y-4"
+            className="w-full max-w-xl max-h-[82vh] rounded-3xl bg-white dark:bg-[#18150f] border border-gray-200/80 dark:border-[#3a3020] shadow-2xl flex flex-col overflow-hidden transition-all animate-in zoom-in-95 duration-200"
           >
-            <div className="flex items-center justify-between border-b border-gray-100 dark:border-[#3a3020] pb-3">
-              <div className="flex items-center gap-2">
-                <span className="p-1.5 rounded-lg bg-amber-500/10 text-amber-600 dark:text-amber-400">
-                  <Pencil className="w-4 h-4" />
-                </span>
-                <h3 className="font-bold text-sm text-gray-900 dark:text-white">Edit Lead Details</h3>
+            {/* Header */}
+            <div className="flex items-center justify-between px-5 py-3.5 border-b border-gray-100 dark:border-[#3a3020] bg-linear-to-r from-amber-50/70 via-orange-50/25 to-transparent dark:from-amber-950/25 dark:via-transparent dark:to-transparent shrink-0">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-amber-500 text-white flex items-center justify-center shadow-md shadow-amber-500/25 shrink-0">
+                  <Pencil className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-base sm:text-lg text-gray-900 dark:text-white leading-tight">Edit Lead Details</h3>
+                  <p className="text-xs text-gray-500 dark:text-neutral-400 mt-0.5">Update contact information, services, and requirements</p>
+                </div>
               </div>
               <button
                 type="button"
                 onClick={() => setEditingLead(null)}
-                className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 dark:hover:text-neutral-200"
+                className="p-1.5 rounded-xl text-gray-400 hover:text-gray-700 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-slate-800 transition cursor-pointer"
+                aria-label="Close modal"
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
 
-            <div className="space-y-3 text-xs">
-              <div>
-                <label className="block font-medium mb-1 text-gray-700 dark:text-neutral-300">
-                  Client / Lead Name *
+            {/* Body */}
+            <div className="p-5 space-y-3.5 text-xs flex-1 overflow-y-auto no-scrollbar">
+              {/* Client / Lead Name */}
+              <div className="space-y-1.5">
+                <label className="flex items-center gap-1.5 font-semibold text-gray-700 dark:text-neutral-200">
+                  <Users className="w-3.5 h-3.5 text-amber-500" />
+                  <span>Client / Lead Name</span>
+                  <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="text"
@@ -6079,80 +7546,89 @@ export default function CrmModule({
                   value={editLeadForm.name}
                   onChange={(e) => setEditLeadForm({ ...editLeadForm, name: e.target.value })}
                   placeholder="e.g. Rahul Sharma"
-                  className="w-full px-3 py-2 rounded-xl bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 focus:outline-hidden focus:ring-2 focus:ring-amber-500"
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-gray-50/80 dark:bg-slate-800/80 border border-gray-200 dark:border-slate-700 focus:bg-white dark:focus:bg-slate-800 focus:outline-hidden focus:ring-2 focus:ring-amber-500/30 focus:border-amber-500 text-gray-900 dark:text-white transition shadow-2xs font-medium"
                 />
               </div>
 
-              <div>
-                <label className="block font-medium mb-1 text-gray-700 dark:text-neutral-300">
-                  Phone (WhatsApp) *
-                </label>
-                <input
-                  type="tel"
-                  required
-                  value={editLeadForm.phone}
-                  onChange={(e) => setEditLeadForm({ ...editLeadForm, phone: e.target.value })}
-                  placeholder="e.g. +91 98765 43210"
-                  className="w-full px-3 py-2 rounded-xl bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 focus:outline-hidden focus:ring-2 focus:ring-amber-500 font-mono"
-                />
-              </div>
-
-              <div>
-                <label className="block font-medium mb-1 text-gray-700 dark:text-neutral-300">
-                  Email Address
-                </label>
-                <input
-                  type="email"
-                  value={editLeadForm.email}
-                  onChange={(e) => setEditLeadForm({ ...editLeadForm, email: e.target.value })}
-                  placeholder="e.g. rahul@example.com"
-                  className="w-full px-3 py-2 rounded-xl bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 focus:outline-hidden focus:ring-2 focus:ring-amber-500"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <label className="block font-medium mb-1 text-gray-700 dark:text-neutral-300">
-                    Service
+              {/* Phone & Email */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                <div className="space-y-1.5">
+                  <label className="flex items-center gap-1.5 font-semibold text-gray-700 dark:text-neutral-200">
+                    <Phone className="w-3.5 h-3.5 text-emerald-500" />
+                    <span>Phone (WhatsApp)</span>
+                    <span className="text-red-500">*</span>
                   </label>
                   <input
-                    type="text"
-                    value={editLeadForm.service}
-                    onChange={(e) => setEditLeadForm({ ...editLeadForm, service: e.target.value })}
-                    placeholder="Customer filled service"
-                    className="w-full px-3 py-2 rounded-xl bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 focus:outline-hidden"
+                    type="tel"
+                    required
+                    value={editLeadForm.phone}
+                    onChange={(e) => setEditLeadForm({ ...editLeadForm, phone: e.target.value })}
+                    placeholder="e.g. +91 98765 43210"
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-gray-50/80 dark:bg-slate-800/80 border border-gray-200 dark:border-slate-700 focus:bg-white dark:focus:bg-slate-800 focus:outline-hidden focus:ring-2 focus:ring-amber-500/30 focus:border-amber-500 text-gray-900 dark:text-white transition shadow-2xs font-mono font-medium"
                   />
                 </div>
 
+                <div className="space-y-1.5">
+                  <label className="flex items-center gap-1.5 font-semibold text-gray-700 dark:text-neutral-200">
+                    <Mail className="w-3.5 h-3.5 text-blue-500" />
+                    <span>Email Address</span>
+                  </label>
+                  <input
+                    type="email"
+                    value={editLeadForm.email}
+                    onChange={(e) => setEditLeadForm({ ...editLeadForm, email: e.target.value })}
+                    placeholder="e.g. rahul@example.com"
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-gray-50/80 dark:bg-slate-800/80 border border-gray-200 dark:border-slate-700 focus:bg-white dark:focus:bg-slate-800 focus:outline-hidden focus:ring-2 focus:ring-amber-500/30 focus:border-amber-500 text-gray-900 dark:text-white transition shadow-2xs font-medium"
+                  />
+                </div>
               </div>
 
-              <div>
-                <label className="block font-medium mb-1 text-gray-700 dark:text-neutral-300">
-                  Notes / Requirements
+              {/* Service Required */}
+              <div className="space-y-1.5">
+                <label className="flex items-center gap-1.5 font-semibold text-gray-700 dark:text-neutral-200">
+                  <Briefcase className="w-3.5 h-3.5 text-indigo-500" />
+                  <span>Service Required</span>
+                </label>
+                <input
+                  type="text"
+                  value={editLeadForm.service}
+                  onChange={(e) => setEditLeadForm({ ...editLeadForm, service: e.target.value })}
+                  placeholder="e.g. Web Development"
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-gray-50/80 dark:bg-slate-800/80 border border-gray-200 dark:border-slate-700 focus:bg-white dark:focus:bg-slate-800 focus:outline-hidden focus:ring-2 focus:ring-amber-500/30 focus:border-amber-500 text-gray-900 dark:text-white transition shadow-2xs font-medium"
+                />
+              </div>
+
+              {/* Notes / Requirements */}
+              <div className="space-y-1.5">
+                <label className="flex items-center gap-1.5 font-semibold text-gray-700 dark:text-neutral-200">
+                  <MessageSquare className="w-3.5 h-3.5 text-purple-500" />
+                  <span>Notes / Requirements</span>
                 </label>
                 <textarea
-                  rows={2}
+                  rows={3}
                   value={editLeadForm.notes}
                   onChange={(e) => setEditLeadForm({ ...editLeadForm, notes: e.target.value })}
                   placeholder="Customer requirements summary..."
-                  className="w-full px-3 py-2 rounded-xl bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 focus:outline-hidden"
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-gray-50/80 dark:bg-slate-800/80 border border-gray-200 dark:border-slate-700 focus:bg-white dark:focus:bg-slate-800 focus:outline-hidden focus:ring-2 focus:ring-amber-500/30 focus:border-amber-500 text-gray-900 dark:text-white transition shadow-2xs font-normal text-xs resize-y"
                 />
               </div>
             </div>
 
-            <div className="flex items-center justify-end gap-2 pt-3 border-t border-gray-100 dark:border-[#3a3020]">
+            {/* Footer Buttons */}
+            <div className="flex items-center justify-end gap-2.5 px-5 py-3 border-t border-gray-100 dark:border-[#3a3020] bg-gray-50/60 dark:bg-[#1a1712] shrink-0">
               <button
                 type="button"
                 onClick={() => setEditingLead(null)}
-                className="px-3.5 py-2 rounded-xl text-xs font-semibold text-gray-600 dark:text-neutral-300 hover:bg-gray-100 dark:hover:bg-slate-800 transition"
+                className="px-4 py-2.5 rounded-xl text-xs font-semibold text-gray-700 dark:text-neutral-300 hover:bg-gray-100 dark:hover:bg-slate-800 border border-gray-200 dark:border-slate-700 transition cursor-pointer"
               >
                 Cancel
               </button>
               <button
                 type="submit"
-                className="px-4 py-2 rounded-xl text-xs font-bold bg-amber-600 hover:bg-amber-700 text-white transition shadow-sm"
+                className="px-5 py-2.5 rounded-xl text-xs font-bold bg-linear-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white shadow-md shadow-amber-500/25 hover:shadow-lg transition flex items-center gap-2 cursor-pointer"
               >
-                Save Changes
+                <Check className="w-4 h-4" />
+                <span>Save Changes</span>
               </button>
             </div>
           </form>
@@ -6188,6 +7664,137 @@ export default function CrmModule({
           (f) => f.deal_id === selectedDeal.id || (selectedDeal.lead_id && f.lead_id === selectedDeal.lead_id)
         );
 
+        const sortedDealMeetings = [...dealMeetings].sort(
+          (a, b) => new Date(b.scheduled_at || 0).getTime() - new Date(a.scheduled_at || 0).getTime()
+        );
+        const sortedDealFollowUps = [...dealFollowUps].sort(
+          (a, b) => new Date(b.due_at || 0).getTime() - new Date(a.due_at || 0).getTime()
+        );
+
+        const upcomingMeeting = dealMeetings
+          .filter((m) => m.status === "scheduled")
+          .sort((a, b) => new Date(a.scheduled_at || 0).getTime() - new Date(b.scheduled_at || 0).getTime())[0];
+        const upcomingFollowUp = dealFollowUps
+          .filter((f) => f.status === "pending")
+          .sort((a, b) => new Date(a.due_at || 0).getTime() - new Date(b.due_at || 0).getTime())[0];
+
+        // Construct A to Z Chronological Events
+        const rawTimelineEvents = [];
+        if (lead) {
+          rawTimelineEvents.push({
+            type: "lead_created",
+            title: `Lead Captured: ${lead.name}`,
+            description: `Source: ${lead.source || "Website"} · Service: ${lead.service || "Tech Development"}${lead.notes ? ` · Note: ${getLeadDisplayNotes(lead)}` : ""}`,
+            time: lead.created_at ? new Date(lead.created_at).toLocaleString("en-IN", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", hour12: true }) : "Lead",
+            timestamp: new Date(lead.created_at || 0).getTime(),
+          });
+        }
+
+        rawTimelineEvents.push({
+          type: "project",
+          title: `Deal Created in Pipeline`,
+          description: `Stage: ${dealStage.replace("_", " ")} · Value: ₹${dealValue.toLocaleString("en-IN")}${selectedDeal.service ? ` · ${selectedDeal.service}` : ""}`,
+          time: selectedDeal.created_at ? new Date(selectedDeal.created_at).toLocaleString("en-IN", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", hour12: true }) : "Deal",
+          timestamp: new Date(selectedDeal.created_at || 0).getTime(),
+        });
+
+        dealMeetings.forEach((m) => {
+          rawTimelineEvents.push({
+            type: m.status === "completed" ? "completed" : "meeting",
+            title: `Meeting: ${m.title} [${formatStatusLabel(m.status)}]`,
+            description: `Scheduled: ${new Date(m.scheduled_at).toLocaleString("en-IN", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", hour12: true })}${m.agenda ? ` · Agenda: ${m.agenda}` : ""}`,
+            time: new Date(m.scheduled_at).toLocaleString("en-IN", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", hour12: true }),
+            timestamp: new Date(m.scheduled_at || 0).getTime(),
+          });
+
+          const mHistory = parseNotesHistory(getMeetingFullNotes(m));
+          mHistory.forEach((entry, idx) => {
+            if (entry.note && !entry.note.toLowerCase().includes("no agenda or notes logged")) {
+              rawTimelineEvents.push({
+                type: entry.stage?.toLowerCase().includes("conducted") || entry.stage?.toLowerCase().includes("completed") ? "completed" : "meeting",
+                title: `Meeting Update · ${entry.stage || formatStatusLabel(m.status)}`,
+                description: entry.note,
+                time: entry.timestamp || "Update",
+                timestamp: new Date(m.updated_at || m.scheduled_at || 0).getTime() + (idx + 1) * 1000,
+              });
+            }
+          });
+        });
+
+        dealFollowUps.forEach((f) => {
+          rawTimelineEvents.push({
+            type: f.status === "done" ? "completed" : "call",
+            title: `Follow-up: ${f.title} [${formatStatusLabel(f.status)}]`,
+            description: `Via ${f.channel || "Phone"} · Priority: ${f.priority || "Medium"} · Due: ${f.due_at ? new Date(f.due_at).toLocaleString("en-IN", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", hour12: true }) : "No date"}`,
+            time: f.due_at ? new Date(f.due_at).toLocaleString("en-IN", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", hour12: true }) : "Follow-up",
+            timestamp: new Date(f.due_at || f.created_at || 0).getTime(),
+          });
+
+          const fHistory = parseNotesHistory(f.notes);
+          fHistory.forEach((entry, idx) => {
+            if (entry.note) {
+              rawTimelineEvents.push({
+                type: entry.stage?.toLowerCase().includes("done") || entry.stage?.toLowerCase().includes("completed") ? "completed" : "chat",
+                title: `Follow-up Update · ${entry.stage || formatStatusLabel(f.status)}`,
+                description: entry.note,
+                time: entry.timestamp || "Update",
+                timestamp: new Date(f.updated_at || f.due_at || 0).getTime() + (idx + 1) * 1000,
+              });
+            }
+          });
+        });
+
+        dealProposals.forEach((p) => {
+          rawTimelineEvents.push({
+            type: "quotation",
+            title: `Quotation: ${p.title || p.quotation_number || "Quotation"}`,
+            description: `Amount: ₹${(Number(p.total || p.amount) || 0).toLocaleString("en-IN")} · Status: ${p.status || "sent"}`,
+            time: p.created_at ? new Date(p.created_at).toLocaleDateString("en-IN") : "Doc",
+            timestamp: new Date(p.created_at || 0).getTime(),
+          });
+        });
+
+        dealAgreements.forEach((a) => {
+          rawTimelineEvents.push({
+            type: "project",
+            title: `Agreement: ${a.title || a.agreement_number || "Agreement"}`,
+            description: `Amount: ₹${(Number(a.amount) || 0).toLocaleString("en-IN")} · Status: ${a.status || "active"}`,
+            time: a.created_at ? new Date(a.created_at).toLocaleDateString("en-IN") : "Doc",
+            timestamp: new Date(a.created_at || 0).getTime(),
+          });
+        });
+
+        dealInvoices.forEach((inv) => {
+          rawTimelineEvents.push({
+            type: "payment",
+            title: `Invoice: ${inv.title || inv.invoice_number || "Invoice"}`,
+            description: `Amount: ₹${(Number(inv.total_amount || inv.amount) || 0).toLocaleString("en-IN")} · Status: ${inv.status || "unpaid"}`,
+            time: inv.created_at ? new Date(inv.created_at).toLocaleDateString("en-IN") : "Doc",
+            timestamp: new Date(inv.created_at || 0).getTime(),
+          });
+        });
+
+        if (isWon) {
+          rawTimelineEvents.push({
+            type: "completed",
+            title: `Deal Closed Won! 🎉`,
+            description: `Converted successfully with value ₹${dealValue.toLocaleString("en-IN")}`,
+            time: selectedDeal.updated_at ? new Date(selectedDeal.updated_at).toLocaleString("en-IN") : "Won",
+            timestamp: new Date(selectedDeal.updated_at || Date.now()).getTime(),
+          });
+        }
+        if (isLost) {
+          rawTimelineEvents.push({
+            type: "alert",
+            title: `Deal Closed Lost`,
+            description: `Reason: ${selectedDeal.loss_reason || "Marked as lost"}`,
+            time: selectedDeal.updated_at ? new Date(selectedDeal.updated_at).toLocaleString("en-IN") : "Lost",
+            timestamp: new Date(selectedDeal.updated_at || Date.now()).getTime(),
+          });
+        }
+
+        const dealTimelineEvents = rawTimelineEvents.sort((a, b) => b.timestamp - a.timestamp);
+
         const STAGES = [
           { id: "contacted", label: "Contacted" },
           { id: "qualified", label: "Meeting" },
@@ -6198,10 +7805,16 @@ export default function CrmModule({
         const currentStageIndex = isLost ? -1 : STAGES.findIndex((s) => s.id === dealStage);
 
         return (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-xs">
-            <div className="w-full max-w-2xl max-h-[92vh] rounded-2xl bg-white dark:bg-[#18150f] border border-gray-200 dark:border-[#3a3020] shadow-2xl flex flex-col overflow-hidden">
+          <div
+            data-modal-overlay="true"
+            onClick={(e) => {
+              if (e.target === e.currentTarget) setSelectedDeal(null);
+            }}
+            className="fixed inset-0 z-[60] flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-xs overscroll-contain animate-in fade-in duration-200"
+          >
+            <div className="w-full max-w-3xl max-h-[82vh] rounded-2xl bg-white dark:bg-[#18150f] border border-gray-200 dark:border-[#3a3020] shadow-2xl flex flex-col overflow-hidden">
               {/* Header */}
-              <div className="flex items-center justify-between border-b border-gray-100 dark:border-[#3a3020] p-5 pb-3.5 shrink-0 bg-gray-50/50 dark:bg-[#1f1a13]/50">
+              <div className="flex items-center justify-between border-b border-gray-100 dark:border-[#3a3020] p-4 sm:p-5 pb-3.5 shrink-0 bg-gray-50/50 dark:bg-[#1f1a13]/50">
                 <div className="flex items-center gap-3 min-w-0">
                   <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-orange-500 to-amber-500 text-white font-black text-sm flex items-center justify-center shrink-0 shadow-sm">
                     {contactName.slice(0, 2).toUpperCase()}
@@ -6246,283 +7859,828 @@ export default function CrmModule({
                 </div>
               </div>
 
-              {/* Scrollable Body */}
-              <div className="flex-1 overflow-y-auto p-5 space-y-4 text-xs">
-                {/* 1. Key Value Metrics Grid */}
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
-                  <div className="p-3 rounded-xl bg-orange-50/60 dark:bg-orange-950/20 border border-orange-100 dark:border-orange-900/30">
-                    <span className="text-gray-500 dark:text-neutral-400 text-[10px] block font-semibold uppercase">Deal Value</span>
-                    <span className="font-extrabold text-sm sm:text-base text-orange-600 dark:text-orange-400 font-mono mt-0.5 block">
-                      ₹{dealValue.toLocaleString("en-IN")}
-                    </span>
-                  </div>
-                  <div className="p-3 rounded-xl bg-gray-50 dark:bg-slate-800/60 border border-gray-100 dark:border-slate-700/50">
-                    <span className="text-gray-500 dark:text-neutral-400 text-[10px] block font-semibold uppercase">Service</span>
-                    <span className="font-bold text-gray-800 dark:text-white mt-0.5 block truncate" title={selectedDeal.service}>
-                      {selectedDeal.service || "Tech Development"}
-                    </span>
-                  </div>
-                  <div className="p-3 rounded-xl bg-gray-50 dark:bg-slate-800/60 border border-gray-100 dark:border-slate-700/50">
-                    <span className="text-gray-500 dark:text-neutral-400 text-[10px] block font-semibold uppercase">Current Stage</span>
-                    <span className="font-bold text-gray-800 dark:text-white capitalize mt-0.5 block">
-                      {dealStage.replace("_", " ")}
-                    </span>
-                  </div>
-                  <div className="p-3 rounded-xl bg-gray-50 dark:bg-slate-800/60 border border-gray-100 dark:border-slate-700/50">
-                    <span className="text-gray-500 dark:text-neutral-400 text-[10px] block font-semibold uppercase">Expected Close</span>
-                    <span className="font-bold text-gray-800 dark:text-white mt-0.5 block">
-                      {selectedDeal.expected_close_date
-                        ? new Date(selectedDeal.expected_close_date).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })
-                        : "Open"}
-                    </span>
-                  </div>
-                </div>
+              {/* Navigation Tabs Bar */}
+              <div className="flex items-center gap-1.5 px-4 sm:px-5 py-2 border-b border-gray-100 dark:border-[#3a3020] bg-gray-50/70 dark:bg-[#1a1711] overflow-x-auto no-scrollbar shrink-0">
+                {[
+                  { id: "overview", label: "Overview", icon: Target },
+                  { id: "lead", label: "Lead History", icon: Users, badge: lead ? (lead.source || "Linked") : null },
+                  { id: "meetings", label: "Meetings", icon: Video, count: dealMeetings.length },
+                  { id: "followups", label: "Follow-ups", icon: Clock, count: dealFollowUps.length },
+                  { id: "timeline", label: "A to Z Timeline", icon: History, count: dealTimelineEvents.length },
+                ].map((tab) => {
+                  const isActive = dealModalTab === tab.id;
+                  const TabIcon = tab.icon;
+                  return (
+                    <button
+                      key={tab.id}
+                      type="button"
+                      onClick={() => setDealModalTab(tab.id)}
+                      className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shrink-0 cursor-pointer ${
+                        isActive
+                          ? "bg-white dark:bg-[#252017] text-orange-600 dark:text-orange-400 shadow-xs border border-orange-200/70 dark:border-orange-900/50"
+                          : "text-gray-600 dark:text-neutral-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-slate-800"
+                      }`}
+                    >
+                      <TabIcon className={`w-3.5 h-3.5 ${isActive ? "text-orange-500" : "text-gray-400"}`} />
+                      <span>{tab.label}</span>
+                      {tab.count !== undefined && tab.count !== null && (
+                        <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-extrabold ${
+                          isActive
+                            ? "bg-orange-100 dark:bg-orange-950/60 text-orange-700 dark:text-orange-300"
+                            : "bg-gray-200/80 dark:bg-slate-800 text-gray-600 dark:text-neutral-400"
+                        }`}>
+                          {tab.count}
+                        </span>
+                      )}
+                      {tab.badge && (
+                        <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-blue-100 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 capitalize truncate max-w-[80px]">
+                          {tab.badge}
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
 
-                {/* 2. Visual Stage Progress */}
-                <div className="p-3.5 rounded-xl bg-gray-50 dark:bg-slate-800/40 border border-gray-200/80 dark:border-slate-700/60 space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span className="text-[11px] font-bold text-gray-700 dark:text-neutral-300 uppercase tracking-wide">
-                      Pipeline Progression
-                    </span>
-                    {isWon ? (
-                      <span className="text-[10px] font-bold text-emerald-600 flex items-center gap-1">
-                        <CheckCircle2 className="w-3 h-3" /> Deal Won
-                      </span>
-                    ) : isLost ? (
-                      <span className="text-[10px] font-bold text-rose-600 flex items-center gap-1">
-                        <XCircle className="w-3 h-3" /> Closed Lost
-                      </span>
-                    ) : (
-                      <span className="text-[10px] font-semibold text-gray-500">
-                        Step {currentStageIndex + 1} of 5
-                      </span>
-                    )}
-                  </div>
-                  <div className="grid grid-cols-5 gap-1.5">
-                    {STAGES.map((st, idx) => {
-                      const isCompleted = !isLost && currentStageIndex >= idx;
-                      const isCurrent = !isLost && currentStageIndex === idx;
-                      return (
-                        <div
-                          key={st.id}
-                          className={`text-center py-1.5 px-1 rounded-lg text-[10px] font-bold transition-all ${
-                            isCurrent
-                              ? "bg-orange-500 text-white shadow-xs"
-                              : isCompleted
-                              ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border border-emerald-500/30"
-                              : "bg-gray-100 dark:bg-slate-800 text-gray-400 dark:text-neutral-500"
-                          }`}
-                        >
-                          {st.label}
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                {/* 3. Lost Reason Banner (if closed_lost) */}
-                {isLost && (
-                  <div className="p-3.5 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/50 space-y-2">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2 font-bold text-rose-800 dark:text-rose-200 text-xs">
-                        <XCircle className="w-4 h-4 text-rose-600 shrink-0" />
-                        <span>Closed Lost Reason</span>
+              {/* Scrollable Tab Body */}
+              <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-4 text-xs no-scrollbar">
+                {/* TAB 1: OVERVIEW */}
+                {dealModalTab === "overview" && (
+                  <div className="space-y-4">
+                    {/* Key Value Metrics Grid */}
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                      <div className="p-3 rounded-xl bg-orange-50/60 dark:bg-orange-950/20 border border-orange-100 dark:border-orange-900/30">
+                        <span className="text-gray-500 dark:text-neutral-400 text-[10px] block font-semibold uppercase">Deal Value</span>
+                        <span className="font-extrabold text-sm sm:text-base text-orange-600 dark:text-orange-400 font-mono mt-0.5 block">
+                          ₹{dealValue.toLocaleString("en-IN")}
+                        </span>
                       </div>
-                      <button
-                        type="button"
-                        onClick={() => handleDealStageChange(selectedDeal, "contacted", "closed_lost")}
-                        className="text-[11px] font-bold text-blue-600 dark:text-blue-400 hover:underline cursor-pointer"
-                      >
-                        Re-open Deal
-                      </button>
+                      <div className="p-3 rounded-xl bg-gray-50 dark:bg-slate-800/60 border border-gray-100 dark:border-slate-700/50">
+                        <span className="text-gray-500 dark:text-neutral-400 text-[10px] block font-semibold uppercase">Service</span>
+                        <span className="font-bold text-gray-800 dark:text-white mt-0.5 block truncate" title={selectedDeal.service}>
+                          {selectedDeal.service || "Tech Development"}
+                        </span>
+                      </div>
+                      <div className="p-3 rounded-xl bg-gray-50 dark:bg-slate-800/60 border border-gray-100 dark:border-slate-700/50">
+                        <span className="text-gray-500 dark:text-neutral-400 text-[10px] block font-semibold uppercase">Current Stage</span>
+                        <span className="font-bold text-gray-800 dark:text-white capitalize mt-0.5 block">
+                          {dealStage.replace("_", " ")}
+                        </span>
+                      </div>
+                      <div className="p-3 rounded-xl bg-gray-50 dark:bg-slate-800/60 border border-gray-100 dark:border-slate-700/50">
+                        <span className="text-gray-500 dark:text-neutral-400 text-[10px] block font-semibold uppercase">Expected Close</span>
+                        <span className="font-bold text-gray-800 dark:text-white mt-0.5 block">
+                          {selectedDeal.expected_close_date
+                            ? new Date(selectedDeal.expected_close_date).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })
+                            : "Open"}
+                        </span>
+                      </div>
                     </div>
-                    <p className="text-xs text-rose-700 dark:text-rose-300 bg-white/80 dark:bg-[#201713]/80 p-2.5 rounded-lg border border-rose-200/60 font-medium">
-                      {selectedDeal.loss_reason || "No specific loss reason recorded for this deal."}
-                    </p>
+
+                    {/* Pipeline Progression */}
+                    <div className="p-3.5 rounded-xl bg-gray-50 dark:bg-slate-800/40 border border-gray-200/80 dark:border-slate-700/60 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[11px] font-bold text-gray-700 dark:text-neutral-300 uppercase tracking-wide">
+                          Pipeline Progression
+                        </span>
+                        {isWon ? (
+                          <span className="text-[10px] font-bold text-emerald-600 flex items-center gap-1">
+                            <CheckCircle2 className="w-3 h-3" /> Deal Won
+                          </span>
+                        ) : isLost ? (
+                          <span className="text-[10px] font-bold text-rose-600 flex items-center gap-1">
+                            <XCircle className="w-3 h-3" /> Closed Lost
+                          </span>
+                        ) : (
+                          <span className="text-[10px] font-semibold text-gray-500">
+                            Step {currentStageIndex + 1} of 5
+                          </span>
+                        )}
+                      </div>
+                      <div className="grid grid-cols-5 gap-1.5">
+                        {STAGES.map((st, idx) => {
+                          const isCompleted = !isLost && currentStageIndex >= idx;
+                          const isCurrent = !isLost && currentStageIndex === idx;
+                          return (
+                            <div
+                              key={st.id}
+                              className={`text-center py-1.5 px-1 rounded-lg text-[10px] font-bold transition-all ${
+                                isCurrent
+                                  ? "bg-orange-500 text-white shadow-xs"
+                                  : isCompleted
+                                  ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border border-emerald-500/30"
+                                  : "bg-gray-100 dark:bg-slate-800 text-gray-400 dark:text-neutral-500"
+                              }`}
+                            >
+                              {st.label}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {/* Lost Reason Banner */}
+                    {isLost && (
+                      <div className="p-3.5 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/50 space-y-2">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2 font-bold text-rose-800 dark:text-rose-200 text-xs">
+                            <XCircle className="w-4 h-4 text-rose-600 shrink-0" />
+                            <span>Closed Lost Reason</span>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => handleDealStageChange(selectedDeal, "contacted", "closed_lost")}
+                            className="text-[11px] font-bold text-blue-600 dark:text-blue-400 hover:underline cursor-pointer"
+                          >
+                            Re-open Deal
+                          </button>
+                        </div>
+                        <p className="text-xs text-rose-700 dark:text-rose-300 bg-white/80 dark:bg-[#201713]/80 p-2.5 rounded-lg border border-rose-200/60 font-medium">
+                          {selectedDeal.loss_reason || "No specific loss reason recorded for this deal."}
+                        </p>
+                      </div>
+                    )}
+
+                    {/* Quick Highlights: Next Engagements */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                      <div className="p-3 rounded-xl bg-blue-50/60 dark:bg-blue-950/20 border border-blue-100 dark:border-blue-900/30 space-y-1.5">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[10px] font-bold text-blue-700 dark:text-blue-300 uppercase tracking-wide flex items-center gap-1">
+                            <Video className="w-3.5 h-3.5 text-blue-500" />
+                            <span>Upcoming Meeting</span>
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => setDealModalTab("meetings")}
+                            className="text-[10px] font-bold text-blue-600 dark:text-blue-400 hover:underline cursor-pointer"
+                          >
+                            View All ({dealMeetings.length}) →
+                          </button>
+                        </div>
+                        {upcomingMeeting ? (
+                          <div>
+                            <span className="font-bold text-gray-900 dark:text-white block truncate">{upcomingMeeting.title}</span>
+                            <span className="text-[11px] text-blue-600 dark:text-blue-400 font-semibold block">
+                              {new Date(upcomingMeeting.scheduled_at).toLocaleString("en-IN", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", hour12: true })}
+                            </span>
+                            {upcomingMeeting.meeting_link && (
+                              <a
+                                href={upcomingMeeting.meeting_link.startsWith("http") ? upcomingMeeting.meeting_link : `https://${upcomingMeeting.meeting_link}`}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="inline-flex items-center gap-1 text-[10px] font-bold text-blue-700 hover:underline mt-1"
+                              >
+                                Join Google Meet <ExternalLink className="w-2.5 h-2.5" />
+                              </a>
+                            )}
+                          </div>
+                        ) : (
+                          <div className="flex items-center justify-between text-gray-500 pt-1">
+                            <span>No upcoming meeting</span>
+                            <button
+                              type="button"
+                              onClick={() => openDealMeetingModal(selectedDeal, lead)}
+                              className="text-[10px] font-bold text-blue-600 hover:underline cursor-pointer"
+                            >
+                              + Schedule
+                            </button>
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="p-3 rounded-xl bg-amber-50/60 dark:bg-amber-950/20 border border-amber-100 dark:border-amber-900/30 space-y-1.5">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[10px] font-bold text-amber-700 dark:text-amber-300 uppercase tracking-wide flex items-center gap-1">
+                            <Clock className="w-3.5 h-3.5 text-amber-500" />
+                            <span>Upcoming Follow-up</span>
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => setDealModalTab("followups")}
+                            className="text-[10px] font-bold text-amber-600 dark:text-amber-400 hover:underline cursor-pointer"
+                          >
+                            View All ({dealFollowUps.length}) →
+                          </button>
+                        </div>
+                        {upcomingFollowUp ? (
+                          <div>
+                            <span className="font-bold text-gray-900 dark:text-white block truncate">{upcomingFollowUp.title}</span>
+                            <span className="text-[11px] text-amber-700 dark:text-amber-400 font-semibold block">
+                              {new Date(upcomingFollowUp.due_at).toLocaleString("en-IN", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", hour12: true })}
+                            </span>
+                            <span className="text-[10px] text-gray-500 capitalize">Via {upcomingFollowUp.channel || "Phone"}</span>
+                          </div>
+                        ) : (
+                          <div className="flex items-center justify-between text-gray-500 pt-1">
+                            <span>No upcoming follow-up</span>
+                            <button
+                              type="button"
+                              onClick={() => openDealFollowUpModal(selectedDeal, lead)}
+                              className="text-[10px] font-bold text-amber-600 hover:underline cursor-pointer"
+                            >
+                              + Add
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Contact & Client Details Card */}
+                    <div className="p-3.5 rounded-xl bg-gray-50 dark:bg-slate-800/50 border border-gray-100 dark:border-slate-700/60 space-y-2.5">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-1.5 font-bold text-gray-900 dark:text-white">
+                          <Users className="w-4 h-4 text-orange-500" />
+                          <span>Contact & Client Details</span>
+                        </div>
+                        {contactPhone && (
+                          <div className="flex items-center gap-1.5">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                if (lead) handleWhatsAppClick(lead);
+                                else sendDealDocWhatsApp(selectedDeal);
+                              }}
+                              className="px-2 py-1 rounded-lg bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800 font-bold text-[10px] flex items-center gap-1 hover:bg-emerald-100 transition cursor-pointer"
+                            >
+                              <WhatsAppIcon className="w-3 h-3" />
+                              <span>WhatsApp</span>
+                            </button>
+                            <a
+                              href={`tel:${contactPhone}`}
+                              className="px-2 py-1 rounded-lg bg-orange-50 dark:bg-orange-950/50 text-orange-700 dark:text-orange-400 border border-orange-200 dark:border-orange-800 font-bold text-[10px] flex items-center gap-1 hover:bg-orange-100 transition"
+                            >
+                              <Phone className="w-3 h-3" />
+                              <span>Call</span>
+                            </a>
+                          </div>
+                        )}
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                        <div>
+                          <span className="text-gray-400 text-[10px] block">Name / Entity</span>
+                          <span className="font-semibold text-gray-800 dark:text-neutral-200">
+                            {contactName} {contactCompany ? `(${contactCompany})` : ""}
+                          </span>
+                        </div>
+                        <div>
+                          <span className="text-gray-400 text-[10px] block">Phone Number</span>
+                          <span className="font-semibold text-gray-800 dark:text-neutral-200 font-mono">
+                            {contactPhone || "Not provided"}
+                          </span>
+                        </div>
+                        <div>
+                          <span className="text-gray-400 text-[10px] block">Email</span>
+                          <span className="font-semibold text-gray-800 dark:text-neutral-200 truncate block">
+                            {contactEmail || "Not provided"}
+                          </span>
+                        </div>
+                        <div>
+                          <span className="text-gray-400 text-[10px] block">Relationship</span>
+                          <span className="font-semibold text-gray-800 dark:text-neutral-200">
+                            {client ? "Existing Client" : lead ? "Inbound Lead" : "Direct Deal"}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Notes & Requirements */}
+                    {selectedDeal.notes && (
+                      <div className="p-3 rounded-xl bg-gray-50 dark:bg-slate-800/40 border border-gray-100 dark:border-slate-700/50">
+                        <span className="text-gray-400 text-[10px] block font-semibold uppercase mb-1">
+                          Deal Notes & Requirements
+                        </span>
+                        <p className="text-gray-700 dark:text-neutral-300 whitespace-pre-wrap font-medium">
+                          {selectedDeal.notes}
+                        </p>
+                      </div>
+                    )}
+
+                    {/* Commercial Documents Linked */}
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="font-bold text-gray-900 dark:text-white uppercase text-[11px] tracking-wide flex items-center gap-1.5">
+                          <FileText className="w-3.5 h-3.5 text-blue-500" />
+                          <span>Commercial Documents ({dealProposals.length + dealAgreements.length + dealInvoices.length})</span>
+                        </span>
+                        <div className="flex items-center gap-1">
+                          <button
+                            type="button"
+                            onClick={() => openCommercialModal("proposal", selectedDeal)}
+                            className="px-2 py-0.5 rounded text-[10px] font-bold text-orange-600 bg-orange-50 dark:bg-orange-950/40 hover:bg-orange-100 transition cursor-pointer"
+                          >
+                            + Quotation
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => openCommercialModal("agreement", selectedDeal)}
+                            className="px-2 py-0.5 rounded text-[10px] font-bold text-indigo-600 bg-indigo-50 dark:bg-indigo-950/40 hover:bg-indigo-100 transition cursor-pointer"
+                          >
+                            + Agreement
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => openInvoiceModal(selectedDeal)}
+                            className="px-2 py-0.5 rounded text-[10px] font-bold text-purple-600 bg-purple-50 dark:bg-purple-950/40 hover:bg-purple-100 transition cursor-pointer"
+                          >
+                            + Invoice
+                          </button>
+                        </div>
+                      </div>
+                      {dealProposals.length === 0 && dealAgreements.length === 0 && dealInvoices.length === 0 ? (
+                        <div className="p-3 rounded-xl border border-dashed border-gray-200 dark:border-slate-800 text-center text-gray-400 text-xs">
+                          No commercial documents attached to this deal yet.
+                        </div>
+                      ) : (
+                        <div className="space-y-1.5">
+                          {dealProposals.map((p) => (
+                            <div key={p.id} className="p-2.5 rounded-xl bg-orange-50/50 dark:bg-orange-950/20 border border-orange-100 dark:border-orange-900/30 flex items-center justify-between">
+                              <div>
+                                <span className="font-bold text-gray-900 dark:text-white block">{p.title || "Quotation"}</span>
+                                <span className="text-[10px] text-gray-500">{p.quotation_number || "QT"} · ₹{(Number(p.total || p.amount) || 0).toLocaleString("en-IN")}</span>
+                              </div>
+                              <span className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-orange-100 dark:bg-orange-900/50 text-orange-700 dark:text-orange-300 uppercase">
+                                {p.status || "sent"}
+                              </span>
+                            </div>
+                          ))}
+                          {dealAgreements.map((a) => (
+                            <div key={a.id} className="p-2.5 rounded-xl bg-indigo-50/50 dark:bg-indigo-950/20 border border-indigo-100 dark:border-indigo-900/30 flex items-center justify-between">
+                              <div>
+                                <span className="font-bold text-gray-900 dark:text-white block">{a.title || "Agreement"}</span>
+                                <span className="text-[10px] text-gray-500">{a.agreement_number || "AGR"} · ₹{(Number(a.amount) || 0).toLocaleString("en-IN")}</span>
+                              </div>
+                              <span className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-indigo-100 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300 uppercase">
+                                {a.status || "active"}
+                              </span>
+                            </div>
+                          ))}
+                          {dealInvoices.map((inv) => (
+                            <div key={inv.id} className="p-2.5 rounded-xl bg-purple-50/50 dark:bg-purple-950/20 border border-purple-100 dark:border-purple-900/30 flex items-center justify-between">
+                              <div>
+                                <span className="font-bold text-gray-900 dark:text-white block">{inv.title || "Invoice"}</span>
+                                <span className="text-[10px] text-gray-500">{inv.invoice_number || "INV"} · ₹{(Number(inv.total_amount || inv.amount) || 0).toLocaleString("en-IN")}</span>
+                              </div>
+                              <span className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-purple-100 dark:bg-purple-900/50 text-purple-700 dark:text-purple-300 uppercase">
+                                {inv.status || "unpaid"}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
                   </div>
                 )}
 
-                {/* 4. Client / Contact Information Card */}
-                <div className="p-3.5 rounded-xl bg-gray-50 dark:bg-slate-800/50 border border-gray-100 dark:border-slate-700/60 space-y-2.5">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-1.5 font-bold text-gray-900 dark:text-white">
-                      <Users className="w-4 h-4 text-orange-500" />
-                      <span>Contact & Client Details</span>
+                {/* TAB 2: LEAD HISTORY */}
+                {dealModalTab === "lead" && (
+                  <div className="space-y-4">
+                    {lead ? (
+                      <>
+                        {/* Lead Header */}
+                        <div className="p-3.5 rounded-xl bg-blue-50/70 dark:bg-blue-950/25 border border-blue-100 dark:border-blue-900/40 flex items-center justify-between">
+                          <div className="space-y-0.5">
+                            <div className="flex items-center gap-2">
+                              <span className="font-bold text-sm text-gray-900 dark:text-white">{lead.name}</span>
+                              <span className="px-2 py-0.5 rounded-full text-[9px] font-bold uppercase bg-blue-100 dark:bg-blue-900/60 text-blue-700 dark:text-blue-300">
+                                {formatStatusLabel(lead.status)}
+                              </span>
+                            </div>
+                            <p className="text-[11px] text-gray-500 dark:text-neutral-400">
+                              Captured on {new Date(lead.created_at || Date.now()).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })}
+                            </p>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => setSelectedLead(lead)}
+                            className="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-800 shadow-2xs hover:bg-blue-50 cursor-pointer"
+                          >
+                            Open Lead Modal
+                          </button>
+                        </div>
+
+                        {/* Lead Details Grid */}
+                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+                          <div className="p-2.5 rounded-xl bg-gray-50 dark:bg-slate-800/60">
+                            <span className="text-gray-400 text-[10px] block font-semibold uppercase">Source</span>
+                            <span className="font-bold text-gray-800 dark:text-white mt-0.5 block">{lead.source || "Website"}</span>
+                          </div>
+                          <div className="p-2.5 rounded-xl bg-gray-50 dark:bg-slate-800/60">
+                            <span className="text-gray-400 text-[10px] block font-semibold uppercase">Phone</span>
+                            <span className="font-bold text-gray-800 dark:text-white mt-0.5 block font-mono">{lead.phone || "N/A"}</span>
+                          </div>
+                          <div className="p-2.5 rounded-xl bg-gray-50 dark:bg-slate-800/60">
+                            <span className="text-gray-400 text-[10px] block font-semibold uppercase">Email</span>
+                            <span className="font-bold text-gray-800 dark:text-white mt-0.5 block truncate" title={lead.email}>{lead.email || "N/A"}</span>
+                          </div>
+                          <div className="p-2.5 rounded-xl bg-gray-50 dark:bg-slate-800/60">
+                            <span className="text-gray-400 text-[10px] block font-semibold uppercase">Location</span>
+                            <span className="font-bold text-gray-800 dark:text-white mt-0.5 block">{getLeadLocation(lead)}</span>
+                          </div>
+                          <div className="p-2.5 rounded-xl bg-gray-50 dark:bg-slate-800/60">
+                            <span className="text-gray-400 text-[10px] block font-semibold uppercase">Budget Range</span>
+                            <span className="font-bold text-emerald-600 dark:text-emerald-400 mt-0.5 block">{getLeadBudget(lead)}</span>
+                          </div>
+                          <div className="p-2.5 rounded-xl bg-gray-50 dark:bg-slate-800/60">
+                            <span className="text-gray-400 text-[10px] block font-semibold uppercase">Service</span>
+                            <span className="font-bold text-gray-800 dark:text-white mt-0.5 block truncate">{lead.service || "Web Development"}</span>
+                          </div>
+                        </div>
+
+                        {/* Form Answers (Inquiry Form Responses) */}
+                        <div className="p-3.5 rounded-xl bg-gray-50 dark:bg-slate-800/60 text-xs space-y-2">
+                          <span className="text-gray-500 dark:text-neutral-400 text-[10.5px] block font-bold uppercase tracking-wider">
+                            Inquiry Form Questionnaire Answers
+                          </span>
+                          {getLeadFormAnswers(lead).length > 0 ? (
+                            <div className="overflow-hidden rounded-lg border border-gray-200/80 dark:border-slate-700 bg-white dark:bg-slate-900/50">
+                              {getLeadFormAnswers(lead).map((answer) => (
+                                <div
+                                  key={answer.label}
+                                  className="grid grid-cols-1 sm:grid-cols-[200px_minmax(0,1fr)] gap-1 sm:gap-3 px-3 py-2 border-b border-gray-100 dark:border-slate-800 last:border-b-0"
+                                >
+                                  <span className="text-[10px] sm:text-[11px] text-gray-500 dark:text-neutral-400 font-bold break-words" title={answer.label}>
+                                    {answer.label}
+                                  </span>
+                                  <span className="font-semibold text-gray-800 dark:text-white break-words font-mono" title={answer.value}>
+                                    {answer.value}
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
+                          ) : (
+                            <span className="text-gray-400 italic">No custom form answers provided.</span>
+                          )}
+                        </div>
+
+                        {/* Inquiry Notes & History */}
+                        <div className="p-3.5 rounded-xl bg-gray-50 dark:bg-slate-800/60 text-xs space-y-2.5">
+                          <span className="text-gray-500 dark:text-neutral-400 text-[10.5px] block font-bold uppercase tracking-wider">
+                            Lead Notes & Historical Audit
+                          </span>
+                          {getLeadDisplayNotes(lead) ? (
+                            <div className="space-y-2">
+                              {parseNotesHistory(getLeadDisplayNotes(lead)).map((item, idx) => (
+                                <div key={item.id || idx} className="p-2.5 rounded-lg bg-white dark:bg-slate-900/60 border border-gray-100 dark:border-slate-700/60 space-y-1">
+                                  <div className="flex items-center justify-between text-[10px] text-gray-400">
+                                    <span className="font-semibold text-orange-600 dark:text-orange-400">{item.timestamp}</span>
+                                    {item.stage && (
+                                      <span className="px-1.5 py-0.2 rounded bg-gray-100 dark:bg-slate-800 font-bold text-gray-600 dark:text-neutral-300">
+                                        {item.stage}
+                                      </span>
+                                    )}
+                                  </div>
+                                  <p className="text-gray-800 dark:text-neutral-200 whitespace-pre-line leading-relaxed font-medium">
+                                    {item.note || item.raw}
+                                  </p>
+                                </div>
+                              ))}
+                            </div>
+                          ) : (
+                            <span className="text-gray-400 italic">No notes logged for this lead yet.</span>
+                          )}
+                        </div>
+
+                        {/* Lead Lost Reason if lost */}
+                        {getLeadLossReason(lead, selectedDeal) && (
+                          <div className="p-3 rounded-xl bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-900/40 text-rose-700 dark:text-rose-300">
+                            <span className="font-bold text-[11px] block uppercase">Lead Loss Reason</span>
+                            <p className="mt-1 font-semibold">{getLeadLossReason(lead, selectedDeal)}</p>
+                          </div>
+                        )}
+                      </>
+                    ) : (
+                      <div className="p-8 rounded-2xl border border-dashed border-gray-200 dark:border-slate-800 text-center space-y-2">
+                        <Users className="w-8 h-8 text-gray-300 dark:text-neutral-600 mx-auto" />
+                        <h4 className="font-bold text-sm text-gray-800 dark:text-white">Direct Pipeline Deal</h4>
+                        <p className="text-xs text-gray-400 max-w-sm mx-auto">
+                          This deal was created directly in the Sales Pipeline without being mapped from an inbound website inquiry lead.
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* TAB 3: A TO Z MEETINGS */}
+                {dealModalTab === "meetings" && (
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className="font-bold text-xs uppercase tracking-wider text-gray-900 dark:text-white flex items-center gap-1.5">
+                        <Video className="w-4 h-4 text-blue-500" />
+                        <span>All Sales Meetings ({dealMeetings.length})</span>
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => openDealMeetingModal(selectedDeal, lead)}
+                        className="px-2.5 py-1 rounded-xl text-xs font-bold bg-blue-600 hover:bg-blue-700 text-white transition flex items-center gap-1 shadow-2xs cursor-pointer"
+                      >
+                        <Plus className="w-3.5 h-3.5" />
+                        <span>Schedule Meeting</span>
+                      </button>
                     </div>
-                    {contactPhone && (
-                      <div className="flex items-center gap-1.5">
+
+                    {sortedDealMeetings.length === 0 ? (
+                      <div className="p-8 rounded-2xl border border-dashed border-gray-200 dark:border-slate-800 text-center space-y-3">
+                        <Video className="w-8 h-8 text-blue-300 dark:text-blue-900/60 mx-auto" />
+                        <div>
+                          <h4 className="font-bold text-sm text-gray-800 dark:text-white">No Meetings Scheduled</h4>
+                          <p className="text-xs text-gray-400 mt-0.5">Schedule a discovery call or product demonstration for this deal.</p>
+                        </div>
                         <button
                           type="button"
-                          onClick={() => {
-                            if (lead) handleWhatsAppClick(lead);
-                            else sendDealDocWhatsApp(selectedDeal);
-                          }}
-                          className="px-2 py-1 rounded-lg bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800 font-bold text-[10px] flex items-center gap-1 hover:bg-emerald-100 transition cursor-pointer"
+                          onClick={() => openDealMeetingModal(selectedDeal, lead)}
+                          className="px-3 py-1.5 rounded-xl text-xs font-bold bg-blue-600 text-white hover:bg-blue-700 cursor-pointer shadow-xs inline-flex items-center gap-1"
                         >
-                          <WhatsAppIcon className="w-3 h-3" />
-                          <span>WhatsApp</span>
+                          <Plus className="w-3.5 h-3.5" />
+                          <span>Schedule First Meeting</span>
                         </button>
-                        <a
-                          href={`tel:${contactPhone}`}
-                          className="px-2 py-1 rounded-lg bg-orange-50 dark:bg-orange-950/50 text-orange-700 dark:text-orange-400 border border-orange-200 dark:border-orange-800 font-bold text-[10px] flex items-center gap-1 hover:bg-orange-100 transition"
-                        >
-                          <Phone className="w-3 h-3" />
-                          <span>Call</span>
-                        </a>
+                      </div>
+                    ) : (
+                      <div className="space-y-3">
+                        {sortedDealMeetings.map((m) => {
+                          const meetingHist = parseNotesHistory(getMeetingFullNotes(m));
+                          const isMeetingScheduled = m.status === "scheduled";
+                          const isMeetingDone = m.status === "completed";
+                          return (
+                            <div
+                              key={m.id}
+                              className={`p-3.5 rounded-2xl border transition-all space-y-3 ${
+                                isMeetingScheduled
+                                  ? "bg-blue-50/40 dark:bg-blue-950/20 border-blue-200/80 dark:border-blue-900/40"
+                                  : isMeetingDone
+                                  ? "bg-emerald-50/40 dark:bg-emerald-950/20 border-emerald-200/80 dark:border-emerald-900/40"
+                                  : "bg-gray-50/60 dark:bg-slate-800/40 border-gray-200 dark:border-slate-700/60"
+                              }`}
+                            >
+                              {/* Top Bar */}
+                              <div className="flex items-start justify-between gap-2">
+                                <div className="space-y-0.5">
+                                  <div className="flex items-center gap-2 flex-wrap">
+                                    <span className="font-bold text-sm text-gray-900 dark:text-white">{m.title}</span>
+                                    <span className={`px-2 py-0.5 rounded-full text-[9px] font-extrabold uppercase ${
+                                      isMeetingScheduled
+                                        ? "bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300"
+                                        : isMeetingDone
+                                        ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-300"
+                                        : "bg-gray-200 text-gray-700 dark:bg-slate-700 dark:text-neutral-300"
+                                    }`}>
+                                      {formatStatusLabel(m.status)}
+                                    </span>
+                                  </div>
+                                  <div className="flex items-center gap-2 text-[11px] text-gray-500 dark:text-neutral-400">
+                                    <span className="font-semibold text-gray-700 dark:text-neutral-300">
+                                      {new Date(m.scheduled_at).toLocaleString("en-IN", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", hour12: true })}
+                                    </span>
+                                    <span>·</span>
+                                    <span>{m.duration_minutes || 30} mins</span>
+                                  </div>
+                                </div>
+
+                                <div className="flex items-center gap-1.5 shrink-0">
+                                  {m.meeting_link && (
+                                    <a
+                                      href={m.meeting_link.startsWith("http") ? m.meeting_link : `https://${m.meeting_link}`}
+                                      target="_blank"
+                                      rel="noreferrer"
+                                      className="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-blue-600 hover:bg-blue-700 text-white flex items-center gap-1 shadow-2xs"
+                                    >
+                                      <Video className="w-3 h-3" />
+                                      <span>Join Meet</span>
+                                    </a>
+                                  )}
+                                  <button
+                                    type="button"
+                                    onClick={() => openStageModal(m, "meeting")}
+                                    className="px-2 py-1 rounded-lg text-[11px] font-bold bg-white dark:bg-slate-800 text-gray-700 dark:text-neutral-200 border border-gray-200 dark:border-slate-700 hover:text-orange-600 flex items-center gap-1 cursor-pointer"
+                                    title="Update Status & Add Notes History"
+                                  >
+                                    <History className="w-3 h-3 text-orange-500" />
+                                    <span>Stage & Notes</span>
+                                  </button>
+                                </div>
+                              </div>
+
+                              {/* Agenda & Next Action */}
+                              {(m.agenda || m.next_action) && (
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs bg-white/70 dark:bg-slate-900/40 p-2.5 rounded-xl border border-gray-100 dark:border-slate-800">
+                                  {m.agenda && (
+                                    <div>
+                                      <span className="text-gray-400 text-[10px] block font-semibold uppercase">Agenda</span>
+                                      <span className="text-gray-800 dark:text-neutral-200 font-medium">{m.agenda}</span>
+                                    </div>
+                                  )}
+                                  {m.next_action && (
+                                    <div>
+                                      <span className="text-gray-400 text-[10px] block font-semibold uppercase">Next Action</span>
+                                      <span className="text-gray-800 dark:text-neutral-200 font-medium">{m.next_action}</span>
+                                    </div>
+                                  )}
+                                </div>
+                              )}
+
+                              {/* Complete Stage & Notes History Breakdown */}
+                              <div className="space-y-1.5 pt-1 border-t border-gray-100 dark:border-slate-800">
+                                <span className="text-[10px] font-extrabold uppercase text-gray-400 tracking-wider block">
+                                  Meeting Notes & Updates History ({meetingHist.length})
+                                </span>
+                                {meetingHist.length > 0 ? (
+                                  <div className="space-y-1.5">
+                                    {meetingHist.map((entry, idx) => (
+                                      <div key={entry.id || idx} className="p-2 rounded-lg bg-white/80 dark:bg-slate-900/60 border border-gray-100 dark:border-slate-800 text-xs flex items-start gap-2">
+                                        <div className="w-1.5 h-1.5 rounded-full bg-blue-500 mt-1.5 shrink-0" />
+                                        <div className="min-w-0 flex-1">
+                                          <div className="flex items-center justify-between text-[10px] text-gray-400">
+                                            <span className="font-semibold text-blue-600 dark:text-blue-400">{entry.timestamp}</span>
+                                            {entry.stage && (
+                                              <span className="px-1.5 py-0.2 rounded bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 font-bold uppercase text-[9px]">
+                                                {entry.stage}
+                                              </span>
+                                            )}
+                                          </div>
+                                          <p className="text-gray-800 dark:text-neutral-200 whitespace-pre-line font-medium mt-0.5">
+                                            {entry.note || entry.raw}
+                                          </p>
+                                        </div>
+                                      </div>
+                                    ))}
+                                  </div>
+                                ) : (
+                                  <span className="text-[11px] text-gray-400 italic">No historical outcome or discussion logged yet.</span>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })}
                       </div>
                     )}
                   </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
-                    <div>
-                      <span className="text-gray-400 text-[10px] block">Name / Entity</span>
-                      <span className="font-semibold text-gray-800 dark:text-neutral-200">
-                        {contactName} {contactCompany ? `(${contactCompany})` : ""}
-                      </span>
-                    </div>
-                    <div>
-                      <span className="text-gray-400 text-[10px] block">Phone Number</span>
-                      <span className="font-semibold text-gray-800 dark:text-neutral-200 font-mono">
-                        {contactPhone || "Not provided"}
-                      </span>
-                    </div>
-                    <div>
-                      <span className="text-gray-400 text-[10px] block">Email</span>
-                      <span className="font-semibold text-gray-800 dark:text-neutral-200 truncate block">
-                        {contactEmail || "Not provided"}
-                      </span>
-                    </div>
-                    <div>
-                      <span className="text-gray-400 text-[10px] block">Relationship</span>
-                      <span className="font-semibold text-gray-800 dark:text-neutral-200">
-                        {client ? "Existing Client" : lead ? "Inbound Lead" : "Direct Deal"}
-                      </span>
-                    </div>
-                  </div>
-                </div>
+                )}
 
-                {/* 5. Notes & Deliverables */}
-                {selectedDeal.notes && (
-                  <div className="p-3 rounded-xl bg-gray-50 dark:bg-slate-800/40 border border-gray-100 dark:border-slate-700/50">
-                    <span className="text-gray-400 text-[10px] block font-semibold uppercase mb-1">
-                      Deal Notes & Requirements
-                    </span>
-                    <p className="text-gray-700 dark:text-neutral-300 whitespace-pre-wrap font-medium">
-                      {selectedDeal.notes}
-                    </p>
+                {/* TAB 4: A TO Z FOLLOW-UPS */}
+                {dealModalTab === "followups" && (
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className="font-bold text-xs uppercase tracking-wider text-gray-900 dark:text-white flex items-center gap-1.5">
+                        <Clock className="w-4 h-4 text-amber-500" />
+                        <span>All Follow-ups ({dealFollowUps.length})</span>
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => openDealFollowUpModal(selectedDeal, lead)}
+                        className="px-2.5 py-1 rounded-xl text-xs font-bold bg-amber-600 hover:bg-amber-700 text-white transition flex items-center gap-1 shadow-2xs cursor-pointer"
+                      >
+                        <Plus className="w-3.5 h-3.5" />
+                        <span>Add Follow-up</span>
+                      </button>
+                    </div>
+
+                    {sortedDealFollowUps.length === 0 ? (
+                      <div className="p-8 rounded-2xl border border-dashed border-gray-200 dark:border-slate-800 text-center space-y-3">
+                        <Clock className="w-8 h-8 text-amber-300 dark:text-amber-900/60 mx-auto" />
+                        <div>
+                          <h4 className="font-bold text-sm text-gray-800 dark:text-white">No Follow-ups Recorded</h4>
+                          <p className="text-xs text-gray-400 mt-0.5">Stay on top of prospect conversion with scheduled touchpoints.</p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => openDealFollowUpModal(selectedDeal, lead)}
+                          className="px-3 py-1.5 rounded-xl text-xs font-bold bg-amber-600 text-white hover:bg-amber-700 cursor-pointer shadow-xs inline-flex items-center gap-1"
+                        >
+                          <Plus className="w-3.5 h-3.5" />
+                          <span>Add First Follow-up</span>
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="space-y-3">
+                        {sortedDealFollowUps.map((f) => {
+                          const followUpHist = parseNotesHistory(f.notes);
+                          const isFollowUpPending = f.status === "pending";
+                          const isFollowUpDone = f.status === "done";
+                          return (
+                            <div
+                              key={f.id}
+                              className={`p-3.5 rounded-2xl border transition-all space-y-3 ${
+                                isFollowUpPending
+                                  ? "bg-amber-50/40 dark:bg-amber-950/20 border-amber-200/80 dark:border-amber-900/40"
+                                  : isFollowUpDone
+                                  ? "bg-emerald-50/40 dark:bg-emerald-950/20 border-emerald-200/80 dark:border-emerald-900/40"
+                                  : "bg-gray-50/60 dark:bg-slate-800/40 border-gray-200 dark:border-slate-700/60"
+                              }`}
+                            >
+                              {/* Top Bar */}
+                              <div className="flex items-start justify-between gap-2">
+                                <div className="space-y-0.5">
+                                  <div className="flex items-center gap-2 flex-wrap">
+                                    <span className="font-bold text-sm text-gray-900 dark:text-white">{f.title}</span>
+                                    <span className={`px-2 py-0.5 rounded-full text-[9px] font-extrabold uppercase ${
+                                      isFollowUpPending
+                                        ? "bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-300"
+                                        : isFollowUpDone
+                                        ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-300"
+                                        : "bg-gray-200 text-gray-700 dark:bg-slate-700 dark:text-neutral-300"
+                                    }`}>
+                                      {formatStatusLabel(f.status)}
+                                    </span>
+                                  </div>
+                                  <div className="flex items-center gap-2 text-[11px] text-gray-500 dark:text-neutral-400">
+                                    <span className="font-semibold text-gray-700 dark:text-neutral-300">
+                                      Due: {f.due_at ? new Date(f.due_at).toLocaleString("en-IN", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", hour12: true }) : "No due date"}
+                                    </span>
+                                    <span>·</span>
+                                    <span className="capitalize">{f.channel || "Phone"}</span>
+                                    {f.priority && (
+                                      <>
+                                        <span>·</span>
+                                        <span className="capitalize font-semibold text-orange-600">{f.priority} priority</span>
+                                      </>
+                                    )}
+                                  </div>
+                                </div>
+
+                                <div className="flex items-center gap-1.5 shrink-0">
+                                  {isFollowUpPending && (
+                                    <button
+                                      type="button"
+                                      onClick={() => openStageModal(f, "followup", "done")}
+                                      className="px-2 py-1 rounded-lg text-[11px] font-bold bg-emerald-600 hover:bg-emerald-700 text-white flex items-center gap-1 shadow-2xs cursor-pointer"
+                                    >
+                                      <Check className="w-3 h-3" />
+                                      <span>Mark Done</span>
+                                    </button>
+                                  )}
+                                  <button
+                                    type="button"
+                                    onClick={() => openStageModal(f, "followup")}
+                                    className="px-2 py-1 rounded-lg text-[11px] font-bold bg-white dark:bg-slate-800 text-gray-700 dark:text-neutral-200 border border-gray-200 dark:border-slate-700 hover:text-orange-600 flex items-center gap-1 cursor-pointer"
+                                    title="Update Status & Add Notes History"
+                                  >
+                                    <History className="w-3 h-3 text-orange-500" />
+                                    <span>Stage & Notes</span>
+                                  </button>
+                                </div>
+                              </div>
+
+                              {/* Complete Stage & Notes History Breakdown */}
+                              <div className="space-y-1.5 pt-1 border-t border-gray-100 dark:border-slate-800">
+                                <span className="text-[10px] font-extrabold uppercase text-gray-400 tracking-wider block">
+                                  Follow-up Notes & Updates History ({followUpHist.length})
+                                </span>
+                                {followUpHist.length > 0 ? (
+                                  <div className="space-y-1.5">
+                                    {followUpHist.map((entry, idx) => (
+                                      <div key={entry.id || idx} className="p-2 rounded-lg bg-white/80 dark:bg-slate-900/60 border border-gray-100 dark:border-slate-800 text-xs flex items-start gap-2">
+                                        <div className="w-1.5 h-1.5 rounded-full bg-amber-500 mt-1.5 shrink-0" />
+                                        <div className="min-w-0 flex-1">
+                                          <div className="flex items-center justify-between text-[10px] text-gray-400">
+                                            <span className="font-semibold text-amber-600 dark:text-amber-400">{entry.timestamp}</span>
+                                            {entry.stage && (
+                                              <span className="px-1.5 py-0.2 rounded bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 font-bold uppercase text-[9px]">
+                                                {entry.stage}
+                                              </span>
+                                            )}
+                                          </div>
+                                          <p className="text-gray-800 dark:text-neutral-200 whitespace-pre-line font-medium mt-0.5">
+                                            {entry.note || entry.raw}
+                                          </p>
+                                        </div>
+                                      </div>
+                                    ))}
+                                  </div>
+                                ) : (
+                                  <span className="text-[11px] text-gray-400 italic">No notes logged for this follow-up yet.</span>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
                   </div>
                 )}
 
-                {/* 6. Commercial Documents Linked */}
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span className="font-bold text-gray-900 dark:text-white uppercase text-[11px] tracking-wide flex items-center gap-1.5">
-                      <FileText className="w-3.5 h-3.5 text-blue-500" />
-                      <span>Commercial Documents ({dealProposals.length + dealAgreements.length + dealInvoices.length})</span>
-                    </span>
-                    <div className="flex items-center gap-1">
-                      <button
-                        type="button"
-                        onClick={() => openCommercialModal("proposal", selectedDeal)}
-                        className="px-2 py-0.5 rounded text-[10px] font-bold text-orange-600 bg-orange-50 dark:bg-orange-950/40 hover:bg-orange-100 transition cursor-pointer"
-                      >
-                        + Quotation
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => openCommercialModal("agreement", selectedDeal)}
-                        className="px-2 py-0.5 rounded text-[10px] font-bold text-indigo-600 bg-indigo-50 dark:bg-indigo-950/40 hover:bg-indigo-100 transition cursor-pointer"
-                      >
-                        + Agreement
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => openInvoiceModal(selectedDeal)}
-                        className="px-2 py-0.5 rounded text-[10px] font-bold text-purple-600 bg-purple-50 dark:bg-purple-950/40 hover:bg-purple-100 transition cursor-pointer"
-                      >
-                        + Invoice
-                      </button>
+                {/* TAB 5: A TO Z TIMELINE */}
+                {dealModalTab === "timeline" && (
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h4 className="font-bold text-xs uppercase tracking-wider text-gray-900 dark:text-white">
+                          A to Z Activity Timeline
+                        </h4>
+                        <p className="text-[11px] text-gray-400">Complete chronological audit trail across lead, meetings, follow-ups & documents</p>
+                      </div>
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-orange-100 dark:bg-orange-950/60 text-orange-700 dark:text-orange-300">
+                        {dealTimelineEvents.length} Events
+                      </span>
                     </div>
-                  </div>
-                  {dealProposals.length === 0 && dealAgreements.length === 0 && dealInvoices.length === 0 ? (
-                    <div className="p-3 rounded-xl border border-dashed border-gray-200 dark:border-slate-800 text-center text-gray-400 text-xs">
-                      No commercial documents attached to this deal yet.
-                    </div>
-                  ) : (
-                    <div className="space-y-1.5">
-                      {dealProposals.map((p) => (
-                        <div key={p.id} className="p-2.5 rounded-xl bg-orange-50/50 dark:bg-orange-950/20 border border-orange-100 dark:border-orange-900/30 flex items-center justify-between">
-                          <div>
-                            <span className="font-bold text-gray-900 dark:text-white block">{p.title || "Quotation"}</span>
-                            <span className="text-[10px] text-gray-500">{p.quotation_number || "QT"} · ₹{(Number(p.total || p.amount) || 0).toLocaleString("en-IN")}</span>
-                          </div>
-                          <span className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-orange-100 dark:bg-orange-900/50 text-orange-700 dark:text-orange-300 uppercase">
-                            {p.status || "sent"}
-                          </span>
-                        </div>
-                      ))}
-                      {dealAgreements.map((a) => (
-                        <div key={a.id} className="p-2.5 rounded-xl bg-indigo-50/50 dark:bg-indigo-950/20 border border-indigo-100 dark:border-indigo-900/30 flex items-center justify-between">
-                          <div>
-                            <span className="font-bold text-gray-900 dark:text-white block">{a.title || "Agreement"}</span>
-                            <span className="text-[10px] text-gray-500">{a.agreement_number || "AGR"} · ₹{(Number(a.amount) || 0).toLocaleString("en-IN")}</span>
-                          </div>
-                          <span className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-indigo-100 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300 uppercase">
-                            {a.status || "active"}
-                          </span>
-                        </div>
-                      ))}
-                      {dealInvoices.map((inv) => (
-                        <div key={inv.id} className="p-2.5 rounded-xl bg-purple-50/50 dark:bg-purple-950/20 border border-purple-100 dark:border-purple-900/30 flex items-center justify-between">
-                          <div>
-                            <span className="font-bold text-gray-900 dark:text-white block">{inv.title || "Invoice"}</span>
-                            <span className="text-[10px] text-gray-500">{inv.invoice_number || "INV"} · ₹{(Number(inv.total_amount || inv.amount) || 0).toLocaleString("en-IN")}</span>
-                          </div>
-                          <span className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-purple-100 dark:bg-purple-900/50 text-purple-700 dark:text-purple-300 uppercase">
-                            {inv.status || "unpaid"}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
 
-                {/* 7. Meetings & Follow-ups */}
-                {(dealMeetings.length > 0 || dealFollowUps.length > 0) && (
-                  <div className="space-y-2">
-                    <span className="font-bold text-gray-900 dark:text-white uppercase text-[11px] tracking-wide flex items-center gap-1.5">
-                      <Calendar className="w-3.5 h-3.5 text-emerald-500" />
-                      <span>Meetings & Follow-ups</span>
-                    </span>
-                    <div className="space-y-1.5">
-                      {dealMeetings.map((m) => (
-                        <div key={m.id} className="p-2 rounded-xl bg-gray-50 dark:bg-slate-800/60 border border-gray-100 dark:border-slate-700/50 flex items-center justify-between">
-                          <div>
-                            <span className="font-bold text-gray-900 dark:text-white block">Meeting: {m.title}</span>
-                            <span className="text-[10px] text-gray-500">{new Date(m.scheduled_at).toLocaleString("en-IN")}</span>
-                          </div>
-                          <span className="px-2 py-0.5 rounded-md text-[9px] font-bold bg-blue-50 text-blue-600 dark:bg-blue-950/50 capitalize">
-                            {m.status}
-                          </span>
-                        </div>
-                      ))}
-                      {dealFollowUps.map((f) => (
-                        <div key={f.id} className="p-2 rounded-xl bg-gray-50 dark:bg-slate-800/60 border border-gray-100 dark:border-slate-700/50 flex items-center justify-between">
-                          <div>
-                            <span className="font-bold text-gray-900 dark:text-white block">Follow-up: {f.title}</span>
-                            <span className="text-[10px] text-gray-500">{f.due_at ? new Date(f.due_at).toLocaleString("en-IN") : "No date"}</span>
-                          </div>
-                          <span className="px-2 py-0.5 rounded-md text-[9px] font-bold bg-amber-50 text-amber-600 dark:bg-amber-950/50 capitalize">
-                            {f.status}
-                          </span>
-                        </div>
-                      ))}
+                    <div className="p-4 rounded-2xl bg-gray-50/60 dark:bg-slate-800/40 border border-gray-100 dark:border-slate-700/60">
+                      <ActivityTimeline events={dealTimelineEvents} isDark={isDark} />
                     </div>
                   </div>
                 )}
               </div>
 
               {/* Footer */}
-              <div className="flex items-center justify-between gap-2 p-4 border-t border-gray-100 dark:border-[#3a3020] bg-white dark:bg-[#18150f] shrink-0">
+              <div className="flex items-center justify-between gap-2 p-3.5 sm:p-4 border-t border-gray-100 dark:border-[#3a3020] bg-white dark:bg-[#18150f] shrink-0">
                 <button
                   type="button"
                   onClick={() => handleOpenEditDeal(selectedDeal)}
@@ -6531,13 +8689,24 @@ export default function CrmModule({
                   <Pencil className="w-3.5 h-3.5" />
                   <span>Edit Deal Details</span>
                 </button>
-                <button
-                  type="button"
-                  onClick={() => setSelectedDeal(null)}
-                  className="px-4 py-2 rounded-xl text-xs font-semibold text-gray-700 dark:text-neutral-300 hover:bg-gray-100 dark:hover:bg-slate-800 transition cursor-pointer"
-                >
-                  Close
-                </button>
+                <div className="flex items-center gap-2">
+                  {dealModalTab !== "overview" && (
+                    <button
+                      type="button"
+                      onClick={() => setDealModalTab("overview")}
+                      className="px-3 py-2 rounded-xl text-xs font-semibold text-gray-600 dark:text-neutral-300 hover:bg-gray-100 dark:hover:bg-slate-800 transition cursor-pointer"
+                    >
+                      ← Back to Overview
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => setSelectedDeal(null)}
+                    className="px-4 py-2 rounded-xl text-xs font-semibold text-gray-700 dark:text-neutral-300 hover:bg-gray-100 dark:hover:bg-slate-800 transition cursor-pointer"
+                  >
+                    Close
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -6546,36 +8715,40 @@ export default function CrmModule({
 
       {/* 10. Edit Deal Modal */}
       {editingDeal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-xs">
+        <div data-modal-overlay="true" className="fixed inset-0 z-[90] flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-xs overscroll-contain animate-in fade-in duration-200">
           <form
             onSubmit={handleSaveEditDeal}
-            className="w-full max-w-lg max-h-[92vh] rounded-2xl bg-white dark:bg-[#18150f] border border-gray-200 dark:border-[#3a3020] shadow-2xl p-5 space-y-4 overflow-y-auto"
+            className="w-full max-w-xl max-h-[82vh] rounded-3xl bg-white dark:bg-[#18150f] border border-gray-200/80 dark:border-[#3a3020] shadow-2xl flex flex-col overflow-hidden transition-all animate-in zoom-in-95 duration-200"
           >
             {/* Header */}
-            <div className="flex items-center justify-between border-b border-gray-100 dark:border-[#3a3020] pb-3">
-              <div className="flex items-center gap-2">
-                <span className="p-1.5 rounded-lg bg-orange-500/10 text-orange-600 dark:text-orange-400">
-                  <Pencil className="w-4 h-4" />
-                </span>
+            <div className="flex items-center justify-between px-5 py-3.5 border-b border-gray-100 dark:border-[#3a3020] bg-linear-to-r from-orange-50/70 via-amber-50/25 to-transparent dark:from-orange-950/25 dark:via-transparent dark:to-transparent shrink-0">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-orange-500 text-white flex items-center justify-center shadow-md shadow-orange-500/25 shrink-0">
+                  <Pencil className="w-5 h-5" />
+                </div>
                 <div>
-                  <h3 className="font-bold text-sm sm:text-base text-gray-900 dark:text-white">Edit Deal Details</h3>
-                  <p className="text-[11px] text-gray-500 dark:text-neutral-400">Update pipeline stages, value, service, and closing details.</p>
+                  <h3 className="font-bold text-base sm:text-lg text-gray-900 dark:text-white leading-tight">Edit Deal Details</h3>
+                  <p className="text-xs text-gray-500 dark:text-neutral-400 mt-0.5">Update pipeline stages, value, service, and closing details</p>
                 </div>
               </div>
               <button
                 type="button"
                 onClick={() => setEditingDeal(null)}
-                className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 dark:hover:text-neutral-200 cursor-pointer"
+                className="p-1.5 rounded-xl text-gray-400 hover:text-gray-700 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-slate-800 transition cursor-pointer"
+                aria-label="Close modal"
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
 
-            <div className="space-y-3 text-xs">
+            {/* Body */}
+            <div className="p-5 space-y-3.5 text-xs flex-1 overflow-y-auto no-scrollbar">
               {/* Deal Title */}
-              <div>
-                <label className="block font-medium mb-1 text-gray-700 dark:text-neutral-300">
-                  Deal Title *
+              <div className="space-y-1.5">
+                <label className="flex items-center gap-1.5 font-semibold text-gray-700 dark:text-neutral-200">
+                  <Briefcase className="w-3.5 h-3.5 text-orange-500" />
+                  <span>Deal Title</span>
+                  <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="text"
@@ -6583,15 +8756,17 @@ export default function CrmModule({
                   value={editDealForm.title}
                   onChange={(e) => setEditDealForm({ ...editDealForm, title: e.target.value })}
                   placeholder="e.g. Acme Corp - E-Commerce Platform"
-                  className="w-full px-3 py-2 rounded-xl bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 focus:outline-hidden focus:ring-2 focus:ring-orange-500 text-gray-900 dark:text-white"
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-gray-50/80 dark:bg-slate-800/80 border border-gray-200 dark:border-slate-700 focus:bg-white dark:focus:bg-slate-800 focus:outline-hidden focus:ring-2 focus:ring-orange-500/30 focus:border-orange-500 text-gray-900 dark:text-white transition shadow-2xs font-medium"
                 />
               </div>
 
               {/* Deal Value & Service */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="block font-medium mb-1 text-gray-700 dark:text-neutral-300">
-                    Deal Value (₹) *
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                <div className="space-y-1.5">
+                  <label className="flex items-center gap-1.5 font-semibold text-gray-700 dark:text-neutral-200">
+                    <IndianRupee className="w-3.5 h-3.5 text-emerald-500" />
+                    <span>Deal Value (₹)</span>
+                    <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="number"
@@ -6600,18 +8775,19 @@ export default function CrmModule({
                     value={editDealForm.deal_value}
                     onChange={(e) => setEditDealForm({ ...editDealForm, deal_value: e.target.value })}
                     placeholder="100000"
-                    className="w-full px-3 py-2 rounded-xl bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 focus:outline-hidden focus:ring-2 focus:ring-orange-500 font-mono font-bold text-gray-900 dark:text-white"
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-gray-50/80 dark:bg-slate-800/80 border border-gray-200 dark:border-slate-700 focus:bg-white dark:focus:bg-slate-800 focus:outline-hidden focus:ring-2 focus:ring-orange-500/30 focus:border-orange-500 font-mono font-bold text-gray-900 dark:text-white transition shadow-2xs"
                   />
                 </div>
 
-                <div>
-                  <label className="block font-medium mb-1 text-gray-700 dark:text-neutral-300">
-                    Service Required
+                <div className="space-y-1.5">
+                  <label className="flex items-center gap-1.5 font-semibold text-gray-700 dark:text-neutral-200">
+                    <FileText className="w-3.5 h-3.5 text-blue-500" />
+                    <span>Service Required</span>
                   </label>
                   <select
                     value={editDealForm.service}
                     onChange={(e) => setEditDealForm({ ...editDealForm, service: e.target.value })}
-                    className="w-full px-3 py-2 rounded-xl bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 focus:outline-hidden focus:ring-2 focus:ring-orange-500 text-gray-900 dark:text-white"
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-gray-50/80 dark:bg-slate-800/80 border border-gray-200 dark:border-slate-700 focus:bg-white dark:focus:bg-slate-800 focus:outline-hidden focus:ring-2 focus:ring-orange-500/30 focus:border-orange-500 text-gray-900 dark:text-white font-medium transition shadow-2xs"
                   >
                     <option value="Web Development">Web Development</option>
                     <option value="Mobile App Development">Mobile App Development</option>
@@ -6628,15 +8804,17 @@ export default function CrmModule({
               </div>
 
               {/* Pipeline Stage & Expected Close Date */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="block font-medium mb-1 text-gray-700 dark:text-neutral-300">
-                    Pipeline Stage *
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                <div className="space-y-1.5">
+                  <label className="flex items-center gap-1.5 font-semibold text-gray-700 dark:text-neutral-200">
+                    <Layers className="w-3.5 h-3.5 text-indigo-500" />
+                    <span>Pipeline Stage</span>
+                    <span className="text-red-500">*</span>
                   </label>
                   <select
                     value={editDealForm.pipeline_stage}
                     onChange={(e) => setEditDealForm({ ...editDealForm, pipeline_stage: e.target.value })}
-                    className="w-full px-3 py-2 rounded-xl bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 focus:outline-hidden focus:ring-2 focus:ring-orange-500 text-gray-900 dark:text-white font-semibold"
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-gray-50/80 dark:bg-slate-800/80 border border-gray-200 dark:border-slate-700 focus:bg-white dark:focus:bg-slate-800 focus:outline-hidden focus:ring-2 focus:ring-orange-500/30 focus:border-orange-500 text-gray-900 dark:text-white font-semibold transition shadow-2xs"
                   >
                     <option value="contacted">Contacted</option>
                     <option value="qualified">Meeting / Qualified</option>
@@ -6647,24 +8825,27 @@ export default function CrmModule({
                   </select>
                 </div>
 
-                <div>
-                  <label className="block font-medium mb-1 text-gray-700 dark:text-neutral-300">
-                    Expected Close Date
+                <div className="space-y-1.5">
+                  <label className="flex items-center gap-1.5 font-semibold text-gray-700 dark:text-neutral-200">
+                    <Calendar className="w-3.5 h-3.5 text-amber-500" />
+                    <span>Expected Close Date</span>
                   </label>
                   <input
                     type="date"
                     value={editDealForm.expected_close_date}
                     onChange={(e) => setEditDealForm({ ...editDealForm, expected_close_date: e.target.value })}
-                    className="w-full px-3 py-2 rounded-xl bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 focus:outline-hidden focus:ring-2 focus:ring-orange-500 text-gray-900 dark:text-white"
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-gray-50/80 dark:bg-slate-800/80 border border-gray-200 dark:border-slate-700 focus:bg-white dark:focus:bg-slate-800 focus:outline-hidden focus:ring-2 focus:ring-orange-500/30 focus:border-orange-500 text-gray-900 dark:text-white transition shadow-2xs font-medium"
                   />
                 </div>
               </div>
 
               {/* Loss Reason (if stage is closed_lost) */}
               {editDealForm.pipeline_stage === "closed_lost" && (
-                <div>
-                  <label className="block font-medium mb-1 text-rose-600 dark:text-rose-400">
-                    Loss Reason / Root Cause *
+                <div className="space-y-1.5">
+                  <label className="flex items-center gap-1.5 font-semibold text-rose-600 dark:text-rose-400">
+                    <XCircle className="w-3.5 h-3.5" />
+                    <span>Loss Reason / Root Cause</span>
+                    <span className="text-red-500">*</span>
                   </label>
                   <textarea
                     rows={2}
@@ -6672,40 +8853,42 @@ export default function CrmModule({
                     value={editDealForm.loss_reason}
                     onChange={(e) => setEditDealForm({ ...editDealForm, loss_reason: e.target.value })}
                     placeholder="e.g. Budget out of range, chosen competitor, requirements dropped..."
-                    className="w-full px-3 py-2 rounded-xl bg-rose-50/50 dark:bg-rose-950/20 border border-rose-200 dark:border-rose-900/50 focus:outline-hidden focus:ring-2 focus:ring-rose-500 text-gray-900 dark:text-white"
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-rose-50/50 dark:bg-rose-950/20 border border-rose-200 dark:border-rose-900/50 focus:bg-white dark:focus:bg-slate-800 focus:outline-hidden focus:ring-2 focus:ring-rose-500/30 focus:border-rose-500 text-gray-900 dark:text-white transition shadow-2xs text-xs resize-y"
                   />
                 </div>
               )}
 
               {/* Notes & Strategy */}
-              <div>
-                <label className="block font-medium mb-1 text-gray-700 dark:text-neutral-300">
-                  Deal Notes / Strategy
+              <div className="space-y-1.5">
+                <label className="flex items-center gap-1.5 font-semibold text-gray-700 dark:text-neutral-200">
+                  <MessageSquare className="w-3.5 h-3.5 text-purple-500" />
+                  <span>Deal Notes / Strategy</span>
                 </label>
                 <textarea
                   rows={3}
                   value={editDealForm.notes}
                   onChange={(e) => setEditDealForm({ ...editDealForm, notes: e.target.value })}
                   placeholder="Key deliverables, client expectations, scope details..."
-                  className="w-full px-3 py-2 rounded-xl bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 focus:outline-hidden focus:ring-2 focus:ring-orange-500 text-gray-900 dark:text-white"
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-gray-50/80 dark:bg-slate-800/80 border border-gray-200 dark:border-slate-700 focus:bg-white dark:focus:bg-slate-800 focus:outline-hidden focus:ring-2 focus:ring-orange-500/30 focus:border-orange-500 text-gray-900 dark:text-white transition shadow-2xs font-normal text-xs resize-y"
                 />
               </div>
             </div>
 
             {/* Footer Buttons */}
-            <div className="flex items-center justify-end gap-2 pt-3 border-t border-gray-100 dark:border-[#3a3020]">
+            <div className="flex items-center justify-end gap-2.5 px-5 py-3 border-t border-gray-100 dark:border-[#3a3020] bg-gray-50/60 dark:bg-[#1a1712] shrink-0">
               <button
                 type="button"
                 onClick={() => setEditingDeal(null)}
-                className="px-3.5 py-2 rounded-xl text-xs font-semibold text-gray-600 dark:text-neutral-300 hover:bg-gray-100 dark:hover:bg-slate-800 transition cursor-pointer"
+                className="px-4 py-2.5 rounded-xl text-xs font-semibold text-gray-700 dark:text-neutral-300 hover:bg-gray-100 dark:hover:bg-slate-800 border border-gray-200 dark:border-slate-700 transition cursor-pointer"
               >
                 Cancel
               </button>
               <button
                 type="submit"
-                className="px-4 py-2 rounded-xl text-xs font-bold bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white transition shadow-sm cursor-pointer"
+                className="px-5 py-2.5 rounded-xl text-xs font-bold bg-linear-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white shadow-md shadow-orange-500/25 transition flex items-center gap-1.5 cursor-pointer"
               >
-                Save Changes
+                <Check className="w-4 h-4" />
+                <span>Save Changes</span>
               </button>
             </div>
           </form>
@@ -6713,22 +8896,22 @@ export default function CrmModule({
       )}
 
       {showLostModal && lostTarget && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
+        <div data-modal-overlay="true" className="fixed inset-0 z-[90] flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-xs overscroll-contain animate-in fade-in duration-200">
           <form
             onSubmit={handleMarkLostSubmit}
-            className="w-full max-w-lg rounded-3xl bg-white dark:bg-[#18150f] border border-gray-200 dark:border-[#3a3020] shadow-2xl p-5 sm:p-6 space-y-4 max-h-[90vh] overflow-y-auto"
+            className="w-full max-w-lg max-h-[82vh] rounded-3xl bg-white dark:bg-[#18150f] border border-gray-200/80 dark:border-[#3a3020] shadow-2xl flex flex-col overflow-hidden transition-all animate-in zoom-in-95 duration-200"
           >
             {/* Header */}
-            <div className="flex items-center justify-between border-b border-gray-100 dark:border-[#3a3020] pb-3">
-              <div className="flex items-center gap-2.5">
-                <span className="p-2 rounded-xl bg-rose-500/10 text-rose-600 dark:text-rose-400">
+            <div className="flex items-center justify-between px-5 py-3.5 border-b border-gray-100 dark:border-[#3a3020] bg-linear-to-r from-rose-50/70 via-red-50/25 to-transparent dark:from-rose-950/25 dark:via-transparent dark:to-transparent shrink-0">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-rose-600 text-white flex items-center justify-center shadow-md shadow-rose-500/25 shrink-0">
                   <XCircle className="w-5 h-5" />
-                </span>
+                </div>
                 <div>
-                  <h3 className="font-bold text-base text-gray-900 dark:text-white">
-                    Mark as Closed Lost & Root Cause
+                  <h3 className="font-bold text-base sm:text-lg text-gray-900 dark:text-white leading-tight">
+                    Mark as Closed Lost
                   </h3>
-                  <p className="text-[11px] text-gray-500 dark:text-neutral-400">
+                  <p className="text-xs text-gray-500 dark:text-neutral-400 mt-0.5 truncate max-w-xs sm:max-w-sm">
                     Target: <span className="font-semibold text-gray-800 dark:text-slate-200">{lostTarget.item.name || lostTarget.item.title}</span> ({lostTarget.type === "deal" ? "Pipeline Deal" : "Inbound Lead"})
                   </p>
                 </div>
@@ -6739,13 +8922,15 @@ export default function CrmModule({
                   setShowLostModal(false);
                   setLostTarget(null);
                 }}
-                className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 dark:hover:text-neutral-200 cursor-pointer"
+                className="p-1.5 rounded-xl text-gray-400 hover:text-gray-700 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-slate-800 transition cursor-pointer"
+                aria-label="Close modal"
               >
-                <X className="w-5 h-5" />
+                <X className="w-4 h-4" />
               </button>
             </div>
 
-            <div className="space-y-3.5 text-xs">
+            {/* Body */}
+            <div className="p-5 space-y-3.5 text-xs flex-1 overflow-y-auto no-scrollbar">
               {/* 1. Stage where deal was lost */}
               <div>
                 <label className="block font-bold mb-1.5 text-gray-700 dark:text-neutral-300">
@@ -6791,7 +8976,7 @@ export default function CrmModule({
                 <select
                   value={lostForm.reason}
                   onChange={(e) => setLostForm({ ...lostForm, reason: e.target.value })}
-                  className="w-full px-3 py-2 rounded-xl bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 text-gray-900 dark:text-white font-medium focus:outline-hidden focus:ring-2 focus:ring-rose-500"
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-gray-50/80 dark:bg-slate-800/80 border border-gray-200 dark:border-slate-700 focus:bg-white dark:focus:bg-slate-800 text-gray-900 dark:text-white font-medium focus:outline-hidden focus:ring-2 focus:ring-rose-500/30 focus:border-rose-500 transition shadow-2xs"
                 >
                   {(STAGE_LOSS_REASONS[lostForm.stage] || STAGE_LOSS_REASONS.contacted).map((reason) => (
                     <option key={reason} value={reason}>
@@ -6802,9 +8987,9 @@ export default function CrmModule({
               </div>
 
               {/* 3. Competitor & Re-Nurture Timeline */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                 <div>
-                  <label className="block font-medium mb-1 text-gray-700 dark:text-neutral-300">
+                  <label className="block font-semibold mb-1 text-gray-700 dark:text-neutral-300">
                     Competitor Name (Optional)
                   </label>
                   <input
@@ -6812,18 +8997,18 @@ export default function CrmModule({
                     value={lostForm.competitor_name}
                     onChange={(e) => setLostForm({ ...lostForm, competitor_name: e.target.value })}
                     placeholder="e.g. Local Agency / Wix / Freelancer"
-                    className="w-full px-3 py-2 rounded-xl bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 focus:outline-hidden focus:ring-2 focus:ring-rose-500"
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-gray-50/80 dark:bg-slate-800/80 border border-gray-200 dark:border-slate-700 focus:bg-white dark:focus:bg-slate-800 focus:outline-hidden focus:ring-2 focus:ring-rose-500/30 focus:border-rose-500 text-gray-900 dark:text-white transition shadow-2xs"
                   />
                 </div>
 
                 <div>
-                  <label className="block font-medium mb-1 text-gray-700 dark:text-neutral-300">
+                  <label className="block font-semibold mb-1 text-gray-700 dark:text-neutral-300">
                     Re-Nurture Cadence
                   </label>
                   <select
                     value={lostForm.re_nurture_days}
                     onChange={(e) => setLostForm({ ...lostForm, re_nurture_days: e.target.value })}
-                    className="w-full px-3 py-2 rounded-xl bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 focus:outline-hidden"
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-gray-50/80 dark:bg-slate-800/80 border border-gray-200 dark:border-slate-700 focus:bg-white dark:focus:bg-slate-800 focus:outline-hidden focus:ring-2 focus:ring-rose-500/30 focus:border-rose-500 text-gray-900 dark:text-white font-medium transition shadow-2xs"
                   >
                     <option value="30">Re-engage after 30 days</option>
                     <option value="60">Re-engage after 60 days (Quarterly)</option>
@@ -6835,36 +9020,36 @@ export default function CrmModule({
 
               {/* 4. Notes & Feedback */}
               <div>
-                <label className="block font-medium mb-1 text-gray-700 dark:text-neutral-300">
+                <label className="block font-semibold mb-1 text-gray-700 dark:text-neutral-300">
                   Loss Notes & Context
                 </label>
                 <textarea
-                  rows={2}
+                  rows={3}
                   value={lostForm.notes}
                   onChange={(e) => setLostForm({ ...lostForm, notes: e.target.value })}
                   placeholder="Why did they decline? What budget did they expect? Any key objections raised?"
-                  className="w-full px-3 py-2 rounded-xl bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 focus:outline-hidden"
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-gray-50/80 dark:bg-slate-800/80 border border-gray-200 dark:border-slate-700 focus:bg-white dark:focus:bg-slate-800 focus:outline-hidden focus:ring-2 focus:ring-rose-500/30 focus:border-rose-500 text-gray-900 dark:text-white transition shadow-2xs text-xs resize-y font-normal"
                 />
               </div>
             </div>
 
             {/* Footer Buttons */}
-            <div className="flex items-center justify-end gap-2 pt-3 border-t border-gray-100 dark:border-[#3a3020]">
+            <div className="flex items-center justify-end gap-2.5 px-5 py-3 border-t border-gray-100 dark:border-[#3a3020] bg-gray-50/60 dark:bg-[#1a1712] shrink-0">
               <button
                 type="button"
                 onClick={() => {
                   setShowLostModal(false);
                   setLostTarget(null);
                 }}
-                className="px-3.5 py-2 rounded-xl text-xs font-semibold text-gray-600 dark:text-neutral-300 hover:bg-gray-100 dark:hover:bg-slate-800 transition cursor-pointer"
+                className="px-4 py-2.5 rounded-xl text-xs font-semibold text-gray-700 dark:text-neutral-300 hover:bg-gray-100 dark:hover:bg-slate-800 border border-gray-200 dark:border-slate-700 transition cursor-pointer"
               >
                 Cancel
               </button>
               <button
                 type="submit"
-                className="px-4 py-2 rounded-xl text-xs font-bold bg-rose-600 hover:bg-rose-700 text-white transition shadow-sm flex items-center gap-1.5 cursor-pointer"
+                className="px-5 py-2.5 rounded-xl text-xs font-bold bg-linear-to-r from-rose-600 to-red-600 hover:from-rose-700 hover:to-red-700 text-white shadow-md shadow-rose-500/25 hover:shadow-lg transition flex items-center gap-2 cursor-pointer"
               >
-                <XCircle className="w-3.5 h-3.5" />
+                <XCircle className="w-4 h-4" />
                 <span>Confirm & Mark as Lost</span>
               </button>
             </div>

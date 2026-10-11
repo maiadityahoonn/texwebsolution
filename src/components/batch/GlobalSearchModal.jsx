@@ -31,8 +31,8 @@ export default function GlobalSearchModal({
   const hasResults = results && results.totalCount > 0;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center pt-8 sm:pt-20 p-2.5 sm:p-4 md:p-6 bg-black/60 backdrop-blur-xs overflow-y-auto animate-fadeIn">
-      <div className={`relative w-full max-w-2xl my-auto sm:my-0 max-h-[88dvh] flex flex-col rounded-2xl sm:rounded-3xl border shadow-2xl overflow-hidden transition-all ${
+    <div data-modal-overlay="true" className="fixed inset-0 z-[80] flex items-start justify-center pt-8 sm:pt-20 p-2.5 sm:p-4 md:p-6 bg-black/60 backdrop-blur-xs overflow-y-auto animate-fadeIn overscroll-contain">
+      <div className={`relative w-full max-w-2xl my-auto sm:my-0 max-h-[82vh] flex flex-col rounded-2xl sm:rounded-3xl border shadow-2xl overflow-hidden transition-all ${
         isDark ? "bg-slate-900 border-slate-800 text-slate-100" : "bg-white border-gray-200 text-gray-900"
       }`}>
         {/* Search Input Bar */}

@@ -202,8 +202,18 @@ export async function GET(request) {
 
   const dateFrom = searchParams.get("dateFrom") || "";
   const dateTo = searchParams.get("dateTo") || "";
-  if (dateFrom) query = query.gte(config.dateField, dateFrom);
-  if (dateTo) query = query.lte(config.dateField, dateTo);
+  if (resource === "deals" && (dateFrom || dateTo)) {
+    if (dateFrom && dateTo) {
+      query = query.or(`and(created_at.gte.${dateFrom},created_at.lte.${dateTo}),and(updated_at.gte.${dateFrom},updated_at.lte.${dateTo})`);
+    } else if (dateFrom) {
+      query = query.or(`created_at.gte.${dateFrom},updated_at.gte.${dateFrom}`);
+    } else if (dateTo) {
+      query = query.or(`created_at.lte.${dateTo},updated_at.lte.${dateTo}`);
+    }
+  } else {
+    if (dateFrom) query = query.gte(config.dateField, dateFrom);
+    if (dateTo) query = query.lte(config.dateField, dateTo);
+  }
 
   query = applySearch(query, resource, searchParams.get("search") || "");
   const { data, error, count } = await query.range(from, to);

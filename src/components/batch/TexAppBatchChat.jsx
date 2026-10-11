@@ -8848,7 +8848,7 @@ export default function TexAppBatchChat({
       {showPollModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-xs animate-fadeIn">
           <div
-            className={`w-full max-w-md rounded-2xl sm:rounded-3xl shadow-2xl border overflow-hidden transition-colors flex flex-col max-h-[90vh] ${
+            className={`w-full max-w-md rounded-2xl sm:rounded-3xl shadow-2xl border overflow-hidden transition-colors flex flex-col max-h-[82vh] ${
               isDark ? "bg-[#18150f] border-[#3a3020] text-[#f4ead2]" : "bg-white border-gray-200 text-gray-900"
             }`}
           >
@@ -9182,7 +9182,7 @@ export default function TexAppBatchChat({
           onClick={handleCloseMembersDrawer}
         >
           <div
-            className={`w-full max-w-md rounded-3xl border shadow-2xl flex flex-col max-h-[90vh] animate-scaleUp overflow-hidden ${
+            className={`w-full max-w-md rounded-3xl border shadow-2xl flex flex-col max-h-[82vh] animate-scaleUp overflow-hidden ${
               isDark ? "bg-[#18150f] border-[#3a3020] text-[#f4ead2]" : "bg-white border-gray-200 text-gray-900"
             }`}
             onClick={(e) => e.stopPropagation()}
@@ -10732,7 +10732,7 @@ export default function TexAppBatchChat({
           onClick={() => setForwardModalOpen(false)}
         >
           <div
-            className={`w-full max-w-md p-5 rounded-3xl border shadow-2xl flex flex-col max-h-[85vh] animate-scaleUp ${isDark ? "bg-[#18150f] border-[#3a3020] text-[#f4ead2]" : "bg-white border-gray-200 text-gray-900"
+            className={`w-full max-w-md p-5 rounded-3xl border shadow-2xl flex flex-col max-h-[82vh] animate-scaleUp ${isDark ? "bg-[#18150f] border-[#3a3020] text-[#f4ead2]" : "bg-white border-gray-200 text-gray-900"
               }`}
             onClick={(e) => e.stopPropagation()}
           >
@@ -11322,7 +11322,7 @@ export default function TexAppBatchChat({
           >
             <div
               onClick={(e) => e.stopPropagation()}
-              className={`w-full max-w-lg rounded-3xl border shadow-2xl overflow-hidden flex flex-col max-h-[85vh] animate-scaleUp select-none ${
+              className={`w-full max-w-lg rounded-3xl border shadow-2xl overflow-hidden flex flex-col max-h-[82vh] animate-scaleUp select-none ${
                 isDark ? "bg-[#18150f] border-[#3a3020] text-[#f4ead2]" : "bg-white border-gray-200 text-gray-900"
               }`}
             >
@@ -11633,7 +11633,7 @@ export default function TexAppBatchChat({
           >
             <div
               onClick={(e) => e.stopPropagation()}
-              className={`w-full max-w-lg rounded-3xl border shadow-2xl overflow-hidden flex flex-col max-h-[85vh] animate-scaleUp select-none ${
+              className={`w-full max-w-lg rounded-3xl border shadow-2xl overflow-hidden flex flex-col max-h-[82vh] animate-scaleUp select-none ${
                 isDark ? "bg-[#18150f] border-[#3a3020] text-[#f4ead2]" : "bg-white border-gray-200 text-gray-900"
               }`}
             >
@@ -11766,7 +11766,7 @@ export default function TexAppBatchChat({
       {/* Device & PWA Permissions Guide Modal (Camera, Mic, Location) */}
       {showMicHelpModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/75 backdrop-blur-sm animate-fadeIn">
-          <div className="w-full max-w-lg rounded-3xl bg-white dark:bg-[#18150f] border border-gray-200/80 dark:border-[#3a3020] shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+          <div className="w-full max-w-lg rounded-3xl bg-white dark:bg-[#18150f] border border-gray-200/80 dark:border-[#3a3020] shadow-2xl overflow-hidden flex flex-col max-h-[82vh]">
             {/* Header */}
             <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 dark:border-white/10">
               <div className="flex items-center gap-2.5">

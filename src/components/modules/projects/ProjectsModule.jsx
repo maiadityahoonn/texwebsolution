@@ -14,6 +14,7 @@ import {
   ShieldCheck,
   ChevronRight,
   X,
+  Check,
   Code,
   DollarSign,
   Layers,
@@ -365,8 +366,8 @@ export default function ProjectsModule({
 
       {/* 5. Manage Project Modal */}
       {selectedProject && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-black/60 backdrop-blur-xs">
-          <div className="w-full max-w-xl max-h-[90vh] overflow-y-auto no-scrollbar rounded-2xl bg-white dark:bg-[#18150f] border border-gray-200 dark:border-[#3a3020] shadow-2xl p-5 space-y-4">
+        <div data-modal-overlay="true" className="fixed inset-0 z-[60] flex items-center justify-center p-3 sm:p-6 bg-black/60 backdrop-blur-xs overscroll-contain">
+          <div className="w-full max-w-xl max-h-[82vh] overflow-y-auto no-scrollbar rounded-2xl bg-white dark:bg-[#18150f] border border-gray-200 dark:border-[#3a3020] shadow-2xl p-5 space-y-4">
             <div className="flex items-start justify-between border-b border-gray-100 dark:border-[#3a3020] pb-3">
               <div>
                 <h2 className="text-lg font-bold text-gray-900 dark:text-white">
@@ -615,23 +616,34 @@ export default function ProjectsModule({
 
       {/* 6. Add Project Modal */}
       {showAddProjectModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
+        <div data-modal-overlay="true" className="fixed inset-0 z-[80] flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-xs overscroll-contain animate-in fade-in duration-200">
           <form
             onSubmit={handleCreateSubmit}
-            className="w-full max-w-md rounded-2xl bg-white dark:bg-[#18150f] border border-gray-200 dark:border-[#3a3020] shadow-2xl p-5 space-y-4"
+            className="w-full max-w-lg max-h-[82vh] rounded-3xl bg-white dark:bg-[#18150f] border border-gray-200/80 dark:border-[#3a3020] shadow-2xl flex flex-col overflow-hidden transition-all animate-in zoom-in-95 duration-200"
           >
-            <div className="flex items-center justify-between border-b border-gray-100 dark:border-[#3a3020] pb-3">
-              <h3 className="font-bold text-base text-gray-900 dark:text-white">Create New Project</h3>
+            {/* Header */}
+            <div className="flex items-center justify-between px-5 py-3.5 border-b border-gray-100 dark:border-[#3a3020] bg-linear-to-r from-orange-50/70 via-amber-50/25 to-transparent dark:from-orange-950/25 dark:via-transparent dark:to-transparent shrink-0">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-orange-500 text-white flex items-center justify-center shadow-md shadow-orange-500/25 shrink-0">
+                  <Briefcase className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-base sm:text-lg text-gray-900 dark:text-white leading-tight">Create New Project</h3>
+                  <p className="text-xs text-gray-500 dark:text-neutral-400 mt-0.5">Initialize project workspace, milestone deadline and scope</p>
+                </div>
+              </div>
               <button
                 type="button"
                 onClick={() => setShowAddProjectModal(false)}
-                className="p-1 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-800 text-gray-500 cursor-pointer"
+                className="p-1.5 rounded-xl text-gray-400 hover:text-gray-700 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-slate-800 transition cursor-pointer"
+                aria-label="Close modal"
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
 
-            <div className="space-y-3 text-xs">
+            {/* Body */}
+            <div className="p-5 space-y-3.5 text-xs flex-1 overflow-y-auto no-scrollbar">
               <div>
                 <label className="block font-medium mb-1 text-gray-700 dark:text-neutral-300">
                   Project Name *
@@ -727,19 +739,21 @@ export default function ProjectsModule({
               </div>
             </div>
 
-            <div className="flex items-center justify-end gap-2 pt-3 border-t border-gray-100 dark:border-[#3a3020]">
+            {/* Footer Buttons */}
+            <div className="flex items-center justify-end gap-2.5 px-5 py-3 border-t border-gray-100 dark:border-[#3a3020] bg-gray-50/60 dark:bg-[#1a1712] shrink-0">
               <button
                 type="button"
                 onClick={() => setShowAddProjectModal(false)}
-                className="px-3.5 py-2 rounded-xl text-xs font-semibold text-gray-600 dark:text-neutral-300 hover:bg-gray-100 dark:hover:bg-slate-800 cursor-pointer"
+                className="px-4 py-2.5 rounded-xl text-xs font-semibold text-gray-700 dark:text-neutral-300 hover:bg-gray-100 dark:hover:bg-slate-800 border border-gray-200 dark:border-slate-700 transition cursor-pointer"
               >
                 Cancel
               </button>
               <button
                 type="submit"
-                className="px-4 py-2 rounded-xl text-xs font-bold bg-orange-600 hover:bg-orange-700 text-white shadow-sm cursor-pointer"
+                className="px-5 py-2.5 rounded-xl text-xs font-bold bg-linear-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white shadow-md shadow-orange-500/25 hover:shadow-lg transition flex items-center gap-2 cursor-pointer"
               >
-                Create Project
+                <Check className="w-4 h-4" />
+                <span>Create Project</span>
               </button>
             </div>
           </form>
