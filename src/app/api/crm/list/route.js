@@ -1,19 +1,15 @@
 import { createClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
 import { cacheGetJson, cacheSetJson } from "@/lib/upstashCache";
+import { isPrimaryCrmUser } from "@/lib/crmAccess";
 
 const CRM_READ_ROLES = new Set([
-  "super_admin",
-  "admin",
-  "hr",
   "sales_head",
-  "sales_executive",
-  "telecaller",
-  "finance_head",
-  "support_head",
 ]);
 
 const ARCHIVED_LEAD_STATUSES = ["Converted", "Lost", "Archived", "Closed Won"];
+
+const CLOSED_PIPELINE_STAGES = ["closed_won", "closed_lost", "lost", "abandoned", "dropped"];
 
 function normalizeRole(profile = {}) {
   if (profile.role && profile.role !== "intern") return profile.role;
@@ -44,7 +40,7 @@ function getBearerToken(request) {
   return header.toLowerCase().startsWith("bearer ") ? header.slice(7).trim() : "";
 }
 
-function clampPageSize(value, fallback = 50, max = 200) {
+function clampPageSize(value, fallback = 50, max = 500) {
   const parsed = Number.parseInt(value, 10);
   if (!Number.isFinite(parsed) || parsed <= 0) return fallback;
   return Math.min(parsed, max);
@@ -64,6 +60,7 @@ async function getRequester(admin, request) {
     .select("id, role, designation, domain")
     .eq("id", user.id)
     .maybeSingle();
+  if (!isPrimaryCrmUser(profile || {}, user)) return null;
   const role = normalizeRole(profile);
   if (!CRM_READ_ROLES.has(role)) return null;
   return { user, profile };
@@ -111,30 +108,75 @@ export async function GET(request) {
   if (resource === "leads_summary") {
     const dateFrom = searchParams.get("dateFrom") || "";
     const dateTo = searchParams.get("dateTo") || "";
+    const isFresh = searchParams.get("fresh") === "true" || searchParams.get("force") === "true";
     const cacheKey = dateFrom || dateTo
       ? `crm:leads-summary:${dateFrom || "start"}:${dateTo || "end"}`
       : "crm:leads-summary:all";
-    const cached = await cacheGetJson(cacheKey);
-    if (cached) return NextResponse.json(cached);
+    if (!isFresh) {
+      const cached = await cacheGetJson(cacheKey);
+      if (cached) return NextResponse.json(cached);
+    }
 
-    let qTotal = admin.from("leads").select("id", { count: "exact", head: true });
-    let qConverted = admin.from("leads").select("id", { count: "exact", head: true }).in("status", ["Converted", "Closed Won"]);
-    let qLost = admin.from("leads").select("id", { count: "exact", head: true }).eq("status", "Lost");
+    let leadsQuery = admin.from("leads").select("id, status, created_at");
+    let dealsQuery = admin.from("deals").select("id, lead_id, pipeline_stage");
     if (dateFrom) {
-      qTotal = qTotal.gte("created_at", dateFrom);
-      qConverted = qConverted.gte("created_at", dateFrom);
-      qLost = qLost.gte("created_at", dateFrom);
+      leadsQuery = leadsQuery.gte("created_at", dateFrom);
     }
     if (dateTo) {
-      qTotal = qTotal.lte("created_at", dateTo);
-      qConverted = qConverted.lte("created_at", dateTo);
-      qLost = qLost.lte("created_at", dateTo);
+      leadsQuery = leadsQuery.lte("created_at", dateTo);
     }
-    const [resTotal, resConverted, resLost] = await Promise.all([qTotal, qConverted, qLost]);
+    const [{ data: leadsData }, { data: dealsData }] = await Promise.all([leadsQuery, dealsQuery]);
+    const leads = leadsData || [];
+    const deals = dealsData || [];
+
+    const wonDealLeadIds = new Set(
+      deals
+        .filter((d) => (d.pipeline_stage || d.stage) === "closed_won")
+        .map((d) => d.lead_id)
+        .filter(Boolean)
+    );
+    const activePipelineLeadIds = new Set(
+      deals
+        .filter((d) => !CLOSED_PIPELINE_STAGES.includes(d.pipeline_stage || d.stage))
+        .map((d) => d.lead_id)
+        .filter(Boolean)
+    );
+    const lostDealLeadIds = new Set(
+      deals
+        .filter((d) => (d.pipeline_stage || d.stage) === "closed_lost")
+        .map((d) => d.lead_id)
+        .filter(Boolean)
+    );
+
+    const convertedCount = leads.filter((l) => {
+      if (wonDealLeadIds.has(l.id)) return true;
+      if (activePipelineLeadIds.has(l.id) || lostDealLeadIds.has(l.id)) return false;
+      return l.status === "Converted" || l.status === "Closed Won";
+    }).length;
+
+    const lostCount = leads.filter((l) => {
+      if (lostDealLeadIds.has(l.id)) return true;
+      if (activePipelineLeadIds.has(l.id) || wonDealLeadIds.has(l.id)) return false;
+      return l.status === "Lost";
+    }).length;
+
+    const pipelineCount = leads.filter((l) => {
+      if (activePipelineLeadIds.has(l.id)) return true;
+      if (wonDealLeadIds.has(l.id) || lostDealLeadIds.has(l.id)) return false;
+      return ["Contacted", "Qualified", "Proposal Sent", "In Pipeline", "Negotiation", "In Progress"].includes(
+        l.status
+      );
+    }).length;
+
+    const totalLeads = leads.length;
+    const activeCount = Math.max(0, totalLeads - pipelineCount - convertedCount - lostCount);
+
     const summary = {
-      total: resTotal.count || 0,
-      converted: resConverted.count || 0,
-      lost: resLost.count || 0,
+      total: totalLeads,
+      active: activeCount,
+      pipeline: pipelineCount,
+      converted: convertedCount,
+      lost: lostCount,
     };
     await cacheSetJson(cacheKey, summary, 60);
     return NextResponse.json(summary);

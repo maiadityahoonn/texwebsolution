@@ -763,20 +763,23 @@ html.dark body .table-scroll::-webkit-scrollbar-thumb,
   }
 
   .admin-sidebar-collapsed .admin-sidebar-footer > div:first-child {
-    padding: 0.3rem;
-    flex-direction: column;
+    padding: 0.35rem;
+    display: flex;
     align-items: center;
     justify-content: center;
-    gap: 0;
     border-radius: 0.85rem;
   }
 
+  .admin-sidebar-collapsed .admin-sidebar-footer > div:first-child a,
   .admin-sidebar-collapsed .admin-sidebar-footer > div:first-child > div {
     gap: 0;
     justify-content: center;
     align-items: center;
+    width: 100%;
   }
 
+  .admin-sidebar-collapsed .admin-sidebar-footer .admin-sidebar-profile-info,
+  .admin-sidebar-collapsed .admin-sidebar-footer > div:first-child a > div:nth-child(2),
   .admin-sidebar-collapsed .admin-sidebar-footer > div:first-child > div > div:nth-child(2) {
     display: none !important;
   }
@@ -982,6 +985,8 @@ body::-webkit-scrollbar,
 }
 
 /* Prevent background website page from scrolling when any modal is open */
+html:has([data-modal-overlay="true"]),
+body:has([data-modal-overlay="true"]),
 html.modal-open,
 body.modal-open {
   overflow: hidden !important;
@@ -999,6 +1004,22 @@ body.modal-open #workspace-main {
 [data-modal-overlay="true"],
 .modal-overlay {
   overscroll-behavior: contain !important;
+  overscroll-behavior-y: contain !important;
+  touch-action: none;
+}
+
+[data-modal-overlay="true"] *,
+.modal-overlay * {
+  overscroll-behavior: contain !important;
+}
+
+[data-modal-overlay="true"] [class*="overflow-y-auto"],
+[data-modal-overlay="true"] [class*="overflow-auto"],
+.modal-overlay [class*="overflow-y-auto"],
+.modal-overlay [class*="overflow-auto"] {
+  overscroll-behavior: contain !important;
+  overscroll-behavior-y: contain !important;
+  touch-action: pan-y;
 }
 
 /* Smooth native-app style chat open animation for mobile */

@@ -124,7 +124,7 @@ function reminderMessage(sourceType, record) {
 }
 
 function reminderLink(sourceType) {
-  return sourceType === "sales_meeting" ? "/workspace?section=sales_meetings" : "/workspace?section=sales_followups";
+  return sourceType === "sales_meeting" ? "/crm/meetings" : "/crm/followups";
 }
 
 function getPrimaryTarget(record, sourceType) {
@@ -232,7 +232,7 @@ async function createReminder(admin, sourceType, record, userId, actorId) {
       title: reminderTitle(sourceType),
       message: reminderMessage(sourceType, record),
       type: sourceType === "sales_meeting" ? "meeting" : "lead",
-      link_url: safeInternalPath(linkUrl, "/workspace"),
+      link_url: safeInternalPath(linkUrl, "/crm/alerts"),
       delivery_channels: ["in_app", "push"],
       metadata: {
         requires_ack: true,

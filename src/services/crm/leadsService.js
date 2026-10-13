@@ -1,0 +1,474 @@
+import {
+  supabase,
+  escapeSupabaseLike,
+  clampPageSize,
+  toPostgrestInList,
+  fetchCrmListFromApi,
+} from '../supabase/client';
+
+// ==========================================
+// 1. LEADS & CRM MANAGEMENT
+// ==========================================
+export async function sendMetaCrmEvent(lead, status = lead?.status || 'New') {
+  if (!lead || typeof fetch === 'undefined') return;
+  try {
+    await fetch('/api/meta/crm-events', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ lead, status }),
+    });
+  } catch (err) {
+    console.warn('Meta CRM event skipped:', err.message);
+  }
+}
+
+export function mapDealStageToLeadStatus(stage) {
+  const value = String(stage || '').toLowerCase();
+  if (value === 'closed_lost') return 'Lost';
+  if (value === 'closed_won') return 'Closed Won';
+  if (value.includes('negotiation')) return 'Negotiation';
+  if (value.includes('proposal')) return 'Proposal Sent';
+  if (value.includes('qualified') || value.includes('requirement')) return 'Qualified';
+  if (value.includes('contacted')) return 'Qualified';
+  if (value.includes('meeting')) return 'Meeting';
+  return 'Lead';
+}
+
+export function extractMetaLeadKey(lead) {
+  const notes = String(lead?.notes || "");
+  const match = notes.match(/(?:Meta Lead ID|Meta ID|Leadgen ID)\s*:\s*(l:)?(\d{10,25})/i);
+  if (match) return `l:${match[2]}`;
+  const direct = lead?.meta_lead_id || lead?.leadgen_id || lead?.lead_id;
+  if (!direct) return "";
+  const digits = String(direct).replace(/\D/g, "");
+  return digits ? `l:${digits}` : "";
+}
+
+export const ARCHIVED_LEAD_STATUSES = ['Converted', 'Lost', 'Archived', 'Closed Won'];
+
+export async function getPipelineLeadIds() {
+  const { data, error } = await supabase
+    .from('deals')
+    .select('lead_id')
+    .not('lead_id', 'is', null);
+  if (error) {
+    console.warn('Pipeline lead filter skipped:', error.message);
+    return [];
+  }
+  return [...new Set((data || []).map((deal) => deal.lead_id).filter(Boolean))];
+}
+
+export async function sendDealStageMetaEvent(deal, stage) {
+  if (!deal?.lead_id) return;
+  try {
+    const { data: lead, error } = await supabase
+      .from('leads')
+      .select('*')
+      .eq('id', deal.lead_id)
+      .maybeSingle();
+    if (error || !lead) return;
+    sendMetaCrmEvent(
+      {
+        ...lead,
+        service: deal.service || lead.service,
+        notes: [lead.notes, deal.notes].filter(Boolean).join('\n'),
+        status: mapDealStageToLeadStatus(stage),
+      },
+      mapDealStageToLeadStatus(stage)
+    );
+  } catch (err) {
+    console.warn('Meta deal stage event skipped:', err.message);
+  }
+}
+
+export async function getCloudLeads(options = null) {
+  try {
+    const useOptions = options && typeof options === 'object';
+    const pageSize = clampPageSize(options?.pageSize, useOptions ? 50 : 200);
+    const page = Math.max(Number.parseInt(options?.page || 1, 10) || 1, 1);
+    const from = (page - 1) * pageSize;
+    const to = from + pageSize - 1;
+    const withCount = Boolean(options?.withCount);
+
+    if (useOptions) {
+      const apiResult = await fetchCrmListFromApi('leads', { ...options, page, pageSize });
+      if (apiResult?.data) return withCount ? apiResult : apiResult.data;
+    }
+
+    let query = supabase
+      .from('leads')
+      .select('*', withCount ? { count: 'exact' } : undefined)
+      .order('created_at', { ascending: false });
+
+    if (options?.status === 'active') {
+      const pipelineLeadIds = await getPipelineLeadIds();
+      query = query.not('status', 'in', toPostgrestInList(ARCHIVED_LEAD_STATUSES));
+      if (pipelineLeadIds.length > 0) {
+        query = query.not('id', 'in', toPostgrestInList(pipelineLeadIds));
+      }
+    } else if (options?.status === 'archived') {
+      const pipelineLeadIds = await getPipelineLeadIds();
+      const archivedStatusFilter = `status.in.${toPostgrestInList(ARCHIVED_LEAD_STATUSES)}`;
+      const pipelineFilter = pipelineLeadIds.length > 0 ? `id.in.${toPostgrestInList(pipelineLeadIds)}` : "";
+      query = query.or([archivedStatusFilter, pipelineFilter].filter(Boolean).join(','));
+    } else if (options?.status === 'converted') {
+      query = query.in('status', ['Converted', 'Closed Won']);
+    } else if (options?.status === 'lost') {
+      query = query.eq('status', 'Lost');
+    } else if (options?.status === 'pipeline') {
+      const pipelineLeadIds = await getPipelineLeadIds();
+      if (pipelineLeadIds.length > 0) {
+        query = query.in('id', pipelineLeadIds);
+      } else {
+        query = query.in('status', ['Contacted', 'Qualified', 'Proposal Sent', 'In Pipeline', 'Negotiation']);
+      }
+    } else if (options?.status && options.status !== 'all') {
+      query = query.eq('status', options.status);
+    }
+
+    if (options?.source) {
+      query = query.eq('source', options.source);
+    }
+
+    if (options?.service) {
+      query = query.eq('service', options.service);
+    }
+
+    if (options?.dateFrom) {
+      query = query.gte('created_at', options.dateFrom);
+    }
+
+    if (options?.dateTo) {
+      query = query.lte('created_at', options.dateTo);
+    }
+
+    const search = String(options?.search || '').trim();
+    if (search) {
+      const like = `%${escapeSupabaseLike(search)}%`;
+      query = query.or([
+        `name.ilike.${like}`,
+        `phone.ilike.${like}`,
+        `email.ilike.${like}`,
+        `service.ilike.${like}`,
+        `source.ilike.${like}`,
+        `city.ilike.${like}`,
+        `state.ilike.${like}`,
+      ].join(','));
+    }
+
+    query = useOptions ? query.range(from, to) : query.limit(pageSize);
+
+    const { data, error, count } = await query;
+
+    if (error) throw error;
+    if (withCount) {
+      return {
+        data: data || [],
+        count: count || 0,
+        page,
+        pageSize,
+      };
+    }
+    return data || [];
+  } catch (err) {
+    console.warn('Fallback: Error fetching cloud leads:', err.message);
+    return options?.withCount ? { data: [], count: 0, page: 1, pageSize: clampPageSize(options?.pageSize) } : null;
+  }
+}
+
+export async function getCloudLeadsSummary(options = {}) {
+  try {
+    const apiResult = await fetchCrmListFromApi('leads_summary', options);
+    if (apiResult && typeof apiResult.total === 'number') {
+      return apiResult;
+    }
+
+    let qLeads = supabase.from('leads').select('id, status, created_at');
+    let qDeals = supabase.from('deals').select('id, lead_id, pipeline_stage, created_at, updated_at');
+
+    if (options?.dateFrom) {
+      qLeads = qLeads.gte('created_at', options.dateFrom);
+      qDeals = qDeals.gte('created_at', options.dateFrom);
+    }
+    if (options?.dateTo) {
+      qLeads = qLeads.lte('created_at', options.dateTo);
+      qDeals = qDeals.lte('created_at', options.dateTo);
+    }
+
+    const [{ data: leadsData }, { data: dealsData }] = await Promise.all([qLeads, qDeals]);
+    const leads = leadsData || [];
+    const deals = dealsData || [];
+
+    const CLOSED_STAGES = ['closed_won', 'closed_lost', 'lost', 'abandoned', 'dropped'];
+    const wonDealLeadIds = new Set(
+      deals.filter((d) => (d.pipeline_stage || d.stage) === 'closed_won').map((d) => d.lead_id).filter(Boolean)
+    );
+    const activePipelineLeadIds = new Set(
+      deals.filter((d) => !CLOSED_STAGES.includes(d.pipeline_stage || d.stage)).map((d) => d.lead_id).filter(Boolean)
+    );
+    const lostDealLeadIds = new Set(
+      deals.filter((d) => (d.pipeline_stage || d.stage) === 'closed_lost').map((d) => d.lead_id).filter(Boolean)
+    );
+
+    const converted = leads.filter((l) => {
+      if (wonDealLeadIds.has(l.id)) return true;
+      if (activePipelineLeadIds.has(l.id) || lostDealLeadIds.has(l.id)) return false;
+      return l.status === 'Converted' || l.status === 'Closed Won';
+    }).length;
+
+    const lost = leads.filter((l) => {
+      if (lostDealLeadIds.has(l.id)) return true;
+      if (activePipelineLeadIds.has(l.id) || wonDealLeadIds.has(l.id)) return false;
+      return l.status === 'Lost';
+    }).length;
+
+    const pipeline = leads.filter((l) => {
+      if (activePipelineLeadIds.has(l.id)) return true;
+      if (wonDealLeadIds.has(l.id) || lostDealLeadIds.has(l.id)) return false;
+      return ['Contacted', 'Qualified', 'Proposal Sent', 'In Pipeline', 'Negotiation', 'In Progress'].includes(l.status);
+    }).length;
+
+    const total = leads.length;
+    const active = Math.max(0, total - pipeline - converted - lost);
+
+    return {
+      total,
+      active,
+      pipeline,
+      converted,
+      lost,
+    };
+  } catch (err) {
+    console.warn('Error fetching lead summary:', err.message);
+    return { total: 0, active: 0, pipeline: 0, converted: 0, lost: 0 };
+  }
+}
+
+export async function createCloudLead(leadData) {
+  try {
+    const payload = {
+      name: leadData.name,
+      phone: leadData.phone,
+      email: leadData.email || '',
+      service: leadData.service || 'General Inquiry',
+      source: leadData.source || 'Website Form',
+      status: leadData.status || 'New',
+      notes: leadData.notes || '',
+    };
+    // Direct Supabase insert first
+    const { data, error } = await supabase
+      .from('leads')
+      .insert([payload])
+      .select();
+
+    if (!error && data?.[0]) {
+      sendMetaCrmEvent(data[0], data[0].status);
+      return data[0];
+    }
+
+    // Fallback to API route
+    const response = await fetch('/api/leads/create', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    if (!response.ok) {
+      const result = await response.json().catch(() => ({}));
+      throw new Error(result.error || 'Lead submission failed');
+    }
+    const fallbackLead = { ...payload, id: `local-${Date.now()}`, created_at: new Date().toISOString() };
+    sendMetaCrmEvent(fallbackLead, fallbackLead.status);
+    return fallbackLead;
+  } catch (err) {
+    console.error('Error creating cloud lead:', err.message);
+    return null;
+  }
+}
+
+export async function createCloudLeadsBatch(leadsArray) {
+  try {
+    if (!Array.isArray(leadsArray) || leadsArray.length === 0) return [];
+    const incomingPayloads = leadsArray.map((l) => ({
+      name: l.name || "Meta Lead",
+      phone: l.phone || "",
+      email: l.email || "",
+      service: l.service || "Website Development",
+      source: l.source || "Meta Ads",
+      status: l.status || "New",
+      notes: l.notes || "",
+      meta_lead_id: l.meta_lead_id || null,
+      ad_id: l.ad_id || null,
+      adset_id: l.adset_id || null,
+      campaign_id: l.campaign_id || null,
+      form_id: l.form_id || null,
+      form_name: l.form_name || null,
+      platform: l.platform || null,
+      budget_range: l.budget_range || l.budget || null,
+      city: l.city || null,
+      state: l.state || null,
+      raw_metadata: l.raw_metadata || null,
+    }));
+
+    const { data: existingLeads } = await supabase
+      .from('leads')
+      .select('id,email,phone,notes,meta_lead_id');
+
+    const contactKeyForLead = (lead) =>
+      `${String(lead.email || "").toLowerCase()}|${String(lead.phone || "").replace(/\D/g, "")}`;
+    const existingByMetaId = new Map();
+    const existingByContact = new Map();
+    (existingLeads || []).forEach((lead) => {
+      const metaId = extractMetaLeadKey(lead);
+      const contactKey = contactKeyForLead(lead);
+      if (metaId && !existingByMetaId.has(metaId)) existingByMetaId.set(metaId, lead);
+      if (contactKey !== "|" && !existingByContact.has(contactKey)) existingByContact.set(contactKey, lead);
+    });
+
+    const uniqueIncoming = [];
+    const seenIncomingKeys = new Set();
+    incomingPayloads.forEach((lead) => {
+      const metaId = extractMetaLeadKey(lead);
+      const contactKey = contactKeyForLead(lead);
+      const key = metaId || (contactKey !== "|" ? contactKey : `row:${uniqueIncoming.length}`);
+      if (seenIncomingKeys.has(key)) return;
+      seenIncomingKeys.add(key);
+      uniqueIncoming.push(lead);
+    });
+
+    const results = [];
+    const inserts = [];
+
+    for (const payload of uniqueIncoming) {
+      const metaId = extractMetaLeadKey(payload);
+      const contactKey = contactKeyForLead(payload);
+      const existing = (metaId && existingByMetaId.get(metaId)) || (contactKey !== "|" ? existingByContact.get(contactKey) : null);
+      if (!existing?.id) {
+        inserts.push(payload);
+        continue;
+      }
+
+      const { data: updated, error: updateError } = await supabase
+        .from('leads')
+        .update({ ...payload, updated_at: new Date().toISOString() })
+        .eq('id', existing.id)
+        .select()
+        .single();
+
+      if (!updateError && updated) {
+        results.push(updated);
+        sendMetaCrmEvent(updated, updated.status);
+      } else {
+        console.warn('Lead import update skipped:', updateError?.message);
+      }
+    }
+
+    if (inserts.length) {
+      const { data, error } = await supabase
+        .from('leads')
+        .insert(inserts)
+        .select();
+
+      if (!error && Array.isArray(data)) {
+        data.forEach((lead) => sendMetaCrmEvent(lead, lead.status));
+        results.push(...data);
+      } else {
+        for (const p of inserts) {
+          const res = await createCloudLead(p);
+          if (res) results.push(res);
+        }
+      }
+    }
+
+    return results;
+  } catch (err) {
+    console.error('Error in createCloudLeadsBatch:', err.message);
+    return [];
+  }
+}
+
+export async function updateCloudLeadStatus(leadId, newStatus) {
+  try {
+    const { data, error } = await supabase
+      .from('leads')
+      .update({ status: newStatus, updated_at: new Date().toISOString() })
+      .eq('id', leadId)
+      .select();
+
+    if (error) throw error;
+    const updatedLead = data?.[0] || null;
+    if (updatedLead) sendMetaCrmEvent(updatedLead, newStatus);
+    return updatedLead;
+  } catch (err) {
+    console.error('Error updating lead status:', err.message);
+    return null;
+  }
+}
+
+export async function updateCloudLead(leadId, updates) {
+  try {
+    const leadUpdates = { ...(updates || {}) };
+    const metadataPatch = {};
+    ['loss_reason', 'lost_at_stage'].forEach((key) => {
+      if (Object.prototype.hasOwnProperty.call(leadUpdates, key)) {
+        metadataPatch[key] = leadUpdates[key];
+        delete leadUpdates[key];
+      }
+    });
+
+    if (Object.keys(metadataPatch).length) {
+      const { data: existingLead } = await supabase
+        .from('leads')
+        .select('raw_metadata')
+        .eq('id', leadId)
+        .maybeSingle();
+      leadUpdates.raw_metadata = {
+        ...(existingLead?.raw_metadata && typeof existingLead.raw_metadata === 'object' ? existingLead.raw_metadata : {}),
+        ...metadataPatch,
+      };
+    }
+
+    let payload = { ...leadUpdates, updated_at: new Date().toISOString() };
+    let { data, error } = await supabase
+      .from('leads')
+      .update(payload)
+      .eq('id', leadId)
+      .select();
+
+    if (error && /Could not find the '([^']+)' column/i.test(error.message || '')) {
+      const missingColumn = error.message.match(/Could not find the '([^']+)' column/i)?.[1];
+      if (missingColumn && Object.prototype.hasOwnProperty.call(payload, missingColumn)) {
+        delete payload[missingColumn];
+        const retry = await supabase
+          .from('leads')
+          .update(payload)
+          .eq('id', leadId)
+          .select();
+        data = retry.data;
+        error = retry.error;
+      }
+    }
+
+    if (error) throw error;
+    const updatedLead = data?.[0] || null;
+    if (updatedLead && updates?.status) sendMetaCrmEvent(updatedLead, updates.status);
+    return updatedLead;
+  } catch (err) {
+    console.error('Error updating lead:', err.message);
+    return null;
+  }
+}
+
+export async function deleteCloudLead(leadId) {
+  try {
+    const { error } = await supabase
+      .from('leads')
+      .delete()
+      .eq('id', leadId);
+
+    if (error) throw error;
+    return true;
+  } catch (err) {
+    console.error('Error deleting lead:', err.message);
+    return false;
+  }
+}

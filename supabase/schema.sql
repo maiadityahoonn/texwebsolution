@@ -11,7 +11,7 @@ CREATE TABLE IF NOT EXISTS public.profiles (
   full_name TEXT NOT NULL,
   email TEXT UNIQUE NOT NULL,
   phone TEXT,
-  role TEXT NOT NULL DEFAULT 'intern' CHECK (role IN ('super_admin', 'team_leader', 'mentor', 'hr', 'intern')),
+  role TEXT NOT NULL DEFAULT 'intern' CHECK (role IN ('super_admin', 'hr', 'hr_head', 'team_leader', 'mentor', 'intern', 'sales_head', 'sales_executive', 'telecaller', 'tech_lead', 'pm', 'smm_head', 'finance_head', 'support_head')),
   domain TEXT DEFAULT 'web_dev' CHECK (domain IN ('web_dev', 'marketing', 'ai_automation', 'design', 'management')),
   avatar_url TEXT,
   status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'pending', 'paused', 'completed', 'suspended')),

@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "check:crm-size": "node scripts/check-crm-file-sizes.mjs"
   },
   "dependencies": {
     "@emoji-mart/data": "^1.2.1",

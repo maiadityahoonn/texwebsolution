@@ -10,12 +10,6 @@ export default function sitemap() {
       priority: 1.0,
     },
     {
-      url: `${baseUrl}/download`,
-      lastModified,
-      changeFrequency: 'daily',
-      priority: 0.95,
-    },
-    {
       url: `${baseUrl}/login`,
       lastModified,
       changeFrequency: 'daily',

@@ -1,4 +1,4 @@
-import { createCloudLead } from "@/services/supabaseService";
+import { createCloudLead } from "@/services/crm/leadsService";
 
 // Central Lead Management Utility for TexWeb Solution
 

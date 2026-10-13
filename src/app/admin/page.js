@@ -1,7 +1,0 @@
-"use client";
-
-import AuthenticatedWorkspace from "@/components/workspace/AuthenticatedWorkspace";
-
-export default function AdminWorkspacePage() {
-  return <AuthenticatedWorkspace defaultSection="overview" />;
-}

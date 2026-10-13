@@ -2,8 +2,8 @@ import localFont from "next/font/local";
 import { Poppins } from "next/font/google";
 import Script from "next/script";
 import "./globals.css";
-import PublicFloatingWidgets from "@/components/PublicFloatingWidgets";
-import AppSplashScreen from "@/components/AppSplashScreen";
+import PublicFloatingWidgets from "@/components/public/PublicFloatingWidgets";
+import AppSplashScreen from "@/components/public/AppSplashScreen";
 
 const poppins = Poppins({
   subsets: ["latin"],
@@ -165,12 +165,6 @@ export default function RootLayout({ children }) {
       "@id": "https://texwebsolution.in/#sitelinks",
       "name": "TexWeb Solution Navigation Sitelinks",
       "hasPart": [
-        {
-          "@type": "WebPage",
-          "name": "Android App",
-          "url": "https://texwebsolution.in/download",
-          "description": "Download official TexWeb Solution mobile app for Android & iOS."
-        },
         {
           "@type": "WebPage",
           "name": "Login",
