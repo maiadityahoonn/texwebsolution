@@ -134,11 +134,11 @@ export default function CrmSidebar({
             priority
           />
           <Image
-            width={34}
-            height={34}
-            alt="TexWeb Logo Icon"
-            src="/texweb-logo-icon.png"
-            className="admin-sidebar-collapsed-logo h-8.5 w-auto object-contain shrink-0 hidden group-hover:scale-105 transition-transform"
+            width={56}
+            height={56}
+            alt=""
+            src="/logo.png"
+            className="admin-sidebar-collapsed-logo h-14 w-auto object-contain shrink-0 hidden group-hover:scale-105 transition-transform"
             style={{ width: "auto" }}
           />
         </Link>
