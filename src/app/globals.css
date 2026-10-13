@@ -633,6 +633,7 @@ html.dark body .table-scroll::-webkit-scrollbar-thumb,
     display: none !important;
   }
 
+  .admin-sidebar-collapsed .admin-sidebar-collapsed-logo,
   .admin-sidebar-collapsed .admin-sidebar-logo-mark {
     display: block !important;
   }

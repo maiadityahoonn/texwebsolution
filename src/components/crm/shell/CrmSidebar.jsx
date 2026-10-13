@@ -143,7 +143,7 @@ export default function CrmSidebar({
           />
         </Link>
 
-        <div className="flex items-center shrink-0">
+        <div className="admin-sidebar-actions flex items-center shrink-0">
           <button
             type="button"
             onClick={() => setSidebarOpen((open) => !open)}
