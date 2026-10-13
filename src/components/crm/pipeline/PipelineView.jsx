@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { ChevronLeft } from "lucide-react";
+import TablePagination from "../shared/TablePagination";
 import { PIPELINE_STAGES } from "../shared/leadUtils";
 import { PipelineSkeleton } from "../shared/CrmSkeletons";
 import PipelineColumn from "./PipelineColumn";
@@ -104,63 +104,22 @@ export default function PipelineView({
       </div>
 
       {/* Pagination Bar */}
-      <div className="mt-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-4 py-3 rounded-2xl border border-gray-100 dark:border-[#3a3020] bg-white dark:bg-[#18150f] text-xs shadow-2xs">
-        <div className="text-gray-500 dark:text-neutral-400 flex items-center gap-1.5 flex-wrap">
-          <span>Showing</span>
-          <span className="font-bold text-gray-800 dark:text-white">{pipelinePageStart}</span>
-          <span>to</span>
-          <span className="font-bold text-gray-800 dark:text-white">{pipelinePageEnd}</span>
-          <span>of</span>
-          <span className="font-bold text-gray-800 dark:text-white">{pipelineTotal}</span>
-          <span>deals</span>
+      {pipelineTotal > 0 && (
+        <div className="mt-3 rounded-2xl border border-gray-100 dark:border-[#3a3020] overflow-hidden shadow-2xs">
+          <TablePagination
+            label="deals"
+            start={pipelinePageStart}
+            end={pipelinePageEnd}
+            total={pipelineTotal}
+            page={safePipelinePage}
+            pageCount={pipelinePageCount}
+            pageSize={pipelinePageSize}
+            setPage={setPipelinePage}
+            setPageSize={setPipelinePageSize}
+            pageSizeLabel="Deals per page:"
+          />
         </div>
-
-        <div className="flex items-center gap-2.5 flex-wrap justify-between sm:justify-end">
-          <div className="flex items-center gap-1.5 text-xs text-gray-500 dark:text-neutral-400">
-            <span className="hidden xs:inline">Deals per page:</span>
-            <select
-              value={pipelinePageSize}
-              onChange={(e) => {
-                setPipelinePageSize(Number(e.target.value));
-                setPipelinePage(1);
-              }}
-              className="px-2.5 py-1.5 rounded-xl bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 font-semibold text-gray-700 dark:text-neutral-200 text-xs focus:outline-hidden focus:ring-1 focus:ring-orange-500"
-              aria-label="Pipeline deals per page"
-            >
-              <option value={10}>10 / page</option>
-              <option value={20}>20 / page</option>
-              <option value={50}>50 / page</option>
-              <option value={100}>100 / page</option>
-            </select>
-          </div>
-
-          <div className="flex items-center gap-1">
-            <button
-              type="button"
-              disabled={safePipelinePage <= 1}
-              onClick={() => setPipelinePage(safePipelinePage - 1)}
-              className="p-1.5 rounded-xl border border-gray-200 dark:border-slate-700 disabled:opacity-30 disabled:cursor-not-allowed hover:bg-gray-100 dark:hover:bg-slate-800 transition cursor-pointer"
-              title="Previous Page"
-              aria-label="Previous Page"
-            >
-              <ChevronLeft className="w-3.5 h-3.5 text-gray-600 dark:text-neutral-300" />
-            </button>
-            <span className="px-2 font-bold text-gray-800 dark:text-white text-xs">
-              {safePipelinePage} / {pipelinePageCount}
-            </span>
-            <button
-              type="button"
-              disabled={safePipelinePage >= pipelinePageCount}
-              onClick={() => setPipelinePage(safePipelinePage + 1)}
-              className="p-1.5 rounded-xl border border-gray-200 dark:border-slate-700 disabled:opacity-30 disabled:cursor-not-allowed hover:bg-gray-100 dark:hover:bg-slate-800 transition cursor-pointer"
-              title="Next Page"
-              aria-label="Next Page"
-            >
-              <ChevronLeft className="w-3.5 h-3.5 rotate-180 text-gray-600 dark:text-neutral-300" />
-            </button>
-          </div>
-        </div>
-      </div>
+      )}
     </>
   );
 }

@@ -2,9 +2,9 @@
 
 import React, { useEffect } from "react";
 import { useSearchParams } from "next/navigation";
-import LeadPagination from "./LeadPagination";
 import LeadTableHeader from "./LeadTableHeader";
 import LeadTableRow from "./LeadTableRow";
+import TablePagination from "../shared/TablePagination";
 import { TableSkeleton as DefaultTableSkeleton } from "../shared/CrmSkeletons";
 import DefaultResponsiveTableContainer from "../shared/ResponsiveTableContainer";
 
@@ -50,11 +50,11 @@ export default function LeadTable({
       }
     }, 350);
     return () => clearTimeout(timer);
-  }, [highlightParam, paginatedLeads]);
+  }, [highlightParam, filteredLeads, paginatedLeads]);
 
   return (
     <div className="rounded-2xl bg-white dark:bg-[#18150f] border border-gray-100 dark:border-[#3a3020] overflow-hidden shadow-2xs">
-      {isLeadsLoading && paginatedLeads.length === 0 ? (
+      {isLeadsLoading && (filteredLeads?.length === 0 || paginatedLeads?.length === 0) ? (
         <TableSkeleton rows={6} columns={6} />
       ) : filteredLeads.length === 0 ? (
         <div className="p-8 text-center text-sm text-gray-500 dark:text-neutral-400">
@@ -80,7 +80,7 @@ export default function LeadTable({
                 setLeadSortOrder={setLeadSortOrder}
               />
               <tbody className="divide-y divide-gray-100 dark:divide-[#3a3020]/60">
-                {paginatedLeads.map((lead) => (
+                {(paginatedLeads && paginatedLeads.length > 0 ? paginatedLeads : filteredLeads).map((lead) => (
                   <LeadTableRow
                     key={lead.id}
                     lead={lead}
@@ -106,7 +106,7 @@ export default function LeadTable({
               </tbody>
             </table>
           </ResponsiveTableContainer>
-          <LeadPagination {...pagination} />
+          <TablePagination {...pagination} />
         </>
       )}
     </div>

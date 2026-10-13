@@ -3,6 +3,7 @@
 import React from "react";
 import { Plus, Check, X } from "lucide-react";
 import ResponsiveTableContainer from "../shared/ResponsiveTableContainer";
+import TablePagination from "../shared/TablePagination";
 import { CommercialsSkeleton } from "../shared/CrmSkeletons";
 import WhatsAppIcon from "../shared/WhatsAppIcon";
 
@@ -18,6 +19,19 @@ export default function CommercialsView({
   onUpdateProposal = () => {},
   onUpdateInvoice = () => {},
 }) {
+  const [docPage, setDocPage] = React.useState(1);
+  const [docsPerPage, setDocsPerPage] = React.useState(10);
+
+  const total = commercialDocs.length;
+  const pageCount = Math.max(1, Math.ceil(total / docsPerPage));
+  const safePage = Math.min(Math.max(1, docPage), pageCount);
+  const start = total === 0 ? 0 : (safePage - 1) * docsPerPage + 1;
+  const end = Math.min(total, safePage * docsPerPage);
+  const paginatedDocs = React.useMemo(() => {
+    const s = (safePage - 1) * docsPerPage;
+    return commercialDocs.slice(s, s + docsPerPage);
+  }, [commercialDocs, safePage, docsPerPage]);
+
   if (isCommercialsLoading && commercialDocs.length === 0) {
     return <CommercialsSkeleton />;
   }
@@ -53,7 +67,8 @@ export default function CommercialsView({
             No quotation, agreement, or invoice found.
           </div>
         ) : (
-          <ResponsiveTableContainer>
+          <>
+            <ResponsiveTableContainer>
             <table className="w-full text-left text-xs sm:text-sm border-collapse min-w-[960px]">
               <thead>
                 <tr className="border-b border-gray-100 dark:border-[#3a3020] bg-gray-50/70 dark:bg-[#211d14] text-gray-500 dark:text-neutral-400 text-[11px] font-semibold uppercase tracking-wider">
@@ -66,7 +81,7 @@ export default function CommercialsView({
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100 dark:divide-[#3a3020]/60">
-                {commercialDocs.map((doc) => {
+                {paginatedDocs.map((doc) => {
                   const deal = deals.find((item) => item.id === doc.deal_id);
                   const amount = Number(doc.total_amount) || Number(doc.total) || Number(doc.amount) || Number(doc.subtotal) || 0;
                   const label = doc.invoice_number || doc.agreement_number || doc.quotation_number || doc.title;
@@ -192,7 +207,20 @@ export default function CommercialsView({
               </tbody>
             </table>
           </ResponsiveTableContainer>
-        )}
+          <TablePagination
+            label="documents"
+            start={start}
+            end={end}
+            total={total}
+            page={safePage}
+            pageCount={pageCount}
+            pageSize={docsPerPage}
+            setPage={setDocPage}
+            setPageSize={setDocsPerPage}
+            pageSizeLabel="Documents per page:"
+          />
+        </>
+      )}
       </div>
     </div>
   );

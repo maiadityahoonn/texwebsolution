@@ -3,7 +3,6 @@
 import React from "react";
 import LeadFilters from "./LeadFilters";
 import LeadTable from "./LeadTable";
-import LeadPagination from "./LeadPagination";
 import ResponsiveTableContainer from "../shared/ResponsiveTableContainer";
 import { LeadPageSkeleton, TableSkeleton } from "../shared/CrmSkeletons";
 
@@ -103,14 +102,6 @@ export default function LeadsView({
         openLostModal={openLostModal}
         handleReopenLead={handleReopenLead}
         setSelectedLead={setSelectedLead}
-      />
-      <LeadPagination
-        safeLeadPage={safeLeadPage}
-        totalLeadPages={totalLeadPages}
-        setLeadPage={setLeadPage}
-        leadsPerPage={leadsPerPage}
-        setLeadsPerPage={setLeadsPerPage}
-        filteredLeads={filteredLeads}
         pagination={pagination}
       />
     </div>

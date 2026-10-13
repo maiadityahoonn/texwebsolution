@@ -155,7 +155,17 @@ export default function CrmWorkspaceViewSwitch({
           salesMeetings={salesMeetings}
           safeLeadPage={safeLeadPage}
           totalLeadPages={leadPageCount}
-          pagination={leadPagination}
+          pagination={{
+            label: "leads",
+            start: (filteredLeads?.length || 0) === 0 ? 0 : (safeLeadPage - 1) * leadsPerPage + 1,
+            end: Math.min(filteredLeads?.length || 0, safeLeadPage * leadsPerPage),
+            total: filteredLeads?.length || 0,
+            page: safeLeadPage,
+            pageCount: leadPageCount,
+            pageSize: leadsPerPage,
+            setPage: setLeadPage,
+            setPageSize: setLeadsPerPage,
+          }}
           getLeadNextAction={getLeadNextAction}
           getLeadLocation={getLeadLocation}
           getLeadBudget={getLeadBudget}
@@ -210,6 +220,7 @@ export default function CrmWorkspaceViewSwitch({
           openInvoiceModal={openInvoiceModal}
           onNavigateSection={onNavigateSection}
           pagination={{
+            label: "deals",
             start: pipelineTotal === 0 ? 0 : (safePipelinePage - 1) * pipelinePageSize + 1,
             end: Math.min(pipelineTotal, safePipelinePage * pipelinePageSize),
             total: pipelineTotal,
@@ -380,7 +391,17 @@ export default function CrmWorkspaceViewSwitch({
           salesMeetings={salesMeetings}
           safeLeadPage={safeLeadPage}
           totalLeadPages={leadPageCount}
-          pagination={leadPagination}
+          pagination={{
+            label: "leads",
+            start: (filteredLeads?.length || 0) === 0 ? 0 : (safeLeadPage - 1) * leadsPerPage + 1,
+            end: Math.min(filteredLeads?.length || 0, safeLeadPage * leadsPerPage),
+            total: filteredLeads?.length || 0,
+            page: safeLeadPage,
+            pageCount: leadPageCount,
+            pageSize: leadsPerPage,
+            setPage: setLeadPage,
+            setPageSize: setLeadsPerPage,
+          }}
           getLeadNextAction={getLeadNextAction}
           getLeadLocation={getLeadLocation}
           getLeadBudget={getLeadBudget}
