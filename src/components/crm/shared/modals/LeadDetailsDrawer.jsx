@@ -3,7 +3,6 @@
 import { useMemo } from "react";
 import { X, Phone, Mail, AlertCircle, Video, Clock, Pencil, RotateCcw } from "lucide-react";
 import ActivityTimeline from "@/components/crm/shared/ActivityTimeline";
-import EntityChatPanel from "@/components/crm/shared/EntityChatPanel";
 import WhatsAppIcon from "../WhatsAppIcon";
 import {
   getLeadBudget,
@@ -62,7 +61,7 @@ export default function LeadDetailsDrawer({
       }}
       className="fixed inset-0 z-[80] flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-xs overscroll-contain animate-in fade-in duration-200"
     >
-      <div className="w-full max-w-lg max-h-[82vh] rounded-2xl bg-white dark:bg-[#18150f] border border-gray-200 dark:border-[#3a3020] shadow-2xl flex flex-col overflow-hidden">
+      <div className="w-full max-w-lg h-[min(82vh,760px)] max-h-[82vh] rounded-2xl bg-white dark:bg-[#18150f] border border-gray-200 dark:border-[#3a3020] shadow-2xl flex flex-col overflow-hidden">
         {/* Header */}
         <div className="flex items-center justify-between border-b border-gray-100 dark:border-[#3a3020] p-4 sm:p-5 pb-3 shrink-0">
           <div>
@@ -79,7 +78,7 @@ export default function LeadDetailsDrawer({
         </div>
 
         {/* Scrollable Body */}
-        <div className="flex-1 overflow-y-auto px-4 sm:px-5 py-4 space-y-4 no-scrollbar">
+        <div className="crm-modal-scroll flex-1 min-h-0 overflow-y-auto px-4 sm:px-5 py-4 space-y-4 no-scrollbar">
           <div className="grid grid-cols-2 gap-3 text-xs">
             <div className="p-2.5 rounded-xl bg-gray-50 dark:bg-slate-800/60">
               <span className="text-gray-400 text-[10px] block">Phone Number</span>
@@ -187,17 +186,6 @@ export default function LeadDetailsDrawer({
               </div>
             </div>
           )}
-
-          <EntityChatPanel
-            entityType="lead"
-            entityId={selectedLead.id}
-            title="Internal Lead Chat"
-            subtitle="Sales discussion for this lead only."
-            department="sales"
-            currentUser={currentUser}
-            currentProfile={currentProfile}
-            compact
-          />
 
           {(selectedLeadActivity.meetings.length > 0 || selectedLeadActivity.followUps.length > 0) && (
             <div className="space-y-2.5">

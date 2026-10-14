@@ -1006,21 +1006,30 @@ body.modal-open #workspace-main {
 .modal-overlay {
   overscroll-behavior: contain !important;
   overscroll-behavior-y: contain !important;
-  touch-action: none;
-}
-
-[data-modal-overlay="true"] *,
-.modal-overlay * {
-  overscroll-behavior: contain !important;
+  touch-action: pan-y !important;
 }
 
 [data-modal-overlay="true"] [class*="overflow-y-auto"],
 [data-modal-overlay="true"] [class*="overflow-auto"],
 .modal-overlay [class*="overflow-y-auto"],
 .modal-overlay [class*="overflow-auto"] {
+  min-height: 0 !important;
   overscroll-behavior: contain !important;
   overscroll-behavior-y: contain !important;
-  touch-action: pan-y;
+  touch-action: pan-y !important;
+  -webkit-overflow-scrolling: touch !important;
+  scroll-behavior: auto !important;
+}
+
+[data-modal-overlay="true"] .crm-modal-scroll,
+.modal-overlay .crm-modal-scroll {
+  min-height: 0 !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  overscroll-behavior-y: contain !important;
+  touch-action: pan-y !important;
+  -webkit-overflow-scrolling: touch !important;
+  scroll-behavior: auto !important;
 }
 
 /* Smooth native-app style chat open animation for mobile */

@@ -113,8 +113,14 @@ export function useCrmLayoutActions({
     onFetchMeetingsPage: handleFetchMeetingsPage,
     onRefresh: (scope = activeSection, options = {}) => loadCrmData(scope, { ...options, force: true }),
     onOpenDirectWhatsapp: handleDirectWhatsapp,
-    onOpenChatWithLead: () => setToast("Lead chat is available inside lead details."),
-    onOpenChat: () => setToast("Internal CRM chat is available inside lead/deal details."),
+    onOpenChatWithLead: () => {
+      router.push("/crm/chat");
+      setToast("Team Chat sidebar page opened.");
+    },
+    onOpenChat: () => {
+      router.push("/crm/chat");
+      setToast("Team Chat sidebar page opened.");
+    },
     onNavigateSection: (section, params = {}) => {
       const target = CRM_NAV.find((item) => item.section === section);
       if (target) {

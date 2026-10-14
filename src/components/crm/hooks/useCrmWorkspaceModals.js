@@ -239,7 +239,41 @@ export function useCrmWorkspaceModals({
         closeAllModals();
       }
     }
+
+    function getModalScrollTarget(target) {
+      const overlay = target?.closest?.('[data-modal-overlay="true"]');
+      if (!overlay) return null;
+
+      const directScrollable = target.closest?.(
+        ".crm-modal-scroll, [data-modal-scroll='true'], [class*='overflow-y-auto'], [class*='overflow-auto']"
+      );
+      if (directScrollable?.scrollHeight > directScrollable.clientHeight + 2) {
+        return directScrollable;
+      }
+
+      const scrollables = Array.from(
+        overlay.querySelectorAll(
+          ".crm-modal-scroll, [data-modal-scroll='true'], [class*='overflow-y-auto'], [class*='overflow-auto']"
+        )
+      );
+      return scrollables.find((node) => node.scrollHeight > node.clientHeight + 2) || null;
+    }
+
+    function handleModalWheel(e) {
+      if (e.ctrlKey || Math.abs(e.deltaX) > Math.abs(e.deltaY)) return;
+      const target = e.target;
+      const overlay = target?.closest?.('[data-modal-overlay="true"]');
+      if (!overlay || target?.closest?.("textarea, select, [contenteditable='true']")) return;
+
+      const scrollTarget = getModalScrollTarget(target);
+      if (!scrollTarget) return;
+
+      e.preventDefault();
+      scrollTarget.scrollTop += e.deltaY;
+    }
+
     window.addEventListener("keydown", handleKeyDown);
+    document.addEventListener("wheel", handleModalWheel, { passive: false, capture: true });
 
     const { body, documentElement } = document;
     const scrollY = window.scrollY || documentElement.scrollTop || 0;
@@ -270,6 +304,7 @@ export function useCrmWorkspaceModals({
 
     return () => {
       window.removeEventListener("keydown", handleKeyDown);
+      document.removeEventListener("wheel", handleModalWheel, { capture: true });
       body.classList.remove("modal-open");
       documentElement.classList.remove("modal-open");
       body.style.overflow = previous.bodyOverflow;

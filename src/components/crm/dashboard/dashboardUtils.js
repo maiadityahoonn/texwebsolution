@@ -129,6 +129,7 @@ export function computeDashboardMetrics({
 
   // Source Breakdown
   const sourceMap = new Map();
+  const leadsById = new Map(filteredLeads.map((lead) => [lead.id, lead]));
   filteredLeads.forEach((lead) => {
     const rawSource = lead.source || lead.lead_source || "Website Inbound";
     const src = rawSource.trim();
@@ -137,10 +138,19 @@ export function computeDashboardMetrics({
     }
     const row = sourceMap.get(src);
     row.leads += 1;
-    if (["converted", "closed won"].includes(lead.status?.toLowerCase())) {
-      row.won += 1;
-      row.value += Number(lead.deal_value || lead.budget || 50000);
+  });
+
+  wonDeals.forEach((deal) => {
+    const linkedLead = leadsById.get(deal.lead_id);
+    const rawSource = linkedLead?.source || linkedLead?.lead_source || deal.source || "Direct / Client";
+    const src = String(rawSource).trim() || "Direct / Client";
+    const row = sourceMap.get(src) || { source: src, leads: 0, won: 0, value: 0 };
+    if (!linkedLead) {
+      row.leads += 1;
     }
+    row.won += 1;
+    row.value += Number(deal.deal_value || deal.value) || 0;
+    sourceMap.set(src, row);
   });
 
   const sourceRows = Array.from(sourceMap.values()).sort((a, b) => b.leads - a.leads);

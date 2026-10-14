@@ -11,11 +11,9 @@ import {
   Plus,
   Check,
   Pencil,
-  MessageSquare,
 } from "lucide-react";
 import { parseNotesHistory, getMeetingFullNotes, formatStatusLabel } from "../meetingUtils";
 import { getLeadDisplayNotes } from "../leadUtils";
-import DealChatTab from "./deal-details/DealChatTab";
 import DealDetailsTabs from "./deal-details/DealDetailsTabs";
 import DealFollowUpsTab from "./deal-details/DealFollowUpsTab";
 import DealLeadHistoryTab from "./deal-details/DealLeadHistoryTab";
@@ -45,8 +43,6 @@ export default function DealDetailsDrawer({
   openInvoiceModal,
   setSelectedLead,
   openStageModal,
-  currentUser = null,
-  currentProfile = null,
 }) {
   const [dealModalTab, setDealModalTab] = useState("overview");
 
@@ -343,7 +339,6 @@ export default function DealDetailsDrawer({
             { id: "lead", label: "Lead History", icon: Users, badge: lead ? lead.source || "Linked" : null },
             { id: "meetings", label: "Meetings", icon: Video, count: dealMeetings.length },
             { id: "followups", label: "Follow-ups", icon: Clock, count: dealFollowUps.length },
-            { id: "chat", label: "Chat", icon: MessageSquare },
             { id: "timeline", label: "A to Z Timeline", icon: History, count: dealTimelineEvents.length },
           ]}
         />
@@ -412,10 +407,6 @@ export default function DealDetailsDrawer({
           {/* TAB 5: A TO Z TIMELINE */}
           {dealModalTab === "timeline" && (
             <DealTimelineTab dealTimelineEvents={dealTimelineEvents} isDark={isDark} />
-          )}
-
-          {dealModalTab === "chat" && (
-            <DealChatTab selectedDeal={selectedDeal} currentUser={currentUser} currentProfile={currentProfile} />
           )}
         </div>
 

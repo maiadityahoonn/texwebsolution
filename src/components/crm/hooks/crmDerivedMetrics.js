@@ -148,9 +148,11 @@ export function buildSalesReport({ leads, deals, followUps, leadSummary, dateFil
     const lead = leads.find((item) => item.id === deal.lead_id);
     const source = lead?.source || "Direct / Client";
     const row = sourceMap.get(source) || { source, leads: 0, won: 0, lost: 0, value: 0 };
-    if ((deal.pipeline_stage || deal.stage) === "closed_won") row.won += 1;
+    if ((deal.pipeline_stage || deal.stage) === "closed_won") {
+      row.won += 1;
+      row.value += Number(deal.deal_value || deal.value) || 0;
+    }
     if ((deal.pipeline_stage || deal.stage) === "closed_lost") row.lost += 1;
-    row.value += Number(deal.deal_value || deal.value) || 0;
     sourceMap.set(source, row);
   });
   return {
