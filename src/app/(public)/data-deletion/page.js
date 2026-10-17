@@ -74,8 +74,8 @@ export default function DataDeletionPage() {
                 <Mail className="w-4 h-4 text-red-600 shrink-0" />
                 <span>
                   <strong>Email:</strong>{" "}
-                  <a href="mailto:aditya963141@gmail.com?subject=Data%20Deletion%20Request" className="text-red-600 hover:underline">
-                    aditya963141@gmail.com
+                  <a href="mailto:info@texwebsolution.in?subject=Data%20Deletion%20Request" className="text-red-600 hover:underline">
+                    info@texwebsolution.in
                   </a>
                 </span>
               </p>
