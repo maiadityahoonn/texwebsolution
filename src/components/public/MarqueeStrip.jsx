@@ -9,22 +9,22 @@ export default function MarqueeStrip() {
       <div className="w-full overflow-hidden relative group">
         <div className="flex w-max animate-marquee-left">
           <div className="flex gap-4 pr-4 shrink-0">
-            <Image width={640} height={96} alt="strip" className="h-20 sm:h-24 w-auto object-contain shrink-0" src="/common/strip-1.png" style={stripImageStyle} />
-            <Image width={640} height={96} alt="strip" className="h-20 sm:h-24 w-auto object-contain shrink-0" src="/common/strip-1.png" style={stripImageStyle} />
-            <Image width={640} height={96} alt="strip" className="h-20 sm:h-24 w-auto object-contain shrink-0" src="/common/strip-1.png" style={stripImageStyle} />
-            <Image width={640} height={96} alt="strip" className="h-20 sm:h-24 w-auto object-contain shrink-0" src="/common/strip-1.png" style={stripImageStyle} />
+            <Image width={640} height={96} alt="strip" className="h-20 sm:h-24 w-auto object-contain shrink-0" src="https://qfbsszbgmipbercujiak.supabase.co/storage/v1/object/public/site-assets/common/strip-1.png" style={stripImageStyle} />
+            <Image width={640} height={96} alt="strip" className="h-20 sm:h-24 w-auto object-contain shrink-0" src="https://qfbsszbgmipbercujiak.supabase.co/storage/v1/object/public/site-assets/common/strip-1.png" style={stripImageStyle} />
+            <Image width={640} height={96} alt="strip" className="h-20 sm:h-24 w-auto object-contain shrink-0" src="https://qfbsszbgmipbercujiak.supabase.co/storage/v1/object/public/site-assets/common/strip-1.png" style={stripImageStyle} />
+            <Image width={640} height={96} alt="strip" className="h-20 sm:h-24 w-auto object-contain shrink-0" src="https://qfbsszbgmipbercujiak.supabase.co/storage/v1/object/public/site-assets/common/strip-1.png" style={stripImageStyle} />
           </div>
           <div className="flex gap-4 pr-4 shrink-0">
-            <Image width={640} height={96} alt="strip" className="h-20 sm:h-24 w-auto object-contain shrink-0" src="/common/strip-1.png" style={stripImageStyle} />
-            <Image width={640} height={96} alt="strip" className="h-20 sm:h-24 w-auto object-contain shrink-0" src="/common/strip-1.png" style={stripImageStyle} />
-            <Image width={640} height={96} alt="strip" className="h-20 sm:h-24 w-auto object-contain shrink-0" src="/common/strip-1.png" style={stripImageStyle} />
-            <Image width={640} height={96} alt="strip" className="h-20 sm:h-24 w-auto object-contain shrink-0" src="/common/strip-1.png" style={stripImageStyle} />
+            <Image width={640} height={96} alt="strip" className="h-20 sm:h-24 w-auto object-contain shrink-0" src="https://qfbsszbgmipbercujiak.supabase.co/storage/v1/object/public/site-assets/common/strip-1.png" style={stripImageStyle} />
+            <Image width={640} height={96} alt="strip" className="h-20 sm:h-24 w-auto object-contain shrink-0" src="https://qfbsszbgmipbercujiak.supabase.co/storage/v1/object/public/site-assets/common/strip-1.png" style={stripImageStyle} />
+            <Image width={640} height={96} alt="strip" className="h-20 sm:h-24 w-auto object-contain shrink-0" src="https://qfbsszbgmipbercujiak.supabase.co/storage/v1/object/public/site-assets/common/strip-1.png" style={stripImageStyle} />
+            <Image width={640} height={96} alt="strip" className="h-20 sm:h-24 w-auto object-contain shrink-0" src="https://qfbsszbgmipbercujiak.supabase.co/storage/v1/object/public/site-assets/common/strip-1.png" style={stripImageStyle} />
           </div>
           <div className="flex gap-4 pr-4 shrink-0">
-            <Image width={640} height={96} alt="strip" className="h-20 sm:h-24 w-auto object-contain shrink-0" src="/common/strip-1.png" style={stripImageStyle} />
-            <Image width={640} height={96} alt="strip" className="h-20 sm:h-24 w-auto object-contain shrink-0" src="/common/strip-1.png" style={stripImageStyle} />
-            <Image width={640} height={96} alt="strip" className="h-20 sm:h-24 w-auto object-contain shrink-0" src="/common/strip-1.png" style={stripImageStyle} />
-            <Image width={640} height={96} alt="strip" className="h-20 sm:h-24 w-auto object-contain shrink-0" src="/common/strip-1.png" style={stripImageStyle} />
+            <Image width={640} height={96} alt="strip" className="h-20 sm:h-24 w-auto object-contain shrink-0" src="https://qfbsszbgmipbercujiak.supabase.co/storage/v1/object/public/site-assets/common/strip-1.png" style={stripImageStyle} />
+            <Image width={640} height={96} alt="strip" className="h-20 sm:h-24 w-auto object-contain shrink-0" src="https://qfbsszbgmipbercujiak.supabase.co/storage/v1/object/public/site-assets/common/strip-1.png" style={stripImageStyle} />
+            <Image width={640} height={96} alt="strip" className="h-20 sm:h-24 w-auto object-contain shrink-0" src="https://qfbsszbgmipbercujiak.supabase.co/storage/v1/object/public/site-assets/common/strip-1.png" style={stripImageStyle} />
+            <Image width={640} height={96} alt="strip" className="h-20 sm:h-24 w-auto object-contain shrink-0" src="https://qfbsszbgmipbercujiak.supabase.co/storage/v1/object/public/site-assets/common/strip-1.png" style={stripImageStyle} />
           </div>
         </div>
       </div>
@@ -33,19 +33,19 @@ export default function MarqueeStrip() {
       <div className="w-full overflow-hidden relative isolate group">
         <div className="flex w-max animate-marquee-right">
           <div className="flex gap-4 pr-4 shrink-0">
-            <Image width={640} height={96} alt="strip" className="h-20 sm:h-24 w-auto object-contain shrink-0" src="/common/strip-2.png" style={stripImageStyle} />
-            <Image width={640} height={96} alt="strip" className="h-20 sm:h-24 w-auto object-contain shrink-0" src="/common/strip-2.png" style={stripImageStyle} />
-            <Image width={640} height={96} alt="strip" className="h-20 sm:h-24 w-auto object-contain shrink-0" src="/common/strip-2.png" style={stripImageStyle} />
+            <Image width={640} height={96} alt="strip" className="h-20 sm:h-24 w-auto object-contain shrink-0" src="https://qfbsszbgmipbercujiak.supabase.co/storage/v1/object/public/site-assets/common/strip-2.png" style={stripImageStyle} />
+            <Image width={640} height={96} alt="strip" className="h-20 sm:h-24 w-auto object-contain shrink-0" src="https://qfbsszbgmipbercujiak.supabase.co/storage/v1/object/public/site-assets/common/strip-2.png" style={stripImageStyle} />
+            <Image width={640} height={96} alt="strip" className="h-20 sm:h-24 w-auto object-contain shrink-0" src="https://qfbsszbgmipbercujiak.supabase.co/storage/v1/object/public/site-assets/common/strip-2.png" style={stripImageStyle} />
           </div>
           <div className="flex gap-4 pr-4 shrink-0">
-            <Image width={640} height={96} alt="strip" className="h-20 sm:h-24 w-auto object-contain shrink-0" src="/common/strip-2.png" style={stripImageStyle} />
-            <Image width={640} height={96} alt="strip" className="h-20 sm:h-24 w-auto object-contain shrink-0" src="/common/strip-2.png" style={stripImageStyle} />
-            <Image width={640} height={96} alt="strip" className="h-20 sm:h-24 w-auto object-contain shrink-0" src="/common/strip-2.png" style={stripImageStyle} />
+            <Image width={640} height={96} alt="strip" className="h-20 sm:h-24 w-auto object-contain shrink-0" src="https://qfbsszbgmipbercujiak.supabase.co/storage/v1/object/public/site-assets/common/strip-2.png" style={stripImageStyle} />
+            <Image width={640} height={96} alt="strip" className="h-20 sm:h-24 w-auto object-contain shrink-0" src="https://qfbsszbgmipbercujiak.supabase.co/storage/v1/object/public/site-assets/common/strip-2.png" style={stripImageStyle} />
+            <Image width={640} height={96} alt="strip" className="h-20 sm:h-24 w-auto object-contain shrink-0" src="https://qfbsszbgmipbercujiak.supabase.co/storage/v1/object/public/site-assets/common/strip-2.png" style={stripImageStyle} />
           </div>
           <div className="flex gap-4 pr-4 shrink-0">
-            <Image width={640} height={96} alt="strip" className="h-20 sm:h-24 w-auto object-contain shrink-0" src="/common/strip-2.png" style={stripImageStyle} />
-            <Image width={640} height={96} alt="strip" className="h-20 sm:h-24 w-auto object-contain shrink-0" src="/common/strip-2.png" style={stripImageStyle} />
-            <Image width={640} height={96} alt="strip" className="h-20 sm:h-24 w-auto object-contain shrink-0" src="/common/strip-2.png" style={stripImageStyle} />
+            <Image width={640} height={96} alt="strip" className="h-20 sm:h-24 w-auto object-contain shrink-0" src="https://qfbsszbgmipbercujiak.supabase.co/storage/v1/object/public/site-assets/common/strip-2.png" style={stripImageStyle} />
+            <Image width={640} height={96} alt="strip" className="h-20 sm:h-24 w-auto object-contain shrink-0" src="https://qfbsszbgmipbercujiak.supabase.co/storage/v1/object/public/site-assets/common/strip-2.png" style={stripImageStyle} />
+            <Image width={640} height={96} alt="strip" className="h-20 sm:h-24 w-auto object-contain shrink-0" src="https://qfbsszbgmipbercujiak.supabase.co/storage/v1/object/public/site-assets/common/strip-2.png" style={stripImageStyle} />
           </div>
         </div>
       </div>

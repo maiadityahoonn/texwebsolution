@@ -37,7 +37,7 @@ export function useDocumentEditor({
     const defaultB = getDefaultBrand();
     const b = stored?.brand || defaultB;
     if (!b.logoUrl || b.logoUrl === "/logo.png") {
-      b.logoUrl = "/texweb-header-logo.png";
+      b.logoUrl = "https://qfbsszbgmipbercujiak.supabase.co/storage/v1/object/public/site-assets/texweb-header-logo.png";
     }
     if (!b.letterhead) {
       b.letterhead = defaultB.letterhead;

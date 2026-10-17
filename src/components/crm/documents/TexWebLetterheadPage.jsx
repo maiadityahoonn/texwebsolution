@@ -47,7 +47,7 @@ export default function TexWebLetterheadPage({
           <div className="flex items-center gap-4 min-w-0">
             <img src={brand.logoUrl || "/logo.png"} alt="TexWeb Solution" className="h-24 w-24 rounded-2xl object-contain shrink-0" />
             <div className="min-w-0">
-              <img src={brand.fullLogoUrl || "/texweb-full-logo-cropped.png"} alt="TexWeb Solution" className="h-16 w-auto object-contain" />
+              <img src={brand.fullLogoUrl || "https://qfbsszbgmipbercujiak.supabase.co/storage/v1/object/public/site-assets/texweb-full-logo-cropped.png"} alt="TexWeb Solution" className="h-16 w-auto object-contain" />
               <div className="text-sm font-semibold text-slate-700 mt-1">{brand.tagline}</div>
             </div>
           </div>

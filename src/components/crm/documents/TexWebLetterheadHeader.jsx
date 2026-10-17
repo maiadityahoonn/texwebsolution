@@ -63,7 +63,7 @@ export default function TexWebLetterheadHeader({ brand = {}, onUpdateBrand }) {
               title="Click to change full logo image"
             >
               <img
-                src={brand.fullLogoUrl || "/texweb-full-logo-cropped.png"}
+                src={brand.fullLogoUrl || "https://qfbsszbgmipbercujiak.supabase.co/storage/v1/object/public/site-assets/texweb-full-logo-cropped.png"}
                 alt="TexWeb Solution"
                 className="h-12 w-auto object-contain"
               />

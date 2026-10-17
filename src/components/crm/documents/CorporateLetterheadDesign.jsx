@@ -26,8 +26,8 @@ export default function CorporateLetterheadDesign({
   website = "www.texwebsolution.in",
   locations = "Kolkata | Bhopal",
   tagline = "Complete Digital Solutions for Your Business",
-  logoUrl = "/texweb-header-logo.png",
-  iconUrl = "/texweb-official-icon.png",
+  logoUrl = "https://qfbsszbgmipbercujiak.supabase.co/storage/v1/object/public/site-assets/texweb-header-logo.png",
+  iconUrl = "https://qfbsszbgmipbercujiak.supabase.co/storage/v1/object/public/site-assets/texweb-official-icon.png",
   letterheadConfig = {},
   updateLetterhead = () => {},
   selectedBlockId = "",
@@ -91,7 +91,7 @@ export default function CorporateLetterheadDesign({
               }}
             >
               <img
-                src={currentLogoUrl || "/texweb-header-logo.png"}
+                src={currentLogoUrl || "https://qfbsszbgmipbercujiak.supabase.co/storage/v1/object/public/site-assets/texweb-header-logo.png"}
                 alt="TexWeb Solution"
                 crossOrigin="anonymous"
                 className="h-[46px] w-auto max-w-[260px] object-contain drop-shadow-2xs pointer-events-none"
@@ -223,7 +223,7 @@ export default function CorporateLetterheadDesign({
             }}
           >
             <img
-              src={currentIconUrl || "/texweb-official-icon.png"}
+              src={currentIconUrl || "https://qfbsszbgmipbercujiak.supabase.co/storage/v1/object/public/site-assets/texweb-official-icon.png"}
               alt="Watermark"
               crossOrigin="anonymous"
               className="w-full h-full object-contain mix-blend-multiply pointer-events-none select-none"

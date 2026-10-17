@@ -48,13 +48,13 @@ export default function PricingPage() {
       {/* Hero Header Wrapper (Matching Customized / Prebuilt / AI-Automation pages) */}
       <div 
         className="relative w-full flex flex-col bg-no-repeat bg-center bg-cover min-h-[70vh] sm:min-h-[75vh] md:min-h-screen" 
-        style={{ backgroundImage: "url('/common/Bg2.png')" }}
+        style={{ backgroundImage: "url('https://qfbsszbgmipbercujiak.supabase.co/storage/v1/object/public/site-assets/common/Bg2.png')" }}
       >
         <Navbar />
 
         {/* Floating Ornaments */}
         <Image 
-          src="/common/pricing_tag.webp" 
+          src="https://qfbsszbgmipbercujiak.supabase.co/storage/v1/object/public/site-assets/common/pricing_tag.webp" 
           alt="Pricing Plan Badge" 
           aria-hidden="true" 
           width={208}
@@ -62,7 +62,7 @@ export default function PricingPage() {
           className="hidden md:block absolute top-24 right-10 w-40 lg:w-52 opacity-95 animate-floatingSmooth pointer-events-none select-none drop-shadow-xl" 
         />
         <Image 
-          src="/common/pricing_calc.webp" 
+          src="https://qfbsszbgmipbercujiak.supabase.co/storage/v1/object/public/site-assets/common/pricing_calc.webp" 
           alt="Pricing Savings & Calculator" 
           aria-hidden="true" 
           width={208}

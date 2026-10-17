@@ -149,7 +149,7 @@ export default function Navbar() {
               height={48}
               alt="TexWeb Solution"
               className="h-[38px] md:h-[44px] lg:h-[48px] w-auto object-contain transition-transform duration-300 group-hover:scale-105"
-              src="/texweb-full-logo-original.png"
+              src="https://qfbsszbgmipbercujiak.supabase.co/storage/v1/object/public/site-assets/texweb-full-logo-original.png"
               style={{ width: "auto" }}
               priority
             />
@@ -205,7 +205,7 @@ export default function Navbar() {
               height={40}
               alt="TexWeb Solution"
               className="h-[32px] min-[375px]:h-[36px] min-[425px]:h-[40px] md:h-[44px] w-auto object-contain"
-              src="/texweb-full-logo-original.png"
+              src="https://qfbsszbgmipbercujiak.supabase.co/storage/v1/object/public/site-assets/texweb-full-logo-original.png"
               style={{ width: "auto" }}
               priority
             />

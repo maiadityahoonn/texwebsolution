@@ -91,7 +91,7 @@ export default function PublicFloatingWidgets() {
             height={240}
             alt="Instagram"
             className="object-contain drop-shadow-[0_0_8px_rgba(255,0,150,0.25)] hover:drop-shadow-[0_0_15px_rgba(255,50,180,0.45)] transition-all duration-300"
-            src="/common/Insta.svg"
+            src="https://qfbsszbgmipbercujiak.supabase.co/storage/v1/object/public/site-assets/common/Insta.svg"
             style={{
               position: "absolute",
               height: "100%",
@@ -120,7 +120,7 @@ export default function PublicFloatingWidgets() {
             height={64}
             alt="WhatsApp"
             className="object-contain drop-shadow-[0_0_8px_rgba(0,255,70,0.25)] hover:drop-shadow-[0_0_15px_rgba(0,255,100,0.45)] transition-all duration-300"
-            src="/common/WhatsApp.svg"
+            src="https://qfbsszbgmipbercujiak.supabase.co/storage/v1/object/public/site-assets/common/WhatsApp.svg"
             style={{
               position: "absolute",
               height: "100%",

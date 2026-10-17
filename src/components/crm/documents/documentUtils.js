@@ -213,8 +213,8 @@ export function getDefaultBrand() {
   const base = {
     font: "Inter",
     accent: "#ea580c",
-    logoUrl: "/texweb-header-logo.png",
-    fullLogoUrl: "/texweb-header-logo.png",
+    logoUrl: "https://qfbsszbgmipbercujiak.supabase.co/storage/v1/object/public/site-assets/texweb-header-logo.png",
+    fullLogoUrl: "https://qfbsszbgmipbercujiak.supabase.co/storage/v1/object/public/site-assets/texweb-header-logo.png",
     tagline: "Complete Digital Solutions for Your Business",
     phone: "0755-4601839",
     email: "info@texwebsolution.in",

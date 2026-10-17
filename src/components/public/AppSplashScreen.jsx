@@ -40,7 +40,7 @@ export default function AppSplashScreen() {
         isVisible ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
       }`}
       style={{
-        backgroundImage: "url('/common/Bg2.png')",
+        backgroundImage: "url('https://qfbsszbgmipbercujiak.supabase.co/storage/v1/object/public/site-assets/common/Bg2.png')",
         backgroundRepeat: "no-repeat",
         backgroundPosition: "top center",
         backgroundSize: "cover",

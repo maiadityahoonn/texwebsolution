@@ -31,7 +31,7 @@ export default function DocumentCard({ doc, deals = [], clients = [], leads = []
           </div>
           <div className="absolute inset-x-8 top-3 bottom-3 rounded-sm bg-white shadow-sm border border-gray-200 overflow-hidden relative">
             <img
-              src="/texweb-official-letterhead.png"
+              src="https://qfbsszbgmipbercujiak.supabase.co/storage/v1/object/public/site-assets/texweb-official-letterhead.png"
               alt="Letterhead Preview"
               className="absolute inset-0 w-full h-full object-fill pointer-events-none select-none opacity-90"
             />

@@ -165,7 +165,7 @@ export default function Home() {
             <Image width={800} height={600}
               alt="TexWeb Solution - Custom Website and Mobile App Development Agency"
               className="w-full h-auto object-contain"
-              src="/home/home.webp"
+              src="https://qfbsszbgmipbercujiak.supabase.co/storage/v1/object/public/site-assets/home/home.webp"
               loading="eager"
               fetchPriority="high"
             />
@@ -199,9 +199,9 @@ export default function Home() {
 
           <div className="inline-flex items-center gap-2 sm:gap-4 mt-3">
             <div className="flex -space-x-3 scale-[0.85] sm:scale-90 origin-left">
-              <Image width={96} height={96} className="w-8 h-8 sm:w-10 sm:h-10 rounded-full border-2 border-red-600 object-cover bg-white shadow-sm" src="/home/prof1.png" alt="Audience 1" />
-              <Image width={96} height={96} className="w-8 h-8 sm:w-10 sm:h-10 rounded-full border-2 border-red-600 object-cover bg-white shadow-sm" src="/home/prof2.png" alt="Audience 2" />
-              <Image width={96} height={96} className="w-8 h-8 sm:w-10 sm:h-10 rounded-full border-2 border-red-600 object-cover bg-white shadow-sm" src="/home/prof3.png" alt="Audience 3" />
+              <Image width={96} height={96} className="w-8 h-8 sm:w-10 sm:h-10 rounded-full border-2 border-red-600 object-cover bg-white shadow-sm" src="https://qfbsszbgmipbercujiak.supabase.co/storage/v1/object/public/site-assets/home/prof1.png" alt="Audience 1" />
+              <Image width={96} height={96} className="w-8 h-8 sm:w-10 sm:h-10 rounded-full border-2 border-red-600 object-cover bg-white shadow-sm" src="https://qfbsszbgmipbercujiak.supabase.co/storage/v1/object/public/site-assets/home/prof2.png" alt="Audience 2" />
+              <Image width={96} height={96} className="w-8 h-8 sm:w-10 sm:h-10 rounded-full border-2 border-red-600 object-cover bg-white shadow-sm" src="https://qfbsszbgmipbercujiak.supabase.co/storage/v1/object/public/site-assets/home/prof3.png" alt="Audience 3" />
             </div>
             <p className="text-gray-700 text-sm sm:text-lg leading-none" style={{ fontFamily: "Matter" }}>
               Trusted by <AnimatedCounter target={90} suffix="k+" className="text-red-600 font-semibold" /> Audience

@@ -47,13 +47,13 @@ export default function CustomizedPage() {
       {/* Hero Header Wrapper */}
       <div 
         className="relative w-full flex flex-col bg-no-repeat bg-center bg-cover min-h-[70vh] sm:min-h-[75vh] md:min-h-screen" 
-        style={{ backgroundImage: "url('/common/Bg2.png')" }}
+        style={{ backgroundImage: "url('https://qfbsszbgmipbercujiak.supabase.co/storage/v1/object/public/site-assets/common/Bg2.png')" }}
       >
         <Navbar />
 
         {/* Floating Ornaments */}
-        <Image src="/common/customized_code.png" alt="" aria-hidden="true" width={192} height={192} className="hidden md:block absolute top-28 right-12 w-36 lg:w-48 h-auto opacity-80 animate-floatingSmooth pointer-events-none select-none" />
-        <Image src="/common/customized_gears.png" alt="" aria-hidden="true" width={176} height={176} className="hidden md:block absolute bottom-24 left-8 w-32 lg:w-44 h-auto opacity-70 animate-floatingSmooth pointer-events-none select-none" style={{ animationDelay: '1.5s' }} />
+        <Image src="https://qfbsszbgmipbercujiak.supabase.co/storage/v1/object/public/site-assets/common/customized_code.png" alt="" aria-hidden="true" width={192} height={192} className="hidden md:block absolute top-28 right-12 w-36 lg:w-48 h-auto opacity-80 animate-floatingSmooth pointer-events-none select-none" />
+        <Image src="https://qfbsszbgmipbercujiak.supabase.co/storage/v1/object/public/site-assets/common/customized_gears.png" alt="" aria-hidden="true" width={176} height={176} className="hidden md:block absolute bottom-24 left-8 w-32 lg:w-44 h-auto opacity-70 animate-floatingSmooth pointer-events-none select-none" style={{ animationDelay: '1.5s' }} />
 
         <div className="flex-1 flex flex-col justify-start pt-12 md:justify-center md:pt-0">
           <section className="flex flex-1 items-start md:items-center justify-start md:justify-center text-center px-4 sm:px-6 pt-12 sm:pt-14 md:pt-0">

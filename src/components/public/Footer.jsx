@@ -58,7 +58,7 @@ export default function Footer() {
                 </p>
                 <p>
                   <a href="https://wa.me/+917462827259" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 hover:text-green-600 transition-colors">
-                    <Image width={64} height={64} src="/common/WhatsApp.svg" alt="WhatsApp" className="w-4 h-4 object-contain shrink-0" />
+                    <Image width={64} height={64} src="https://qfbsszbgmipbercujiak.supabase.co/storage/v1/object/public/site-assets/common/WhatsApp.svg" alt="WhatsApp" className="w-4 h-4 object-contain shrink-0" />
                     <span>+91 7462827259 (WhatsApp)</span>
                   </a>
                 </p>

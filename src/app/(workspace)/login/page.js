@@ -274,7 +274,7 @@ export default function LoginPage() {
             <div>
               <div className="flex items-center gap-3">
                 <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white shadow-md">
-                  <Image src="/texweb-logo.png" alt="TexWeb" width={34} height={34} priority />
+                  <Image src="https://qfbsszbgmipbercujiak.supabase.co/storage/v1/object/public/site-assets/texweb-logo.png" alt="TexWeb" width={34} height={34} priority />
                 </div>
                 <div>
                   <p className="text-lg font-black tracking-tight">TexWeb Solution</p>
@@ -295,7 +295,7 @@ export default function LoginPage() {
           {/* Right Form Card */}
           <div className="bg-white p-6 text-slate-950 sm:p-10">
             <div className="mb-10 flex items-center gap-3 lg:hidden">
-              <Image src="/texweb-logo.png" alt="TexWeb" width={38} height={38} priority />
+              <Image src="https://qfbsszbgmipbercujiak.supabase.co/storage/v1/object/public/site-assets/texweb-logo.png" alt="TexWeb" width={38} height={38} priority />
               <div>
                 <p className="text-lg font-black tracking-tight">TexWeb Solution</p>
                 <p className="text-sm text-slate-500">Internal Workspace</p>

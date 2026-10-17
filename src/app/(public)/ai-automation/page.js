@@ -40,7 +40,7 @@ const AI_FAQS = [
 const SERVICES = [
   {
     title: "AI Chatbot & Assistant Integration",
-    image: "/ai-automation/ai_chatbot_showcase.png",
+    image: "https://qfbsszbgmipbercujiak.supabase.co/storage/v1/object/public/site-assets/ai-automation/ai_chatbot_showcase.png",
     imageAlt: "AI Chatbot & Assistant Integration",
     desc: "Engage visitors, capture qualified leads, and answer support queries 24/7 with custom AI-powered chatbots integrated directly into your website.",
     bullets: [
@@ -51,7 +51,7 @@ const SERVICES = [
   },
   {
     title: "WhatsApp Business Automation",
-    image: "/ai-automation/whatsapp_automation_showcase.png",
+    image: "https://qfbsszbgmipbercujiak.supabase.co/storage/v1/object/public/site-assets/ai-automation/whatsapp_automation_showcase.png",
     imageAlt: "WhatsApp Business Automation",
     desc: "Optimize customer communication with automated WhatsApp flows. Set up smart auto-replies, bulk notifications, and interactive chat menus.",
     bullets: [
@@ -62,7 +62,7 @@ const SERVICES = [
   },
   {
     title: "AI Voice Calling Agents",
-    image: "/ai-automation/voice_agent_showcase.png",
+    image: "https://qfbsszbgmipbercujiak.supabase.co/storage/v1/object/public/site-assets/ai-automation/voice_agent_showcase.png",
     imageAlt: "AI Voice Calling Agents",
     desc: "Deploy human-like AI voice bots to automate inbound and outbound phone calls, verify customer feedback, qualify leads, and schedule bookings.",
     bullets: [
@@ -88,19 +88,19 @@ export default function AiAutomationPage() {
       {/* Hero Header Wrapper */}
       <div 
         className="relative w-full flex flex-col bg-no-repeat bg-center bg-cover min-h-[70vh] sm:min-h-[75vh] md:min-h-screen" 
-        style={{ backgroundImage: "url('/common/Bg2.png')" }}
+        style={{ backgroundImage: "url('https://qfbsszbgmipbercujiak.supabase.co/storage/v1/object/public/site-assets/common/Bg2.png')" }}
       >
         <Navbar />
 
         {/* Floating Ornaments */}
         <Image width={800} height={600} 
-          src="/ai-automation/ai_ornament_right.webp" 
+          src="https://qfbsszbgmipbercujiak.supabase.co/storage/v1/object/public/site-assets/ai-automation/ai_ornament_right.webp" 
           alt="" 
           aria-hidden="true" 
           className="hidden md:block absolute top-28 right-8 w-36 lg:w-48 opacity-80 animate-floatingSmooth pointer-events-none select-none" 
         />
         <Image width={800} height={600} 
-          src="/ai-automation/ai_ornament_left.webp" 
+          src="https://qfbsszbgmipbercujiak.supabase.co/storage/v1/object/public/site-assets/ai-automation/ai_ornament_left.webp" 
           alt="" 
           aria-hidden="true" 
           className="hidden md:block absolute bottom-20 left-8 w-36 lg:w-48 opacity-95 animate-floatingSmooth pointer-events-none select-none drop-shadow-lg" 
@@ -215,7 +215,7 @@ export default function AiAutomationPage() {
                       rel="noopener noreferrer"
                       className="px-6 py-2.5 bg-red-600 text-white rounded-full shadow-md hover:scale-[1.05] hover:bg-red-700 active:scale-[0.96] transition-all duration-100 shadow-red-600/10 font-medium inline-flex items-center gap-2"
                     >
-                      <Image width={64} height={64} src="/common/WhatsApp.svg" alt="WhatsApp" className="w-4 h-4 object-contain" />
+                      <Image width={64} height={64} src="https://qfbsszbgmipbercujiak.supabase.co/storage/v1/object/public/site-assets/common/WhatsApp.svg" alt="WhatsApp" className="w-4 h-4 object-contain" />
                       <span>Enquire on WhatsApp</span>
                     </a>
                 </div>

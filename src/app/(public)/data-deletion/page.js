@@ -9,7 +9,7 @@ export default function DataDeletionPage() {
     <div className="w-full flex flex-col bg-white min-h-screen">
       <div
         className="relative w-full flex flex-col bg-no-repeat bg-center bg-cover min-h-[42vh]"
-        style={{ backgroundImage: "url('/common/Bg2.png')" }}
+        style={{ backgroundImage: "url('https://qfbsszbgmipbercujiak.supabase.co/storage/v1/object/public/site-assets/common/Bg2.png')" }}
       >
         <Navbar />
 

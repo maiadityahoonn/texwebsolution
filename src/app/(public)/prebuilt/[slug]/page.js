@@ -101,7 +101,7 @@ export default function ProductDetailPage({ params: paramsPromise }) {
       {/* Hero Header Area */}
       <div
         className="relative w-full flex flex-col bg-no-repeat bg-center bg-cover min-h-[75vh] md:min-h-screen pb-12"
-        style={{ backgroundImage: "url('/common/Bg2.png')" }}
+        style={{ backgroundImage: "url('https://qfbsszbgmipbercujiak.supabase.co/storage/v1/object/public/site-assets/common/Bg2.png')" }}
       >
         <Navbar />
 
@@ -144,7 +144,7 @@ export default function ProductDetailPage({ params: paramsPromise }) {
                   rel="noopener noreferrer"
                 >
                   <button className="w-full sm:w-auto px-8 py-3.5 bg-white border border-gray-200 text-gray-950 rounded-full shadow-sm hover:bg-neutral-50 hover:scale-[1.02] active:scale-[0.98] transition-all font-semibold font-[Matter] flex items-center justify-center gap-2">
-                    <Image width={64} height={64} src="/common/WhatsApp.svg" alt="WhatsApp" className="w-5 h-5" /> WhatsApp Live
+                    <Image width={64} height={64} src="https://qfbsszbgmipbercujiak.supabase.co/storage/v1/object/public/site-assets/common/WhatsApp.svg" alt="WhatsApp" className="w-5 h-5" /> WhatsApp Live
                   </button>
                 </a>
               </div>

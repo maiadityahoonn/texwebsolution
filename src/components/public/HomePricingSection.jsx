@@ -218,7 +218,7 @@ export default function HomePricingSection() {
                 rel="noopener noreferrer"
                 className="w-full py-3.5 px-6 rounded-2xl bg-gray-900 text-white font-semibold text-center text-sm hover:bg-red-600 transition-all duration-300 shadow-md hover:shadow-red-600/20 flex items-center justify-center gap-2 group"
               >
-                <Image width={64} height={64} src="/common/WhatsApp.svg" alt="WhatsApp" className="w-4 h-4 object-contain shrink-0" />
+                <Image width={64} height={64} src="https://qfbsszbgmipbercujiak.supabase.co/storage/v1/object/public/site-assets/common/WhatsApp.svg" alt="WhatsApp" className="w-4 h-4 object-contain shrink-0" />
                 <span>Start Basic at {activePlans.basic.display}{selectedBilling === "yearly" ? "/yr" : "/mo"}</span>
                 <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
               </a>
@@ -313,7 +313,7 @@ export default function HomePricingSection() {
                 rel="noopener noreferrer"
                 className="w-full py-4 px-6 rounded-2xl bg-red-600 text-white font-semibold text-center text-sm hover:bg-red-700 transition-all duration-300 shadow-lg shadow-red-600/30 flex items-center justify-center gap-2 group"
               >
-                <Image width={64} height={64} src="/common/WhatsApp.svg" alt="WhatsApp" className="w-4 h-4 object-contain shrink-0" />
+                <Image width={64} height={64} src="https://qfbsszbgmipbercujiak.supabase.co/storage/v1/object/public/site-assets/common/WhatsApp.svg" alt="WhatsApp" className="w-4 h-4 object-contain shrink-0" />
                 <span>Get Standard at {activePlans.standard.display}{selectedBilling === "yearly" ? "/yr" : "/mo"}</span>
                 <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
               </a>
@@ -398,7 +398,7 @@ export default function HomePricingSection() {
                 rel="noopener noreferrer"
                 className="w-full py-3.5 px-6 rounded-2xl bg-gray-900 text-white font-semibold text-center text-sm hover:bg-red-600 transition-all duration-300 shadow-md hover:shadow-red-600/20 flex items-center justify-center gap-2 group"
               >
-                <Image width={64} height={64} src="/common/WhatsApp.svg" alt="WhatsApp" className="w-4 h-4 object-contain shrink-0" />
+                <Image width={64} height={64} src="https://qfbsszbgmipbercujiak.supabase.co/storage/v1/object/public/site-assets/common/WhatsApp.svg" alt="WhatsApp" className="w-4 h-4 object-contain shrink-0" />
                 <span>Start Premium at {activePlans.premium.display}{selectedBilling === "yearly" ? "/yr" : "/mo"}</span>
                 <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
               </a>

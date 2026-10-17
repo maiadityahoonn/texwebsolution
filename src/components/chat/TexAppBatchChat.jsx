@@ -5309,7 +5309,7 @@ export default function TexAppBatchChat({
         <div
           className="absolute inset-0 pointer-events-none bg-repeat transition-opacity z-0 opacity-[0.06] dark:opacity-[0.045] dark:invert"
           style={{
-            backgroundImage: "url('/tech-chat-doodle.svg')",
+            backgroundImage: "url('https://qfbsszbgmipbercujiak.supabase.co/storage/v1/object/public/site-assets/tech-chat-doodle.svg')",
             backgroundSize: "360px 360px",
           }}
         />
@@ -5321,7 +5321,7 @@ export default function TexAppBatchChat({
         <div
           className="absolute inset-0 pointer-events-none z-0 bg-[#fbf5e8]/90 dark:bg-[#1a1612]/90 bg-repeat"
           style={{
-            backgroundImage: "url('/tech-chat-doodle.svg')",
+            backgroundImage: "url('https://qfbsszbgmipbercujiak.supabase.co/storage/v1/object/public/site-assets/tech-chat-doodle.svg')",
             backgroundSize: "360px 360px",
             opacity: 0.035,
           }}

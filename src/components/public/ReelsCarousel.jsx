@@ -6,12 +6,12 @@ import { motion, AnimatePresence } from "framer-motion";
 import AnimatedCounter from "@/components/public/AnimatedCounter";
 
 const REELS = [
-  { id: "1", link: "https://www.instagram.com/p/DbXz0UhM4lp/?hl=en", imageUrl: "/thumbnails/tb-1.png" },
-  { id: "2", link: "https://www.instagram.com/reel/DbvdBmVsVNb/?hl=en", imageUrl: "/thumbnails/tb-6.png" },
-  { id: "3", link: "https://www.instagram.com/reel/DblNVbZNpat/?hl=en", imageUrl: "/thumbnails/tb-3.png" },
-  { id: "4", link: "https://www.instagram.com/reel/DbqaViXzNYp/?hl=en", imageUrl: "/thumbnails/tb-4.png" },
-  { id: "5", link: "https://www.instagram.com/reel/Db3UaiGMUdm/?hl=en", imageUrl: "/thumbnails/tb-5.png" },
-  { id: "6", link: "https://www.instagram.com/p/DQrhivDE7du/?hl=en", imageUrl: "/thumbnails/tb-2.png" },
+  { id: "1", link: "https://www.instagram.com/p/DbXz0UhM4lp/?hl=en", imageUrl: "https://qfbsszbgmipbercujiak.supabase.co/storage/v1/object/public/site-assets/thumbnails/tb-1.png" },
+  { id: "2", link: "https://www.instagram.com/reel/DbvdBmVsVNb/?hl=en", imageUrl: "https://qfbsszbgmipbercujiak.supabase.co/storage/v1/object/public/site-assets/thumbnails/tb-6.png" },
+  { id: "3", link: "https://www.instagram.com/reel/DblNVbZNpat/?hl=en", imageUrl: "https://qfbsszbgmipbercujiak.supabase.co/storage/v1/object/public/site-assets/thumbnails/tb-3.png" },
+  { id: "4", link: "https://www.instagram.com/reel/DbqaViXzNYp/?hl=en", imageUrl: "https://qfbsszbgmipbercujiak.supabase.co/storage/v1/object/public/site-assets/thumbnails/tb-4.png" },
+  { id: "5", link: "https://www.instagram.com/reel/Db3UaiGMUdm/?hl=en", imageUrl: "https://qfbsszbgmipbercujiak.supabase.co/storage/v1/object/public/site-assets/thumbnails/tb-5.png" },
+  { id: "6", link: "https://www.instagram.com/p/DQrhivDE7du/?hl=en", imageUrl: "https://qfbsszbgmipbercujiak.supabase.co/storage/v1/object/public/site-assets/thumbnails/tb-2.png" },
 ];
 
 export default function ReelsCarousel({

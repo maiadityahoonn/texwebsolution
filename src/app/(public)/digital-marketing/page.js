@@ -42,7 +42,7 @@ const DIGITAL_MARKETING_FAQS = [
 const SERVICES = [
   {
     title: "Video Shooting & Professional Editing",
-    image: "/digital-marketing/video_editing_showcase.png",
+    image: "https://qfbsszbgmipbercujiak.supabase.co/storage/v1/object/public/site-assets/digital-marketing/video_editing_showcase.png",
     imageAlt: "Video Shooting & Professional Editing",
     desc: "High-quality brand video shoots, cinematic product shoots, trending reel editing, color grading, sound design, and viral short-form content production.",
     bullets: [
@@ -53,7 +53,7 @@ const SERVICES = [
   },
   {
     title: "Social Media Management & Account Handling",
-    image: "/digital-marketing/smm_management_showcase.png",
+    image: "https://qfbsszbgmipbercujiak.supabase.co/storage/v1/object/public/site-assets/digital-marketing/smm_management_showcase.png",
     imageAlt: "Social Media Management & Account Handling",
     desc: "Complete end-to-end management of your social media profiles. We handle monthly content planning, graphic post creation, scheduling, caption writing, and active audience engagement.",
     bullets: [
@@ -64,7 +64,7 @@ const SERVICES = [
   },
   {
     title: "Brand Creation & Visual Identity",
-    image: "/digital-marketing/brand_identity_showcase.png",
+    image: "https://qfbsszbgmipbercujiak.supabase.co/storage/v1/object/public/site-assets/digital-marketing/brand_identity_showcase.png",
     imageAlt: "Brand Creation & Visual Identity",
     desc: "Build a premium, memorable brand identity. We craft custom logos, brand guidelines, visual templates, and storytelling that make your business stand out.",
     bullets: [
@@ -75,7 +75,7 @@ const SERVICES = [
   },
   {
     title: "Paid Ads Setup & Performance Marketing",
-    image: "/digital-marketing/paid_ads_showcase.png",
+    image: "https://qfbsszbgmipbercujiak.supabase.co/storage/v1/object/public/site-assets/digital-marketing/paid_ads_showcase.png",
     imageAlt: "Paid Ads Setup & Performance Marketing",
     desc: "Launch high-converting advertising campaigns. We build, write, and manage ad funnels on Meta (Facebook & Instagram), Google Ads, YouTube, and LinkedIn.",
     bullets: [
@@ -86,7 +86,7 @@ const SERVICES = [
   },
   {
     title: "Search Engine Optimization (SEO)",
-    image: "/digital-marketing/seo_showcase.png",
+    image: "https://qfbsszbgmipbercujiak.supabase.co/storage/v1/object/public/site-assets/digital-marketing/seo_showcase.png",
     imageAlt: "Search Engine Optimization (SEO)",
     desc: "Dominate search engine rankings. We optimize your website's technical architecture, on-page content, and backlink profile to drive organic, high-intent leads.",
     bullets: [
@@ -112,19 +112,19 @@ export default function DigitalMarketingPage() {
       {/* Hero Header Wrapper */}
       <div
         className="relative w-full flex flex-col bg-no-repeat bg-center bg-cover min-h-[70vh] sm:min-h-[75vh] md:min-h-screen"
-        style={{ backgroundImage: "url('/common/Bg2.png')" }}
+        style={{ backgroundImage: "url('https://qfbsszbgmipbercujiak.supabase.co/storage/v1/object/public/site-assets/common/Bg2.png')" }}
       >
         <Navbar />
 
         {/* Floating Ornaments */}
         <Image width={240} height={240}
-          src="/common/about_target.png"
+          src="https://qfbsszbgmipbercujiak.supabase.co/storage/v1/object/public/site-assets/common/about_target.png"
           alt=""
           aria-hidden="true"
           className="hidden md:block absolute top-24 right-10 w-40 lg:w-52 opacity-90 animate-floatingSmooth pointer-events-none select-none drop-shadow-md"
         />
         <Image width={240} height={240}
-          src="/common/about_chart.png"
+          src="https://qfbsszbgmipbercujiak.supabase.co/storage/v1/object/public/site-assets/common/about_chart.png"
           alt=""
           aria-hidden="true"
           className="hidden md:block absolute bottom-20 left-8 w-36 lg:w-48 opacity-90 animate-floatingSmooth pointer-events-none select-none drop-shadow-md"
@@ -250,7 +250,7 @@ export default function DigitalMarketingPage() {
                       rel="noopener noreferrer"
                       className="px-6 py-2.5 bg-red-600 text-white rounded-full shadow-md hover:scale-[1.05] hover:bg-red-700 active:scale-[0.96] transition-all duration-100 shadow-red-600/10 font-medium inline-flex items-center gap-2"
                     >
-                      <Image width={64} height={64} src="/common/WhatsApp.svg" alt="WhatsApp" className="w-4 h-4 object-contain" />
+                      <Image width={64} height={64} src="https://qfbsszbgmipbercujiak.supabase.co/storage/v1/object/public/site-assets/common/WhatsApp.svg" alt="WhatsApp" className="w-4 h-4 object-contain" />
                       <span>Enquire on WhatsApp</span>
                     </a>
                 </div>

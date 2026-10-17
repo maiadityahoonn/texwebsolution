@@ -19,7 +19,7 @@ export default function TermsPage() {
       {/* Hero Header Wrapper */}
       <div 
         className="relative w-full flex flex-col bg-no-repeat bg-center bg-cover min-h-[45vh] sm:min-h-[50vh]" 
-        style={{ backgroundImage: "url('/common/Bg2.png')" }}
+        style={{ backgroundImage: "url('https://qfbsszbgmipbercujiak.supabase.co/storage/v1/object/public/site-assets/common/Bg2.png')" }}
       >
         <Navbar />
 
@@ -157,7 +157,7 @@ export default function TermsPage() {
                 </span>
               </p>
               <p className="flex items-center gap-2">
-                <Image width={64} height={64} src="/common/WhatsApp.svg" alt="WhatsApp" className="w-4 h-4 object-contain shrink-0" />
+                <Image width={64} height={64} src="https://qfbsszbgmipbercujiak.supabase.co/storage/v1/object/public/site-assets/common/WhatsApp.svg" alt="WhatsApp" className="w-4 h-4 object-contain shrink-0" />
                 <span>
                   <strong>Phone / WhatsApp:</strong>{" "}
                   <a href="https://wa.me/+917462827259" target="_blank" rel="noopener noreferrer" className="text-green-600 hover:underline">

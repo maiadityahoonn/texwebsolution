@@ -116,13 +116,13 @@ export default function ContactPage() {
       {/* Hero Header Wrapper */}
       <div 
         className="relative w-full flex flex-col bg-no-repeat bg-center bg-cover min-h-[70vh] sm:min-h-[75vh] md:min-h-screen" 
-        style={{ backgroundImage: "url('/common/Bg2.png')" }}
+        style={{ backgroundImage: "url('https://qfbsszbgmipbercujiak.supabase.co/storage/v1/object/public/site-assets/common/Bg2.png')" }}
       >
         <Navbar />
 
         {/* Floating Ornaments */}
-        <Image src="/common/contact_mail.png" alt="" aria-hidden="true" width={192} height={192} className="hidden md:block absolute top-28 right-12 w-36 lg:w-48 h-auto opacity-80 animate-floatingSmooth pointer-events-none select-none mix-blend-multiply" />
-        <Image src="/common/contact_chat.png" alt="" aria-hidden="true" width={176} height={176} className="hidden md:block absolute bottom-24 left-8 w-32 lg:w-44 h-auto opacity-70 animate-floatingSmooth pointer-events-none select-none mix-blend-multiply" style={{ animationDelay: '1s' }} />
+        <Image src="https://qfbsszbgmipbercujiak.supabase.co/storage/v1/object/public/site-assets/common/contact_mail.png" alt="" aria-hidden="true" width={192} height={192} className="hidden md:block absolute top-28 right-12 w-36 lg:w-48 h-auto opacity-80 animate-floatingSmooth pointer-events-none select-none mix-blend-multiply" />
+        <Image src="https://qfbsszbgmipbercujiak.supabase.co/storage/v1/object/public/site-assets/common/contact_chat.png" alt="" aria-hidden="true" width={176} height={176} className="hidden md:block absolute bottom-24 left-8 w-32 lg:w-44 h-auto opacity-70 animate-floatingSmooth pointer-events-none select-none mix-blend-multiply" style={{ animationDelay: '1s' }} />
 
         <div className="flex-1 flex flex-col justify-start pt-12 md:justify-center md:pt-0">
           <section className="flex flex-1 items-start md:items-center justify-start md:justify-center text-center px-4 sm:px-6 pt-12 sm:pt-14 md:pt-0">
@@ -226,7 +226,7 @@ export default function ContactPage() {
                 <div className="flex flex-col min-[420px]:flex-row min-[420px]:items-center justify-between gap-3">
                   <div className="flex items-center gap-4 min-w-0">
                     <div className="p-3 bg-green-50 rounded-xl group-hover:bg-green-100 transition-colors flex items-center justify-center">
-                      <Image src="/common/WhatsApp.svg" alt="WhatsApp" width={22} height={22} className="w-[22px] h-[22px] object-contain" />
+                      <Image src="https://qfbsszbgmipbercujiak.supabase.co/storage/v1/object/public/site-assets/common/WhatsApp.svg" alt="WhatsApp" width={22} height={22} className="w-[22px] h-[22px] object-contain" />
                     </div>
                     <div className="min-w-0">
                       <h4 className="font-semibold text-gray-800 text-sm sm:text-base font-[Matter]">WhatsApp Support</h4>
@@ -375,7 +375,7 @@ export default function ContactPage() {
                   {/* Phone Input */}
                   <div className="space-y-2">
                     <label htmlFor="phone" className="site-label font-semibold text-xs sm:text-sm font-[Matter] text-gray-700 flex items-center gap-1.5">
-                      <Image src="/common/WhatsApp.svg" alt="WhatsApp" width={14} height={14} className="w-3.5 h-3.5 object-contain" />
+                      <Image src="https://qfbsszbgmipbercujiak.supabase.co/storage/v1/object/public/site-assets/common/WhatsApp.svg" alt="WhatsApp" width={14} height={14} className="w-3.5 h-3.5 object-contain" />
                       <span>Phone / WhatsApp Number</span>
                     </label>
                     <input 

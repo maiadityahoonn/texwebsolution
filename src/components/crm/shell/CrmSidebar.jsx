@@ -128,7 +128,7 @@ export default function CrmSidebar({
             width={140}
             height={38}
             alt="TexWeb Solution Logo"
-            src="/texweb-full-logo-original.png"
+            src="https://qfbsszbgmipbercujiak.supabase.co/storage/v1/object/public/site-assets/texweb-full-logo-original.png"
             className="admin-sidebar-full-logo h-8 w-auto max-w-[152px] object-contain shrink-0 group-hover:scale-105 transition-transform"
             style={{ width: "auto" }}
             priority

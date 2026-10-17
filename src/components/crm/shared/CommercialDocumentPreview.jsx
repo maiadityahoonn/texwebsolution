@@ -13,7 +13,7 @@ export default function CommercialDocumentPreview({ form, type, deal, lead, clie
       <div className="relative rounded-xl bg-white text-slate-900 shadow-sm border border-gray-200 overflow-hidden min-h-[620px] flex flex-col justify-between">
         {/* Authentic Letterhead Background Image */}
         <img
-          src="/texweb-official-letterhead.png"
+          src="https://qfbsszbgmipbercujiak.supabase.co/storage/v1/object/public/site-assets/texweb-official-letterhead.png"
           alt="TexWeb Letterhead"
           className="absolute inset-0 w-full h-full object-fill pointer-events-none select-none z-0"
         />

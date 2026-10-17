@@ -116,7 +116,7 @@ export default function LeadCaptureModal() {
 
               <div>
                 <label className="flex items-center gap-1.5 text-[11px] font-bold text-gray-700 uppercase tracking-wider mb-1">
-                  <Image width={64} height={64} src="/common/WhatsApp.svg" alt="WhatsApp" className="w-3.5 h-3.5 object-contain" />
+                  <Image width={64} height={64} src="https://qfbsszbgmipbercujiak.supabase.co/storage/v1/object/public/site-assets/common/WhatsApp.svg" alt="WhatsApp" className="w-3.5 h-3.5 object-contain" />
                   <span>Phone / WhatsApp Number *</span>
                 </label>
                 <input

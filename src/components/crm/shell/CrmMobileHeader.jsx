@@ -31,7 +31,7 @@ export default function CrmMobileHeader({
             width={140}
             height={38}
             alt="TexWeb Solution Logo"
-            src="/texweb-full-logo-original.png"
+            src="https://qfbsszbgmipbercujiak.supabase.co/storage/v1/object/public/site-assets/texweb-full-logo-original.png"
             className="h-8 w-auto max-w-[140px] sm:max-w-[155px] object-contain shrink-0 group-hover:scale-105 transition-transform"
             style={{ width: "auto" }}
             priority

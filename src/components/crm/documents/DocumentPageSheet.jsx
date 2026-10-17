@@ -41,7 +41,7 @@ export default function DocumentPageSheet({
   const kind = getDocumentKind(draftDoc);
   const isAgreement = kind === "agreement";
   const amount = getDocumentAmount(draftDoc);
-  const letterheadSrc = brand.letterheadUrl || "/texweb-official-letterhead.png";
+  const letterheadSrc = brand.letterheadUrl || "https://qfbsszbgmipbercujiak.supabase.co/storage/v1/object/public/site-assets/texweb-official-letterhead.png";
 
   function updateLetterhead(key, updates) {
     updateBrand?.({
@@ -113,8 +113,8 @@ export default function DocumentPageSheet({
           {/* Authentic Vector & CSS Corporate Letterhead Design */}
           <CorporateLetterheadDesign
             customImageUrl={brand.letterheadUrl}
-            logoUrl={brand.logoUrl || "/texweb-header-logo.png"}
-            iconUrl="/texweb-official-icon.png"
+            logoUrl={brand.logoUrl || "https://qfbsszbgmipbercujiak.supabase.co/storage/v1/object/public/site-assets/texweb-header-logo.png"}
+            iconUrl="https://qfbsszbgmipbercujiak.supabase.co/storage/v1/object/public/site-assets/texweb-official-icon.png"
             phone={brand.phone || "0755-4601839"}
             email={brand.email || "info@texwebsolution.in"}
             website={brand.website || "www.texwebsolution.in"}

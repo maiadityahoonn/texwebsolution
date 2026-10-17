@@ -31,7 +31,7 @@ export default function GetInTouchSection() {
             rel="noopener noreferrer"
             className="w-full sm:w-auto px-7 py-3 bg-white text-gray-800 font-semibold border border-gray-200 rounded-full hover:border-green-600 hover:text-green-600 hover:bg-green-50/20 transition-all shadow-sm text-center flex items-center justify-center gap-2.5"
           >
-            <Image width={64} height={64} src="/common/WhatsApp.svg" alt="WhatsApp" className="w-5 h-5 object-contain" />
+            <Image width={64} height={64} src="https://qfbsszbgmipbercujiak.supabase.co/storage/v1/object/public/site-assets/common/WhatsApp.svg" alt="WhatsApp" className="w-5 h-5 object-contain" />
             <span>Chat on WhatsApp</span>
           </a>
           <a
