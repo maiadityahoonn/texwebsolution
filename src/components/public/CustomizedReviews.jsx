@@ -87,8 +87,8 @@ const CUSTOMIZED_REVIEWS = [
   {
     id: 9,
     name: "Dr. Sohail Abbas",
-    role: "Director & Chief Surgeon, Siwan City Hospital",
-    image: "https://qfbsszbgmipbercujiak.supabase.co/storage/v1/object/public/site-assets/avatars/siddharth_mehta.png",
+    role: "Founder & Director, Siwan City Hospital",
+    image: "https://qfbsszbgmipbercujiak.supabase.co/storage/v1/object/public/site-assets/avatars/dr_sohail_abbas.jpg",
     solution: "Multi-Speciality Hospital Website",
     roi: "+280% OPD Inquiries",
     rating: 5,
