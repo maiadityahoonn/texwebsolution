@@ -34,20 +34,6 @@ const FEATURED_CUSTOM_PROJECTS = [
     tags: ["E-Commerce", "Fashion & Apparel", "Luxury"]
   },
   {
-    title: "Siwan City Hospital : Multi-Speciality Healthcare",
-    image: "https://qfbsszbgmipbercujiak.supabase.co/storage/v1/object/public/site-assets/customized/siwancityhospital.jpg",
-    bullets: ["Premier multi-speciality hospital in Bihar with 24/7 emergency care, orthopaedics, and maternity services."],
-    buttonLink: "https://www.siwancityhospital.com/",
-    tags: ["Healthcare", "Hospital", "Emergency Care"]
-  },
-  {
-    title: "Samay Hospital : Multi-Speciality Hospital",
-    image: "https://qfbsszbgmipbercujiak.supabase.co/storage/v1/object/public/site-assets/customized/samayhospital.jpg",
-    bullets: ["Leading multi-speciality hospital in Patna & Ara with 24/7 ICU, emergency care, and expert specialists."],
-    buttonLink: "https://samayhospitals.org/",
-    tags: ["Healthcare", "Multi-Speciality", "ICU & Emergency"]
-  },
-  {
     title: "Sarvadnya Vidyapeeth",
     image: "https://qfbsszbgmipbercujiak.supabase.co/storage/v1/object/public/site-assets/customized/sarvadnya.jpg",
     bullets: ["Fostering academic excellence with a modern college admission & departmental portal built for higher education."],
@@ -97,6 +83,20 @@ const FEATURED_CUSTOM_PROJECTS = [
     tags: ["EdTech", "Coaching & Classes", "E-Learning"]
   },
   {
+    title: "Siwan City Hospital : Multi-Speciality Healthcare",
+    image: "https://qfbsszbgmipbercujiak.supabase.co/storage/v1/object/public/site-assets/customized/siwancityhospital.jpg",
+    bullets: ["Premier multi-speciality hospital in Bihar with 24/7 emergency care, orthopaedics, and maternity services."],
+    buttonLink: "https://www.siwancityhospital.com/",
+    tags: ["Healthcare", "Hospital", "Emergency Care"]
+  },
+  {
+    title: "Samay Hospital : Multi-Speciality Hospital",
+    image: "https://qfbsszbgmipbercujiak.supabase.co/storage/v1/object/public/site-assets/customized/samayhospital.jpg",
+    bullets: ["Leading multi-speciality hospital in Patna & Ara with 24/7 ICU, emergency care, and expert specialists."],
+    buttonLink: "https://samayhospitals.org/",
+    tags: ["Healthcare", "Multi-Speciality", "ICU & Emergency"]
+  },
+  {
     title: "Team 360 (D.D. Sharma)",
     image: "https://qfbsszbgmipbercujiak.supabase.co/storage/v1/object/public/site-assets/customized/team360.jpg",
     bullets: ["Spiritual learning & mind mentorship platform with recorded courses, literature, and live workshops."],
@@ -112,7 +112,10 @@ export default function Home() {
   const cms = createStaticCms();
   const cmsHero = cms.block("homepage.hero");
   const defaultProjects = cms.list("homepage.projects", "projects", FEATURED_CUSTOM_PROJECTS);
-  const featuredProjects = dbProjects || defaultProjects;
+  const allProjects = dbProjects || defaultProjects;
+  const featuredProjects = allProjects.filter(
+    (p) => !p.title?.toLowerCase().includes("siwan") && !p.title?.toLowerCase().includes("samay")
+  );
 
   useEffect(() => {
     let isMounted = true;
