@@ -16,26 +16,6 @@ const HOMEPAGE_MIXED_REVIEWS = [
   },
   {
     id: 2,
-    name: "Ananya Singhania",
-    role: "Founder, Anikara Luxury Fashion",
-    image: "https://qfbsszbgmipbercujiak.supabase.co/storage/v1/object/public/site-assets/avatars/priya_nambiar.png",
-    solution: "Luxury Fashion E-Commerce Website",
-    roi: "+350% Online Sales",
-    rating: 5,
-    quote: "TexWeb designed and launched a stunning luxury e-commerce store for Anikara. The fast visual filtering, intuitive cart checkout, and mobile responsiveness have scaled our designer fashion sales nationwide!"
-  },
-  {
-    id: 3,
-    name: "Dr. Sohail Abbas",
-    role: "Founder & Director, Siwan City Hospital",
-    image: "https://qfbsszbgmipbercujiak.supabase.co/storage/v1/object/public/site-assets/avatars/dr_sohail_abbas.jpg",
-    solution: "Multi-Speciality Hospital Website",
-    roi: "+280% OPD Inquiries",
-    rating: 5,
-    quote: "TexWeb developed a modern, comprehensive healthcare portal for Siwan City Hospital with doctor schedules, Ayushman Bharat scheme guidance, and instant 24/7 emergency helpline integration. Exceptional work!"
-  },
-  {
-    id: 4,
     name: "Dr. Bhuleshwar Patel",
     role: "Founder & Chairman, Sarvadnya Vidyapeeth",
     image: "https://qfbsszbgmipbercujiak.supabase.co/storage/v1/object/public/site-assets/dr_bhuleshwar_patel.jpg",
@@ -45,7 +25,7 @@ const HOMEPAGE_MIXED_REVIEWS = [
     quote: "TexWeb Solution managed our complete social media handling and promotional video reels for Sarvadnya Vidyapeeth. Their strategy resulted in a tremendous surge in student admission inquiries!"
   },
   {
-    id: 5,
+    id: 3,
     name: "Mrs. Rakhi",
     role: "Founder, Anumeet Cutpiece",
     image: "https://qfbsszbgmipbercujiak.supabase.co/storage/v1/object/public/site-assets/avatars/mrs_rakhi.png",
@@ -55,7 +35,7 @@ const HOMEPAGE_MIXED_REVIEWS = [
     quote: "TexWeb Solution handles our complete video shooting, reel editing, daily social media posting, and client lead conversions for Anumeet Cutpiece. Outstanding ROI and channel management!"
   },
   {
-    id: 6,
+    id: 4,
     name: "Atul Kumar",
     role: "Founder & Director, Trend Kro Media",
     image: "https://qfbsszbgmipbercujiak.supabase.co/storage/v1/object/public/site-assets/avatars/atul_kumar.png",
@@ -65,7 +45,7 @@ const HOMEPAGE_MIXED_REVIEWS = [
     quote: "TexWeb built a high-converting, sleek dark-themed web platform for Trend Kro Media. It perfectly showcases our media coverage, TEDx speaker opportunities, and strategy consultation bookings!"
   },
   {
-    id: 7,
+    id: 5,
     name: "Neelam Arora",
     role: "Founder, Meditation Magic",
     image: "https://qfbsszbgmipbercujiak.supabase.co/storage/v1/object/public/site-assets/avatars/neelam_arora.jpg",
@@ -75,7 +55,7 @@ const HOMEPAGE_MIXED_REVIEWS = [
     quote: "Our spiritual courses, guided audio meditations, and masterclass bookings run seamlessly on the custom platform developed by TexWeb Solution. Our students love the calm UI and smooth checkout experience!"
   },
   {
-    id: 8,
+    id: 6,
     name: "D.D. Sharma Ji",
     role: "Founder, Team 360 Mind Mentorship",
     image: "https://qfbsszbgmipbercujiak.supabase.co/storage/v1/object/public/site-assets/avatars/dd_sharma.jpg",
@@ -85,7 +65,7 @@ const HOMEPAGE_MIXED_REVIEWS = [
     quote: "TexWeb Solution built a comprehensive portal for our Team 360 workshops, recorded courses, and spiritual literature. The platform performance, video streaming, and registration tools are exceptional!"
   },
   {
-    id: 9,
+    id: 7,
     name: "Ruchi Upadhyay",
     role: "Founder & Educator, Ruchi Upadhyay Classes",
     image: "https://qfbsszbgmipbercujiak.supabase.co/storage/v1/object/public/site-assets/avatars/ruchi_upadhyay.png",
@@ -95,7 +75,7 @@ const HOMEPAGE_MIXED_REVIEWS = [
     quote: "TexWeb created a top-notch educational platform for our Chemistry classes. From live session schedules and study note downloads to test series integration, everything works flawlessly for our students!"
   },
   {
-    id: 10,
+    id: 8,
     name: "Er. VK Gupta",
     role: "Founder, Er. VK Gupta Math Campus",
     image: "https://qfbsszbgmipbercujiak.supabase.co/storage/v1/object/public/site-assets/avatars/er_vk_gupta.png",
@@ -103,6 +83,26 @@ const HOMEPAGE_MIXED_REVIEWS = [
     roi: "3k ➔ 18k+ Followers",
     rating: 5,
     quote: "TexWeb Solution handled our complete Instagram channel management, edited engaging educational reels, and grew our followers from 3,000 to 18,000+. The viral reels converted directly into course sales!"
+  },
+  {
+    id: 9,
+    name: "Ananya Singhania",
+    role: "Founder, Anikara Luxury Fashion",
+    image: "https://qfbsszbgmipbercujiak.supabase.co/storage/v1/object/public/site-assets/avatars/priya_nambiar.png",
+    solution: "Luxury Fashion E-Commerce Website",
+    roi: "+350% Online Sales",
+    rating: 5,
+    quote: "TexWeb designed and launched a stunning luxury e-commerce store for Anikara. The fast visual filtering, intuitive cart checkout, and mobile responsiveness have scaled our designer fashion sales nationwide!"
+  },
+  {
+    id: 10,
+    name: "Dr. Sohail Abbas",
+    role: "Founder & Director, Siwan City Hospital",
+    image: "https://qfbsszbgmipbercujiak.supabase.co/storage/v1/object/public/site-assets/avatars/dr_sohail_abbas.jpg",
+    solution: "Multi-Speciality Hospital Website",
+    roi: "+280% OPD Inquiries",
+    rating: 5,
+    quote: "TexWeb developed a modern, comprehensive healthcare portal for Siwan City Hospital with doctor schedules, Ayushman Bharat scheme guidance, and instant 24/7 emergency helpline integration. Exceptional work!"
   }
 ];
 
