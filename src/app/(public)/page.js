@@ -20,6 +20,27 @@ import { safeExternalUrl } from "@/lib/safeUrl";
 import { fetchCmsKey } from "@/lib/siteAssets";
 const FEATURED_CUSTOM_PROJECTS = [
   {
+    title: "Heal Stride : Physiotherapy & Wellness",
+    image: "https://qfbsszbgmipbercujiak.supabase.co/storage/v1/object/public/site-assets/customized/healstride.jpg",
+    bullets: ["Bhopal's premier non-surgical pain management and sports rehabilitation clinic with GMB local SEO."],
+    buttonLink: "https://www.healstride-physiotherapy.in/",
+    tags: ["Healthcare", "Physiotherapy", "GMB SEO"]
+  },
+  {
+    title: "Anikara : Luxury Fashion E-commerce",
+    image: "https://qfbsszbgmipbercujiak.supabase.co/storage/v1/object/public/site-assets/customized/anikara.jpg",
+    bullets: ["Sophisticated online boutique featuring luxury dresses, co-ords, bags, and modern women's fashion."],
+    buttonLink: "https://anikara-e-commerce-websites.vercel.app/?page=home",
+    tags: ["E-Commerce", "Fashion & Apparel", "Luxury"]
+  },
+  {
+    title: "Siwan City Hospital : Multi-Speciality Healthcare",
+    image: "https://qfbsszbgmipbercujiak.supabase.co/storage/v1/object/public/site-assets/customized/siwancityhospital.jpg",
+    bullets: ["Premier multi-speciality hospital in Bihar with 24/7 emergency care, orthopaedics, and maternity services."],
+    buttonLink: "https://www.siwancityhospital.com/",
+    tags: ["Healthcare", "Hospital", "Emergency Care"]
+  },
+  {
     title: "Sarvadnya Vidyapeeth",
     image: "https://qfbsszbgmipbercujiak.supabase.co/storage/v1/object/public/site-assets/customized/sarvadnya.jpg",
     bullets: ["Fostering academic excellence with a modern college admission & departmental portal built for higher education."],
@@ -39,20 +60,6 @@ const FEATURED_CUSTOM_PROJECTS = [
     bullets: ["Spiritual learning & guided meditation platform featuring online courses, books, and healing masterclasses."],
     buttonLink: "https://www.neelamarora.in/",
     tags: ["E-Learning", "Spiritual & Wellness", "Courses"]
-  },
-  {
-    title: "Heal Stride : Physiotherapy & Wellness",
-    image: "https://qfbsszbgmipbercujiak.supabase.co/storage/v1/object/public/site-assets/customized/healstride.jpg",
-    bullets: ["Bhopal's premier non-surgical pain management and sports rehabilitation clinic."],
-    buttonLink: "https://www.healstride-physiotherapy.in/",
-    tags: ["Healthcare", "Physiotherapy", "Wellness"]
-  },
-  {
-    title: "Anikara : Luxury Fashion E-commerce",
-    image: "https://qfbsszbgmipbercujiak.supabase.co/storage/v1/object/public/site-assets/customized/anikara.jpg",
-    bullets: ["Sophisticated online boutique featuring luxury dresses, co-ords, bags, and modern women's fashion."],
-    buttonLink: "https://anikara-e-commerce-websites.vercel.app/?page=home",
-    tags: ["E-Commerce", "Fashion & Apparel", "Luxury"]
   },
   {
     title: "Kirtilals : Luxury Jewellery E-commerce",
