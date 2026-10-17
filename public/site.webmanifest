@@ -147,19 +147,19 @@
   ],
   "shortcuts": [
     {
+      "name": "Customized",
+      "url": "/customized/websites",
+      "description": "Custom full-stack web and mobile application engineering"
+    },
+    {
       "name": "Pricing",
       "url": "/pricing",
-      "description": "View transparent web & SaaS packages"
+      "description": "View transparent web & SaaS packages starting at ₹1,999/mo"
     },
     {
       "name": "Prebuilt",
       "url": "/prebuilt",
       "description": "Explore ready SaaS business products"
-    },
-    {
-      "name": "Login",
-      "url": "/login",
-      "description": "Access client & student workspace"
     },
     {
       "name": "Contact",

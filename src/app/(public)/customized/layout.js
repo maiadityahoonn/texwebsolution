@@ -1,5 +1,8 @@
 export const metadata = {
-  title: "Customized Web & Mobile App Development",
+  title: {
+    default: "Customized Web & Mobile App Development | TexWeb Solution",
+    template: "%s | TexWeb Solution",
+  },
   description: "Bespoke full-stack web application and mobile app engineering tailored specifically to your enterprise and startup requirements.",
   alternates: {
     canonical: "https://texwebsolution.in/customized/websites",

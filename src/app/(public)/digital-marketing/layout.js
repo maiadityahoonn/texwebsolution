@@ -1,5 +1,3 @@
-import Script from "next/script";
-
 export const metadata = {
   title: "Digital Marketing & SEO Services",
   description: "Drive targeted traffic, organic SEO rankings, social media growth, and paid campaigns with TexWeb Solution's digital marketing expertise.",
@@ -7,7 +5,7 @@ export const metadata = {
     canonical: "https://texwebsolution.in/digital-marketing",
   },
   openGraph: {
-    title: "Digital Marketing & SEO Services",
+    title: "Digital Marketing & SEO Services | TexWeb Solution",
     description: "Drive targeted traffic, organic SEO rankings, social media growth, and paid campaigns with TexWeb Solution's digital marketing expertise.",
     url: "https://texwebsolution.in/digital-marketing",
   },
@@ -22,7 +20,7 @@ export default function DigitalMarketingLayout({ children }) {
         "@type": "ListItem",
         "position": 1,
         "name": "Home",
-        "item": "https://texwebsolution.in"
+        "item": "https://texwebsolution.in/"
       },
       {
         "@type": "ListItem",
@@ -35,8 +33,7 @@ export default function DigitalMarketingLayout({ children }) {
 
   return (
     <>
-      <Script
-        id="digital-marketing-breadcrumb-jsonld"
+      <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />

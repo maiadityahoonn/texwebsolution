@@ -1,5 +1,3 @@
-import Script from "next/script";
-
 export const metadata = {
   title: "AI Automation & Custom Chatbots",
   description: "Automate your customer service, business workflows, and lead generation with TexWeb Solution's custom AI chatbot and automation solutions.",
@@ -7,7 +5,7 @@ export const metadata = {
     canonical: "https://texwebsolution.in/ai-automation",
   },
   openGraph: {
-    title: "AI Automation & Custom Chatbots",
+    title: "AI Automation & Custom Chatbots | TexWeb Solution",
     description: "Automate your customer service, business workflows, and lead generation with TexWeb Solution's custom AI chatbot and automation solutions.",
     url: "https://texwebsolution.in/ai-automation",
   },
@@ -22,7 +20,7 @@ export default function AiAutomationLayout({ children }) {
         "@type": "ListItem",
         "position": 1,
         "name": "Home",
-        "item": "https://texwebsolution.in"
+        "item": "https://texwebsolution.in/"
       },
       {
         "@type": "ListItem",
@@ -35,8 +33,7 @@ export default function AiAutomationLayout({ children }) {
 
   return (
     <>
-      <Script
-        id="ai-automation-breadcrumb-jsonld"
+      <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />

@@ -6,7 +6,7 @@ import { Mail, PhoneCall } from "lucide-react";
 
 export default function GetInTouchSection() {
   return (
-    <section className="w-full flex flex-col items-center py-10 sm:py-12 bg-neutral-50 border-y border-gray-100" id="contact" style={{ fontFamily: "Matter, sans-serif" }}>
+    <section className="w-full flex flex-col items-center py-10 sm:py-12 bg-neutral-50 border-y border-gray-100" id="get-in-touch" style={{ fontFamily: "Matter, sans-serif" }}>
       <div className="max-w-4xl mx-auto text-center px-6">
         <div className="inline-block px-4 py-1 bg-red-50 text-red-600 border border-red-100 shadow-sm rounded-full site-label font-semibold text-xs sm:text-sm font-[Matter] mb-3">
           Get In Touch

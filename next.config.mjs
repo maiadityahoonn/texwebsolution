@@ -15,6 +15,25 @@ const nextConfig = {
   experimental: {
     cpus: 1,
   },
+  async redirects() {
+    return [
+      {
+        source: "/download",
+        destination: "/",
+        permanent: true,
+      },
+      {
+        source: "/contact-us",
+        destination: "/contact",
+        permanent: true,
+      },
+      {
+        source: "/about",
+        destination: "/about-us",
+        permanent: true,
+      },
+    ];
+  },
   async rewrites() {
     return [
       {
