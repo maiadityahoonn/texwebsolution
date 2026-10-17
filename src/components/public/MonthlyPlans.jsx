@@ -92,14 +92,14 @@ const CURRENCIES = {
     symbol: "$",
     label: "🇺🇸 USD ($)",
     monthly: {
-      basic: { price: "29", display: "$29", period: "/ month", subText: "Billed monthly" },
-      standard: { price: "49", display: "$49", period: "/ month", subText: "Billed monthly" },
-      premium: { price: "169", display: "$169", period: "/ month", subText: "Billed monthly" },
+      basic: { price: "49", display: "$49", period: "/ month", subText: "Billed monthly" },
+      standard: { price: "99", display: "$99", period: "/ month", subText: "Billed monthly" },
+      premium: { price: "299", display: "$299", period: "/ month", subText: "Billed monthly" },
     },
     yearly: {
-      basic: { price: "290", display: "$290", period: "/ year", equivalent: "$24/mo", savings: "Save $58 (2 Mos Free)", subText: "Billed annually" },
-      standard: { price: "490", display: "$490", period: "/ year", equivalent: "$40/mo", savings: "Save $98 (2 Mos Free)", subText: "Billed annually" },
-      premium: { price: "1,690", display: "$1,690", period: "/ year", equivalent: "$140/mo", savings: "Save $338 (2 Mos Free)", subText: "Billed annually" },
+      basic: { price: "490", display: "$490", period: "/ year", equivalent: "$41/mo", savings: "Save $98 (2 Mos Free)", subText: "Billed annually" },
+      standard: { price: "990", display: "$990", period: "/ year", equivalent: "$83/mo", savings: "Save $198 (2 Mos Free)", subText: "Billed annually" },
+      premium: { price: "2,990", display: "$2,990", period: "/ year", equivalent: "$249/mo", savings: "Save $598 (2 Mos Free)", subText: "Billed annually" },
     },
   },
 };
