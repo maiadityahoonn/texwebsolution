@@ -41,6 +41,13 @@ const FEATURED_CUSTOM_PROJECTS = [
     tags: ["Healthcare", "Hospital", "Emergency Care"]
   },
   {
+    title: "Samay Hospital : Multi-Speciality Hospital",
+    image: "https://qfbsszbgmipbercujiak.supabase.co/storage/v1/object/public/site-assets/customized/samayhospital.jpg",
+    bullets: ["Leading multi-speciality hospital in Patna & Ara with 24/7 ICU, emergency care, and expert specialists."],
+    buttonLink: "https://samayhospitals.org/",
+    tags: ["Healthcare", "Multi-Speciality", "ICU & Emergency"]
+  },
+  {
     title: "Sarvadnya Vidyapeeth",
     image: "https://qfbsszbgmipbercujiak.supabase.co/storage/v1/object/public/site-assets/customized/sarvadnya.jpg",
     bullets: ["Fostering academic excellence with a modern college admission & departmental portal built for higher education."],
@@ -88,20 +95,6 @@ const FEATURED_CUSTOM_PROJECTS = [
     bullets: ["Comprehensive Chemistry learning platform featuring live classes, test series, and board preparation."],
     buttonLink: "https://www.ruchiupadhyayclasses.in/",
     tags: ["EdTech", "Coaching & Classes", "E-Learning"]
-  },
-  {
-    title: "Siwan City Hospital : Multi-Speciality Healthcare",
-    image: "https://qfbsszbgmipbercujiak.supabase.co/storage/v1/object/public/site-assets/customized/siwancityhospital.jpg",
-    bullets: ["Premier multi-speciality hospital in Bihar with 24/7 emergency care, orthopaedics, and maternity services."],
-    buttonLink: "https://www.siwancityhospital.com/",
-    tags: ["Healthcare", "Hospital", "Emergency Care"]
-  },
-  {
-    title: "Samay Hospital : Multi-Speciality Hospital",
-    image: "https://qfbsszbgmipbercujiak.supabase.co/storage/v1/object/public/site-assets/customized/samayhospital.jpg",
-    bullets: ["Leading multi-speciality hospital in Patna & Ara with 24/7 ICU, emergency care, and expert specialists."],
-    buttonLink: "https://samayhospitals.org/",
-    tags: ["Healthcare", "Multi-Speciality", "ICU & Emergency"]
   },
   {
     title: "Team 360 (D.D. Sharma)",

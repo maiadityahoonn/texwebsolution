@@ -10,6 +10,58 @@ import { usePathname } from "next/navigation";
 
 const WEBSITES = [
   {
+    "title": "Heal Stride : Physiotherapy & Wellness",
+    "image": "https://qfbsszbgmipbercujiak.supabase.co/storage/v1/object/public/site-assets/customized/healstride.jpg",
+    "imageAlt": "Heal Stride : Advanced Physiotherapy & Rehabilitation Clinic",
+    "bullets": [
+      "Bhopal's premier non-surgical pain management and advanced physiotherapy rehabilitation clinic.",
+      "Specialized in sports injury rehab, certified cupping therapy, dry needling, and non-invasive orthopedic care.",
+      "Integrated with instant doctor callbacks, online appointment booking, doctor profile showcase, and bilingual support."
+    ],
+    "buttonText": "View Website",
+    "buttonLink": "https://www.healstride-physiotherapy.in/",
+    "imageOrder": 1
+  },
+  {
+    "title": "Anikara : Luxury Fashion E-commerce",
+    "image": "https://qfbsszbgmipbercujiak.supabase.co/storage/v1/object/public/site-assets/customized/anikara.jpg",
+    "imageAlt": "Anikara : Luxury Fashion E-commerce Website",
+    "bullets": [
+      "Sophisticated online boutique for modern women featuring designer dresses, co-ords, footwear, and luxury bags.",
+      "Engineered with fast visual filtering, size selectors, dynamic wishlist, coupon discounts, and 100% luxe fabric highlights.",
+      "Integrated with secure checkout gateways, automated tracking, hassle-free 15-day exchange flow, and instant customer support."
+    ],
+    "buttonText": "View Website",
+    "buttonLink": "https://anikara-e-commerce-websites.vercel.app/?page=home",
+    "imageOrder": 2
+  },
+  {
+    "title": "Siwan City Hospital : Multi-Speciality Healthcare",
+    "image": "https://qfbsszbgmipbercujiak.supabase.co/storage/v1/object/public/site-assets/customized/siwancityhospital.jpg",
+    "imageAlt": "Siwan City Hospital : Premier Multi-Speciality Healthcare Website",
+    "bullets": [
+      "Premier multi-speciality hospital in Siwan, Bihar led by Dr. Sohail Abbas, providing 24/7 emergency & intensive care.",
+      "Specialized in advanced orthopaedic surgery, maternity & neonatal care, diagnostic lab, and cashless mediclaim facility.",
+      "Integrated with online doctor appointment booking, Ayushman Bharat (PM-JAY) schemes, and instant emergency helpline."
+    ],
+    "buttonText": "View Website",
+    "buttonLink": "https://www.siwancityhospital.com/",
+    "imageOrder": 1
+  },
+  {
+    "title": "Samay Hospital : Multi-Speciality Hospital",
+    "image": "https://qfbsszbgmipbercujiak.supabase.co/storage/v1/object/public/site-assets/customized/samayhospital.jpg",
+    "imageAlt": "Samay Hospital : Multi-Speciality Hospital Website",
+    "bullets": [
+      "Leading multi-speciality hospital network in Patna & Ara, Bihar, offering 24/7 ICU and emergency trauma services.",
+      "Equipped with 50+ hospital beds, 11+ expert specialists, advanced diagnostics, and dedicated patient support desk.",
+      "Integrated with online OPD appointment booking, doctor profiles, department showcases, and instant emergency calls."
+    ],
+    "buttonText": "View Website",
+    "buttonLink": "https://samayhospitals.org/",
+    "imageOrder": 2
+  },
+  {
     "title": "Sarvadnya Vidyapeeth : College Portal",
     "image": "https://qfbsszbgmipbercujiak.supabase.co/storage/v1/object/public/site-assets/customized/sarvadnya.jpg",
     "imageAlt": "Sarvadnya Vidyapeeth : Modern College Admission Website",
@@ -111,58 +163,6 @@ const WEBSITES = [
     ],
     "buttonText": "View Website",
     "buttonLink": "https://momentz.in/",
-    "imageOrder": 2
-  },
-  {
-    "title": "Heal Stride : Physiotherapy & Wellness",
-    "image": "https://qfbsszbgmipbercujiak.supabase.co/storage/v1/object/public/site-assets/customized/healstride.jpg",
-    "imageAlt": "Heal Stride : Advanced Physiotherapy & Rehabilitation Clinic",
-    "bullets": [
-      "Bhopal's premier non-surgical pain management and advanced physiotherapy rehabilitation clinic.",
-      "Specialized in sports injury rehab, certified cupping therapy, dry needling, and non-invasive orthopedic care.",
-      "Integrated with instant doctor callbacks, online appointment booking, doctor profile showcase, and bilingual support."
-    ],
-    "buttonText": "View Website",
-    "buttonLink": "https://www.healstride-physiotherapy.in/",
-    "imageOrder": 1
-  },
-  {
-    "title": "Siwan City Hospital : Multi-Speciality Healthcare",
-    "image": "https://qfbsszbgmipbercujiak.supabase.co/storage/v1/object/public/site-assets/customized/siwancityhospital.jpg",
-    "imageAlt": "Siwan City Hospital : Premier Multi-Speciality Healthcare Website",
-    "bullets": [
-      "Premier multi-speciality hospital in Siwan, Bihar led by Dr. Sohail Abbas, providing 24/7 emergency & intensive care.",
-      "Specialized in advanced orthopaedic surgery, maternity & neonatal care, diagnostic lab, and cashless mediclaim facility.",
-      "Integrated with online doctor appointment booking, Ayushman Bharat (PM-JAY) schemes, and instant emergency helpline."
-    ],
-    "buttonText": "View Website",
-    "buttonLink": "https://www.siwancityhospital.com/",
-    "imageOrder": 2
-  },
-  {
-    "title": "Samay Hospital : Multi-Speciality Hospital",
-    "image": "https://qfbsszbgmipbercujiak.supabase.co/storage/v1/object/public/site-assets/customized/samayhospital.jpg",
-    "imageAlt": "Samay Hospital : Multi-Speciality Hospital Website",
-    "bullets": [
-      "Leading multi-speciality hospital network in Patna & Ara, Bihar, offering 24/7 ICU and emergency trauma services.",
-      "Equipped with 50+ hospital beds, 11+ expert specialists, advanced diagnostics, and dedicated patient support desk.",
-      "Integrated with online OPD appointment booking, doctor profiles, department showcases, and instant emergency calls."
-    ],
-    "buttonText": "View Website",
-    "buttonLink": "https://samayhospitals.org/",
-    "imageOrder": 1
-  },
-  {
-    "title": "Anikara : Luxury Fashion E-commerce",
-    "image": "https://qfbsszbgmipbercujiak.supabase.co/storage/v1/object/public/site-assets/customized/anikara.jpg",
-    "imageAlt": "Anikara : Luxury Fashion E-commerce Website",
-    "bullets": [
-      "Sophisticated online boutique for modern women featuring designer dresses, co-ords, footwear, and luxury bags.",
-      "Engineered with fast visual filtering, size selectors, dynamic wishlist, coupon discounts, and 100% luxe fabric highlights.",
-      "Integrated with secure checkout gateways, automated tracking, hassle-free 15-day exchange flow, and instant customer support."
-    ],
-    "buttonText": "View Website",
-    "buttonLink": "https://anikara-e-commerce-websites.vercel.app/?page=home",
     "imageOrder": 2
   }
 ];
