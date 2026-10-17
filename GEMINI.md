@@ -20,3 +20,17 @@ Whenever a new CRM feature, enhancement, or field is added:
 3. **Verification**:
    - Run `npm run check:crm-size` to verify that all files remain strictly under 30 KB.
    - Run `npm run build` to ensure 0 compiler/runtime errors.
+
+# Asset Storage & CDN Policy (Mandatory)
+1. **Never Save Media Files in `public/`**:
+   - Do NOT add images, mockups, banners, videos, or PDFs into the local `public/` directory.
+   - The `public/` directory is strictly reserved for browser/PWA root essentials (`favicon.ico`, `site.webmanifest`, `sw.js`, `fonts/`, `.well-known/`).
+2. **Direct Supabase CDN for All Media**:
+   - All website, app, team, service, and portfolio media MUST be hosted on Supabase Storage bucket `site-assets/`.
+   - Access URL pattern:
+     `https://qfbsszbgmipbercujiak.supabase.co/storage/v1/object/public/site-assets/[path]`
+   - In code, use the direct Supabase CDN URL or `getAssetUrl(path)` from `@/lib/siteAssets`.
+3. **Database Records for Dynamic Content**:
+   - Store portfolio items and site metadata in Supabase database table `cms_content` (`customized_websites`, `customized_applications`, `portfolio_all`, `site_assets_manifest`, `team_members`).
+   - No external CMS is needed or permitted.
+
