@@ -72,9 +72,9 @@ const WEBSITES = [
     "imageOrder": 1
   },
   {
-    "title": "Kirtilals : Luxury Website",
-    "image": "/customized/project2.webp",
-    "imageAlt": "Kirtilals : Luxury Website",
+    "title": "Kirtilals : Luxury Jewellery E-commerce",
+    "image": "/customized/kirtilals.jpg",
+    "imageAlt": "Kirtilals : Luxury Jewellery E-commerce",
     "bullets": [
       "Discover fine diamond jewelry from Kirtilals with an online shopping portal built for luxury brands.",
       "Browse bridal sets, solitaire rings, and custom designs with high-res zoom and details.",
@@ -85,9 +85,9 @@ const WEBSITES = [
     "imageOrder": 2
   },
   {
-    "title": "Tradescribe: Trading Platform",
-    "image": "/customized/project3.webp",
-    "imageAlt": "Tradescribe: Trading Platform",
+    "title": "TradeScribe : Trading Journal Platform",
+    "image": "/customized/tradescribe.jpg",
+    "imageAlt": "TradeScribe : Trading Journal Platform",
     "bullets": [
       "Empower your trading journey with Tradescribe's custom analytics platform built for active traders.",
       "Analyze stock patterns, crypto trends, and futures with custom charts and live metrics.",
@@ -98,9 +98,9 @@ const WEBSITES = [
     "imageOrder": 1
   },
   {
-    "title": "Momentz",
-    "image": "/customized/project6.webp",
-    "imageAlt": "Momentz",
+    "title": "Momentz : Home Decor & Luxury Gifting",
+    "image": "/customized/momentz.jpg",
+    "imageAlt": "Momentz : Home Decor & Luxury Gifting",
     "bullets": [
       "Create lasting memories with Momentz's custom photo printing portal built for shutterbugs.",
       "Upload pictures, select frames, and order personalized gifts with drag-and-drop crop tools.",
@@ -109,61 +109,152 @@ const WEBSITES = [
     "buttonText": "View Website",
     "buttonLink": "https://momentz.in/",
     "imageOrder": 2
+  },
+  {
+    "title": "Heal Stride : Physiotherapy & Wellness",
+    "image": "/customized/healstride.jpg",
+    "imageAlt": "Heal Stride : Advanced Physiotherapy & Rehabilitation Clinic",
+    "bullets": [
+      "Bhopal's premier non-surgical pain management and advanced physiotherapy rehabilitation clinic.",
+      "Specialized in sports injury rehab, certified cupping therapy, dry needling, and non-invasive orthopedic care.",
+      "Integrated with instant doctor callbacks, online appointment booking, doctor profile showcase, and bilingual support."
+    ],
+    "buttonText": "View Website",
+    "buttonLink": "https://www.healstride-physiotherapy.in/",
+    "imageOrder": 1
+  },
+  {
+    "title": "Siwan City Hospital : Multi-Speciality Healthcare",
+    "image": "/customized/siwancityhospital.jpg",
+    "imageAlt": "Siwan City Hospital : Premier Multi-Speciality Healthcare Website",
+    "bullets": [
+      "Premier multi-speciality hospital in Siwan, Bihar led by Dr. Sohail Abbas, providing 24/7 emergency & intensive care.",
+      "Specialized in advanced orthopaedic surgery, maternity & neonatal care, diagnostic lab, and cashless mediclaim facility.",
+      "Integrated with online doctor appointment booking, Ayushman Bharat (PM-JAY) schemes, and instant emergency helpline."
+    ],
+    "buttonText": "View Website",
+    "buttonLink": "https://www.siwancityhospital.com/",
+    "imageOrder": 2
+  },
+  {
+    "title": "Samay Hospital : Multi-Speciality Hospital",
+    "image": "/customized/samayhospital.jpg",
+    "imageAlt": "Samay Hospital : Multi-Speciality Hospital Website",
+    "bullets": [
+      "Leading multi-speciality hospital network in Patna & Ara, Bihar, offering 24/7 ICU and emergency trauma services.",
+      "Equipped with 50+ hospital beds, 11+ expert specialists, advanced diagnostics, and dedicated patient support desk.",
+      "Integrated with online OPD appointment booking, doctor profiles, department showcases, and instant emergency calls."
+    ],
+    "buttonText": "View Website",
+    "buttonLink": "https://samayhospitals.org/",
+    "imageOrder": 1
+  },
+  {
+    "title": "Anikara : Luxury Fashion E-commerce",
+    "image": "/customized/anikara.jpg",
+    "imageAlt": "Anikara : Luxury Fashion E-commerce Website",
+    "bullets": [
+      "Sophisticated online boutique for modern women featuring designer dresses, co-ords, footwear, and luxury bags.",
+      "Engineered with fast visual filtering, size selectors, dynamic wishlist, coupon discounts, and 100% luxe fabric highlights.",
+      "Integrated with secure checkout gateways, automated tracking, hassle-free 15-day exchange flow, and instant customer support."
+    ],
+    "buttonText": "View Website",
+    "buttonLink": "https://anikara-e-commerce-websites.vercel.app/?page=home",
+    "imageOrder": 2
   }
 ];
 
 const APPLICATIONS = [
   {
-    "title": "MinitPe: Food Taxi and Grocery",
-    "image": "/customized/app1.webp",
-    "imageAlt": "MinitPe: Food Taxi and Grocery",
+    "title": "MinitPe : On-Demand Grocery & Food Delivery",
+    "image": "/customized/minitpe.jpg",
+    "imageAlt": "MinitPe : On-Demand Grocery & Food Delivery App",
     "bullets": [
-      "Get food, rides, and groceries delivered with MinitPe's custom all-in-one super app.",
-      "Order from local spots, book quick cab rides, and buy fresh milk with live tracking.",
-      "Integrated with secure digital wallet, multiple payment options, and route optimization."
+      "A feature-rich on-demand grocery & food delivery app built to make daily shopping faster and effortless.",
+      "Explore endless dishes from top local restaurants and order fresh groceries delivered right to your doorstep.",
+      "Integrated with multi-payment options (COD, cards, UPI), real-time order tracking, and 24x7 live chat support."
     ],
     "buttonText": "View App",
     "buttonLink": "https://play.google.com/store/apps/details?id=com.ghiniba.customer&pcampaignid=web_share",
     "imageOrder": 1
   },
   {
-    "title": "Threadclothes Women's Fashion",
-    "image": "/customized/app2.webp",
-    "imageAlt": "Threadclothes Women's Fashion",
+    "title": "Threadclothes : Fashion Shopping Mobile App",
+    "image": "/customized/threadclothes.jpg",
+    "imageAlt": "Threadclothes : Fashion Shopping Mobile App",
     "bullets": [
-      "Shop women's fashion wear with Threadclothes' custom mobile shopping app.",
-      "Browse ethnic wear, dresses, and sets with dynamic filters and high-res zoom.",
-      "Integrated with easy cash-on-delivery options, wallet points, and simple return flows."
+      "A modern fashion shopping app designed for a stylish and comfortable shopping experience for women.",
+      "Explore exclusive designer ethnic wear, anarkalis, dresses, and sets with smooth wishlist sharing.",
+      "Integrated with secure checkout, automated order tracking, and hassle-free easy returns within 7 days."
     ],
     "buttonText": "View App",
     "buttonLink": "https://play.google.com/store/apps/details?id=com.threadclothes.android&pcampaignid=web_share",
     "imageOrder": 2
   },
   {
-    "title": "Uoons Electronics Shopping App",
-    "image": "/customized/app3.webp",
-    "imageAlt": "Uoons Electronics Shopping App",
+    "title": "Uoons : Electronics Shopping Mobile App",
+    "image": "/customized/uoons.jpg",
+    "imageAlt": "Uoons : Electronics Shopping Mobile App",
     "bullets": [
-      "Buy smart TVs, mobiles, and accessories with Uoons' custom online shopping app.",
-      "Compare price points, check ratings, and buy products with secure payment gateways.",
-      "Integrated with automated coupons, seller chat support, and live parcel tracking."
+      "A modern, user-friendly electronics shopping app built to browse and buy mobiles, laptops, and gadgets.",
+      "Compare specs, choose languages (English/Hindi), explore daily deals, and enjoy smooth EMI & payment options.",
+      "Integrated with multiple payment options (COD, debit/credit, UPI, wallet), order tracking, and fast delivery."
     ],
     "buttonText": "View App",
     "buttonLink": "https://play.google.com/store/apps/details?id=com.uoons.india&pcampaignid=web_share",
     "imageOrder": 1
   },
   {
-    "title": "Women Plus by Monika",
-    "image": "/customized/app4.webp",
-    "imageAlt": "Women Plus by Monika",
+    "title": "Women Plus : Luxury Ethnic Indian Fashion",
+    "image": "/customized/womenplus.jpg",
+    "imageAlt": "Women Plus : Luxury Ethnic Indian Fashion App",
     "bullets": [
-      "Explore plus-size fashion wear with Women Plus' custom mobile shopping app.",
-      "Browse catalog, select sizes, and place orders with instant WhatsApp confirmation.",
-      "Integrated with size guides, dynamic pricing models, and secure UPI payment."
+      "A premium ethnic fashion shopping app featuring suits, kurtas, co-ords, and dresses for every occasion.",
+      "Discover latest festive collections with inclusive sizing (L to 5XL), size guides, and visual search.",
+      "Integrated with smooth shopping experience, secure multiple payment options, and instant WhatsApp updates."
     ],
     "buttonText": "View App",
     "buttonLink": "https://play.google.com/store/apps/details?id=com.womenplusindia&pcampaignid=web_share",
     "imageOrder": 2
+  },
+  {
+    "title": "Twin Leaves : Fresh Groceries Delivered to You",
+    "image": "/customized/twinleaves.jpg",
+    "imageAlt": "Twin Leaves : On-Demand Fresh Grocery Shopping App",
+    "bullets": [
+      "A convenient grocery app offering fresh fruits, vegetables, daily essentials, and doorstep delivery.",
+      "Explore 9,000+ products across categories with wide product range, exclusive offers, and discounts.",
+      "Integrated with user-friendly UI, instant UPI/card/COD checkout, and fast & reliable doorstep delivery."
+    ],
+    "buttonText": "View App",
+    "buttonLink": "https://play.google.com/store/apps/details?id=com.twinleaves",
+    "imageOrder": 1
+  },
+  {
+    "title": "Reeta Fashion : Women's Ethnic Wear Shopping App",
+    "image": "/customized/reetafashion.jpg",
+    "imageAlt": "Reeta Fashion : Women's Ethnic Wear & Indian Fashion App",
+    "bullets": [
+      "A complete fashion destination for women's ethnic wear, designer kurtis, sarees, suits, and men's wear.",
+      "Explore latest collections, exclusive festive styles, wishlist & share with friends, and size guides.",
+      "Integrated with easy shopping UI, secure multi-payment options, exclusive deals, and fast delivery."
+    ],
+    "buttonText": "View App",
+    "buttonLink": "https://play.google.com/store/apps/details?id=com.reetafashion&pcampaignid=web_share",
+    "imageOrder": 2
+  },
+  {
+    "title": "Tracks by Truckoom : Fleet Management & GPS Tracking",
+    "image": "/customized/truckoom.jpg",
+    "imageAlt": "Tracks by Truckoom : Fleet Management & Real-Time GPS Tracking App",
+    "bullets": [
+      "Simplifies fleet management hurdles by providing full control over fleets in all stages of delivery.",
+      "Live vehicle GPS tracking, route map visualization, speed & distance insights, and job monitoring.",
+      "Integrated with fleet dashboard, vehicle ETA insights, and reliable cloud analytics platform."
+    ],
+    "buttonText": "View App",
+    "buttonLink": "https://apps.apple.com/in/app/tracks-by-truckoom/id1608130603",
+    "imageOrder": 1
   }
 ];
 

@@ -53,25 +53,53 @@ const FEATURED_CUSTOM_PROJECTS = [
     tags: ["Mind Training", "Spiritual & Mentorship", "E-Learning"]
   },
   {
-    title: "Kirtilals : Luxury Website",
-    image: "customized/project2.webp",
+    title: "Kirtilals : Luxury Jewellery E-commerce",
+    image: "customized/kirtilals.jpg",
     bullets: ["Discover fine diamond jewelry from Kirtilals with an online shopping portal built for luxury brands."],
     buttonLink: "https://www.kirtilals.com/",
     tags: ["Luxury", "Jewelry", "E-Commerce"]
   },
   {
-    title: "Tradescribe: Trading Platform",
-    image: "customized/project3.webp",
+    title: "TradeScribe : Trading Journal Platform",
+    image: "customized/tradescribe.jpg",
     bullets: ["Empower your trading journey with Tradescribe's custom analytics platform built for active traders."],
     buttonLink: "https://tradescribe.in/",
     tags: ["Fintech", "Trading", "Analytics"]
   },
   {
-    title: "Momentz",
-    image: "customized/project6.webp",
+    title: "Momentz : Home Decor & Luxury Gifting",
+    image: "customized/momentz.jpg",
     bullets: ["Create lasting memories with Momentz's custom photo printing portal built for shutterbugs."],
     buttonLink: "https://momentz.in/",
     tags: ["Custom Portal", "Photo Print", "Interactive"]
+  },
+  {
+    title: "Heal Stride : Physiotherapy & Wellness",
+    image: "customized/healstride.jpg",
+    bullets: ["Bhopal's premier non-surgical pain management and sports rehabilitation clinic."],
+    buttonLink: "https://www.healstride-physiotherapy.in/",
+    tags: ["Healthcare", "Physiotherapy", "Wellness"]
+  },
+  {
+    title: "Siwan City Hospital : Multi-Speciality Healthcare",
+    image: "customized/siwancityhospital.jpg",
+    bullets: ["Premier multi-speciality hospital in Bihar with 24/7 emergency care, orthopaedics, and maternity services."],
+    buttonLink: "https://www.siwancityhospital.com/",
+    tags: ["Healthcare", "Hospital", "Emergency Care"]
+  },
+  {
+    title: "Samay Hospital : Multi-Speciality Hospital",
+    image: "customized/samayhospital.jpg",
+    bullets: ["Leading multi-speciality hospital in Patna & Ara with 24/7 ICU, emergency care, and expert specialists."],
+    buttonLink: "https://samayhospitals.org/",
+    tags: ["Healthcare", "Multi-Speciality", "ICU & Emergency"]
+  },
+  {
+    title: "Anikara : Luxury Fashion E-commerce",
+    image: "customized/anikara.jpg",
+    bullets: ["Sophisticated online boutique featuring luxury dresses, co-ords, bags, and modern women's fashion."],
+    buttonLink: "https://anikara-e-commerce-websites.vercel.app/?page=home",
+    tags: ["E-Commerce", "Fashion & Apparel", "Luxury"]
   }
 ];
 
@@ -134,7 +162,7 @@ export default function Home() {
                 className="w-32 py-3.5 text-sm sm:w-44 sm:text-base lg:py-4 bg-red-600 text-white rounded-full transition-transform hover:scale-105 hover:bg-red-700 shadow-md shadow-red-600/15"
                 style={{ fontFamily: "Matter", fontWeight: 500 }}
               >
-                {cmsHero?.cta || "Let&apos;s Explore"}
+                {cmsHero?.cta?.replace(/&apos;/g, "'") || "Let's Explore"}
               </button>
             </a>
             <a href="/contact">

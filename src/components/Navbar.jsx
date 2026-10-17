@@ -1,55 +1,16 @@
 "use client";
 
 import Image from "next/image";
-import { useState, useEffect, useSyncExternalStore } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Menu, X, ArrowRight } from "lucide-react";
-
-let bannerListeners = [];
-const subscribeBanner = (callback) => {
-  bannerListeners.push(callback);
-  window.addEventListener("storage", callback);
-  return () => {
-    bannerListeners = bannerListeners.filter((l) => l !== callback);
-    window.removeEventListener("storage", callback);
-  };
-};
-
-const notifyBanner = () => {
-  bannerListeners.forEach((l) => l());
-};
-
-const getBannerSnapshot = () => {
-  if (typeof window === "undefined") return false;
-  const isStandalone =
-    window.matchMedia("(display-mode: standalone)").matches ||
-    (typeof navigator !== "undefined" && navigator.standalone);
-  if (isStandalone) return false;
-  return !sessionStorage.getItem("texweb_top_banner_dismissed");
-};
-
-const getBannerServerSnapshot = () => false;
+import { Menu, X } from "lucide-react";
 
 export default function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
   const [isVisible, setIsVisible] = useState(true);
   const [isScrolled, setIsScrolled] = useState(false);
   const pathname = usePathname();
-  const isPortal = pathname === "/login" || pathname?.startsWith("/admin");
-  const bannerAllowed = useSyncExternalStore(
-    subscribeBanner,
-    getBannerSnapshot,
-    getBannerServerSnapshot
-  );
-  const showBanner = !isPortal && bannerAllowed;
-
-  const handleDismissBanner = (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    sessionStorage.setItem("texweb_top_banner_dismissed", "true");
-    notifyBanner();
-  };
 
   useEffect(() => {
     let lastScrollY = window.scrollY;
@@ -131,17 +92,13 @@ export default function Navbar() {
     <>
       {/* Dynamic Spacer to preserve natural layout height with zero overlapping */}
       <div 
-        className={`w-full shrink-0 transition-all duration-300 ${
-          showBanner ? "h-[124px] sm:h-[138px]" : "h-[76px] sm:h-[84px]"
-        }`} 
+        className="w-full shrink-0 transition-all duration-300 h-[76px] sm:h-[84px]" 
         aria-hidden="true" 
       />
 
       <header
         className={`fixed top-0 left-0 right-0 w-full flex flex-col items-center justify-center z-[100] transition-all duration-300 ease-in-out ${
-          showBanner
-            ? "pt-2 sm:pt-2.5 pb-2 sm:pb-3"
-            : (isScrolled ? "py-2 sm:py-3" : "py-3.5 sm:py-4.5")
+          isScrolled ? "py-2 sm:py-3" : "py-3.5 sm:py-4.5"
         } ${
           isVisible
             ? "translate-y-0 opacity-100"
@@ -149,35 +106,6 @@ export default function Navbar() {
         }`}
         style={{ fontFamily: "Matter" }}
       >
-        {/* Top Announcement Pill Banner (Navbar ke upar) */}
-        {showBanner && (
-          <div className="w-full pt-2 sm:pt-2.5 px-3 sm:px-6 pb-1.5 sm:pb-2 shrink-0">
-            <div className="max-w-3xl mx-auto flex items-center justify-between gap-3 bg-[#FFFDFB] border border-stone-200/90 rounded-full px-4 py-1.5 sm:py-2 shadow-sm hover:shadow transition-all">
-              <div className="w-5 hidden sm:block shrink-0" aria-hidden="true" />
-              <Link
-                href="/download"
-                className="group flex-1 flex items-center justify-center gap-2 text-xs sm:text-sm text-gray-700 hover:text-red-600 transition-colors"
-              >
-                <Image width={64} height={64} 
-                  src="/logo.png" 
-                  alt="TexWeb" 
-                  className="w-4 h-4 sm:w-5 sm:h-5 rounded-md object-contain shrink-0" 
-                />
-                <span className="text-gray-800 font-medium">The TexWeb mobile app is here.</span>
-                <span className="font-bold text-red-600 flex items-center gap-1 group-hover:underline underline-offset-2">
-                  Download it now <ArrowRight className="w-3.5 h-3.5 transition-transform duration-200 group-hover:translate-x-0.5" />
-                </span>
-              </Link>
-              <button
-                onClick={handleDismissBanner}
-                className="p-1 text-gray-400 hover:text-gray-700 rounded-full hover:bg-stone-100 transition-colors cursor-pointer shrink-0"
-                aria-label="Dismiss"
-              >
-                <X className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-              </button>
-            </div>
-          </div>
-        )}
 
         {/* Desktop Navigation */}
         <div
