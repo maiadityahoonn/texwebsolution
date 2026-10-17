@@ -134,7 +134,7 @@ export default function TeamSection({ limit, showSeeMore = false }) {
       {showSeeMore && (
         <div className="mt-6 sm:mt-8 flex justify-center px-4">
           <Link
-            href="/about-us#about-us"
+            href="/about-us"
             className="inline-flex items-center gap-2.5 px-7 py-3.5 rounded-full bg-gradient-to-r from-red-600 to-red-500 hover:from-red-700 hover:to-red-600 text-white font-medium text-sm transition-all duration-300 shadow-md shadow-red-500/25 hover:shadow-lg hover:shadow-red-500/35 hover:scale-[1.03] active:scale-[0.98] group"
           >
             <span>See More Members</span>

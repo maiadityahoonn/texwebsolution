@@ -107,7 +107,7 @@ export default function Footer() {
                     { name: "Customized", href: "/customized/websites" },
                     { name: "AI Automation", href: "/ai-automation" },
                     { name: "Digital Marketing", href: "/digital-marketing" },
-                    { name: "Pricing & Plans (₹999)", href: "/pricing" }
+                    { name: "Pricing & Plans (₹1,999)", href: "/pricing" }
                   ].map((link) => (
                     <Link
                       key={link.name}

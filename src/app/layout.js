@@ -1,9 +1,11 @@
+import { Suspense } from "react";
 import localFont from "next/font/local";
 import { Poppins } from "next/font/google";
 import Script from "next/script";
 import "./globals.css";
 import PublicFloatingWidgets from "@/components/public/PublicFloatingWidgets";
 import AppSplashScreen from "@/components/public/AppSplashScreen";
+import ScrollToTop from "@/components/public/ScrollToTop";
 
 const poppins = Poppins({
   subsets: ["latin"],
@@ -175,7 +177,7 @@ export default function RootLayout({ children }) {
           "@type": "WebPage",
           "name": "Pricing",
           "url": "https://texwebsolution.in/pricing",
-          "description": "Transparent web development pricing, SaaS packages & starter plans from ₹999/mo."
+          "description": "Transparent web development pricing, SaaS packages & starter plans from ₹1,999/mo."
         },
         {
           "@type": "WebPage",
@@ -258,6 +260,11 @@ export default function RootLayout({ children }) {
         />
       </head>
       <body className="min-h-full flex flex-col bg-white text-gray-900 font-sans no-scrollbar" suppressHydrationWarning>
+        {/* Global Scroll To Top Controller */}
+        <Suspense fallback={null}>
+          <ScrollToTop />
+        </Suspense>
+
         {/* Native Mobile / Web App Animated Brand Splash Screen */}
         <AppSplashScreen />
 

@@ -40,18 +40,18 @@ const FEATURED_CUSTOM_PROJECTS = [
     tags: ["E-Learning", "Spiritual & Wellness", "Courses"]
   },
   {
-    title: "Ruchi Upadhyay Classes",
-    image: "https://qfbsszbgmipbercujiak.supabase.co/storage/v1/object/public/site-assets/customized/ruchiupadhyay.jpg",
-    bullets: ["Comprehensive Chemistry learning platform featuring live classes, test series, and board preparation."],
-    buttonLink: "https://www.ruchiupadhyayclasses.in/",
-    tags: ["EdTech", "Coaching & Classes", "E-Learning"]
+    title: "Heal Stride : Physiotherapy & Wellness",
+    image: "https://qfbsszbgmipbercujiak.supabase.co/storage/v1/object/public/site-assets/customized/healstride.jpg",
+    bullets: ["Bhopal's premier non-surgical pain management and sports rehabilitation clinic."],
+    buttonLink: "https://www.healstride-physiotherapy.in/",
+    tags: ["Healthcare", "Physiotherapy", "Wellness"]
   },
   {
-    title: "Team 360 (D.D. Sharma)",
-    image: "https://qfbsszbgmipbercujiak.supabase.co/storage/v1/object/public/site-assets/customized/team360.jpg",
-    bullets: ["Spiritual learning & mind mentorship platform with recorded courses, literature, and live workshops."],
-    buttonLink: "https://www.devendraduttsharma.com/",
-    tags: ["Mind Training", "Spiritual & Mentorship", "E-Learning"]
+    title: "Anikara : Luxury Fashion E-commerce",
+    image: "https://qfbsszbgmipbercujiak.supabase.co/storage/v1/object/public/site-assets/customized/anikara.jpg",
+    bullets: ["Sophisticated online boutique featuring luxury dresses, co-ords, bags, and modern women's fashion."],
+    buttonLink: "https://anikara-e-commerce-websites.vercel.app/?page=home",
+    tags: ["E-Commerce", "Fashion & Apparel", "Luxury"]
   },
   {
     title: "Kirtilals : Luxury Jewellery E-commerce",
@@ -75,11 +75,11 @@ const FEATURED_CUSTOM_PROJECTS = [
     tags: ["Custom Portal", "Photo Print", "Interactive"]
   },
   {
-    title: "Heal Stride : Physiotherapy & Wellness",
-    image: "https://qfbsszbgmipbercujiak.supabase.co/storage/v1/object/public/site-assets/customized/healstride.jpg",
-    bullets: ["Bhopal's premier non-surgical pain management and sports rehabilitation clinic."],
-    buttonLink: "https://www.healstride-physiotherapy.in/",
-    tags: ["Healthcare", "Physiotherapy", "Wellness"]
+    title: "Ruchi Upadhyay Classes",
+    image: "https://qfbsszbgmipbercujiak.supabase.co/storage/v1/object/public/site-assets/customized/ruchiupadhyay.jpg",
+    bullets: ["Comprehensive Chemistry learning platform featuring live classes, test series, and board preparation."],
+    buttonLink: "https://www.ruchiupadhyayclasses.in/",
+    tags: ["EdTech", "Coaching & Classes", "E-Learning"]
   },
   {
     title: "Siwan City Hospital : Multi-Speciality Healthcare",
@@ -96,11 +96,11 @@ const FEATURED_CUSTOM_PROJECTS = [
     tags: ["Healthcare", "Multi-Speciality", "ICU & Emergency"]
   },
   {
-    title: "Anikara : Luxury Fashion E-commerce",
-    image: "https://qfbsszbgmipbercujiak.supabase.co/storage/v1/object/public/site-assets/customized/anikara.jpg",
-    bullets: ["Sophisticated online boutique featuring luxury dresses, co-ords, bags, and modern women's fashion."],
-    buttonLink: "https://anikara-e-commerce-websites.vercel.app/?page=home",
-    tags: ["E-Commerce", "Fashion & Apparel", "Luxury"]
+    title: "Team 360 (D.D. Sharma)",
+    image: "https://qfbsszbgmipbercujiak.supabase.co/storage/v1/object/public/site-assets/customized/team360.jpg",
+    bullets: ["Spiritual learning & mind mentorship platform with recorded courses, literature, and live workshops."],
+    buttonLink: "https://www.devendraduttsharma.com/",
+    tags: ["Mind Training", "Spiritual & Mentorship", "E-Learning"]
   }
 ];
 

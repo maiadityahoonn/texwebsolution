@@ -323,7 +323,12 @@ export default function CustomizedTabs({ activeTab: propActiveTab, defaultTab = 
             
             <Link 
               href="/customized/websites"
-              scroll={false}
+              onClick={() => {
+                const el = document.getElementById("customized");
+                if (el) {
+                  el.scrollIntoView({ behavior: "smooth", block: "start" });
+                }
+              }}
               className={`relative inline-flex items-center justify-center rounded-full px-4 py-2 text-sm sm:text-base font-medium transition-all duration-300 z-10 w-[100px] sm:w-[120px] select-none ${
                 activeTab === "websites" ? "text-white font-semibold" : "text-gray-500 hover:text-black"
               }`}
@@ -332,7 +337,12 @@ export default function CustomizedTabs({ activeTab: propActiveTab, defaultTab = 
             </Link>
             <Link 
               href="/customized/apps"
-              scroll={false}
+              onClick={() => {
+                const el = document.getElementById("customized");
+                if (el) {
+                  el.scrollIntoView({ behavior: "smooth", block: "start" });
+                }
+              }}
               className={`relative inline-flex items-center justify-center rounded-full px-4 py-2 text-sm sm:text-base font-medium transition-all duration-300 z-10 w-[120px] sm:w-[140px] select-none ${
                 activeTab === "applications" ? "text-white font-semibold" : "text-gray-500 hover:text-black"
               }`}

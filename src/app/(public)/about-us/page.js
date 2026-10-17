@@ -126,7 +126,7 @@ function AnimatedCounter({ value, label }) {
 export default function AboutUsPage() {
   const cms = createStaticCms();
   const aboutHero = cms.block("about.hero", {
-    title: "We Architect Digital Products & Empower Future Talent",
+    title: "We Architect Digital Products",
     subtitle: "TexWeb Solution is a 360° technology firm specializing in custom web/app development, prebuilt SaaS platforms, AI automation workflows, and high-performance digital marketing — backed by our sister EdTech entity, Internship Catalyst.",
   });
   const stats = cms.list("about.stats", "stats", [
@@ -147,7 +147,7 @@ export default function AboutUsPage() {
         "Tailor-made CRM, ERP, SaaS & E-commerce Applications",
         "Pixel-perfect UI/UX design with smooth micro-interactions"
       ],
-      link: "/customized",
+      link: "/customized/websites",
       linkText: "Explore Custom Services",
       gradient: "from-red-600/10 via-orange-500/5 to-transparent",
       borderColor: "border-red-100 hover:border-red-400",
@@ -407,7 +407,7 @@ export default function AboutUsPage() {
           <section className="flex flex-1 items-start md:items-center justify-start md:justify-center text-center px-4 sm:px-6 pt-12 sm:pt-14 md:pt-0">
             <div className="w-full">
               <h1 
-                className="text-3xl sm:text-5xl md:text-6xl lg:text-7xl font-bold bg-gradient-to-r from-gray-900 to-red-600 bg-clip-text text-transparent leading-snug sm:leading-tight pb-2" 
+                className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold bg-gradient-to-r from-gray-900 to-red-600 bg-clip-text text-transparent leading-snug sm:leading-tight pb-2" 
                 style={{ fontFamily: "Matter, sans-serif" }}
               >
                 {aboutHero.title}

@@ -232,7 +232,7 @@ export default function AiAutomationPage() {
       <PricingCtaBanner
         badge="AI Automation Pricing"
         title="Automate Your Business Workflows at Predictable Costs"
-        subtitle="Deploy AI Voice Agents, WhatsApp Bots, and RAG systems with transparent, ROI-driven pricing starting ₹999/mo."
+        subtitle="Deploy AI Voice Agents, WhatsApp Bots, and RAG systems with transparent, ROI-driven pricing starting ₹1,999/mo."
         customWhatsappText="Hi TexWeb Solution, I'd like to discuss pricing for AI & Workflow Automation."
       />
 

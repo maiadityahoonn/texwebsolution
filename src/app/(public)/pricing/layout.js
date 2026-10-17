@@ -2,13 +2,13 @@ import Script from "next/script";
 
 export const metadata = {
   title: "Pricing & Monthly Plans | Affordable Website & Automation Packages",
-  description: "Transparent, flexible monthly website and business management plans starting at just ₹999/month. Tailored for any industry with zero heavy upfront costs.",
+  description: "Transparent, flexible monthly website and business management plans starting at just ₹1,999/month. Tailored for any industry with zero heavy upfront costs.",
   alternates: {
     canonical: "https://texwebsolution.in/pricing",
   },
   openGraph: {
     title: "Pricing & Monthly Plans | TexWeb Solution",
-    description: "Transparent, flexible monthly website and business management plans starting at just ₹999/month. Tailored for any industry with zero heavy upfront costs.",
+    description: "Transparent, flexible monthly website and business management plans starting at just ₹1,999/month. Tailored for any industry with zero heavy upfront costs.",
     url: "https://texwebsolution.in/pricing",
   },
 };

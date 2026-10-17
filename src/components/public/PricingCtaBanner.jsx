@@ -7,7 +7,7 @@ import { ArrowRight, Sparkles, CheckCircle2, Calculator, ShieldCheck } from "luc
 export default function PricingCtaBanner({
   badge = "Transparent & Scalable Plans",
   title = "Looking for Transparent & Affordable Pricing?",
-  subtitle = "Choose from ready-to-deploy monthly plans starting at just ₹999/mo or calculate your custom project estimate in seconds.",
+  subtitle = "Choose from ready-to-deploy monthly plans starting at just ₹1,999/mo or calculate your custom project estimate in seconds.",
   serviceTag = "All Services",
   customWhatsappText = "Hi TexWeb Solution, I'd like to know more about your pricing and plans."
 }) {
@@ -43,7 +43,7 @@ export default function PricingCtaBanner({
               <div className="mt-6 flex flex-wrap items-center justify-center lg:justify-start gap-4 sm:gap-6 text-xs sm:text-sm text-gray-300">
                 <span className="flex items-center gap-1.5">
                   <CheckCircle2 className="w-4 h-4 text-red-400 shrink-0" />
-                  Plans from <strong className="text-white font-bold">₹999/month</strong>
+                  Plans from <strong className="text-white font-bold">₹1,999/month</strong>
                 </span>
                 <span className="flex items-center gap-1.5">
                   <ShieldCheck className="w-4 h-4 text-red-400 shrink-0" />

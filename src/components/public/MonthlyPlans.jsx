@@ -77,14 +77,14 @@ const CURRENCIES = {
     symbol: "₹",
     label: "🇮🇳 INR (₹)",
     monthly: {
-      basic: { price: "999", display: "₹999", period: "/ month", subText: "Billed monthly" },
-      standard: { price: "2,499", display: "₹2,499", period: "/ month", subText: "Billed monthly" },
-      premium: { price: "8,499", display: "₹8,499", period: "/ month", subText: "Billed monthly" },
+      basic: { price: "1,999", display: "₹1,999", period: "/ month", subText: "Billed monthly" },
+      standard: { price: "4,999", display: "₹4,999", period: "/ month", subText: "Billed monthly" },
+      premium: { price: "14,999", display: "₹14,999", period: "/ month", subText: "Billed monthly" },
     },
     yearly: {
-      basic: { price: "9,999", display: "₹9,999", period: "/ year", equivalent: "₹833/mo", savings: "Save ₹1,989 (2 Mos Free)", subText: "Billed annually" },
-      standard: { price: "24,999", display: "₹24,999", period: "/ year", equivalent: "₹2,083/mo", savings: "Save ₹4,989 (2 Mos Free)", subText: "Billed annually" },
-      premium: { price: "84,999", display: "₹84,999", period: "/ year", equivalent: "₹7,083/mo", savings: "Save ₹16,989 (2 Mos Free)", subText: "Billed annually" },
+      basic: { price: "19,999", display: "₹19,999", period: "/ year", equivalent: "₹1,666/mo", savings: "Save ₹3,989 (2 Mos Free)", subText: "Billed annually" },
+      standard: { price: "49,999", display: "₹49,999", period: "/ year", equivalent: "₹4,166/mo", savings: "Save ₹9,989 (2 Mos Free)", subText: "Billed annually" },
+      premium: { price: "1,49,999", display: "₹1,49,999", period: "/ year", equivalent: "₹12,499/mo", savings: "Save ₹29,989 (2 Mos Free)", subText: "Billed annually" },
     },
   },
   usd: {

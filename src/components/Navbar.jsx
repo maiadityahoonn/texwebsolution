@@ -72,7 +72,7 @@ export default function Navbar() {
 
   const isActive = (href) => {
     if (!pathname) return false;
-    if (href === "/" || href === "/#home") {
+    if (href === "/") {
       return pathname === "/";
     }
     if (href === "/customized" || href === "/customized/websites") {
@@ -86,7 +86,7 @@ export default function Navbar() {
     { name: "Customized", href: "/customized/websites" },
     { name: "AI Automation", href: "/ai-automation" },
     { name: "Digital Marketing", href: "/digital-marketing" },
-    { name: "Pricing", href: "/pricing", badge: "₹999/mo" },
+    { name: "Pricing", href: "/pricing", badge: "₹1,999/mo" },
     { name: "About Us", href: "/about-us" },
     { name: "Contact Us", href: "/contact" },
   ];
@@ -146,7 +146,7 @@ export default function Navbar() {
             AI Automation
           </Link>
 
-          <Link href="/#home" className="flex items-center group mx-3 lg:mx-5 shrink-0">
+          <Link href="/" className="flex items-center group mx-3 lg:mx-5 shrink-0">
             <Image
               width={165}
               height={48}
@@ -181,7 +181,7 @@ export default function Navbar() {
                   : "bg-red-50 text-red-600 border-red-200"
                 }`}
             >
-              ₹999/mo
+              ₹1,999/mo
             </span>
           </Link>
           <Link
@@ -202,7 +202,7 @@ export default function Navbar() {
               : "bg-white border-gray-200 shadow-sm"
             }`}
         >
-          <Link href="/#home" className="flex items-center shrink-0">
+          <Link href="/" className="flex items-center shrink-0">
             <Image
               width={140}
               height={40}
