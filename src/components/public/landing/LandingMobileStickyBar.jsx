@@ -55,7 +55,7 @@ export default function LandingMobileStickyBar() {
       <button
         type="button"
         onClick={handleScrollToForm}
-        className="flex-1 py-3 px-4 rounded-xl bg-gradient-to-r from-red-600 to-rose-600 text-white font-extrabold text-xs shadow-md shadow-red-600/20 active:scale-95 flex items-center justify-center gap-1.5 cursor-pointer whitespace-nowrap"
+        className="flex-1 py-3 px-4 rounded-full bg-red-600 hover:bg-red-700 text-white font-semibold text-xs shadow-md shadow-red-600/20 active:scale-95 flex items-center justify-center gap-1.5 cursor-pointer whitespace-nowrap font-[Matter]"
       >
         <Sparkles className="w-3.5 h-3.5" />
         <span>Get Free Quote & Architecture ➔</span>
