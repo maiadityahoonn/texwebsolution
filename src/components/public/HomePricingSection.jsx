@@ -9,7 +9,6 @@ import {
   Crown,
   ArrowRight,
   Gift,
-  Calculator,
   Sparkles
 } from "lucide-react";
 
@@ -407,22 +406,14 @@ export default function HomePricingSection() {
 
         </div>
 
-        {/* See More / View All Pricing Plans & Cost Calculator CTA Button */}
-        <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-2">
+        {/* See More / View All Pricing Plans CTA Button */}
+        <div className="flex items-center justify-center pt-2">
           <Link
             href="/pricing"
             className="inline-flex items-center gap-2.5 px-8 py-4 rounded-full bg-red-600 hover:bg-red-700 text-white font-semibold text-sm sm:text-base transition-all duration-300 shadow-lg shadow-red-600/25 hover:shadow-xl hover:shadow-red-600/35 hover:scale-105 active:scale-95 group"
           >
             <span>See More Plans &amp; Comparison Table</span>
             <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform duration-300" />
-          </Link>
-
-          <Link
-            href="/pricing"
-            className="inline-flex items-center gap-2 px-6 py-3.5 rounded-full bg-white hover:bg-gray-50 border border-gray-200 text-gray-800 hover:text-red-600 text-sm font-semibold transition-all duration-200 hover:scale-105 shadow-sm"
-          >
-            <Calculator className="w-4 h-4 text-red-600" />
-            <span>Interactive Cost Calculator</span>
           </Link>
         </div>
 
