@@ -116,15 +116,6 @@ export default function LandingHeroSection() {
           />
         </div>
 
-        {/* Dynamic Catchy Hook for Meta Ads Visitors */}
-        <div className="max-w-2xl mx-auto px-4 -mt-2 sm:-mt-4 mb-3">
-          <h2 className="text-xl sm:text-3xl font-bold text-gray-900 leading-tight" style={{ fontFamily: "Matter" }}>
-            Transforming Your Vision Into High-Performing Digital Products
-          </h2>
-          <p className="text-xs sm:text-sm text-gray-600 mt-1 font-poppins font-light">
-            We specialize in custom web application development, cross-platform mobile apps, AI automation, and digital growth strategies delivered in <strong>7–14 days</strong> with 100% code ownership.
-          </p>
-        </div>
 
         {/* Action Buttons matching Homepage */}
         <div className="flex space-x-3 sm:space-x-4 mt-[-3px] sm:mt-[-6px] lg:mt-[-9px] z-10">
