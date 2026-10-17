@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import Link from "next/link";
 import { useEffect, useState, useRef } from "react";
 import Navbar from "@/components/public/Navbar";
 import CommonMarquee from "@/components/public/CommonMarquee";
@@ -179,22 +180,22 @@ export default function Home() {
           )}
 
           <div className="flex space-x-3 sm:space-x-4 mt-[-3px] sm:mt-[-6px] lg:mt-[-9px] z-10">
-            <a href="/customized">
+            <Link href="/customized/websites">
               <button
                 className="w-32 py-3.5 text-sm sm:w-44 sm:text-base lg:py-4 bg-red-600 text-white rounded-full transition-transform hover:scale-105 hover:bg-red-700 shadow-md shadow-red-600/15"
                 style={{ fontFamily: "Matter", fontWeight: 500 }}
               >
                 {cmsHero?.cta?.replace(/&apos;/g, "'") || "Let's Explore"}
               </button>
-            </a>
-            <a href="/contact">
+            </Link>
+            <Link href="/contact">
               <button
                 className="w-32 py-3.5 text-sm sm:w-44 sm:text-base lg:py-4 bg-white text-black rounded-full border border-gray-300 transition-transform hover:scale-105 hover:bg-red-50/20 hover:border-red-600 hover:text-red-600"
                 style={{ fontFamily: "Matter", fontWeight: 500 }}
               >
                 Contact Us
               </button>
-            </a>
+            </Link>
           </div>
 
           <div className="inline-flex items-center gap-2 sm:gap-4 mt-3">
@@ -317,7 +318,7 @@ export default function Home() {
 
           {/* View All CTA */}
           <div className="flex justify-center mt-8 sm:mt-10">
-            <a href="/customized" className="relative inline-flex items-center group">
+            <Link href="/customized/websites" className="relative inline-flex items-center group">
               <button className="relative z-10 px-8 py-3.5 bg-red-600 text-white rounded-full text-sm font-semibold hover:bg-red-700 shadow-md shadow-red-600/15 hover:shadow-lg hover:shadow-red-600/25 hover:scale-105 transition-all duration-300 flex items-center gap-2 transform">
                 View All Projects
                 <svg className="w-4 h-4 transform group-hover:translate-x-1 transition-transform duration-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
@@ -325,7 +326,7 @@ export default function Home() {
                 </svg>
               </button>
               <div className="absolute inset-0 bg-red-600/20 blur-xl rounded-full scale-75 group-hover:scale-100 opacity-0 group-hover:opacity-100 transition-all duration-300 pointer-events-none"></div>
-            </a>
+            </Link>
           </div>
         </section>
 
