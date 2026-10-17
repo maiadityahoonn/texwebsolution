@@ -103,7 +103,7 @@ export default function LandingQuoteForm() {
   return (
     <section 
       id="quote-form-section" 
-      className="relative py-12 sm:py-16 text-center w-full overflow-hidden bg-gradient-to-b from-white via-gray-50/40 to-white"
+      className="relative pt-6 sm:pt-8 pb-12 sm:pb-16 text-center w-full overflow-hidden bg-gradient-to-b from-white via-gray-50/40 to-white"
       style={{ fontFamily: "Matter, sans-serif" }}
     >
       <div className="absolute top-0 left-1/4 w-[30rem] h-[30rem] bg-red-50/40 rounded-full blur-3xl -z-10 pointer-events-none" />
@@ -111,7 +111,7 @@ export default function LandingQuoteForm() {
 
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-left">
         {/* Header */}
-        <div className="text-center max-w-2xl mx-auto mb-8 sm:mb-10">
+        <div className="text-center max-w-2xl mx-auto mb-6 sm:mb-8">
           <div className="inline-block px-4 py-1 bg-red-50 text-red-600 border border-red-100 shadow-sm rounded-full site-label font-semibold text-xs sm:text-sm font-[Matter] mb-3">
             Get Free Quote & Architecture
           </div>
