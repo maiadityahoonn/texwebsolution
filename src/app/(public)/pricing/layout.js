@@ -1,14 +1,12 @@
-import Script from "next/script";
-
 export const metadata = {
-  title: "Pricing & Monthly Plans | Affordable Website & Automation Packages",
-  description: "Transparent, flexible monthly website and business management plans starting at just ₹1,999/month. Tailored for any industry with zero heavy upfront costs.",
+  title: "Pricing & Monthly Plans",
+  description: "Transparent, flexible monthly website and business management plans starting at just ₹1,999/month ($49/month). Tailored for any industry with zero heavy upfront costs.",
   alternates: {
     canonical: "https://texwebsolution.in/pricing",
   },
   openGraph: {
     title: "Pricing & Monthly Plans | TexWeb Solution",
-    description: "Transparent, flexible monthly website and business management plans starting at just ₹1,999/month. Tailored for any industry with zero heavy upfront costs.",
+    description: "Transparent, flexible monthly website and business management plans starting at just ₹1,999/month ($49/month). Tailored for any industry with zero heavy upfront costs.",
     url: "https://texwebsolution.in/pricing",
   },
 };
@@ -22,7 +20,7 @@ export default function PricingLayout({ children }) {
         "@type": "ListItem",
         "position": 1,
         "name": "Home",
-        "item": "https://texwebsolution.in"
+        "item": "https://texwebsolution.in/"
       },
       {
         "@type": "ListItem",
@@ -35,8 +33,7 @@ export default function PricingLayout({ children }) {
 
   return (
     <>
-      <Script
-        id="pricing-breadcrumb-jsonld"
+      <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />

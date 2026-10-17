@@ -1,14 +1,12 @@
-import Script from "next/script";
-
 export const metadata = {
   title: "Contact Us",
-  description: "Contact TexWeb Solution. From idea to launch, we design and develop tailor-made websites, apps, and digital growth strategies for your business.",
+  description: "Get in touch with TexWeb Solution for custom websites, mobile applications, AI automation, and digital marketing. Reach us at info@texwebsolution.in or +91-7462827259.",
   alternates: {
     canonical: "https://texwebsolution.in/contact",
   },
   openGraph: {
-    title: "Contact Us",
-    description: "Contact TexWeb Solution. From idea to launch, we design and develop tailor-made websites, apps, and digital growth strategies for your business.",
+    title: "Contact Us | TexWeb Solution",
+    description: "Get in touch with TexWeb Solution for custom websites, mobile applications, AI automation, and digital marketing. Reach us at info@texwebsolution.in or +91-7462827259.",
     url: "https://texwebsolution.in/contact",
   },
 };
@@ -22,7 +20,7 @@ export default function ContactLayout({ children }) {
         "@type": "ListItem",
         "position": 1,
         "name": "Home",
-        "item": "https://texwebsolution.in"
+        "item": "https://texwebsolution.in/"
       },
       {
         "@type": "ListItem",
@@ -35,8 +33,7 @@ export default function ContactLayout({ children }) {
 
   return (
     <>
-      <Script
-        id="contact-breadcrumb-jsonld"
+      <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />

@@ -44,7 +44,7 @@ export const metadata = {
   metadataBase: new URL("https://texwebsolution.in"),
   title: {
     default: "TexWeb Solution",
-    template: "%s",
+    template: "%s | TexWeb Solution",
   },
   description:
     "From idea to launch, TexWeb Solution designs and develops tailor-made websites, custom mobile apps, AI automation, and digital marketing strategies that scale with your business.",
@@ -68,13 +68,13 @@ export const metadata = {
   applicationName: "TexWeb Solution",
   referrer: "origin-when-cross-origin",
   alternates: {
-    canonical: "https://texwebsolution.in",
+    canonical: "https://texwebsolution.in/",
   },
   openGraph: {
     title: "TexWeb Solution",
     description:
       "From idea to launch, TexWeb Solution designs and develops tailor-made websites, custom mobile apps, AI automation, and digital marketing strategies.",
-    url: "https://texwebsolution.in",
+    url: "https://texwebsolution.in/",
     siteName: "TexWeb Solution",
     images: [
       {
@@ -125,19 +125,29 @@ export default function RootLayout({ children }) {
       "@context": "https://schema.org",
       "@type": "WebSite",
       "@id": "https://texwebsolution.in/#website",
-      "url": "https://texwebsolution.in",
+      "url": "https://texwebsolution.in/",
       "name": "TexWeb Solution",
-      "alternateName": ["TexWebSolution", "TexWeb Solution India"],
+      "alternateName": [
+        "TexWeb",
+        "TexWeb Solution",
+        "TexWebSolution",
+        "TexWeb Solution India",
+        "TexWeb Solution Pvt Ltd"
+      ],
+      "description":
+        "We specialize in end-to-end digital solutions including Custom Web & Mobile App Development, Ready SaaS Products, AI & Workflow Automation, and Digital Marketing.",
       "publisher": {
         "@id": "https://texwebsolution.in/#organization"
-      }
+      },
+      "inLanguage": "en-IN"
     },
     {
       "@context": "https://schema.org",
       "@type": "Organization",
       "@id": "https://texwebsolution.in/#organization",
       "name": "TexWeb Solution",
-      "url": "https://texwebsolution.in",
+      "legalName": "TexWeb Solution",
+      "url": "https://texwebsolution.in/",
       "logo": {
         "@type": "ImageObject",
         "url": "https://texwebsolution.in/logo.png",
@@ -145,6 +155,9 @@ export default function RootLayout({ children }) {
         "height": 1024
       },
       "image": "https://texwebsolution.in/logo.png",
+      "email": "info@texwebsolution.in",
+      "telephone": "+91-7462827259",
+      "priceRange": "₹1,999 - ₹1,00,000+",
       "description":
         "From idea to launch, TexWeb Solution designs and develops tailor-made websites, custom mobile apps, AI automation, and digital marketing strategies.",
       "contactPoint": [
@@ -152,6 +165,7 @@ export default function RootLayout({ children }) {
           "@type": "ContactPoint",
           "telephone": "+91-7462827259",
           "contactType": "customer service",
+          "email": "info@texwebsolution.in",
           "areaServed": "IN",
           "availableLanguage": ["English", "Hindi"]
         }
@@ -163,57 +177,58 @@ export default function RootLayout({ children }) {
     },
     {
       "@context": "https://schema.org",
-      "@type": "SiteNavigationElement",
+      "@type": "ItemList",
       "@id": "https://texwebsolution.in/#sitelinks",
-      "name": "TexWeb Solution Navigation Sitelinks",
-      "hasPart": [
+      "name": "TexWeb Solution Core Navigation Sitelinks",
+      "itemListElement": [
         {
-          "@type": "WebPage",
-          "name": "Login",
-          "url": "https://texwebsolution.in/login",
-          "description": "TexWeb Solution workspace portal login for Intern, TL, Developer, Sales Executive, and Designer."
+          "@type": "SiteNavigationElement",
+          "position": 1,
+          "name": "Customized Solutions",
+          "url": "https://texwebsolution.in/customized/websites",
+          "description": "Tailor-made full-stack web and mobile application engineering built to scale."
         },
         {
-          "@type": "WebPage",
-          "name": "Pricing",
-          "url": "https://texwebsolution.in/pricing",
-          "description": "Transparent web development pricing, SaaS packages & starter plans from ₹1,999/mo."
-        },
-        {
-          "@type": "WebPage",
-          "name": "Prebuilt",
+          "@type": "SiteNavigationElement",
+          "position": 2,
+          "name": "Prebuilt SaaS Software",
           "url": "https://texwebsolution.in/prebuilt",
           "description": "Ready-to-launch prebuilt SaaS software, business templates, and CRM systems."
         },
         {
-          "@type": "WebPage",
-          "name": "Customized",
-          "url": "https://texwebsolution.in/customized",
-          "description": "Tailor-made full-stack web and mobile application engineering built to scale."
-        },
-        {
-          "@type": "WebPage",
-          "name": "About Us",
-          "url": "https://texwebsolution.in/about-us",
-          "description": "Learn about TexWeb Solution — leadership, engineering team, vision & agency history."
-        },
-        {
-          "@type": "WebPage",
-          "name": "Contact Us",
-          "url": "https://texwebsolution.in/contact",
-          "description": "Get in touch with TexWeb Solution via phone, email or 1-on-1 WhatsApp consultation."
-        },
-        {
-          "@type": "WebPage",
+          "@type": "SiteNavigationElement",
+          "position": 3,
           "name": "AI Automation",
           "url": "https://texwebsolution.in/ai-automation",
           "description": "Custom AI chatbots, intelligent workflows, and automated business integrations."
         },
         {
-          "@type": "WebPage",
-          "name": "Digital Marketing",
+          "@type": "SiteNavigationElement",
+          "position": 4,
+          "name": "Digital Marketing & SEO",
           "url": "https://texwebsolution.in/digital-marketing",
           "description": "Strategic SEO, Google ads PPC, social media management, and branding campaigns."
+        },
+        {
+          "@type": "SiteNavigationElement",
+          "position": 5,
+          "name": "Pricing & Monthly Plans",
+          "url": "https://texwebsolution.in/pricing",
+          "description": "Transparent web development pricing, SaaS packages & starter plans from ₹1,999/mo ($49/mo)."
+        },
+        {
+          "@type": "SiteNavigationElement",
+          "position": 6,
+          "name": "About Us",
+          "url": "https://texwebsolution.in/about-us",
+          "description": "Learn about TexWeb Solution — leadership, engineering team, vision & agency history."
+        },
+        {
+          "@type": "SiteNavigationElement",
+          "position": 7,
+          "name": "Contact Us",
+          "url": "https://texwebsolution.in/contact",
+          "description": "Get in touch with TexWeb Solution via phone, email or 1-on-1 WhatsApp consultation."
         }
       ]
     }
@@ -240,8 +255,7 @@ export default function RootLayout({ children }) {
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />
         <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content" />
         <meta name="theme-color" content="#ffffff" />
-        <Script
-          id="texweb-root-jsonld"
+        <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLdData) }}
         />

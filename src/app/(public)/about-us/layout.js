@@ -1,5 +1,3 @@
-import Script from "next/script";
-
 export const metadata = {
   title: "About Us",
   description: "Learn about TexWeb Solution. We specialize in custom web application development, prebuilt SaaS solutions, AI automation, and digital marketing.",
@@ -7,7 +5,7 @@ export const metadata = {
     canonical: "https://texwebsolution.in/about-us",
   },
   openGraph: {
-    title: "About Us",
+    title: "About Us | TexWeb Solution",
     description: "Learn about TexWeb Solution. We specialize in custom web application development, prebuilt SaaS solutions, AI automation, and digital marketing.",
     url: "https://texwebsolution.in/about-us",
   },
@@ -22,7 +20,7 @@ export default function AboutLayout({ children }) {
         "@type": "ListItem",
         "position": 1,
         "name": "Home",
-        "item": "https://texwebsolution.in"
+        "item": "https://texwebsolution.in/"
       },
       {
         "@type": "ListItem",
@@ -35,8 +33,7 @@ export default function AboutLayout({ children }) {
 
   return (
     <>
-      <Script
-        id="about-breadcrumb-jsonld"
+      <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
