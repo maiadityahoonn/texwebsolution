@@ -170,6 +170,24 @@ export default function RootLayout({ children }) {
           "availableLanguage": ["English", "Hindi"]
         }
       ],
+      "address": [
+        {
+          "@type": "PostalAddress",
+          "streetAddress": "A3-405, Kokta Bypass Rd, opposite Transport Nagar, PMAY",
+          "addressLocality": "Bhopal",
+          "addressRegion": "Madhya Pradesh",
+          "postalCode": "462028",
+          "addressCountry": "IN"
+        },
+        {
+          "@type": "PostalAddress",
+          "streetAddress": "24/A Beniatola Lane",
+          "addressLocality": "Kolkata",
+          "addressRegion": "West Bengal",
+          "postalCode": "700009",
+          "addressCountry": "IN"
+        }
+      ],
       "sameAs": [
         "https://www.instagram.com/texwebsolution.in/",
         "https://wa.me/+917462827259"

@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useState } from "react";
-import { Mail, PhoneCall } from "lucide-react";
+import { Mail, PhoneCall, MapPin } from "lucide-react";
 
 export default function Footer() {
   const [email, setEmail] = useState("");
@@ -68,6 +68,10 @@ export default function Footer() {
                     <span>0755-4601839 (Calling Desk)</span>
                   </a>
                 </p>
+                <div className="pt-1.5 flex items-start gap-2 text-xs text-gray-600 font-poppins leading-relaxed">
+                  <MapPin className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
+                  <span>A3-405, Kokta Bypass Rd, opposite Transport Nagar, PMAY, Bhopal, Madhya Pradesh 462028</span>
+                </div>
               </div>
             </div>
 

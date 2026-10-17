@@ -263,8 +263,8 @@ export default function TexAppLocationShareModal({
       setNearbyPlaces([
         {
           id: "p1",
-          name: "MIG flats Nagar Nigam",
-          address: "A-4Kokta, Bhopal Byp, Bhopal, 462028, MP, IN",
+          name: "TexWeb Solution (Branch Office)",
+          address: "A3-405, Kokta Bypass Rd, opposite Transport Nagar, PMAY, Bhopal, Madhya Pradesh 462028",
           distance: "95 m",
           lat: lat + 0.0005,
           lng: lng + 0.0004,

@@ -290,7 +290,7 @@ export default function ContactPage() {
                       <span className="px-2 py-0.5 bg-gray-100 text-gray-700 text-[10px] font-bold rounded-full font-[Matter]">Madhya Pradesh</span>
                     </div>
                     <p className="text-xs sm:text-sm text-gray-600 font-poppins leading-relaxed">
-                      A3-405, PMAY, Near RTO Office, Transport Nagar, Kokta, Bhopal, Madhya Pradesh - 462028
+                      A3-405, Kokta Bypass Rd, opposite Transport Nagar, PMAY, Bhopal, Madhya Pradesh 462028
                     </p>
                   </div>
                 </div>
