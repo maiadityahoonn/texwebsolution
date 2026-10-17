@@ -239,6 +239,8 @@ export default function CrmWorkspaceViewSwitch({
           isCommercialsLoading={isCommercialsLoading}
           commercialDocs={commercialDocs}
           deals={deals}
+          clients={clients}
+          leads={leads}
           openCommercialModal={openCommercialModal}
           openInvoiceModal={openInvoiceModal}
           sendDocWhatsApp={sendDocWhatsApp}
@@ -356,6 +358,8 @@ export default function CrmWorkspaceViewSwitch({
           isCommercialsLoading={isCommercialsLoading}
           commercialDocs={commercialDocs}
           deals={deals}
+          clients={clients}
+          leads={leads}
           openCommercialModal={openCommercialModal}
           openInvoiceModal={openInvoiceModal}
           sendDocWhatsApp={sendDocWhatsApp}

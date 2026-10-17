@@ -181,6 +181,53 @@ export async function generateAiDocumentDraft(payload = {}) {
   }
 }
 
+export async function generateAiSpeech({ text, voice = 'alloy', openAiApiKey } = {}) {
+  try {
+    const { data: sessionData } = await supabase.auth.getSession();
+    const token = sessionData?.session?.access_token;
+    const response = await fetch('/api/ai/document-draft', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: JSON.stringify({
+        action: 'tts',
+        text,
+        voice,
+        openAiApiKey,
+      }),
+    });
+    return await response.json();
+  } catch (err) {
+    console.warn('AI TTS error:', err.message);
+    return { error: err.message };
+  }
+}
+
+export async function generateAiEmbeddings({ input, openAiApiKey } = {}) {
+  try {
+    const { data: sessionData } = await supabase.auth.getSession();
+    const token = sessionData?.session?.access_token;
+    const response = await fetch('/api/ai/document-draft', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: JSON.stringify({
+        action: 'embed',
+        input,
+        openAiApiKey,
+      }),
+    });
+    return await response.json();
+  } catch (err) {
+    console.warn('AI embeddings error:', err.message);
+    return { error: err.message };
+  }
+}
+
 // ==========================================
 // CRM ENTITY CHAT (THREADS & MESSAGES)
 // ==========================================

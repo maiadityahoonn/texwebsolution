@@ -1048,3 +1048,85 @@ body.modal-open #workspace-main {
   animation: chatPaneSlideIn 0.18s cubic-bezier(0.16, 1, 0.3, 1) both;
   will-change: transform, opacity;
 }
+
+/* Document & Letterhead Print Rules */
+@page {
+  size: A4 portrait;
+  margin: 0;
+}
+
+@media print {
+  html, body {
+    background: #ffffff !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* When DocumentEditorModal is open, hide underlying CRM page, headers, sidebars */
+  body:has([data-modal-overlay="true"]) > *:not([data-modal-overlay="true"]):not(:has([data-modal-overlay="true"])) {
+    display: none !important;
+  }
+
+  body:has([data-modal-overlay="true"]) [data-modal-overlay="true"] {
+    position: static !important;
+    inset: auto !important;
+    background: #ffffff !important;
+    overflow: visible !important;
+    display: block !important;
+  }
+
+  body:has([data-modal-overlay="true"]) [data-canvas-zoom-wrapper="true"] {
+    transform: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  .a4-sheet-canvas {
+    margin: 0 !important;
+    box-shadow: none !important;
+    border: none !important;
+    width: 100% !important;
+    min-height: 1123px !important;
+    height: 1123px !important;
+    page-break-after: always !important;
+    break-after: page !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+}
+
+/* Document High-Resolution PDF Export Mode */
+.pdf-exporting [data-canvas-zoom-wrapper="true"] {
+  transform: none !important;
+}
+
+.pdf-exporting .pdf-hide-on-export,
+.pdf-exporting [data-canvas-transform="true"],
+.pdf-exporting .canvas-smart-guides,
+.pdf-exporting .print\:hidden,
+.pdf-exporting button,
+.pdf-exporting [title*="drag to move"],
+.pdf-exporting [title*="Delete Page"] {
+  display: none !important;
+}
+
+.pdf-exporting .a4-sheet-canvas {
+  box-shadow: none !important;
+  border: none !important;
+  margin: 0 !important;
+  outline: none !important;
+  border-radius: 0 !important;
+}
+
+.pdf-exporting textarea,
+.pdf-exporting input {
+  border: none !important;
+  background: transparent !important;
+  outline: none !important;
+  box-shadow: none !important;
+  resize: none !important;
+}
+
+
