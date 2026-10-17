@@ -106,34 +106,36 @@ export default function PublicFloatingWidgets() {
         </div>
       </a>
 
-      {/* Floating WhatsApp Quick Action Button (Public only) */}
-      <a
-        className="fixed right-3 bottom-4 z-50 sm:right-5 sm:bottom-6 md:right-6 md:bottom-8 transition-transform duration-300 hover:scale-125 hover:-translate-y-2 hover:rotate-6 animate-floatingSmooth"
-        href="https://wa.me/+917462827259"
-        target="_blank"
-        rel="noopener noreferrer"
-        aria-label="Chat with TexWeb Solution on WhatsApp"
-      >
-        <div className="relative w-15 h-15 sm:w-12 sm:h-12 md:w-14 md:h-14 lg:w-16 lg:h-16">
-          <Image
-            width={64}
-            height={64}
-            alt="WhatsApp"
-            className="object-contain drop-shadow-[0_0_8px_rgba(0,255,70,0.25)] hover:drop-shadow-[0_0_15px_rgba(0,255,100,0.45)] transition-all duration-300"
-            src="https://qfbsszbgmipbercujiak.supabase.co/storage/v1/object/public/site-assets/common/WhatsApp.svg"
-            style={{
-              position: "absolute",
-              height: "100%",
-              width: "100%",
-              left: 0,
-              top: 0,
-              right: 0,
-              bottom: 0,
-              color: "transparent",
-            }}
-          />
-        </div>
-      </a>
+      {/* Floating WhatsApp Quick Action Button (Public only, hidden on get-quote page) */}
+      {pathname !== "/get-quote" && (
+        <a
+          className="fixed right-3 bottom-4 z-50 sm:right-5 sm:bottom-6 md:right-6 md:bottom-8 transition-transform duration-300 hover:scale-125 hover:-translate-y-2 hover:rotate-6 animate-floatingSmooth"
+          href="https://wa.me/+917462827259"
+          target="_blank"
+          rel="noopener noreferrer"
+          aria-label="Chat with TexWeb Solution on WhatsApp"
+        >
+          <div className="relative w-15 h-15 sm:w-12 sm:h-12 md:w-14 md:h-14 lg:w-16 lg:h-16">
+            <Image
+              width={64}
+              height={64}
+              alt="WhatsApp"
+              className="object-contain drop-shadow-[0_0_8px_rgba(0,255,70,0.25)] hover:drop-shadow-[0_0_15px_rgba(0,255,100,0.45)] transition-all duration-300"
+              src="https://qfbsszbgmipbercujiak.supabase.co/storage/v1/object/public/site-assets/common/WhatsApp.svg"
+              style={{
+                position: "absolute",
+                height: "100%",
+                width: "100%",
+                left: 0,
+                top: 0,
+                right: 0,
+                bottom: 0,
+                color: "transparent",
+              }}
+            />
+          </div>
+        </a>
+      )}
     </>
   );
 }

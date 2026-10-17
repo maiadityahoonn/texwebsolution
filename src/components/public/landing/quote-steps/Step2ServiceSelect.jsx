@@ -1,0 +1,105 @@
+"use client";
+
+import { ArrowLeft, ArrowRight, Check } from "lucide-react";
+import { SERVICES_CONFIG, DYNAMIC_SERVICE_CONFIGS } from "../quoteModalConstants";
+import ModalIcon from "../LandingModalIcons";
+
+export default function Step2ServiceSelect({ formData, onChange, onBack, onNext }) {
+  const activeServiceKey = formData.service in DYNAMIC_SERVICE_CONFIGS 
+    ? formData.service 
+    : "Website Development";
+
+  const handleSelectService = (srvKey) => {
+    onChange("service", srvKey);
+    const cfg = DYNAMIC_SERVICE_CONFIGS[srvKey];
+    if (cfg) {
+      onChange("budget", `${cfg.budgets[0].amount} (${cfg.budgets[0].desc})`);
+      onChange("specific_type", cfg.specificOptions[0].title);
+    }
+  };
+
+  return (
+    <div className="space-y-3.5 pt-0.5">
+      {/* Question Header */}
+      <div className="flex items-center justify-between pb-0.5">
+        <div>
+          <label className="block text-xs sm:text-sm font-bold text-gray-950 font-[Matter]">
+            1. Aapko business ke liye kya chahiye? (Main Service) <span className="text-red-500">*</span>
+          </label>
+          <p className="text-[11px] text-gray-500 font-poppins mt-0.5">
+            Pehle apni main service chunein, agla sawal iske mutabik aayega.
+          </p>
+        </div>
+        <span className="text-[10.5px] text-red-600 font-bold font-poppins shrink-0 bg-red-50 px-2.5 py-1 rounded-full border border-red-100">
+          Question 1 of 5
+        </span>
+      </div>
+
+      {/* 8 Service Cards */}
+      <div className="space-y-2 max-h-[48vh] sm:max-h-[50vh] overflow-y-auto p-1.5 scrollbar-thin overscroll-contain touch-pan-y">
+        {SERVICES_CONFIG.map((srv) => {
+          const isSelected = activeServiceKey === srv.key;
+          return (
+            <button
+              type="button"
+              key={srv.key}
+              onClick={() => handleSelectService(srv.key)}
+              className={`w-full text-left p-3 sm:p-3.5 rounded-2xl text-xs transition-colors cursor-pointer flex items-center justify-between border-2 ${
+                isSelected
+                  ? "bg-red-50/90 text-red-950 border-red-600 shadow-sm"
+                  : "bg-white text-gray-800 hover:bg-gray-50 border-gray-200"
+              }`}
+            >
+              <div className="flex items-center gap-3 min-w-0 pr-2">
+                <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 transition-colors ${
+                  isSelected ? "bg-red-100 text-red-600 shadow-xs" : "bg-gray-100 text-gray-600"
+                }`}>
+                  <ModalIcon name={srv.icon} className="w-4.5 h-4.5" />
+                </div>
+                <div className="flex flex-col min-w-0">
+                  <span className="font-bold text-xs sm:text-sm leading-snug text-gray-950 truncate">
+                    {srv.label}
+                  </span>
+                  <span className={`text-[11px] leading-tight mt-0.5 ${
+                    isSelected ? "text-red-700 font-medium" : "text-gray-500 font-normal"
+                  }`}>
+                    {srv.sub}
+                  </span>
+                </div>
+              </div>
+
+              <div className="shrink-0 pl-1">
+                <div className={`w-5 h-5 rounded-full border flex items-center justify-center transition-colors ${
+                  isSelected ? "border-red-600 bg-red-600 text-white" : "border-gray-300 bg-white"
+                }`}>
+                  {isSelected && <Check className="w-3 h-3 stroke-[3]" />}
+                </div>
+              </div>
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Navigation Buttons */}
+      <div className="pt-2 flex items-center gap-3">
+        <button
+          type="button"
+          onClick={onBack}
+          className="px-4 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl text-xs sm:text-sm font-semibold transition-all inline-flex items-center gap-1.5 cursor-pointer font-[Matter]"
+        >
+          <ArrowLeft className="w-4 h-4" />
+          <span>Back to Step 1</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={onNext}
+          className="flex-1 inline-flex items-center justify-center gap-2 py-3 sm:py-3.5 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs sm:text-sm font-semibold transition-all hover:scale-[1.01] active:scale-98 shadow-md shadow-red-600/25 cursor-pointer font-[Matter]"
+        >
+          <span>Next: Project Requirement (2/5)</span>
+          <ArrowRight className="w-4 h-4" />
+        </button>
+      </div>
+    </div>
+  );
+}

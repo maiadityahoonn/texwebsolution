@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { Clock, Lock, ArrowRight, ShieldCheck } from "lucide-react";
 import { buildTrackingNotes, trackMetaEvent, getTrackingParams } from "./landingTracking";
 import { SERVICE_OPTIONS, BUDGET_OPTIONS, TIMELINE_OPTIONS } from "./quoteFormConstants";
@@ -8,8 +9,9 @@ import QuoteFormSuccess from "./QuoteFormSuccess";
 import QuoteFormInputs from "./QuoteFormInputs";
 
 export default function LandingQuoteForm() {
+  const router = useRouter();
   const [formData, setFormData] = useState({
-    service: "Custom Web Development",
+    service: "Website Development",
     budget: "₹35k - ₹75k",
     timeline: "🚀 2 - 3 Weeks",
     name: "",
@@ -18,6 +20,16 @@ export default function LandingQuoteForm() {
     city: "",
     details: "",
   });
+
+  useEffect(() => {
+    const handleServiceSelect = (e) => {
+      if (e.detail) {
+        setFormData((prev) => ({ ...prev, service: e.detail }));
+      }
+    };
+    window.addEventListener("selectLandingService", handleServiceSelect);
+    return () => window.removeEventListener("selectLandingService", handleServiceSelect);
+  }, []);
 
   const [loading, setLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
@@ -91,7 +103,11 @@ export default function LandingQuoteForm() {
         service: formData.service,
       });
 
-      setSubmitted(true);
+      const queryParams = new URLSearchParams({
+        name: formData.name.trim(),
+        service: formData.service || "Web / App Development",
+      }).toString();
+      router.push(`/thank-you?${queryParams}`);
     } catch (err) {
       console.error("Submission error:", err);
       setErrorMessage(err.message || "Failed to submit. Please try again or WhatsApp us directly.");
@@ -103,7 +119,7 @@ export default function LandingQuoteForm() {
   return (
     <section 
       id="quote-form-section" 
-      className="relative pt-6 sm:pt-8 pb-12 sm:pb-16 text-center w-full overflow-hidden bg-gradient-to-b from-white via-gray-50/40 to-white"
+      className="relative pt-10 sm:pt-14 pb-12 sm:pb-16 text-center w-full overflow-hidden bg-gradient-to-b from-white via-gray-50/40 to-white"
       style={{ fontFamily: "Matter, sans-serif" }}
     >
       <div className="absolute top-0 left-1/4 w-[30rem] h-[30rem] bg-red-50/40 rounded-full blur-3xl -z-10 pointer-events-none" />

@@ -95,13 +95,13 @@ export default function Navbar() {
     <>
       {/* Dynamic Spacer to preserve natural layout height with zero overlapping */}
       <div 
-        className="w-full shrink-0 transition-all duration-300 h-[76px] sm:h-[84px]" 
+        className="w-full shrink-0 transition-all duration-300 h-[88px] sm:h-[96px]" 
         aria-hidden="true" 
       />
 
       <header
         className={`fixed top-0 left-0 right-0 w-full flex flex-col items-center justify-center z-[100] transition-all duration-300 ease-in-out ${
-          isScrolled ? "py-2 sm:py-3" : "py-3.5 sm:py-4.5"
+          isScrolled ? "py-2 sm:py-2.5" : "py-3 sm:py-4"
         } ${
           isVisible
             ? "translate-y-0 opacity-100"
@@ -110,89 +110,98 @@ export default function Navbar() {
         style={{ fontFamily: "Matter" }}
       >
 
-        {/* Desktop Navigation */}
+        {/* Desktop Navigation with Perfectly Centered Logo & Evenly Distributed Sides */}
         <div
-          className={`hidden xl:flex items-center justify-center rounded-full px-10 xl:px-14 py-2.5 border transition-all duration-300 gap-7 xl:gap-9 ${
+          className={`hidden xl:grid grid-cols-[1fr_auto_1fr] items-center rounded-full px-8 xl:px-12 py-3.5 xl:py-4 border transition-all duration-300 w-max max-w-[95vw] shadow-[0_10px_35px_-10px_rgba(0,0,0,0.08)] ${
             isScrolled
               ? "bg-white/95 backdrop-blur-md border-gray-200/90 shadow-lg shadow-black/5"
               : "bg-white border-gray-200 shadow-sm"
           }`}
         >
-          <Link
-            href="/prebuilt"
-            className={`font-semibold text-[14.5px] lg:text-[15px] transition-colors whitespace-nowrap ${isActive("/prebuilt")
-                ? "text-red-600 font-bold"
-                : "text-gray-800 hover:text-red-600"
-              }`}
-          >
-            Prebuilt
-          </Link>
-          <Link
-            href="/customized/websites"
-            className={`font-semibold text-[14.5px] lg:text-[15px] transition-colors whitespace-nowrap ${isActive("/customized")
-                ? "text-red-600 font-bold"
-                : "text-gray-800 hover:text-red-600"
-              }`}
-          >
-            Customized
-          </Link>
-          <Link
-            href="/ai-automation"
-            className={`font-semibold text-[14.5px] lg:text-[15px] transition-colors whitespace-nowrap ${isActive("/ai-automation")
-                ? "text-red-600 font-bold"
-                : "text-gray-800 hover:text-red-600"
-              }`}
-          >
-            AI Automation
-          </Link>
-
-          <Link href="/home" className="flex items-center group mx-3 lg:mx-5 shrink-0">
-            <Image
-              width={165}
-              height={48}
-              alt="TexWeb Solution"
-              className="h-[38px] md:h-[44px] lg:h-[48px] w-auto object-contain transition-transform duration-300 group-hover:scale-105"
-              src="https://qfbsszbgmipbercujiak.supabase.co/storage/v1/object/public/site-assets/texweb-full-logo-original.png"
-              style={{ width: "auto" }}
-              priority
-            />
-          </Link>
-
-          <Link
-            href="/digital-marketing"
-            className={`font-semibold text-[14.5px] lg:text-[15px] transition-colors whitespace-nowrap ${isActive("/digital-marketing")
-                ? "text-red-600 font-bold"
-                : "text-gray-800 hover:text-red-600"
-              }`}
-          >
-            Digital Marketing
-          </Link>
-          <Link
-            href="/pricing"
-            className={`relative font-semibold text-[14.5px] lg:text-[15px] transition-colors whitespace-nowrap flex items-center gap-1.5 ${isActive("/pricing")
-                ? "text-red-600 font-bold"
-                : "text-gray-800 hover:text-red-600"
-              }`}
-          >
-            <span>Pricing</span>
-            <span
-              className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full border transition-colors ${isActive("/pricing")
-                  ? "bg-red-600 text-white border-red-600 shadow-xs"
-                  : "bg-red-50 text-red-600 border-red-200"
+          {/* Left 3 Items (Evenly Distributed across Left Half) */}
+          <div className="flex items-center justify-between gap-6 xl:gap-8 pr-2">
+            <Link
+              href="/prebuilt"
+              className={`font-semibold text-[14.5px] lg:text-[15px] transition-colors whitespace-nowrap ${isActive("/prebuilt")
+                  ? "text-red-600 font-bold"
+                  : "text-gray-800 hover:text-red-600"
                 }`}
             >
-              ₹1,999/mo
-            </span>
-          </Link>
-          <Link
-            href="/contact"
-            className={`font-semibold text-[14.5px] lg:text-[15px] transition-colors whitespace-nowrap ${isActive("/contact")
-                ? "text-red-600 font-bold"
-                : "text-gray-800 hover:text-red-600"
-              }`}
-          >
-            Contact Us
-          </Link>
+              Prebuilt
+            </Link>
+            <Link
+              href="/customized/websites"
+              className={`font-semibold text-[14.5px] lg:text-[15px] transition-colors whitespace-nowrap ${isActive("/customized")
+                  ? "text-red-600 font-bold"
+                  : "text-gray-800 hover:text-red-600"
+                }`}
+            >
+              Customized
+            </Link>
+            <Link
+              href="/ai-automation"
+              className={`font-semibold text-[14.5px] lg:text-[15px] transition-colors whitespace-nowrap ${isActive("/ai-automation")
+                  ? "text-red-600 font-bold"
+                  : "text-gray-800 hover:text-red-600"
+                }`}
+            >
+              AI Automation
+            </Link>
+          </div>
+
+          {/* Center Column: 100% Dead Center Logo */}
+          <div className="flex items-center justify-center px-6 xl:px-8 shrink-0">
+            <Link href="/" className="flex items-center group shrink-0">
+              <Image
+                width={185}
+                height={52}
+                alt="TexWeb Solution"
+                className="h-[42px] md:h-[46px] lg:h-[50px] w-auto object-contain transition-transform duration-300 group-hover:scale-105"
+                src="https://qfbsszbgmipbercujiak.supabase.co/storage/v1/object/public/site-assets/texweb-full-logo-original.png"
+                style={{ width: "auto" }}
+                priority
+              />
+            </Link>
+          </div>
+
+          {/* Right 3 Items (Evenly Distributed across Right Half) */}
+          <div className="flex items-center justify-between gap-6 xl:gap-8 pl-2">
+            <Link
+              href="/digital-marketing"
+              className={`font-semibold text-[14.5px] lg:text-[15px] transition-colors whitespace-nowrap ${isActive("/digital-marketing")
+                  ? "text-red-600 font-bold"
+                  : "text-gray-800 hover:text-red-600"
+                }`}
+            >
+              Digital Marketing
+            </Link>
+            <Link
+              href="/pricing"
+              className={`relative font-semibold text-[14.5px] lg:text-[15px] transition-colors whitespace-nowrap flex items-center gap-1.5 ${isActive("/pricing")
+                  ? "text-red-600 font-bold"
+                  : "text-gray-800 hover:text-red-600"
+                }`}
+            >
+              <span>Pricing</span>
+              <span
+                className={`text-[10.5px] font-bold px-2 py-0.5 rounded-full border transition-colors ${isActive("/pricing")
+                    ? "bg-red-600 text-white border-red-600 shadow-xs"
+                    : "bg-red-50 text-red-600 border-red-200"
+                  }`}
+              >
+                ₹1,999/mo
+              </span>
+            </Link>
+            <Link
+              href="/contact"
+              className={`font-semibold text-[14.5px] lg:text-[15px] transition-colors whitespace-nowrap ${isActive("/contact")
+                  ? "text-red-600 font-bold"
+                  : "text-gray-800 hover:text-red-600"
+                }`}
+            >
+              Contact Us
+            </Link>
+          </div>
         </div>
 
         {/* Mobile Navigation Bar */}

@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { PhoneCall, Sparkles, ShieldCheck } from "lucide-react";
+import { PhoneCall, ShieldCheck } from "lucide-react";
 import AnimatedCounter from "@/components/public/AnimatedCounter";
 import MarqueeStrip from "@/components/public/MarqueeStrip";
 import { trackMetaEvent } from "./landingTracking";
@@ -10,9 +10,8 @@ import { trackMetaEvent } from "./landingTracking";
 export default function LandingHeroSection() {
   const handleScrollToQuote = (source = "hero_cta") => {
     trackMetaEvent("InitiateCheckout", { source });
-    const el = document.getElementById("quote-form-section");
-    if (el) {
-      el.scrollIntoView({ behavior: "smooth" });
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new CustomEvent("openQuoteModal", { detail: { source } }));
     }
   };
 
@@ -29,75 +28,130 @@ export default function LandingHeroSection() {
       className="relative w-full flex flex-col bg-no-repeat bg-center bg-cover min-h-[70vh] sm:min-h-[75vh] md:min-h-screen font-poppins"
       style={{ backgroundImage: "url('https://qfbsszbgmipbercujiak.supabase.co/storage/v1/object/public/site-assets/common/Bg2.png')" }}
     >
-      {/* 1. Meta Ads Focused Clean Header */}
-      <nav className="w-full relative z-20">
-        {/* Top announcement badge */}
-        <div className="bg-gradient-to-r from-red-600 via-rose-600 to-amber-500 text-white text-[11px] sm:text-xs font-medium py-1.5 px-4 text-center flex items-center justify-center gap-2">
-          <Sparkles className="w-3.5 h-3.5 shrink-0 animate-pulse" />
-          <span>⚡ <strong>Welcome from Meta:</strong> Get Free Project Architecture & Cost Estimate in 15 Minutes!</span>
-        </div>
+      {/* 1. Meta Ads Focused Cohesive Centered Floating Capsule */}
+      <header className="w-full relative z-20 pt-1.5 sm:pt-2 md:pt-2.5 px-3 sm:px-6">
+        <div className="flex items-center justify-center">
+          
+          {/* Desktop & Tablet Floating Capsule (Symmetric, No Shadow, 100% Dead-Center Logo) */}
+          <nav 
+            className="hidden sm:grid grid-cols-[1fr_auto_1fr] items-center rounded-full px-8 md:px-10 lg:px-12 py-3.5 md:py-4 lg:py-4.5 bg-white/95 backdrop-blur-xl border border-gray-200/90 transition-all duration-300 w-auto"
+            style={{ fontFamily: "Matter, sans-serif" }}
+          >
+            {/* Left Items: Direct Calling Desk & Rating Badge (Evenly Distributed from Far Left) */}
+            <div className="flex items-center justify-between gap-6 md:gap-8 lg:gap-10">
+              {/* Left Item 1: Direct Calling Desk (Placed right at the left capsule padding) */}
+              <a
+                href="tel:07554601839"
+                onClick={handleCall}
+                className="inline-flex items-center gap-2 text-[13px] md:text-sm lg:text-[15px] font-semibold text-gray-800 hover:text-red-600 transition-colors whitespace-nowrap cursor-pointer"
+                title="Call Calling Desk: 0755-4601839"
+              >
+                <PhoneCall className="w-4 h-4 md:w-4.5 md:h-4.5 text-blue-600 shrink-0" />
+                <span>0755-4601839</span>
+              </a>
 
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 sm:h-20 flex items-center justify-between gap-4">
-          {/* Logo */}
-          <Link href="/" className="flex items-center gap-2 shrink-0">
-            <Image
-              src="https://qfbsszbgmipbercujiak.supabase.co/storage/v1/object/public/site-assets/texweb-full-logo-original.png"
-              alt="TexWeb Solution"
-              width={180}
-              height={44}
-              priority
-              className="h-8 sm:h-10 w-auto object-contain"
-            />
-          </Link>
+              {/* Left Item 2: Rating & Verified Badge (Placed adjacent to the center logo) */}
+              <div className="inline-flex items-center gap-2 text-[13px] md:text-sm lg:text-[15px] font-semibold text-gray-800 whitespace-nowrap">
+                <span className="text-amber-500 font-bold">★ 4.9</span>
+                <span className="text-gray-300 font-light">•</span>
+                <span className="text-gray-600">80+ Projects</span>
+              </div>
+            </div>
 
-          {/* Center Trust Tag (Desktop) */}
-          <div className="hidden lg:flex items-center gap-2 px-3.5 py-1 bg-white/80 backdrop-blur-md border border-gray-200 rounded-full text-xs font-semibold text-gray-800 shadow-xs font-[Matter]">
-            <span className="text-amber-500">★★★★★</span>
-            <span>4.9/5 Rating</span>
-            <span className="text-gray-300">•</span>
-            <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
-            <span>80+ Scaled Projects</span>
-          </div>
+            {/* Center Column: Official TexWeb Solution Logo (100% Dead Center) */}
+            <div className="flex items-center justify-center px-6 md:px-8 lg:px-10 shrink-0">
+              <Link 
+                href="/get-quote" 
+                onClick={(e) => {
+                  e.preventDefault();
+                  window.scrollTo({ top: 0, behavior: "smooth" });
+                }}
+                className="flex items-center group shrink-0 transition-transform duration-300 hover:scale-105 cursor-pointer"
+                title="TexWeb Solution - Stay on Get Quote"
+              >
+                <Image
+                  src="https://qfbsszbgmipbercujiak.supabase.co/storage/v1/object/public/site-assets/texweb-full-logo-original.png"
+                  alt="TexWeb Solution"
+                  width={220}
+                  height={55}
+                  priority
+                  className="h-8 sm:h-9 md:h-11 lg:h-12 w-auto object-contain"
+                />
+              </Link>
+            </div>
 
-          {/* Quick Contact & Action Buttons */}
-          <div className="flex items-center gap-2 sm:gap-3">
+            {/* Right Items: WhatsApp Direct Contact & Primary Free Quote CTA (Evenly Distributed to Far Right) */}
+            <div className="flex items-center justify-between gap-6 md:gap-8 lg:gap-10">
+              {/* Right Item 1: Direct WhatsApp Chat (Placed adjacent to the center logo) */}
+              <a
+                href="https://wa.me/+917462827259?text=Hi%20TexWeb%20Solution,%20I%20saw%20your%20Meta%20ad%20and%20want%20to%20discuss%20a%20project%20for%20my%20business."
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={handleWhatsApp}
+                className="inline-flex items-center gap-2 text-[13px] md:text-sm lg:text-[15px] font-semibold text-gray-800 hover:text-emerald-600 transition-colors whitespace-nowrap cursor-pointer"
+                title="Chat with us on WhatsApp"
+              >
+                <Image
+                  src="https://qfbsszbgmipbercujiak.supabase.co/storage/v1/object/public/site-assets/common/WhatsApp.svg"
+                  alt="WhatsApp"
+                  width={18}
+                  height={18}
+                  className="w-4 h-4 md:w-4.5 md:h-4.5 object-contain shrink-0"
+                />
+                <span>WhatsApp</span>
+              </a>
+
+              {/* Right Item 2: Primary Free Quote CTA (Placed right at the right capsule padding) */}
+              <button
+                type="button"
+                onClick={() => handleScrollToQuote("header_capsule_btn")}
+                className="px-5 md:px-7 py-2.5 md:py-3 bg-red-600 hover:bg-red-700 text-white rounded-full text-xs md:text-sm lg:text-[15px] font-semibold hover:scale-105 active:scale-95 transition-all cursor-pointer whitespace-nowrap shrink-0"
+              >
+                <span>Get Free Quote ➔</span>
+              </button>
+            </div>
+          </nav>
+
+          {/* Mobile Clean Capsule (< 640px) */}
+          <div className="flex sm:hidden w-[95%] max-w-md items-center justify-between px-4 py-2.5 bg-white/95 backdrop-blur-md border border-gray-200 rounded-full">
             <a
               href="tel:07554601839"
               onClick={handleCall}
-              className="hidden sm:inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full border border-gray-200 bg-white/90 text-xs font-semibold text-gray-700 hover:text-blue-600 hover:border-blue-300 hover:bg-blue-50/30 transition-all font-[Matter]"
-              title="Call Calling Desk"
+              className="p-2.5 rounded-full bg-blue-50 text-blue-600 border border-blue-100"
+              title="Call 0755-4601839"
             >
-              <PhoneCall className="w-3.5 h-3.5 text-blue-600 shrink-0" />
-              <span>0755-4601839</span>
+              <PhoneCall className="w-4 h-4" />
             </a>
 
-            <a
-              href="https://wa.me/+917462827259?text=Hi%20TexWeb%20Solution,%20I%20saw%20your%20Meta%20ad%20and%20want%20to%20discuss%20a%20project%20for%20my%20business."
-              target="_blank"
-              rel="noopener noreferrer"
-              onClick={handleWhatsApp}
-              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 text-xs font-bold transition-all font-[Matter]"
+            <Link 
+              href="/get-quote" 
+              onClick={(e) => {
+                e.preventDefault();
+                window.scrollTo({ top: 0, behavior: "smooth" });
+              }}
+              className="flex items-center px-1"
             >
               <Image
-                src="https://qfbsszbgmipbercujiak.supabase.co/storage/v1/object/public/site-assets/common/WhatsApp.svg"
-                alt="WhatsApp"
-                width={16}
-                height={16}
-                className="w-4 h-4 object-contain"
+                src="https://qfbsszbgmipbercujiak.supabase.co/storage/v1/object/public/site-assets/texweb-full-logo-original.png"
+                alt="TexWeb Solution"
+                width={160}
+                height={40}
+                priority
+                className="h-7 sm:h-8 w-auto object-contain"
               />
-              <span className="hidden min-[480px]:inline">WhatsApp</span>
-            </a>
+            </Link>
 
             <button
               type="button"
-              onClick={() => handleScrollToQuote("header_button")}
-              className="px-4 sm:px-5 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-full text-xs sm:text-sm font-semibold shadow-md shadow-red-600/15 hover:scale-105 active:scale-95 transition-all font-[Matter] cursor-pointer"
+              onClick={() => handleScrollToQuote("mobile_header_btn")}
+              className="px-3.5 py-2 bg-red-600 text-white rounded-full text-xs font-semibold shadow-xs"
             >
-              Get Free Quote
+              Free Quote
             </button>
           </div>
+
         </div>
-      </nav>
+      </header>
 
       {/* 2. Hero Content Section (Inherited from Homepage) */}
       <div className="flex flex-col items-center text-center px-4 justify-start bg-transparent pt-1 sm:pt-2 pb-6 sm:pb-8">
@@ -110,7 +164,7 @@ export default function LandingHeroSection() {
             height={600}
             alt="TexWeb Solution - Custom Website and Mobile App Development Agency"
             className="w-full h-auto object-contain"
-            src="https://qfbsszbgmipbercujiak.supabase.co/storage/v1/object/public/site-assets/home/home.webp"
+            src="https://qfbsszbgmipbercujiak.supabase.co/storage/v1/object/public/site-assets/home/home_v4.webp"
             loading="eager"
             fetchPriority="high"
           />
@@ -118,7 +172,7 @@ export default function LandingHeroSection() {
 
 
         {/* Action Buttons matching Homepage */}
-        <div className="flex space-x-3 sm:space-x-4 mt-[-3px] sm:mt-[-6px] lg:mt-[-9px] z-10">
+        <div className="flex space-x-3 sm:space-x-4 mt-1 sm:mt-2 lg:mt-2.5 z-10">
           <button
             type="button"
             onClick={() => handleScrollToQuote("hero_primary_btn")}

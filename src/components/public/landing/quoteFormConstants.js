@@ -1,10 +1,11 @@
 export const SERVICE_OPTIONS = [
-  "Custom Web Development",
-  "Mobile App (iOS / Android)",
-  "Ready SaaS Software",
-  "AI & WhatsApp Automation",
-  "Digital Marketing & SEO",
-  "Full-Stack Growth Partner",
+  "Website Development",
+  "App Development (iOS/Android)",
+  "E-Commerce + Meta Ads",
+  "Meta Ads & Digital Marketing",
+  "AI Chatbot & Automation",
+  "ERP, CRM & Business Systems",
+  "Custom Tech Architecture",
 ];
 
 export const BUDGET_OPTIONS = [

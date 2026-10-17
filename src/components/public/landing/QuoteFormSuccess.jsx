@@ -20,12 +20,12 @@ export default function QuoteFormSuccess({ formData, onReset }) {
           Inquiry Received Successfully!
         </h3>
         <p className="text-sm text-gray-600 font-poppins max-w-md mx-auto leading-relaxed">
-          Thank you, <strong className="text-gray-900">{formData.name}</strong>. Our Lead Tech Architect is reviewing your requirements for <strong className="text-red-600">{formData.service}</strong>.
+          Thank you, <strong className="text-gray-900">{formData.name}</strong>. Our sales team will connect with you shortly regarding <strong className="text-red-600">{formData.service}</strong>.
         </p>
       </div>
 
       <div className="p-4 bg-emerald-50/70 border border-emerald-200/80 rounded-2xl max-w-md mx-auto text-xs text-emerald-900 font-medium space-y-1 font-poppins">
-        <p>⚡ We will connect on WhatsApp / Phone within 15 minutes.</p>
+        <p>⚡ Our sales team will connect on WhatsApp / Phone within 15 minutes.</p>
         <p className="text-emerald-700">Project Budget: {formData.budget} | Timeline: {formData.timeline}</p>
       </div>
 
@@ -44,7 +44,7 @@ export default function QuoteFormSuccess({ formData, onReset }) {
             height={20}
             className="w-5 h-5 object-contain"
           />
-          <span>Chat with Lead Architect on WhatsApp Now</span>
+          <span>Chat with Our Sales Team on WhatsApp</span>
         </a>
 
         <button

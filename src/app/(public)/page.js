@@ -169,7 +169,7 @@ export default function Home() {
             <Image width={800} height={600}
               alt="TexWeb Solution - Custom Website and Mobile App Development Agency"
               className="w-full h-auto object-contain"
-              src="https://qfbsszbgmipbercujiak.supabase.co/storage/v1/object/public/site-assets/home/home.webp"
+              src="https://qfbsszbgmipbercujiak.supabase.co/storage/v1/object/public/site-assets/home/home_v4.webp"
               loading="eager"
               fetchPriority="high"
             />
@@ -182,7 +182,7 @@ export default function Home() {
             </div>
           )}
 
-          <div className="flex space-x-3 sm:space-x-4 mt-[-3px] sm:mt-[-6px] lg:mt-[-9px] z-10">
+          <div className="flex space-x-3 sm:space-x-4 mt-1 sm:mt-2 lg:mt-2.5 z-10">
             <Link href="/customized/websites">
               <button
                 className="w-32 py-3.5 text-sm sm:w-44 sm:text-base lg:py-4 bg-red-600 text-white rounded-full transition-transform hover:scale-105 hover:bg-red-700 shadow-md shadow-red-600/15"
