@@ -73,6 +73,36 @@ const HOMEPAGE_MIXED_REVIEWS = [
     roi: "5x Student Growth",
     rating: 5,
     quote: "TexWeb created a top-notch educational platform for our Chemistry classes. From live session schedules and study note downloads to test series integration, everything works flawlessly for our students!"
+  },
+  {
+    id: 8,
+    name: "Dr. Gaurav Sharma",
+    role: "Founder, Heal Stride Physiotherapy & Wellness",
+    image: "https://qfbsszbgmipbercujiak.supabase.co/storage/v1/object/public/site-assets/avatars/vikramaditya_rao.png",
+    solution: "Clinic Website & GMB Local SEO",
+    roi: "+320% Patient Inquiries",
+    rating: 5,
+    quote: "TexWeb Solution built an elegant, fast appointment booking website for Heal Stride and optimized our Google My Business (GMB) profile. Our local search visibility and monthly clinic walk-ins grew tremendously!"
+  },
+  {
+    id: 9,
+    name: "Ananya Singhania",
+    role: "Founder, Anikara Luxury Fashion",
+    image: "https://qfbsszbgmipbercujiak.supabase.co/storage/v1/object/public/site-assets/avatars/priya_nambiar.png",
+    solution: "Luxury Fashion E-Commerce Website",
+    roi: "+350% Online Sales",
+    rating: 5,
+    quote: "TexWeb designed and launched a stunning luxury e-commerce store for Anikara. The fast visual filtering, intuitive cart checkout, and mobile responsiveness have scaled our designer fashion sales nationwide!"
+  },
+  {
+    id: 10,
+    name: "Dr. Sohail Abbas",
+    role: "Director & Chief Surgeon, Siwan City Hospital",
+    image: "https://qfbsszbgmipbercujiak.supabase.co/storage/v1/object/public/site-assets/avatars/siddharth_mehta.png",
+    solution: "Multi-Speciality Hospital Website",
+    roi: "+280% OPD Inquiries",
+    rating: 5,
+    quote: "TexWeb developed a modern, comprehensive healthcare portal for Siwan City Hospital with doctor schedules, Ayushman Bharat scheme guidance, and instant 24/7 emergency helpline integration. Exceptional work!"
   }
 ];
 
