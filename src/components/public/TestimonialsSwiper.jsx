@@ -6,9 +6,9 @@ import { Sparkles } from "lucide-react";
 const HOMEPAGE_MIXED_REVIEWS = [
   {
     id: 1,
-    name: "Dr. Gaurav Sharma",
+    name: "Dr. MD Rashid (PT)",
     role: "Founder, Heal Stride Physiotherapy & Wellness",
-    image: "https://qfbsszbgmipbercujiak.supabase.co/storage/v1/object/public/site-assets/avatars/vikramaditya_rao.png",
+    image: "https://qfbsszbgmipbercujiak.supabase.co/storage/v1/object/public/site-assets/avatars/dr_md_rashid.jpg",
     solution: "Clinic Website & GMB Local SEO",
     roi: "+320% Patient Inquiries",
     rating: 5,
