@@ -49,7 +49,7 @@ const SERVICE_OPTIONS = [
 export default function ContactPage() {
   const cms = createStaticCms();
   const hero = cms.block("contact.hero", {
-    title: "Let's Build Something Extraordinary Together",
+    title: "Let's Build Something Great",
     subtitle: "Whether you need AI Automation, custom software engineering, high-ROI digital marketing, or ready-to-deploy prebuilt SaaS, our team is ready to scale your business.",
   });
   const faqs = cms.list("contact.faqs", "faqs", CONTACT_FAQS);
@@ -128,7 +128,7 @@ export default function ContactPage() {
           <section className="flex flex-1 items-start md:items-center justify-start md:justify-center text-center px-4 sm:px-6 pt-12 sm:pt-14 md:pt-0">
             <div className="w-full">
               <h1 
-                className="text-3xl sm:text-5xl md:text-6xl lg:text-7xl font-bold bg-gradient-to-r from-gray-900 via-gray-800 to-red-600 bg-clip-text text-transparent leading-snug sm:leading-tight pb-2" 
+                className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold bg-gradient-to-r from-gray-900 via-gray-800 to-red-600 bg-clip-text text-transparent leading-snug sm:leading-tight pb-2" 
                 style={{ fontFamily: "Matter, sans-serif" }}
               >
                 {hero.title}
