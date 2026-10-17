@@ -13,6 +13,12 @@ export default function ScrollToTop() {
       window.history.scrollRestoration = "manual";
     }
 
+    // Clean any legacy #home from URL and replace with /home
+    if (typeof window !== "undefined" && window.location.hash === "#home") {
+      const cleanUrl = window.location.pathname === "/" ? "/home" : window.location.pathname;
+      window.history.replaceState(null, "", cleanUrl);
+    }
+
     const resetToTop = () => {
       if (typeof window === "undefined") return;
 
@@ -53,6 +59,13 @@ export default function ScrollToTop() {
 
       const href = link.getAttribute("href");
       if (!href) return;
+
+      // Intercept any click pointing to #home or /#home and redirect to /home
+      if (href === "#home" || href === "/#home") {
+        e.preventDefault();
+        window.location.href = "/home";
+        return;
+      }
 
       // Handle internal routes (starting with / but not external, mailto, tel, or whatsapp)
       if (href.startsWith("/") && !href.startsWith("/#") && !link.target) {

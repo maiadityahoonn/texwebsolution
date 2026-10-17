@@ -15,6 +15,14 @@ const nextConfig = {
   experimental: {
     cpus: 1,
   },
+  async rewrites() {
+    return [
+      {
+        source: "/home",
+        destination: "/",
+      },
+    ];
+  },
   async headers() {
     return [
       {

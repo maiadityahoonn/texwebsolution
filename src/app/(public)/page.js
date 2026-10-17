@@ -152,7 +152,7 @@ export default function Home() {
   }, []);
 
   return (
-    <div className="relative w-full bg-white overflow-hidden" id="home">
+    <div className="relative w-full bg-white overflow-hidden">
 
       {/* Top Section with Bg2.png background */}
       <div

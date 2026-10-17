@@ -72,8 +72,8 @@ export default function Navbar() {
 
   const isActive = (href) => {
     if (!pathname) return false;
-    if (href === "/") {
-      return pathname === "/";
+    if (href === "/" || href === "/home") {
+      return pathname === "/" || pathname === "/home";
     }
     if (href === "/customized" || href === "/customized/websites") {
       return pathname.startsWith("/customized");
@@ -146,7 +146,7 @@ export default function Navbar() {
             AI Automation
           </Link>
 
-          <Link href="/" className="flex items-center group mx-3 lg:mx-5 shrink-0">
+          <Link href="/home" className="flex items-center group mx-3 lg:mx-5 shrink-0">
             <Image
               width={165}
               height={48}
@@ -202,7 +202,7 @@ export default function Navbar() {
               : "bg-white border-gray-200 shadow-sm"
             }`}
         >
-          <Link href="/" className="flex items-center shrink-0">
+          <Link href="/home" className="flex items-center shrink-0">
             <Image
               width={140}
               height={40}

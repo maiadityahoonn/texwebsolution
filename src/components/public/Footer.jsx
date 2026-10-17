@@ -100,7 +100,7 @@ export default function Footer() {
                 <h4 className="text-gray-400 text-base font-medium mb-4">Links</h4>
                 <nav className="space-y-3">
                   {[
-                    { name: "Home", href: "/" },
+                    { name: "Home", href: "/home" },
                     { name: "Contact", href: "/contact" },
                     { name: "Prebuilt", href: "/prebuilt" },
                     { name: "About Us", href: "/about-us" },
