@@ -230,7 +230,7 @@ const APPLICATIONS = [
       "Integrated with user-friendly UI, instant UPI/card/COD checkout, and fast & reliable doorstep delivery."
     ],
     "buttonText": "View App",
-    "buttonLink": "https://play.google.com/store/apps/details?id=com.twinleaves",
+    "buttonLink": "https://play.google.com/store/apps/details?id=com.twinleaves&pcampaignid=web_share",
     "imageOrder": 1
   },
   {
