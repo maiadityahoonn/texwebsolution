@@ -1,14 +1,15 @@
 "use client";
 
 import Image from "next/image";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { fetchCmsKey } from "@/lib/siteAssets";
 import { createStaticCms } from "@/lib/staticCms";
 import { safeExternalUrl } from "@/lib/safeUrl";
 
 const WEBSITES = [
   {
     "title": "Sarvadnya Vidyapeeth : College Portal",
-    "image": "/customized/sarvadnya.jpg",
+    "image": "https://qfbsszbgmipbercujiak.supabase.co/storage/v1/object/public/site-assets/customized/sarvadnya.jpg",
     "imageAlt": "Sarvadnya Vidyapeeth : Modern College Admission Website",
     "bullets": [
       "Fostering academic excellence with a modern college admission & departmental portal built for higher education institutes.",
@@ -21,7 +22,7 @@ const WEBSITES = [
   },
   {
     "title": "Trend Kro Media : Digital Growth Platform",
-    "image": "/customized/trendkromedia.jpg",
+    "image": "https://qfbsszbgmipbercujiak.supabase.co/storage/v1/object/public/site-assets/customized/trendkromedia.jpg",
     "imageAlt": "Trend Kro Media : Digital Growth & Branding Platform",
     "bullets": [
       "Empower brands & entrepreneurs with custom digital growth management, personal branding, and high-impact media coverage.",
@@ -34,7 +35,7 @@ const WEBSITES = [
   },
   {
     "title": "Meditation Magic : Spiritual Learning Platform",
-    "image": "/customized/neelamarora.jpg",
+    "image": "https://qfbsszbgmipbercujiak.supabase.co/storage/v1/object/public/site-assets/customized/neelamarora.jpg",
     "imageAlt": "Meditation Magic : Spiritual Learning & Healing Platform",
     "bullets": [
       "Experience transformative guided meditation, angelic healing, Kriya Yoga, and spiritual wellness masterclasses by Neelam Arora.",
@@ -47,7 +48,7 @@ const WEBSITES = [
   },
   {
     "title": "Ruchi Upadhyay Classes : EdTech Platform",
-    "image": "/customized/ruchiupadhyay.jpg",
+    "image": "https://qfbsszbgmipbercujiak.supabase.co/storage/v1/object/public/site-assets/customized/ruchiupadhyay.jpg",
     "imageAlt": "Ruchi Upadhyay Classes : Chemistry Learning Platform",
     "bullets": [
       "Master Chemistry & Science with expert-led online coaching for Class 9th-12th, IIT-JEE, NEET, and Olympiad preparations.",
@@ -60,7 +61,7 @@ const WEBSITES = [
   },
   {
     "title": "Team 360 : Spiritual & Mind Mentorship",
-    "image": "/customized/team360.jpg",
+    "image": "https://qfbsszbgmipbercujiak.supabase.co/storage/v1/object/public/site-assets/customized/team360.jpg",
     "imageAlt": "Team 360 with D.D. Sharma : Spiritual & Mind Mentorship Platform",
     "bullets": [
       "Empower your mind and spiritual growth with Team 360's signature programs, Gayatri mentorship, and peak mind training by D.D. Sharma Ji.",
@@ -73,7 +74,7 @@ const WEBSITES = [
   },
   {
     "title": "Kirtilals : Luxury Jewellery E-commerce",
-    "image": "/customized/kirtilals.jpg",
+    "image": "https://qfbsszbgmipbercujiak.supabase.co/storage/v1/object/public/site-assets/customized/kirtilals.jpg",
     "imageAlt": "Kirtilals : Luxury Jewellery E-commerce",
     "bullets": [
       "Discover fine diamond jewelry from Kirtilals with an online shopping portal built for luxury brands.",
@@ -86,7 +87,7 @@ const WEBSITES = [
   },
   {
     "title": "TradeScribe : Trading Journal Platform",
-    "image": "/customized/tradescribe.jpg",
+    "image": "https://qfbsszbgmipbercujiak.supabase.co/storage/v1/object/public/site-assets/customized/tradescribe.jpg",
     "imageAlt": "TradeScribe : Trading Journal Platform",
     "bullets": [
       "Empower your trading journey with Tradescribe's custom analytics platform built for active traders.",
@@ -99,7 +100,7 @@ const WEBSITES = [
   },
   {
     "title": "Momentz : Home Decor & Luxury Gifting",
-    "image": "/customized/momentz.jpg",
+    "image": "https://qfbsszbgmipbercujiak.supabase.co/storage/v1/object/public/site-assets/customized/momentz.jpg",
     "imageAlt": "Momentz : Home Decor & Luxury Gifting",
     "bullets": [
       "Create lasting memories with Momentz's custom photo printing portal built for shutterbugs.",
@@ -112,7 +113,7 @@ const WEBSITES = [
   },
   {
     "title": "Heal Stride : Physiotherapy & Wellness",
-    "image": "/customized/healstride.jpg",
+    "image": "https://qfbsszbgmipbercujiak.supabase.co/storage/v1/object/public/site-assets/customized/healstride.jpg",
     "imageAlt": "Heal Stride : Advanced Physiotherapy & Rehabilitation Clinic",
     "bullets": [
       "Bhopal's premier non-surgical pain management and advanced physiotherapy rehabilitation clinic.",
@@ -125,7 +126,7 @@ const WEBSITES = [
   },
   {
     "title": "Siwan City Hospital : Multi-Speciality Healthcare",
-    "image": "/customized/siwancityhospital.jpg",
+    "image": "https://qfbsszbgmipbercujiak.supabase.co/storage/v1/object/public/site-assets/customized/siwancityhospital.jpg",
     "imageAlt": "Siwan City Hospital : Premier Multi-Speciality Healthcare Website",
     "bullets": [
       "Premier multi-speciality hospital in Siwan, Bihar led by Dr. Sohail Abbas, providing 24/7 emergency & intensive care.",
@@ -138,7 +139,7 @@ const WEBSITES = [
   },
   {
     "title": "Samay Hospital : Multi-Speciality Hospital",
-    "image": "/customized/samayhospital.jpg",
+    "image": "https://qfbsszbgmipbercujiak.supabase.co/storage/v1/object/public/site-assets/customized/samayhospital.jpg",
     "imageAlt": "Samay Hospital : Multi-Speciality Hospital Website",
     "bullets": [
       "Leading multi-speciality hospital network in Patna & Ara, Bihar, offering 24/7 ICU and emergency trauma services.",
@@ -151,7 +152,7 @@ const WEBSITES = [
   },
   {
     "title": "Anikara : Luxury Fashion E-commerce",
-    "image": "/customized/anikara.jpg",
+    "image": "https://qfbsszbgmipbercujiak.supabase.co/storage/v1/object/public/site-assets/customized/anikara.jpg",
     "imageAlt": "Anikara : Luxury Fashion E-commerce Website",
     "bullets": [
       "Sophisticated online boutique for modern women featuring designer dresses, co-ords, footwear, and luxury bags.",
@@ -167,7 +168,7 @@ const WEBSITES = [
 const APPLICATIONS = [
   {
     "title": "MinitPe : On-Demand Grocery & Food Delivery",
-    "image": "/customized/minitpe.jpg",
+    "image": "https://qfbsszbgmipbercujiak.supabase.co/storage/v1/object/public/site-assets/customized/minitpe.jpg",
     "imageAlt": "MinitPe : On-Demand Grocery & Food Delivery App",
     "bullets": [
       "A feature-rich on-demand grocery & food delivery app built to make daily shopping faster and effortless.",
@@ -180,7 +181,7 @@ const APPLICATIONS = [
   },
   {
     "title": "Threadclothes : Fashion Shopping Mobile App",
-    "image": "/customized/threadclothes.jpg",
+    "image": "https://qfbsszbgmipbercujiak.supabase.co/storage/v1/object/public/site-assets/customized/threadclothes.jpg",
     "imageAlt": "Threadclothes : Fashion Shopping Mobile App",
     "bullets": [
       "A modern fashion shopping app designed for a stylish and comfortable shopping experience for women.",
@@ -193,7 +194,7 @@ const APPLICATIONS = [
   },
   {
     "title": "Uoons : Electronics Shopping Mobile App",
-    "image": "/customized/uoons.jpg",
+    "image": "https://qfbsszbgmipbercujiak.supabase.co/storage/v1/object/public/site-assets/customized/uoons.jpg",
     "imageAlt": "Uoons : Electronics Shopping Mobile App",
     "bullets": [
       "A modern, user-friendly electronics shopping app built to browse and buy mobiles, laptops, and gadgets.",
@@ -206,7 +207,7 @@ const APPLICATIONS = [
   },
   {
     "title": "Women Plus : Luxury Ethnic Indian Fashion",
-    "image": "/customized/womenplus.jpg",
+    "image": "https://qfbsszbgmipbercujiak.supabase.co/storage/v1/object/public/site-assets/customized/womenplus.jpg",
     "imageAlt": "Women Plus : Luxury Ethnic Indian Fashion App",
     "bullets": [
       "A premium ethnic fashion shopping app featuring suits, kurtas, co-ords, and dresses for every occasion.",
@@ -219,7 +220,7 @@ const APPLICATIONS = [
   },
   {
     "title": "Twin Leaves : Fresh Groceries Delivered to You",
-    "image": "/customized/twinleaves.jpg",
+    "image": "https://qfbsszbgmipbercujiak.supabase.co/storage/v1/object/public/site-assets/customized/twinleaves.jpg",
     "imageAlt": "Twin Leaves : On-Demand Fresh Grocery Shopping App",
     "bullets": [
       "A convenient grocery app offering fresh fruits, vegetables, daily essentials, and doorstep delivery.",
@@ -232,7 +233,7 @@ const APPLICATIONS = [
   },
   {
     "title": "Reeta Fashion : Women's Ethnic Wear Shopping App",
-    "image": "/customized/reetafashion.jpg",
+    "image": "https://qfbsszbgmipbercujiak.supabase.co/storage/v1/object/public/site-assets/customized/reetafashion.jpg",
     "imageAlt": "Reeta Fashion : Women's Ethnic Wear & Indian Fashion App",
     "bullets": [
       "A complete fashion destination for women's ethnic wear, designer kurtis, sarees, suits, and men's wear.",
@@ -245,7 +246,7 @@ const APPLICATIONS = [
   },
   {
     "title": "Tracks by Truckoom : Fleet Management & GPS Tracking",
-    "image": "/customized/truckoom.jpg",
+    "image": "https://qfbsszbgmipbercujiak.supabase.co/storage/v1/object/public/site-assets/customized/truckoom.jpg",
     "imageAlt": "Tracks by Truckoom : Fleet Management & Real-Time GPS Tracking App",
     "bullets": [
       "Simplifies fleet management hurdles by providing full control over fleets in all stages of delivery.",
@@ -261,9 +262,33 @@ const APPLICATIONS = [
 export default function CustomizedTabs() {
   const cms = createStaticCms();
   const [activeTab, setActiveTab] = useState("websites"); // "websites" or "applications"
+  const [dbWebsites, setDbWebsites] = useState(null);
+  const [dbApplications, setDbApplications] = useState(null);
 
-  const websites = cms.list("customized.websites", "websites", WEBSITES);
-  const applications = cms.list("customized.applications", "applications", APPLICATIONS);
+  useEffect(() => {
+    let isMounted = true;
+    async function loadPortfolioFromDb() {
+      try {
+        const [wList, aList] = await Promise.all([
+          fetchCmsKey("customized_websites"),
+          fetchCmsKey("customized_applications")
+        ]);
+        if (isMounted) {
+          if (Array.isArray(wList) && wList.length > 0) setDbWebsites(wList);
+          if (Array.isArray(aList) && aList.length > 0) setDbApplications(aList);
+        }
+      } catch (err) {
+        console.warn("Failed to load portfolio from database:", err);
+      }
+    }
+    loadPortfolioFromDb();
+    return () => { isMounted = false; };
+  }, []);
+
+  const defaultWebsites = cms.list("customized.websites", "websites", WEBSITES);
+  const defaultApplications = cms.list("customized.applications", "applications", APPLICATIONS);
+  const websites = dbWebsites || defaultWebsites;
+  const applications = dbApplications || defaultApplications;
   const section = cms.block("customized.projects", {
     badge: "Customized Solutions",
     title: "Tailored to your needs",

@@ -16,87 +16,88 @@ import GetInTouchSection from "@/components/public/GetInTouchSection";
 import Footer from "@/components/public/Footer";
 import { createStaticCms } from "@/lib/staticCms";
 import { safeExternalUrl } from "@/lib/safeUrl";
+import { fetchCmsKey } from "@/lib/siteAssets";
 const FEATURED_CUSTOM_PROJECTS = [
   {
     title: "Sarvadnya Vidyapeeth",
-    image: "customized/sarvadnya.jpg",
+    image: "https://qfbsszbgmipbercujiak.supabase.co/storage/v1/object/public/site-assets/customized/sarvadnya.jpg",
     bullets: ["Fostering academic excellence with a modern college admission & departmental portal built for higher education."],
     buttonLink: "https://www.sarvadnyavidyapeeth.in/",
     tags: ["Education", "College Portal", "Admissions"]
   },
   {
     title: "Trend Kro Media",
-    image: "customized/trendkromedia.jpg",
+    image: "https://qfbsszbgmipbercujiak.supabase.co/storage/v1/object/public/site-assets/customized/trendkromedia.jpg",
     bullets: ["Premium digital growth partner for brands & entrepreneurs with personal branding & PR coverage."],
     buttonLink: "https://www.trendkromedia.com/",
     tags: ["Digital Marketing", "Branding", "PR & Media"]
   },
   {
     title: "Meditation Magic",
-    image: "customized/neelamarora.jpg",
+    image: "https://qfbsszbgmipbercujiak.supabase.co/storage/v1/object/public/site-assets/customized/neelamarora.jpg",
     bullets: ["Spiritual learning & guided meditation platform featuring online courses, books, and healing masterclasses."],
     buttonLink: "https://www.neelamarora.in/",
     tags: ["E-Learning", "Spiritual & Wellness", "Courses"]
   },
   {
     title: "Ruchi Upadhyay Classes",
-    image: "customized/ruchiupadhyay.jpg",
+    image: "https://qfbsszbgmipbercujiak.supabase.co/storage/v1/object/public/site-assets/customized/ruchiupadhyay.jpg",
     bullets: ["Comprehensive Chemistry learning platform featuring live classes, test series, and board preparation."],
     buttonLink: "https://www.ruchiupadhyayclasses.in/",
     tags: ["EdTech", "Coaching & Classes", "E-Learning"]
   },
   {
     title: "Team 360 (D.D. Sharma)",
-    image: "customized/team360.jpg",
+    image: "https://qfbsszbgmipbercujiak.supabase.co/storage/v1/object/public/site-assets/customized/team360.jpg",
     bullets: ["Spiritual learning & mind mentorship platform with recorded courses, literature, and live workshops."],
     buttonLink: "https://www.devendraduttsharma.com/",
     tags: ["Mind Training", "Spiritual & Mentorship", "E-Learning"]
   },
   {
     title: "Kirtilals : Luxury Jewellery E-commerce",
-    image: "customized/kirtilals.jpg",
+    image: "https://qfbsszbgmipbercujiak.supabase.co/storage/v1/object/public/site-assets/customized/kirtilals.jpg",
     bullets: ["Discover fine diamond jewelry from Kirtilals with an online shopping portal built for luxury brands."],
     buttonLink: "https://www.kirtilals.com/",
     tags: ["Luxury", "Jewelry", "E-Commerce"]
   },
   {
     title: "TradeScribe : Trading Journal Platform",
-    image: "customized/tradescribe.jpg",
+    image: "https://qfbsszbgmipbercujiak.supabase.co/storage/v1/object/public/site-assets/customized/tradescribe.jpg",
     bullets: ["Empower your trading journey with Tradescribe's custom analytics platform built for active traders."],
     buttonLink: "https://tradescribe.in/",
     tags: ["Fintech", "Trading", "Analytics"]
   },
   {
     title: "Momentz : Home Decor & Luxury Gifting",
-    image: "customized/momentz.jpg",
+    image: "https://qfbsszbgmipbercujiak.supabase.co/storage/v1/object/public/site-assets/customized/momentz.jpg",
     bullets: ["Create lasting memories with Momentz's custom photo printing portal built for shutterbugs."],
     buttonLink: "https://momentz.in/",
     tags: ["Custom Portal", "Photo Print", "Interactive"]
   },
   {
     title: "Heal Stride : Physiotherapy & Wellness",
-    image: "customized/healstride.jpg",
+    image: "https://qfbsszbgmipbercujiak.supabase.co/storage/v1/object/public/site-assets/customized/healstride.jpg",
     bullets: ["Bhopal's premier non-surgical pain management and sports rehabilitation clinic."],
     buttonLink: "https://www.healstride-physiotherapy.in/",
     tags: ["Healthcare", "Physiotherapy", "Wellness"]
   },
   {
     title: "Siwan City Hospital : Multi-Speciality Healthcare",
-    image: "customized/siwancityhospital.jpg",
+    image: "https://qfbsszbgmipbercujiak.supabase.co/storage/v1/object/public/site-assets/customized/siwancityhospital.jpg",
     bullets: ["Premier multi-speciality hospital in Bihar with 24/7 emergency care, orthopaedics, and maternity services."],
     buttonLink: "https://www.siwancityhospital.com/",
     tags: ["Healthcare", "Hospital", "Emergency Care"]
   },
   {
     title: "Samay Hospital : Multi-Speciality Hospital",
-    image: "customized/samayhospital.jpg",
+    image: "https://qfbsszbgmipbercujiak.supabase.co/storage/v1/object/public/site-assets/customized/samayhospital.jpg",
     bullets: ["Leading multi-speciality hospital in Patna & Ara with 24/7 ICU, emergency care, and expert specialists."],
     buttonLink: "https://samayhospitals.org/",
     tags: ["Healthcare", "Multi-Speciality", "ICU & Emergency"]
   },
   {
     title: "Anikara : Luxury Fashion E-commerce",
-    image: "customized/anikara.jpg",
+    image: "https://qfbsszbgmipbercujiak.supabase.co/storage/v1/object/public/site-assets/customized/anikara.jpg",
     bullets: ["Sophisticated online boutique featuring luxury dresses, co-ords, bags, and modern women's fashion."],
     buttonLink: "https://anikara-e-commerce-websites.vercel.app/?page=home",
     tags: ["E-Commerce", "Fashion & Apparel", "Luxury"]
@@ -106,9 +107,30 @@ const FEATURED_CUSTOM_PROJECTS = [
 export default function Home() {
   const gridRef = useRef(null);
   const [isVisible, setIsVisible] = useState(false);
+  const [dbProjects, setDbProjects] = useState(null);
   const cms = createStaticCms();
   const cmsHero = cms.block("homepage.hero");
-  const featuredProjects = cms.list("homepage.projects", "projects", FEATURED_CUSTOM_PROJECTS);
+  const defaultProjects = cms.list("homepage.projects", "projects", FEATURED_CUSTOM_PROJECTS);
+  const featuredProjects = dbProjects || defaultProjects;
+
+  useEffect(() => {
+    let isMounted = true;
+    async function loadDb() {
+      try {
+        const data = await fetchCmsKey("customized_websites");
+        if (isMounted && Array.isArray(data) && data.length > 0) {
+          // Add default tags if missing from db records
+          const withTags = data.slice(0, 12).map((item, idx) => ({
+            ...item,
+            tags: item.tags || FEATURED_CUSTOM_PROJECTS[idx]?.tags || ["Custom Web", "Featured"]
+          }));
+          setDbProjects(withTags);
+        }
+      } catch {}
+    }
+    loadDb();
+    return () => { isMounted = false; };
+  }, []);
 
   useEffect(() => {
     const observer = new IntersectionObserver(
@@ -131,7 +153,7 @@ export default function Home() {
       {/* Top Section with Bg2.png background */}
       <div
         className="relative w-full flex flex-col bg-no-repeat bg-center bg-cover min-h-[70vh] sm:min-h-[75vh] md:min-h-screen font-poppins"
-        style={{ backgroundImage: "url('/common/Bg2.png')" }}
+        style={{ backgroundImage: "url('https://qfbsszbgmipbercujiak.supabase.co/storage/v1/object/public/site-assets/common/Bg2.png')" }}
       >
         {/* Nav bar */}
         <Navbar />
@@ -251,7 +273,7 @@ export default function Home() {
                           </span>
                         </div>
                         <Image width={800} height={600}
-                          src={`/${project.image}`}
+                          src={project.image.startsWith("http") ? project.image : (project.image.startsWith("/") ? project.image : `/${project.image}`)}
                           alt={project.title}
                           className="w-full h-auto transform group-hover:scale-105 transition-transform duration-700 ease-out"
                         />

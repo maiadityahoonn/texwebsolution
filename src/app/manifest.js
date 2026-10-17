@@ -135,14 +135,14 @@ export default function manifest() {
     ],
     screenshots: [
       {
-        src: '/customized/trendkromedia.jpg',
+        src: 'https://qfbsszbgmipbercujiak.supabase.co/storage/v1/object/public/site-assets/customized/trendkromedia.jpg',
         sizes: '1024x754',
         type: 'image/jpeg',
         form_factor: 'wide',
         label: 'TexWeb Solution Web & App Engineering'
       },
       {
-        src: '/customized/sarvadnya.jpg',
+        src: 'https://qfbsszbgmipbercujiak.supabase.co/storage/v1/object/public/site-assets/customized/sarvadnya.jpg',
         sizes: '1024x754',
         type: 'image/jpeg',
         form_factor: 'narrow',
