@@ -75,12 +75,15 @@ export default function Navbar() {
     if (href === "/" || href === "/#home") {
       return pathname === "/";
     }
+    if (href === "/customized" || href === "/customized/websites") {
+      return pathname.startsWith("/customized");
+    }
     return pathname === href || pathname.startsWith(`${href}/`);
   };
 
   const navLinks = [
     { name: "Prebuilt", href: "/prebuilt" },
-    { name: "Customized", href: "/customized" },
+    { name: "Customized", href: "/customized/websites" },
     { name: "AI Automation", href: "/ai-automation" },
     { name: "Digital Marketing", href: "/digital-marketing" },
     { name: "Pricing", href: "/pricing", badge: "₹999/mo" },
@@ -125,7 +128,7 @@ export default function Navbar() {
             Prebuilt
           </Link>
           <Link
-            href="/customized"
+            href="/customized/websites"
             className={`font-semibold text-[14.5px] lg:text-[15px] transition-colors whitespace-nowrap ${isActive("/customized")
                 ? "text-red-600 font-bold"
                 : "text-gray-800 hover:text-red-600"

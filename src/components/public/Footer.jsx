@@ -104,7 +104,7 @@ export default function Footer() {
                     { name: "Contact", href: "/contact" },
                     { name: "Prebuilt", href: "/prebuilt" },
                     { name: "About Us", href: "/about-us" },
-                    { name: "Customized", href: "/customized" },
+                    { name: "Customized", href: "/customized/websites" },
                     { name: "AI Automation", href: "/ai-automation" },
                     { name: "Digital Marketing", href: "/digital-marketing" },
                     { name: "Pricing & Plans (₹999)", href: "/pricing" }

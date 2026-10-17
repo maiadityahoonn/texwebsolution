@@ -100,7 +100,7 @@ const SERVICES = [
 export default function DigitalMarketingPage() {
   const cms = createStaticCms();
   const hero = cms.block("digital.hero", {
-    title: "Full-Service Digital Marketing & Social Media Growth",
+    title: "Full-Service Digital Marketing",
     subtitle: "From high-converting Meta & Google ad campaigns to cinematic video shooting, reel editing, brand identity creation, and full-scale social media management — we drive measurable revenue growth for your business.",
   });
   const cmsServices = cms.list("digital.services", "services", []);
@@ -135,7 +135,7 @@ export default function DigitalMarketingPage() {
           <section className="flex flex-1 items-start md:items-center justify-start md:justify-center text-center px-4 sm:px-6 pt-12 sm:pt-14 md:pt-0">
             <div className="w-full">
               <h1 
-                className="text-3xl sm:text-5xl md:text-6xl lg:text-7xl font-bold bg-gradient-to-r from-gray-900 to-red-600 bg-clip-text text-transparent leading-snug sm:leading-tight pb-2" 
+                className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold bg-gradient-to-r from-gray-900 to-red-600 bg-clip-text text-transparent leading-snug sm:leading-tight pb-2" 
                 style={{ fontFamily: "Matter, sans-serif" }}
               >
                 {hero.title}
