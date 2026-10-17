@@ -32,6 +32,16 @@ const nextConfig = {
         destination: "/about-us",
         permanent: true,
       },
+      {
+        source: "/free-quote",
+        destination: "/get-quote",
+        permanent: true,
+      },
+      {
+        source: "/quote",
+        destination: "/get-quote",
+        permanent: true,
+      },
     ];
   },
   async rewrites() {

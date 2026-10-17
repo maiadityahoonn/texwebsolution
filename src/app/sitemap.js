@@ -16,6 +16,12 @@ export default function sitemap() {
       priority: 0.95,
     },
     {
+      url: `${baseUrl}/get-quote`,
+      lastModified,
+      changeFrequency: 'daily',
+      priority: 0.95,
+    },
+    {
       url: `${baseUrl}/customized/websites`,
       lastModified,
       changeFrequency: 'weekly',
