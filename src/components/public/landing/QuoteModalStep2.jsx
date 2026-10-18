@@ -11,7 +11,7 @@ export default function QuoteModalStep2({ formData, onChange, onBack, onSubmit, 
   const [subStep, setSubStep] = useState(1);
 
   return (
-    <div>
+    <div className="flex flex-col flex-1 min-h-0 h-full">
       {subStep === 1 && (
         <Step2ServiceSelect
           formData={formData}

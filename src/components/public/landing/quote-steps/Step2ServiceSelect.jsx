@@ -19,9 +19,9 @@ export default function Step2ServiceSelect({ formData, onChange, onBack, onNext 
   };
 
   return (
-    <div className="space-y-3.5 pt-0.5">
+    <div className="flex flex-col flex-1 min-h-0 h-full">
       {/* Question Header */}
-      <div className="flex items-center justify-between pb-0.5 gap-2">
+      <div className="shrink-0 flex items-center justify-between pb-2 gap-2">
         <div className="min-w-0 flex-1">
           <label className="block text-xs sm:text-sm font-bold text-gray-950 font-[Matter]">
             1. Main Service <span className="text-red-500">*</span>
@@ -36,52 +36,54 @@ export default function Step2ServiceSelect({ formData, onChange, onBack, onNext 
       </div>
 
       {/* 8 Service Cards */}
-      <div className="space-y-2 max-h-[48vh] sm:max-h-[50vh] overflow-y-auto p-1.5 scrollbar-thin overscroll-contain touch-pan-y">
-        {SERVICES_CONFIG.map((srv) => {
-          const isSelected = activeServiceKey === srv.key;
-          return (
-            <button
-              type="button"
-              key={srv.key}
-              onClick={() => handleSelectService(srv.key)}
-              className={`w-full text-left p-3 sm:p-3.5 rounded-2xl text-xs transition-colors cursor-pointer flex items-center justify-between border-2 ${
-                isSelected
-                  ? "bg-red-50/90 text-red-950 border-red-600 shadow-sm"
-                  : "bg-white text-gray-800 hover:bg-gray-50 border-gray-200"
-              }`}
-            >
-              <div className="flex items-center gap-3 min-w-0 pr-2">
-                <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 transition-colors ${
-                  isSelected ? "bg-red-100 text-red-600 shadow-xs" : "bg-gray-100 text-gray-600"
-                }`}>
-                  <ModalIcon name={srv.icon} className="w-4.5 h-4.5" />
-                </div>
-                <div className="flex flex-col min-w-0 flex-1">
-                  <span className="font-bold text-xs sm:text-sm leading-snug text-gray-950">
-                    {srv.label}
-                  </span>
-                  <span className={`text-[10px] min-[375px]:text-[11px] leading-tight mt-0.5 ${
-                    isSelected ? "text-red-700 font-medium" : "text-gray-500 font-normal"
+      <div className="flex-1 min-h-0 overflow-y-auto p-1 pr-1.5 scrollbar-thin overscroll-contain touch-pan-y">
+        <div className="space-y-2">
+          {SERVICES_CONFIG.map((srv) => {
+            const isSelected = activeServiceKey === srv.key;
+            return (
+              <button
+                type="button"
+                key={srv.key}
+                onClick={() => handleSelectService(srv.key)}
+                className={`w-full text-left p-3 sm:p-3.5 rounded-2xl text-xs transition-colors cursor-pointer flex items-center justify-between border-2 ${
+                  isSelected
+                    ? "bg-red-50/90 text-red-950 border-red-600 shadow-sm"
+                    : "bg-white text-gray-800 hover:bg-gray-50 border-gray-200"
+                }`}
+              >
+                <div className="flex items-center gap-3 min-w-0 pr-2">
+                  <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 transition-colors ${
+                    isSelected ? "bg-red-100 text-red-600 shadow-xs" : "bg-gray-100 text-gray-600"
                   }`}>
-                    {srv.sub}
-                  </span>
+                    <ModalIcon name={srv.icon} className="w-4.5 h-4.5" />
+                  </div>
+                  <div className="flex flex-col min-w-0 flex-1">
+                    <span className="font-bold text-xs sm:text-sm leading-snug text-gray-950">
+                      {srv.label}
+                    </span>
+                    <span className={`text-[10px] min-[375px]:text-[11px] leading-tight mt-0.5 ${
+                      isSelected ? "text-red-700 font-medium" : "text-gray-500 font-normal"
+                    }`}>
+                      {srv.sub}
+                    </span>
+                  </div>
                 </div>
-              </div>
 
-              <div className="shrink-0 pl-1">
-                <div className={`w-5 h-5 rounded-full border flex items-center justify-center transition-colors ${
-                  isSelected ? "border-red-600 bg-red-600 text-white" : "border-gray-300 bg-white"
-                }`}>
-                  {isSelected && <Check className="w-3 h-3 stroke-[3]" />}
+                <div className="shrink-0 pl-1">
+                  <div className={`w-5 h-5 rounded-full border flex items-center justify-center transition-colors ${
+                    isSelected ? "border-red-600 bg-red-600 text-white" : "border-gray-300 bg-white"
+                  }`}>
+                    {isSelected && <Check className="w-3 h-3 stroke-[3]" />}
+                  </div>
                 </div>
-              </div>
-            </button>
-          );
-        })}
+              </button>
+            );
+          })}
+        </div>
       </div>
 
-      {/* Navigation Buttons */}
-      <div className="pt-2 flex items-center gap-2 min-[375px]:gap-3">
+      {/* Navigation Buttons: Pinned at bottom */}
+      <div className="shrink-0 pt-2.5 mt-auto border-t border-gray-100 flex items-center gap-2 min-[375px]:gap-3">
         <button
           type="button"
           onClick={onBack}

@@ -6,9 +6,9 @@ import ModalIcon from "../LandingModalIcons";
 
 export default function Step2RoleSelect({ formData, onChange, onBack, onNext }) {
   return (
-    <div className="space-y-3.5 pt-0.5">
+    <div className="flex flex-col flex-1 min-h-0 h-full">
       {/* Header */}
-      <div className="space-y-1">
+      <div className="shrink-0 space-y-1 pb-2">
         <div className="flex items-center justify-between gap-2">
           <label className="block text-xs sm:text-sm font-bold text-gray-950 font-[Matter] flex-1 min-w-0">
             3. Business me role <span className="text-red-500">*</span>
@@ -22,53 +22,55 @@ export default function Step2RoleSelect({ formData, onChange, onBack, onNext }) 
         </p>
       </div>
 
-      {/* Grid of Clickable Role Cards (NO DROPDOWNS) */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-[50vh] sm:max-h-[52vh] overflow-y-auto p-1.5 scrollbar-thin overscroll-contain touch-pan-y">
-        {DESCRIBES_YOU_OPTIONS.map((opt) => {
-          const isSelected = formData.what_best_describes_you === opt.title || formData.what_best_describes_you.startsWith(opt.title);
-          return (
-            <button
-              type="button"
-              key={opt.title}
-              onClick={() => onChange("what_best_describes_you", opt.title)}
-              className={`text-left p-3 rounded-2xl text-xs transition-colors cursor-pointer flex items-center justify-between border-2 ${
-                isSelected
-                  ? "bg-red-50/90 text-red-950 border-red-600 shadow-sm"
-                  : "bg-white text-gray-800 hover:bg-gray-50 border-gray-200"
-              }`}
-            >
-              <div className="flex items-center gap-2.5 min-w-0 pr-1">
-                <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 transition-colors ${
-                  isSelected ? "bg-red-100 text-red-600 shadow-xs" : "bg-gray-100 text-gray-600"
-                }`}>
-                  <ModalIcon name={opt.icon} className="w-4 h-4" />
-                </div>
-                <div className="flex flex-col min-w-0 flex-1">
-                  <span className="font-bold text-xs leading-snug text-gray-950">
-                    {opt.title}
-                  </span>
-                  <span className={`text-[10px] min-[375px]:text-[10.5px] leading-tight mt-0.5 ${
-                    isSelected ? "text-red-700 font-medium" : "text-gray-500 font-normal"
+      {/* Grid of Clickable Role Cards */}
+      <div className="flex-1 min-h-0 overflow-y-auto p-1 pr-1.5 scrollbar-thin overscroll-contain touch-pan-y">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+          {DESCRIBES_YOU_OPTIONS.map((opt) => {
+            const isSelected = formData.what_best_describes_you === opt.title || formData.what_best_describes_you.startsWith(opt.title);
+            return (
+              <button
+                type="button"
+                key={opt.title}
+                onClick={() => onChange("what_best_describes_you", opt.title)}
+                className={`text-left p-2.5 sm:p-3 rounded-2xl text-xs transition-colors cursor-pointer flex items-center justify-between border-2 ${
+                  isSelected
+                    ? "bg-red-50/90 text-red-950 border-red-600 shadow-sm"
+                    : "bg-white text-gray-800 hover:bg-gray-50 border-gray-200"
+                }`}
+              >
+                <div className="flex items-center gap-2.5 min-w-0 pr-1">
+                  <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 transition-colors ${
+                    isSelected ? "bg-red-100 text-red-600 shadow-xs" : "bg-gray-100 text-gray-600"
                   }`}>
-                    {opt.sub}
-                  </span>
+                    <ModalIcon name={opt.icon} className="w-4 h-4" />
+                  </div>
+                  <div className="flex flex-col min-w-0 flex-1">
+                    <span className="font-bold text-xs leading-snug text-gray-950">
+                      {opt.title}
+                    </span>
+                    <span className={`text-[10px] min-[375px]:text-[10.5px] leading-tight mt-0.5 ${
+                      isSelected ? "text-red-700 font-medium" : "text-gray-500 font-normal"
+                    }`}>
+                      {opt.sub}
+                    </span>
+                  </div>
                 </div>
-              </div>
 
-              <div className="shrink-0 pl-1">
-                <div className={`w-4.5 h-4.5 rounded-full border flex items-center justify-center transition-colors ${
-                  isSelected ? "border-red-600 bg-red-600 text-white" : "border-gray-300 bg-white"
-                }`}>
-                  {isSelected && <Check className="w-2.5 h-2.5 stroke-[3]" />}
+                <div className="shrink-0 pl-1">
+                  <div className={`w-4.5 h-4.5 rounded-full border flex items-center justify-center transition-colors ${
+                    isSelected ? "border-red-600 bg-red-600 text-white" : "border-gray-300 bg-white"
+                  }`}>
+                    {isSelected && <Check className="w-2.5 h-2.5 stroke-[3]" />}
+                  </div>
                 </div>
-              </div>
-            </button>
-          );
-        })}
+              </button>
+            );
+          })}
+        </div>
       </div>
 
-      {/* Navigation Buttons */}
-      <div className="pt-2 flex items-center gap-2 min-[375px]:gap-3">
+      {/* Navigation Buttons: Pinned at bottom */}
+      <div className="shrink-0 pt-2.5 mt-auto border-t border-gray-100 flex items-center gap-2 min-[375px]:gap-3">
         <button
           type="button"
           onClick={onBack}

@@ -12,10 +12,9 @@ export default function Step2BudgetTimeline({ formData, onChange, onBack, onSubm
   const serviceConfig = DYNAMIC_SERVICE_CONFIGS[activeServiceKey];
 
   return (
-    <div className="space-y-3.5 max-h-[66vh] overflow-y-auto p-1.5 scrollbar-thin overscroll-contain touch-pan-y">
-      
+    <div className="flex flex-col flex-1 min-h-0 h-full">
       {/* Header */}
-      <div className="flex items-center justify-between pb-0.5">
+      <div className="shrink-0 flex items-center justify-between pb-2">
         <div>
           <label className="block text-xs sm:text-sm font-bold text-gray-950 font-[Matter]">
             5. Budget & Timeline for {serviceConfig.label} <span className="text-red-500">*</span>
@@ -28,6 +27,9 @@ export default function Step2BudgetTimeline({ formData, onChange, onBack, onSubm
           Final 5 of 5
         </span>
       </div>
+
+      {/* Scrollable Content Container */}
+      <div className="flex-1 min-h-0 overflow-y-auto p-1 pr-1.5 space-y-3.5 scrollbar-thin overscroll-contain touch-pan-y">
 
       {/* Conditional Budget for Chosen Service */}
       <div className="space-y-1.5 p-3 rounded-2xl bg-gray-50/80 border border-gray-200/90">
@@ -132,9 +134,10 @@ export default function Step2BudgetTimeline({ formData, onChange, onBack, onSubm
           {error}
         </div>
       )}
+      </div>
 
-      {/* Navigation Buttons: Back to Question 4 + Submit */}
-      <div className="pt-2 flex items-center gap-2 min-[375px]:gap-3">
+      {/* Navigation Buttons: Pinned at bottom */}
+      <div className="shrink-0 pt-2.5 mt-auto border-t border-gray-100 flex items-center gap-2 min-[375px]:gap-3">
         <button
           type="button"
           onClick={onBack}

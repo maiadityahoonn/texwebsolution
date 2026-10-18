@@ -173,6 +173,10 @@ export default function LandingQuoteModal() {
         city: formData.city,
       });
 
+      if (typeof window !== "undefined") {
+        sessionStorage.setItem("meta_lead_event_fired", "true");
+      }
+
       setIsOpen(false);
       const queryParams = new URLSearchParams({
         name: formData.name.trim(),
@@ -244,8 +248,8 @@ export default function LandingQuoteModal() {
               </div>
             </div>
 
-            {/* Scrollable Content Container for 320px - 768px Viewports */}
-            <div className="flex-1 min-h-0 overflow-y-auto scrollbar-thin overscroll-contain pr-0.5 sm:pr-1">
+            {/* Content Container (Non-scrolling flex wrapper; steps manage inner single scroll) */}
+            <div className="flex-1 min-h-0 flex flex-col">
               {step === 1 && (
                 <QuoteModalStep1
                   formData={formData}

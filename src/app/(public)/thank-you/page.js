@@ -13,17 +13,24 @@ function ThankYouContent() {
   const service = searchParams.get("service") || "Web / App Development";
 
   useEffect(() => {
-    // Fire Meta pixel Lead event on thank-you page arrival for 100% URL-based conversion accuracy
-    trackMetaEvent("Lead", {
-      content_name: service,
-      source: "thank_you_page",
-      currency: "INR",
-      value: 35000,
-    });
-    trackMetaEvent("CompleteRegistration", {
-      status: "successful",
-      service,
-    });
+    // Check if Lead was already recorded during form submission to prevent duplicate conversions
+    const alreadyTracked = typeof window !== "undefined" && sessionStorage.getItem("meta_lead_event_fired");
+
+    if (!alreadyTracked) {
+      trackMetaEvent("Lead", {
+        content_name: service,
+        source: "thank_you_page",
+        currency: "INR",
+        value: 35000,
+      });
+      trackMetaEvent("CompleteRegistration", {
+        status: "successful",
+        service,
+      });
+      if (typeof window !== "undefined") {
+        sessionStorage.setItem("meta_lead_event_fired", "true");
+      }
+    }
   }, [service]);
 
   const whatsappMessage = `Hi TexWeb Solution, I just submitted a quote request for ${service}.${

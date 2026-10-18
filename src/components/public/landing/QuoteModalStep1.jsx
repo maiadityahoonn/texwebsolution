@@ -9,8 +9,10 @@ export default function QuoteModalStep1({ formData, onChange, onNext, error }) {
   const selectedCountry = COUNTRY_CODES.find((c) => c.code === (formData.country_code || "+91")) || COUNTRY_CODES[0];
 
   return (
-    <div className="space-y-3.5 pt-1 overscroll-contain">
-      {/* 1. Full Name Input (Full Row) */}
+    <div className="flex flex-col flex-1 min-h-0 h-full">
+      {/* Form Fields: Scrollable on small screens */}
+      <div className="flex-1 min-h-0 overflow-y-auto p-1 pr-1.5 space-y-3 sm:space-y-3.5 scrollbar-thin overscroll-contain touch-pan-y">
+        {/* 1. Full Name Input (Full Row) */}
       <div className="space-y-1">
         <label className="block text-xs font-bold text-gray-800 font-[Matter]">
           Full Name <span className="text-red-500">*</span>
@@ -170,9 +172,10 @@ export default function QuoteModalStep1({ formData, onChange, onNext, error }) {
           {error}
         </div>
       )}
+      </div>
 
-      {/* Next Step Button */}
-      <div className="pt-1.5">
+      {/* Next Step Button: Pinned at bottom */}
+      <div className="shrink-0 pt-2.5 mt-auto border-t border-gray-100">
         <button
           type="button"
           onClick={onNext}
