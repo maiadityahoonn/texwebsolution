@@ -2,7 +2,6 @@
 
 import Image from "next/image";
 import { ArrowRight, Sparkles, ShieldCheck, Clock } from "lucide-react";
-import MetaPixelTracker from "@/components/public/landing/MetaPixelTracker";
 import LandingHeroSection from "@/components/public/landing/LandingHeroSection";
 import LandingQuoteModal from "@/components/public/landing/LandingQuoteModal";
 import LandingOfferingsSection from "@/components/public/landing/LandingOfferingsSection";
@@ -22,10 +21,7 @@ export default function GetQuotePage() {
 
   return (
     <div className="relative w-full bg-white overflow-hidden selection:bg-red-600 selection:text-white">
-      {/* 1. Client-side Meta Ads Pixel & Full UTM Parameter Tracker */}
-      <MetaPixelTracker />
-
-      {/* 2. Interactive 2-Step Quote & Architecture Modal (Opens on Click) */}
+      {/* 1. Interactive 2-Step Quote & Architecture Modal (Opens on Click) */}
       <LandingQuoteModal />
 
       {/* 3. Hero Section (Hook & Primary CTA) */}

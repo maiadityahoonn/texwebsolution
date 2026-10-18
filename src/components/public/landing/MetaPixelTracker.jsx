@@ -1,23 +1,33 @@
 "use client";
 
 import { useEffect } from "react";
+import { usePathname } from "next/navigation";
 import Script from "next/script";
 import { META_PIXEL_ID, getTrackingParams, trackMetaEvent } from "./landingTracking";
 
 export default function MetaPixelTracker() {
+  const pathname = usePathname();
+  const isCrmRoute = pathname?.startsWith("/crm") || pathname?.startsWith("/workspace");
+
   useEffect(() => {
+    if (isCrmRoute) return;
+
     // 1. Capture and save UTM query parameters
     getTrackingParams();
 
     // 2. Track PageView and ViewContent for Meta Ads
     trackMetaEvent("PageView");
-    trackMetaEvent("ViewContent", {
-      content_name: "Meta Ads Free Quote Landing Page",
-      content_category: "Lead Generation",
-      value: 1999,
-      currency: "INR"
-    });
-  }, []);
+    if (pathname === "/get-quote") {
+      trackMetaEvent("ViewContent", {
+        content_name: "Meta Ads Free Quote Landing Page",
+        content_category: "Lead Generation",
+        value: 35000,
+        currency: "INR"
+      });
+    }
+  }, [pathname, isCrmRoute]);
+
+  if (isCrmRoute) return null;
 
   return (
     <>

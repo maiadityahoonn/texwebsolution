@@ -6,6 +6,7 @@ import "./globals.css";
 import PublicFloatingWidgets from "@/components/public/PublicFloatingWidgets";
 import AppSplashScreen from "@/components/public/AppSplashScreen";
 import ScrollToTop from "@/components/public/ScrollToTop";
+import MetaPixelTracker from "@/components/public/landing/MetaPixelTracker";
 
 const poppins = Poppins({
   subsets: ["latin"],
@@ -295,6 +296,11 @@ export default function RootLayout({ children }) {
         {/* Global Scroll To Top Controller */}
         <Suspense fallback={null}>
           <ScrollToTop />
+        </Suspense>
+
+        {/* Global Meta Pixel Tracker for Public Website Conversion Tracking */}
+        <Suspense fallback={null}>
+          <MetaPixelTracker />
         </Suspense>
 
         {/* Native Mobile / Web App Animated Brand Splash Screen */}
