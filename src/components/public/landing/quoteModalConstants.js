@@ -210,12 +210,6 @@ export const TIMELINE_OPTIONS = [
     label: "Just Inquiring",
     sub: "Pehle Price & Advice Chahiye",
     icon: "HelpCircle"
-  },
-  {
-    id: "other_timeline",
-    label: "Other / Flexible Timeline",
-    sub: "Requirement samajh ke sath me decide karenge",
-    icon: "Clock"
   }
 ];
 

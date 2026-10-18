@@ -53,8 +53,7 @@ export const DYNAMIC_SERVICE_CONFIGS = {
     budgets: [
       { amount: "₹25,000 - ₹45,000", desc: "Standard Business & Profile Website" },
       { amount: "₹45,000 - ₹75,000", desc: "Advanced Custom Portal / Online Store" },
-      { amount: "₹75,000+", desc: "Large Custom Web Platform / Enterprise" },
-      { amount: "Other / Custom Budget", desc: "Scope aur requirement ke hisaab se decide karenge" }
+      { amount: "₹75,000+", desc: "Large Custom Web Platform / Enterprise" }
     ]
   },
   "Website Redesign": {
@@ -101,8 +100,7 @@ export const DYNAMIC_SERVICE_CONFIGS = {
     budgets: [
       { amount: "₹25,000 - ₹45,000", desc: "Modern UI/UX Revamp & Mobile Speed Fix" },
       { amount: "₹45,000 - ₹75,000", desc: "Complete Design Overhaul & Conversion Fix" },
-      { amount: "₹75,000+", desc: "Full Rebuilding with New Advanced Features" },
-      { amount: "Other / Custom Budget", desc: "Scope aur requirement ke hisaab se decide karenge" }
+      { amount: "₹75,000+", desc: "Full Rebuilding with New Advanced Features" }
     ]
   },
   "App Development (iOS/Android)": {
@@ -159,8 +157,7 @@ export const DYNAMIC_SERVICE_CONFIGS = {
     budgets: [
       { amount: "₹60,000 - ₹85,000", desc: "Standard Android/iOS Mobile App" },
       { amount: "₹85,000 - ₹1,60,000", desc: "Feature-Rich App with Payments & Tracking" },
-      { amount: "₹1,60,000+", desc: "High-Scale Custom App Ecosystem" },
-      { amount: "Other / Custom Budget", desc: "Scope aur requirement ke hisaab se decide karenge" }
+      { amount: "₹1,60,000+", desc: "High-Scale Custom App Ecosystem" }
     ]
   },
   "E-Commerce + Meta Ads": {
@@ -197,8 +194,7 @@ export const DYNAMIC_SERVICE_CONFIGS = {
     budgets: [
       { amount: "₹45,000 - ₹65,000", desc: "Store Launch + Ad Setup Bundle" },
       { amount: "₹65,000 - ₹95,000", desc: "Custom Store + 30 Days Meta Ads Scaling" },
-      { amount: "₹95,000+", desc: "High Volume D2C Brand Scale-Up" },
-      { amount: "Other / Custom Budget", desc: "Scope aur requirement ke hisaab se decide karenge" }
+      { amount: "₹95,000+", desc: "High Volume D2C Brand Scale-Up" }
     ]
   },
   "Meta Ads & Digital Marketing": {
@@ -246,8 +242,7 @@ export const DYNAMIC_SERVICE_CONFIGS = {
       { amount: "₹10,000 - ₹20,000 / month", desc: "Testing & Initial Daily Leads" },
       { amount: "₹20,000 - ₹45,000 / month", desc: "Consistent Daily Inquiries & Orders" },
       { amount: "₹45,000 - ₹85,000 / month", desc: "High Lead Volume & City Dominance" },
-      { amount: "₹85,000+ / month", desc: "Aggressive Brand Scaling" },
-      { amount: "Other / Custom Budget", desc: "Scope aur requirement ke hisaab se decide karenge" }
+      { amount: "₹85,000+ / month", desc: "Aggressive Brand Scaling" }
     ]
   },
   "AI Chatbot & Automation": {
@@ -284,8 +279,7 @@ export const DYNAMIC_SERVICE_CONFIGS = {
     budgets: [
       { amount: "₹15,000 - ₹30,000", desc: "WhatsApp Auto-Reply & Customer Inquiries Bot" },
       { amount: "₹30,000 - ₹55,000", desc: "Smart AI Trained on Your Business Catalog" },
-      { amount: "₹55,000+", desc: "Full Omnichannel Automation & CRM Integration" },
-      { amount: "Other / Custom Budget", desc: "Scope aur requirement ke hisaab se decide karenge" }
+      { amount: "₹55,000+", desc: "Full Omnichannel Automation & CRM Integration" }
     ]
   },
   "ERP, CRM & Business Systems": {
@@ -337,8 +331,7 @@ export const DYNAMIC_SERVICE_CONFIGS = {
     budgets: [
       { amount: "₹60,000 - ₹90,000", desc: "Single Department: Lead CRM / Staff Attendance" },
       { amount: "₹90,000 - ₹1,20,000", desc: "Hospital HMS / Inventory / Multi-Branch System" },
-      { amount: "₹1,20,000+", desc: "Complete Custom Enterprise ERP Suite" },
-      { amount: "Other / Custom Budget", desc: "Scope aur requirement ke hisaab se decide karenge" }
+      { amount: "₹1,20,000+", desc: "Complete Custom Enterprise ERP Suite" }
     ]
   },
   "Other / Custom Software Requirement": {
@@ -370,8 +363,7 @@ export const DYNAMIC_SERVICE_CONFIGS = {
     budgets: [
       { amount: "₹25,000 - ₹50,000", desc: "Starter Custom Work / Prototype" },
       { amount: "₹50,000 - ₹1,00,000", desc: "Mid-scale Custom Software" },
-      { amount: "₹1,00,000+", desc: "Full-scale Enterprise / SaaS Platform" },
-      { amount: "Other / Custom Budget", desc: "Scope aur requirement ke hisaab se decide karenge" }
+      { amount: "₹1,00,000+", desc: "Full-scale Enterprise / SaaS Platform" }
     ]
   }
 };

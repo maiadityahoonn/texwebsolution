@@ -131,13 +131,13 @@ export default function GetQuotePage() {
                 </div>
 
                 {/* Right Side: Strictly 1-Line Buttons (Zero Wrapping) */}
-                <div className="flex flex-col sm:flex-row items-center gap-3 shrink-0 w-full lg:w-auto">
+                <div className="flex flex-col sm:flex-row items-center gap-2.5 sm:gap-3 shrink-0 w-full lg:w-auto">
                   <button
                     type="button"
                     onClick={() => handleOpenModal("bottom_banner")}
-                    className="w-full sm:w-auto px-6 sm:px-7 py-3.5 sm:py-4 bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 active:scale-98 text-white rounded-2xl text-xs sm:text-sm font-bold shadow-xl shadow-red-600/30 hover:shadow-red-600/50 transition-all flex items-center justify-center gap-2.5 cursor-pointer whitespace-nowrap font-[Matter]"
+                    className="w-full sm:w-auto px-4 min-[375px]:px-6 sm:px-7 py-3 sm:py-3.5 lg:py-4 bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 active:scale-98 text-white rounded-2xl text-xs sm:text-sm font-bold shadow-xl shadow-red-600/30 hover:shadow-red-600/50 transition-all flex items-center justify-center gap-2 cursor-pointer whitespace-nowrap font-[Matter]"
                   >
-                    <span className="whitespace-nowrap">Get Free Architecture & Quote</span>
+                    <span className="truncate whitespace-nowrap">Get Free Architecture & Quote</span>
                     <ArrowRight className="w-4 h-4 shrink-0" />
                   </button>
 
@@ -145,16 +145,16 @@ export default function GetQuotePage() {
                     href="https://wa.me/+917462827259?text=Hi%20TexWeb%20Solution,%20I%20want%20to%20discuss%20a%20new%20project%20for%20my%20business."
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="w-full sm:w-auto px-6 sm:px-7 py-3.5 sm:py-4 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 active:scale-98 text-white rounded-2xl text-xs sm:text-sm font-bold shadow-xl shadow-emerald-600/25 hover:shadow-emerald-600/40 transition-all flex items-center justify-center gap-2.5 cursor-pointer whitespace-nowrap font-[Matter]"
+                    className="w-full sm:w-auto px-4 min-[375px]:px-6 sm:px-7 py-3 sm:py-3.5 lg:py-4 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 active:scale-98 text-white rounded-2xl text-xs sm:text-sm font-bold shadow-xl shadow-emerald-600/25 hover:shadow-emerald-600/40 transition-all flex items-center justify-center gap-2 cursor-pointer whitespace-nowrap font-[Matter]"
                   >
                     <Image
                       src="https://qfbsszbgmipbercujiak.supabase.co/storage/v1/object/public/site-assets/common/WhatsApp.svg"
                       alt="WhatsApp"
                       width={18}
                       height={18}
-                      className="w-4.5 h-4.5 object-contain brightness-0 invert shrink-0"
+                      className="w-4 h-4 object-contain brightness-0 invert shrink-0"
                     />
-                    <span className="whitespace-nowrap">Chat on WhatsApp</span>
+                    <span className="truncate whitespace-nowrap">Chat on WhatsApp</span>
                   </a>
                 </div>
 

@@ -86,6 +86,7 @@ export default function LandingPortfolioSection() {
 
   return (
     <section
+      id="portfolio-section"
       className="relative py-12 sm:py-16 text-center w-full overflow-hidden bg-gradient-to-b from-white via-gray-50/20 to-white"
       style={{ fontFamily: "Matter, sans-serif" }}
     >
@@ -115,13 +116,13 @@ export default function LandingPortfolioSection() {
         </div>
       </div>
 
-      <div className="flex justify-center mb-16 sm:mb-20">
+      <div className="flex justify-center mb-16 sm:mb-20 px-3">
         <button
           type="button"
           onClick={() => handleScrollToQuote("websites_cta")}
-          className="px-8 py-3.5 bg-red-600 text-white rounded-full text-sm font-semibold hover:bg-red-700 shadow-md shadow-red-600/15 hover:shadow-lg hover:shadow-red-600/25 hover:scale-105 transition-all duration-300 flex items-center gap-2 transform cursor-pointer font-[Matter]"
+          className="max-w-[95vw] px-4 min-[375px]:px-6 sm:px-8 py-3 sm:py-3.5 bg-red-600 text-white rounded-full text-xs sm:text-sm font-semibold hover:bg-red-700 shadow-md shadow-red-600/15 hover:shadow-lg hover:shadow-red-600/25 hover:scale-105 transition-all duration-300 flex items-center justify-center gap-2 transform cursor-pointer font-[Matter] whitespace-nowrap"
         >
-          <span>Get a Similar Website Built For Your Business ➔</span>
+          <span className="truncate whitespace-nowrap">Get a Similar Website Built For Your Business ➔</span>
         </button>
       </div>
 
@@ -146,13 +147,13 @@ export default function LandingPortfolioSection() {
         </div>
       </div>
 
-      <div className="flex justify-center">
+      <div className="flex justify-center px-3">
         <button
           type="button"
           onClick={() => handleScrollToQuote("apps_cta")}
-          className="px-8 py-3.5 bg-red-600 text-white rounded-full text-sm font-semibold hover:bg-red-700 shadow-md shadow-red-600/15 hover:shadow-lg hover:shadow-red-600/25 hover:scale-105 transition-all duration-300 flex items-center gap-2 transform cursor-pointer font-[Matter]"
+          className="max-w-[95vw] px-4 min-[375px]:px-6 sm:px-8 py-3 sm:py-3.5 bg-red-600 text-white rounded-full text-xs sm:text-sm font-semibold hover:bg-red-700 shadow-md shadow-red-600/15 hover:shadow-lg hover:shadow-red-600/25 hover:scale-105 transition-all duration-300 flex items-center justify-center gap-2 transform cursor-pointer font-[Matter] whitespace-nowrap"
         >
-          <span>Get a Similar Mobile App Built For Your Business ➔</span>
+          <span className="truncate whitespace-nowrap">Get a Similar Mobile App Built For Your Business ➔</span>
         </button>
       </div>
     </section>

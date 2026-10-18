@@ -87,10 +87,10 @@ export default function LandingOfferingsSection() {
                   <button
                     type="button"
                     onClick={() => handleSelectService(item.formService, item.title)}
-                    className="flex-1 inline-flex items-center justify-center gap-1.5 px-3.5 py-2 bg-red-600 hover:bg-red-700 text-white rounded-full text-xs font-semibold transition-all hover:scale-[1.02] active:scale-95 shadow-xs shadow-red-600/20 cursor-pointer"
+                    className="flex-1 min-w-0 inline-flex items-center justify-center gap-1.5 px-3 py-2 bg-red-600 hover:bg-red-700 text-white rounded-full text-xs font-semibold transition-all hover:scale-[1.02] active:scale-95 shadow-xs shadow-red-600/20 cursor-pointer whitespace-nowrap"
                   >
-                    <span>Get Quote</span>
-                    <ArrowRight className="w-3.5 h-3.5" />
+                    <span className="truncate whitespace-nowrap">Get Quote</span>
+                    <ArrowRight className="w-3.5 h-3.5 shrink-0" />
                   </button>
 
                   <a
@@ -126,21 +126,21 @@ export default function LandingOfferingsSection() {
             </p>
           </div>
 
-          <div className="flex items-center gap-2 shrink-0">
+          <div className="flex flex-col min-[375px]:flex-row items-center gap-2 shrink-0 w-full sm:w-auto">
             <button
               type="button"
               onClick={() => handleSelectService("Custom Tech Architecture", "Custom Architecture")}
-              className="px-4 py-2 bg-gray-900 hover:bg-black text-white rounded-full text-xs font-semibold transition-all hover:scale-105 cursor-pointer"
+              className="w-full min-[375px]:w-auto px-4 py-2 bg-gray-900 hover:bg-black text-white rounded-full text-xs font-semibold transition-all hover:scale-105 cursor-pointer whitespace-nowrap flex items-center justify-center"
             >
-              Fill Enquiry Form ➔
+              <span className="truncate whitespace-nowrap">Fill Enquiry Form ➔</span>
             </button>
             <a
               href="tel:07554601839"
               onClick={() => trackMetaEvent("Contact", { method: "phone_call", source: "offerings_banner" })}
-              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-full border border-gray-200 hover:bg-blue-50 hover:text-blue-600 text-xs font-semibold text-gray-700"
+              className="w-full min-[375px]:w-auto inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-full border border-gray-200 hover:bg-blue-50 hover:text-blue-600 text-xs font-semibold text-gray-700 whitespace-nowrap"
             >
-              <PhoneCall className="w-3.5 h-3.5 text-blue-600" />
-              <span>0755-4601839</span>
+              <PhoneCall className="w-3.5 h-3.5 text-blue-600 shrink-0" />
+              <span className="truncate whitespace-nowrap">0755-4601839</span>
             </a>
           </div>
         </div>

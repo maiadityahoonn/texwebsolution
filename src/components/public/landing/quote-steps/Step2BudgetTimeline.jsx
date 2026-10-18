@@ -56,9 +56,9 @@ export default function Step2BudgetTimeline({ formData, onChange, onBack, onSubm
                   }`}>
                     <IndianRupee className="w-3.5 h-3.5" />
                   </div>
-                  <div className="flex flex-col">
+                  <div className="flex flex-col min-w-0 flex-1">
                     <span className="font-bold text-xs text-gray-950">{b.amount}</span>
-                    <span className={`text-[11px] leading-tight ${isSelected ? "text-red-700 font-medium" : "text-gray-500"}`}>
+                    <span className={`text-[10px] min-[375px]:text-[11px] leading-tight ${isSelected ? "text-red-700 font-medium" : "text-gray-500"}`}>
                       {b.desc}
                     </span>
                   </div>
@@ -102,9 +102,9 @@ export default function Step2BudgetTimeline({ formData, onChange, onBack, onSubm
                 }`}>
                   <ModalIcon name={time.icon} className="w-3.5 h-3.5" />
                 </div>
-                <div className="flex flex-col min-w-0">
+                <div className="flex flex-col min-w-0 flex-1">
                   <span className="text-xs font-bold leading-tight">{time.label}</span>
-                  <span className="text-[10px] text-gray-500 truncate leading-tight mt-0.5">{time.sub}</span>
+                  <span className="text-[9.5px] min-[375px]:text-[10px] text-gray-500 leading-tight mt-0.5">{time.sub}</span>
                 </div>
               </button>
             );
@@ -134,32 +134,32 @@ export default function Step2BudgetTimeline({ formData, onChange, onBack, onSubm
       )}
 
       {/* Navigation Buttons: Back to Question 4 + Submit */}
-      <div className="pt-2 flex items-center gap-3">
+      <div className="pt-2 flex items-center gap-2 min-[375px]:gap-3">
         <button
           type="button"
           onClick={onBack}
           disabled={loading}
-          className="px-4 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl text-xs sm:text-sm font-semibold transition-all inline-flex items-center gap-1.5 cursor-pointer font-[Matter]"
+          className="px-2.5 min-[375px]:px-4 py-2.5 sm:py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl text-xs sm:text-sm font-semibold transition-all inline-flex items-center gap-1 shrink-0 whitespace-nowrap cursor-pointer font-[Matter]"
         >
-          <ArrowLeft className="w-4 h-4" />
-          <span>Back</span>
+          <ArrowLeft className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
+          <span className="whitespace-nowrap">Back</span>
         </button>
 
         <button
           type="button"
           onClick={onSubmit}
           disabled={loading}
-          className="flex-1 inline-flex items-center justify-center gap-2 py-3 sm:py-3.5 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs sm:text-sm font-semibold transition-all hover:scale-[1.01] active:scale-98 shadow-md shadow-red-600/25 cursor-pointer disabled:opacity-60 font-[Matter]"
+          className="flex-1 min-w-0 inline-flex items-center justify-center gap-1.5 sm:gap-2 py-2.5 sm:py-3.5 px-2.5 min-[375px]:px-4 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs sm:text-sm font-semibold transition-all hover:scale-[1.01] active:scale-98 shadow-md shadow-red-600/25 cursor-pointer disabled:opacity-60 font-[Matter]"
         >
           {loading ? (
             <>
-              <Loader2 className="w-4 h-4 animate-spin" />
-              <span>Submitting Your Requirements...</span>
+              <Loader2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 animate-spin shrink-0" />
+              <span className="whitespace-nowrap">Submitting...</span>
             </>
           ) : (
             <>
-              <Sparkles className="w-4 h-4" />
-              <span>Submit & Get Free Quote & Architecture ➔</span>
+              <Sparkles className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
+              <span className="whitespace-nowrap">Submit & Get Free Quote ➔</span>
             </>
           )}
         </button>

@@ -3,7 +3,7 @@
 import Image from "next/image";
 import { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Sparkles, CheckCircle2, Zap, Star, ArrowUpRight, ArrowLeft, ArrowRight, Quote } from "lucide-react";
+import { Sparkles, CheckCircle2, Zap, Star, ArrowUpRight, Quote } from "lucide-react";
 
 export default function Reviews3DCarousel({
   badge = "Client Reviews",
@@ -14,6 +14,10 @@ export default function Reviews3DCarousel({
 }) {
   const [activeIndex, setActiveIndex] = useState(0);
   const [isDesktop, setIsDesktop] = useState(false);
+
+  const [isPaused, setIsPaused] = useState(false);
+  const [touchStartX, setTouchStartX] = useState(null);
+  const [touchEndX, setTouchEndX] = useState(null);
 
   useEffect(() => {
     const handleResize = () => setIsDesktop(window.innerWidth >= 1024);
@@ -32,11 +36,36 @@ export default function Reviews3DCarousel({
     setActiveIndex((prev) => (prev + 1) % total);
   }, [total]);
 
+  // Automatic slide on all screens (desktop, tablet, mobile), pauses on hover/touch
   useEffect(() => {
-    if (isDesktop || total <= 1) return;
-    const interval = setInterval(handleNext, 4500);
+    if (total <= 1 || isPaused) return;
+    const interval = setInterval(handleNext, 4000);
     return () => clearInterval(interval);
-  }, [isDesktop, handleNext, total]);
+  }, [isPaused, handleNext, total]);
+
+  // Finger Swipe Handlers for smooth mobile/touch gestures
+  const handleTouchStart = (e) => {
+    setIsPaused(true);
+    setTouchEndX(null);
+    setTouchStartX(e.targetTouches[0].clientX);
+  };
+
+  const handleTouchMove = (e) => {
+    setTouchEndX(e.targetTouches[0].clientX);
+  };
+
+  const handleTouchEnd = () => {
+    setIsPaused(false);
+    if (touchStartX === null || touchEndX === null) return;
+    const distance = touchStartX - touchEndX;
+    if (distance > 35) {
+      handleNext();
+    } else if (distance < -35) {
+      handlePrev();
+    }
+    setTouchStartX(null);
+    setTouchEndX(null);
+  };
 
   const cardVariants = {
     center: { x: 0, scale: 1, opacity: 1, filter: "blur(0px)", zIndex: 25 },
@@ -83,7 +112,14 @@ export default function Reviews3DCarousel({
       )}
 
       {/* 3D Stack Carousel Frame */}
-      <div className="relative flex flex-col items-center justify-center min-h-[480px] sm:min-h-[520px]">
+      <div 
+        className="relative flex flex-col items-center justify-center min-h-[480px] sm:min-h-[520px] select-none touch-pan-y"
+        onMouseEnter={() => setIsPaused(true)}
+        onMouseLeave={() => setIsPaused(false)}
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+      >
         <div className="relative flex items-center justify-center h-[460px] sm:h-[510px] w-full max-w-[1400px]">
           <AnimatePresence initial={false} mode="popLayout">
             {reviewsList.map((item, index) => {
@@ -121,12 +157,14 @@ export default function Reviews3DCarousel({
                   animate={position}
                   exit="hidden"
                   transition={{ type: "spring", stiffness: 80, damping: 18 }}
-                  drag={!isDesktop && "x"}
+                  drag="x"
                   dragConstraints={{ left: 0, right: 0 }}
-                  dragElastic={0.15}
+                  dragElastic={0.2}
+                  onDragStart={() => setIsPaused(true)}
                   onDragEnd={(e, info) => {
-                    if (info.offset.x > 50) handlePrev();
-                    else if (info.offset.x < -50) handleNext();
+                    setIsPaused(false);
+                    if (info.offset.x > 35) handlePrev();
+                    else if (info.offset.x < -35) handleNext();
                   }}
                   className="absolute max-w-[calc(100vw-1.5rem)] p-[2px] rounded-[32px] bg-gradient-to-b from-red-500/40 via-rose-300/30 to-amber-200/40 shadow-2xl cursor-pointer text-left overflow-hidden select-none"
                   style={{ width, height }}
@@ -200,35 +238,21 @@ export default function Reviews3DCarousel({
           </AnimatePresence>
         </div>
 
-        {/* Carousel Controls & Dot Indicators */}
-        <div className="flex items-center justify-center gap-6 mt-4 sm:mt-8 z-20">
-          <button
-            onClick={handlePrev}
-            className="w-12 h-12 rounded-full bg-white border border-gray-200 hover:border-red-500 text-gray-700 hover:text-red-600 flex items-center justify-center shadow-md transition-all transform hover:scale-105 active:scale-95"
-            aria-label="Previous Review"
-          >
-            <ArrowLeft className="w-5 h-5" />
-          </button>
-          
-          <div className="flex justify-center gap-2.5">
-            {reviewsList.map((_, index) => (
-              <button
-                key={index}
-                onClick={() => setActiveIndex(index)}
-                className={`h-3 rounded-full transition-all duration-300 ${index === activeIndex ? "w-8 bg-red-600 shadow-sm shadow-red-600/30" : "w-3 bg-gray-200 hover:bg-gray-300"
-                  }`}
-                aria-label={`Go to review ${index + 1}`}
-              />
-            ))}
-          </div>
-
-          <button
-            onClick={handleNext}
-            className="w-12 h-12 rounded-full bg-white border border-gray-200 hover:border-red-500 text-gray-700 hover:text-red-600 flex items-center justify-center shadow-md transition-all transform hover:scale-105 active:scale-95"
-            aria-label="Next Review"
-          >
-            <ArrowRight className="w-5 h-5" />
-          </button>
+        {/* Dot Indicators (Clean, Automatic & Fingers Swipe) */}
+        <div className="flex items-center justify-center gap-2.5 mt-4 sm:mt-8 z-20">
+          {reviewsList.map((_, index) => (
+            <button
+              key={index}
+              type="button"
+              onClick={() => setActiveIndex(index)}
+              className={`h-3 rounded-full transition-all duration-300 cursor-pointer ${
+                index === activeIndex 
+                  ? "w-8 bg-red-600 shadow-sm shadow-red-600/30" 
+                  : "w-3 bg-gray-200 hover:bg-gray-300"
+              }`}
+              aria-label={`Go to review ${index + 1}`}
+            />
+          ))}
         </div>
       </div>
     </section>

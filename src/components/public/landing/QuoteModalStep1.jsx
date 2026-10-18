@@ -6,6 +6,7 @@ import { INDIAN_STATES, COUNTRY_CODES, validatePhoneNumber } from "./quoteModalC
 export default function QuoteModalStep1({ formData, onChange, onNext, error }) {
   const phoneValidation = formData.phone ? validatePhoneNumber(formData.phone, formData.country_code) : null;
   const isIndia = !formData.country_code || formData.country_code === "+91";
+  const selectedCountry = COUNTRY_CODES.find((c) => c.code === (formData.country_code || "+91")) || COUNTRY_CODES[0];
 
   return (
     <div className="space-y-3.5 pt-1 overscroll-contain">
@@ -35,7 +36,7 @@ export default function QuoteModalStep1({ formData, onChange, onNext, error }) {
           </label>
           {phoneValidation && (
             <span
-              className={`inline-flex items-center gap-1 text-[10.5px] font-semibold px-2 py-0.5 rounded-full transition-all ${
+              className={`inline-flex items-center gap-1 text-[10px] min-[375px]:text-[10.5px] font-semibold px-2 py-0.5 rounded-full transition-all ${
                 phoneValidation.isValid
                   ? "bg-emerald-50 text-emerald-700 border border-emerald-200/60"
                   : "bg-amber-50 text-amber-700 border border-amber-200/60"
@@ -57,25 +58,31 @@ export default function QuoteModalStep1({ formData, onChange, onNext, error }) {
         </div>
 
         <div className="relative flex">
-          {/* Country Code Dropdown */}
-          <div className="relative shrink-0">
+          {/* Compact Country Code Dropdown */}
+          <div className="relative shrink-0 flex items-center">
+            {/* Visual compact badge showing flag + code */}
+            <div className="flex items-center gap-1 h-full pl-2.5 pr-2 py-2.5 sm:py-3 bg-gray-100 hover:bg-gray-200/80 border border-r-0 border-gray-200 rounded-l-xl text-gray-900 font-bold text-xs sm:text-sm font-[Matter] select-none pointer-events-none whitespace-nowrap transition">
+              <span className="text-sm leading-none">{selectedCountry.flag}</span>
+              <span className="leading-none text-gray-800">{formData.country_code || "+91"}</span>
+              <span className="text-gray-400 text-[8px] leading-none ml-0.5">▼</span>
+            </div>
+
+            {/* Invisible native select overlay for full accessible picker list */}
             <select
               value={formData.country_code || "+91"}
               onChange={(e) => onChange("country_code", e.target.value)}
-              className="h-full pl-2.5 pr-6 text-xs font-bold bg-gray-100 hover:bg-gray-200 border border-r-0 border-gray-200 rounded-l-xl text-gray-800 font-[Matter] cursor-pointer appearance-none focus:outline-none focus:bg-white focus:ring-1 focus:ring-red-600 transition"
+              className="absolute inset-0 w-full h-full opacity-0 cursor-pointer text-xs"
+              aria-label="Select Country Code"
             >
               {COUNTRY_CODES.map((c) => (
                 <option key={c.code} value={c.code}>
-                  {c.flag} {c.label}
+                  {c.flag} {c.country} ({c.code})
                 </option>
               ))}
             </select>
-            <div className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 text-[9px]">
-              ▼
-            </div>
           </div>
 
-          {/* Number Input with live formatting */}
+          {/* Number Input with live formatting - gets all remaining space */}
           <input
             type="tel"
             required
@@ -83,11 +90,11 @@ export default function QuoteModalStep1({ formData, onChange, onNext, error }) {
             placeholder={isIndia ? "98765 43210 (10 Digits)" : "Enter Mobile Number"}
             value={formData.phone}
             onChange={(e) => onChange("phone", e.target.value.replace(/\D/g, ""))}
-            className="w-full px-3.5 py-2.5 sm:py-3 bg-gray-50 border border-gray-200 rounded-r-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-red-600/30 focus:border-red-600 text-xs sm:text-sm font-poppins transition"
+            className="w-full min-w-0 px-3 py-2.5 sm:py-3 bg-gray-50 border border-gray-200 rounded-r-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-red-600/30 focus:border-red-600 text-xs sm:text-sm font-poppins transition"
           />
         </div>
 
-        <p className="text-[10.5px] text-emerald-700 font-medium font-poppins flex items-center gap-1 pt-0.5">
+        <p className="text-[10px] min-[375px]:text-[10.5px] text-emerald-700 font-medium font-poppins flex items-center gap-1 pt-0.5">
           <span>🔒 Direct WhatsApp par architecture & quote bhejenge (Zero spam)</span>
         </p>
       </div>
@@ -169,10 +176,10 @@ export default function QuoteModalStep1({ formData, onChange, onNext, error }) {
         <button
           type="button"
           onClick={onNext}
-          className="w-full inline-flex items-center justify-center gap-2 py-3 sm:py-3.5 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs sm:text-sm font-semibold transition-all hover:scale-[1.01] active:scale-98 shadow-md shadow-red-600/25 cursor-pointer font-[Matter]"
+          className="w-full inline-flex items-center justify-center gap-1.5 sm:gap-2 py-2.5 min-[375px]:py-3 sm:py-3.5 px-3 min-[375px]:px-4 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs sm:text-sm font-semibold transition-all hover:scale-[1.01] active:scale-98 shadow-md shadow-red-600/25 cursor-pointer font-[Matter]"
         >
-          <span>Continue to Project Scope (Step 2 of 2)</span>
-          <ArrowRight className="w-4 h-4" />
+          <span className="whitespace-nowrap text-xs sm:text-sm">Continue to Project Scope (Step 2 of 2)</span>
+          <ArrowRight className="w-4 h-4 shrink-0" />
         </button>
       </div>
     </div>

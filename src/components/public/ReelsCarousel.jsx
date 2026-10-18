@@ -22,6 +22,10 @@ export default function ReelsCarousel({
   const [activeIndex, setActiveIndex] = useState(0);
   const [isDesktop, setIsDesktop] = useState(false);
 
+  const [isPaused, setIsPaused] = useState(false);
+  const [touchStartX, setTouchStartX] = useState(null);
+  const [touchEndX, setTouchEndX] = useState(null);
+
   useEffect(() => {
     const handleResize = () => setIsDesktop(window.innerWidth >= 1024);
     handleResize();
@@ -39,11 +43,36 @@ export default function ReelsCarousel({
     setActiveIndex((prev) => (prev + 1) % total);
   }, [total]);
 
+  // Autoplay everywhere, pauses on hover or touch
   useEffect(() => {
-    if (isDesktop || total <= 1) return;
+    if (total <= 1 || isPaused) return;
     const interval = setInterval(handleNext, 3500);
     return () => clearInterval(interval);
-  }, [isDesktop, handleNext, total]);
+  }, [isPaused, handleNext, total]);
+
+  // Touch Swipe Handlers for Finger Swipe
+  const handleTouchStart = (e) => {
+    setIsPaused(true);
+    setTouchEndX(null);
+    setTouchStartX(e.targetTouches[0].clientX);
+  };
+
+  const handleTouchMove = (e) => {
+    setTouchEndX(e.targetTouches[0].clientX);
+  };
+
+  const handleTouchEnd = () => {
+    setIsPaused(false);
+    if (touchStartX === null || touchEndX === null) return;
+    const distance = touchStartX - touchEndX;
+    if (distance > 35) {
+      handleNext();
+    } else if (distance < -35) {
+      handlePrev();
+    }
+    setTouchStartX(null);
+    setTouchEndX(null);
+  };
 
   const cardVariants = {
     center: { x: 0, scale: 1, opacity: 1, filter: "blur(0px)", zIndex: 25 },
@@ -78,7 +107,14 @@ export default function ReelsCarousel({
         Watch our latest viral videos, client project breakdowns, and modern tech workflows.
       </p>
 
-      <div className="relative flex flex-col items-center justify-center">
+      <div 
+        className="relative flex flex-col items-center justify-center select-none touch-pan-y"
+        onMouseEnter={() => setIsPaused(true)}
+        onMouseLeave={() => setIsPaused(false)}
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+      >
         {/* 3D Stack Slider Frame (Exact height to fit 9:16 cards without extra gaps) */}
         <div className="relative flex items-center justify-center h-[430px] lg:h-[570px] w-full max-w-[1400px]">
           <AnimatePresence initial={false} mode="popLayout">
@@ -108,13 +144,15 @@ export default function ReelsCarousel({
                   initial="hidden"
                   animate={position}
                   exit="hidden"
-                  transition={{ type: "spring", stiffness: 80, damping: 18 }}
-                  drag={!isDesktop && "x"}
+                  transition={{ type: "spring", stiffness: 90, damping: 20 }}
+                  drag="x"
                   dragConstraints={{ left: 0, right: 0 }}
-                  dragElastic={0.15}
+                  dragElastic={0.2}
+                  onDragStart={() => setIsPaused(true)}
                   onDragEnd={(e, info) => {
-                    if (info.offset.x > 50) handlePrev();
-                    else if (info.offset.x < -50) handleNext();
+                    setIsPaused(false);
+                    if (info.offset.x > 35) handlePrev();
+                    else if (info.offset.x < -35) handleNext();
                   }}
                   className="absolute max-w-[calc(100vw-2rem)] rounded-[26px] overflow-hidden shadow-2xl bg-black cursor-pointer"
                   style={{ width, height }}
@@ -138,33 +176,19 @@ export default function ReelsCarousel({
           </AnimatePresence>
         </div>
 
-        {/* Carousel Controls & Dot Indicators */}
-        <div className="flex items-center justify-center gap-6 mt-4 sm:mt-5 z-20">
-          <button
-            onClick={handlePrev}
-            className="hidden lg:flex items-center justify-center w-12 h-12 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-800 transition shadow-sm font-semibold"
-            aria-label="Previous"
-          >
-            ←
-          </button>
-          <div className="flex justify-center gap-3">
-            {reelsList.map((_, index) => (
-              <button
-                key={index}
-                onClick={() => setActiveIndex(index)}
-                className={`h-3 rounded-full transition-all duration-300 ${index === activeIndex ? "w-8 bg-red-600" : "w-3 bg-gray-300 hover:bg-gray-400"
-                  }`}
-                aria-label={`Go to slide ${index + 1}`}
-              />
-            ))}
-          </div>
-          <button
-            onClick={handleNext}
-            className="hidden lg:flex items-center justify-center w-12 h-12 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-800 transition shadow-sm font-semibold"
-            aria-label="Next"
-          >
-            →
-          </button>
+        {/* Dot Indicators (Clean, Automatic & Fingers Swipe) */}
+        <div className="flex items-center justify-center gap-2.5 mt-4 sm:mt-5 z-20">
+          {reelsList.map((_, index) => (
+            <button
+              key={index}
+              type="button"
+              onClick={() => setActiveIndex(index)}
+              className={`h-3 rounded-full transition-all duration-300 cursor-pointer ${
+                index === activeIndex ? "w-8 bg-red-600 shadow-sm shadow-red-600/30" : "w-3 bg-gray-300 hover:bg-gray-400"
+              }`}
+              aria-label={`Go to slide ${index + 1}`}
+            />
+          ))}
         </div>
       </div>
     </section>

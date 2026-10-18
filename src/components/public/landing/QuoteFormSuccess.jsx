@@ -35,16 +35,16 @@ export default function QuoteFormSuccess({ formData, onReset }) {
           target="_blank"
           rel="noopener noreferrer"
           onClick={() => trackMetaEvent("Contact", { method: "whatsapp_after_lead" })}
-          className="w-full py-3.5 px-6 rounded-full bg-[#25D366] hover:bg-[#20ba59] text-white font-bold text-sm shadow-lg shadow-emerald-500/20 transition flex items-center justify-center gap-2.5 cursor-pointer font-[Matter]"
+          className="w-full py-3 min-[375px]:py-3.5 px-3 min-[375px]:px-6 rounded-full bg-[#25D366] hover:bg-[#20ba59] text-white font-bold text-xs min-[375px]:text-sm shadow-lg shadow-emerald-500/20 transition flex items-center justify-center gap-2 cursor-pointer font-[Matter] whitespace-nowrap"
         >
           <Image
             src="https://qfbsszbgmipbercujiak.supabase.co/storage/v1/object/public/site-assets/common/WhatsApp.svg"
             alt="WhatsApp"
             width={20}
             height={20}
-            className="w-5 h-5 object-contain"
+            className="w-4 h-4 min-[375px]:w-5 min-[375px]:h-5 object-contain shrink-0"
           />
-          <span>Chat with Our Sales Team on WhatsApp</span>
+          <span className="whitespace-nowrap">Chat with Our Sales Team on WhatsApp</span>
         </a>
 
         <button

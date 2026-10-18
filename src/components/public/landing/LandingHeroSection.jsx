@@ -34,11 +34,11 @@ export default function LandingHeroSection() {
           
           {/* Desktop & Tablet Floating Capsule (Symmetric, No Shadow, 100% Dead-Center Logo) */}
           <nav 
-            className="hidden sm:grid grid-cols-[1fr_auto_1fr] items-center rounded-full px-8 md:px-10 lg:px-12 py-3.5 md:py-4 lg:py-4.5 bg-white/95 backdrop-blur-xl border border-gray-200/90 transition-all duration-300 w-auto"
+            className="hidden sm:grid grid-cols-[1fr_auto_1fr] items-center rounded-full px-5 min-[840px]:px-8 lg:px-12 py-3 md:py-4 bg-white/95 backdrop-blur-xl border border-gray-200/90 transition-all duration-300 w-auto"
             style={{ fontFamily: "Matter, sans-serif" }}
           >
             {/* Left Items: Direct Calling Desk & Rating Badge (Evenly Distributed from Far Left) */}
-            <div className="flex items-center justify-between gap-6 md:gap-8 lg:gap-10">
+            <div className="flex items-center justify-between gap-4 min-[840px]:gap-6 lg:gap-10">
               {/* Left Item 1: Direct Calling Desk (Placed right at the left capsule padding) */}
               <a
                 href="tel:07554601839"
@@ -81,7 +81,7 @@ export default function LandingHeroSection() {
             </div>
 
             {/* Right Items: WhatsApp Direct Contact & Primary Free Quote CTA (Evenly Distributed to Far Right) */}
-            <div className="flex items-center justify-between gap-6 md:gap-8 lg:gap-10">
+            <div className="flex items-center justify-between gap-4 min-[840px]:gap-6 lg:gap-10">
               {/* Right Item 1: Direct WhatsApp Chat (Placed adjacent to the center logo) */}
               <a
                 href="https://wa.me/+917462827259?text=Hi%20TexWeb%20Solution,%20I%20saw%20your%20Meta%20ad%20and%20want%20to%20discuss%20a%20project%20for%20my%20business."
@@ -113,14 +113,14 @@ export default function LandingHeroSection() {
           </nav>
 
           {/* Mobile Clean Capsule (< 640px) */}
-          <div className="flex sm:hidden w-[95%] max-w-md items-center justify-between px-4 py-2.5 bg-white/95 backdrop-blur-md border border-gray-200 rounded-full">
+          <div className="flex sm:hidden w-[96%] max-w-md items-center justify-between px-2.5 min-[375px]:px-4 py-2 bg-white/95 backdrop-blur-md border border-gray-200 rounded-full gap-2">
             <a
               href="tel:07554601839"
               onClick={handleCall}
-              className="p-2.5 rounded-full bg-blue-50 text-blue-600 border border-blue-100"
+              className="p-2 min-[375px]:p-2.5 rounded-full bg-blue-50 text-blue-600 border border-blue-100 shrink-0"
               title="Call 0755-4601839"
             >
-              <PhoneCall className="w-4 h-4" />
+              <PhoneCall className="w-4 h-4 shrink-0" />
             </a>
 
             <Link 
@@ -129,7 +129,7 @@ export default function LandingHeroSection() {
                 e.preventDefault();
                 window.scrollTo({ top: 0, behavior: "smooth" });
               }}
-              className="flex items-center px-1"
+              className="flex items-center px-1 shrink-0"
             >
               <Image
                 src="https://qfbsszbgmipbercujiak.supabase.co/storage/v1/object/public/site-assets/texweb-full-logo-original.png"
@@ -137,16 +137,16 @@ export default function LandingHeroSection() {
                 width={160}
                 height={40}
                 priority
-                className="h-7 sm:h-8 w-auto object-contain"
+                className="h-6 min-[375px]:h-7 sm:h-8 w-auto object-contain"
               />
             </Link>
 
             <button
               type="button"
               onClick={() => handleScrollToQuote("mobile_header_btn")}
-              className="px-3.5 py-2 bg-red-600 text-white rounded-full text-xs font-semibold shadow-xs"
+              className="px-2.5 min-[375px]:px-3.5 py-1.5 min-[375px]:py-2 bg-red-600 text-white rounded-full text-[11px] min-[375px]:text-xs font-semibold shadow-xs shrink-0 whitespace-nowrap"
             >
-              Free Quote
+              <span className="truncate whitespace-nowrap">Free Quote</span>
             </button>
           </div>
 
@@ -172,21 +172,21 @@ export default function LandingHeroSection() {
 
 
         {/* Action Buttons matching Homepage */}
-        <div className="flex space-x-3 sm:space-x-4 mt-1 sm:mt-2 lg:mt-2.5 z-10">
+        <div className="flex items-center justify-center gap-2 sm:gap-4 mt-2 sm:mt-2.5 z-10 w-full max-w-sm sm:max-w-md px-2 mx-auto">
           <button
             type="button"
             onClick={() => handleScrollToQuote("hero_primary_btn")}
-            className="w-36 py-3.5 text-sm sm:w-48 sm:text-base lg:py-4 bg-red-600 text-white rounded-full transition-transform hover:scale-105 hover:bg-red-700 shadow-md shadow-red-600/15 cursor-pointer font-[Matter]"
+            className="flex-1 min-w-0 py-3 sm:py-3.5 lg:py-4 px-2.5 sm:px-4 bg-red-600 text-white rounded-full transition-transform hover:scale-105 hover:bg-red-700 shadow-md shadow-red-600/15 cursor-pointer font-[Matter] flex items-center justify-center whitespace-nowrap"
             style={{ fontWeight: 500 }}
           >
-            Get Free Quote ➔
+            <span className="truncate whitespace-nowrap text-xs sm:text-sm md:text-base">Get Free Quote ➔</span>
           </button>
           <a
             href="https://wa.me/+917462827259?text=Hi%20TexWeb%20Solution,%20I%20saw%20your%20Meta%20ad%20and%20want%20to%20discuss%20a%20project."
             target="_blank"
             rel="noopener noreferrer"
             onClick={handleWhatsApp}
-            className="w-36 py-3.5 text-sm sm:w-48 sm:text-base lg:py-4 bg-white text-gray-900 rounded-full border border-gray-300 transition-transform hover:scale-105 hover:bg-green-50/30 hover:border-green-600 hover:text-green-700 flex items-center justify-center gap-2 font-[Matter]"
+            className="flex-1 min-w-0 py-3 sm:py-3.5 lg:py-4 px-2.5 sm:px-4 bg-white text-gray-900 rounded-full border border-gray-300 transition-transform hover:scale-105 hover:bg-green-50/30 hover:border-green-600 hover:text-green-700 flex items-center justify-center gap-1.5 font-[Matter] whitespace-nowrap"
             style={{ fontWeight: 500 }}
           >
             <Image
@@ -194,20 +194,20 @@ export default function LandingHeroSection() {
               alt="WhatsApp"
               width={18}
               height={18}
-              className="w-4 h-4 object-contain"
+              className="w-4 h-4 object-contain shrink-0"
             />
-            <span>Chat on WhatsApp</span>
+            <span className="truncate whitespace-nowrap text-xs sm:text-sm md:text-base">Chat on WhatsApp</span>
           </a>
         </div>
 
         {/* Audience Trust Strip with AnimatedCounter */}
-        <div className="inline-flex items-center gap-2 sm:gap-4 mt-4">
-          <div className="flex -space-x-3 scale-[0.85] sm:scale-90 origin-left">
+        <div className="inline-flex items-center gap-2 sm:gap-4 mt-4 max-w-full px-2">
+          <div className="flex -space-x-3 scale-[0.85] sm:scale-90 origin-left shrink-0">
             <Image width={96} height={96} className="w-8 h-8 sm:w-10 sm:h-10 rounded-full border-2 border-red-600 object-cover bg-white shadow-sm" src="https://qfbsszbgmipbercujiak.supabase.co/storage/v1/object/public/site-assets/home/prof1.png" alt="Audience 1" />
             <Image width={96} height={96} className="w-8 h-8 sm:w-10 sm:h-10 rounded-full border-2 border-red-600 object-cover bg-white shadow-sm" src="https://qfbsszbgmipbercujiak.supabase.co/storage/v1/object/public/site-assets/home/prof2.png" alt="Audience 2" />
             <Image width={96} height={96} className="w-8 h-8 sm:w-10 sm:h-10 rounded-full border-2 border-red-600 object-cover bg-white shadow-sm" src="https://qfbsszbgmipbercujiak.supabase.co/storage/v1/object/public/site-assets/home/prof3.png" alt="Audience 3" />
           </div>
-          <p className="text-gray-700 text-sm sm:text-base leading-none" style={{ fontFamily: "Matter" }}>
+          <p className="text-gray-700 text-xs min-[375px]:text-sm sm:text-base leading-none truncate whitespace-nowrap" style={{ fontFamily: "Matter" }}>
             Trusted by <AnimatedCounter target={90} suffix="k+" className="text-red-600 font-semibold" /> Audience
           </p>
         </div>

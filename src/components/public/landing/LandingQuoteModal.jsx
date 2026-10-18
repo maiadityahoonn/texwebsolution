@@ -197,7 +197,7 @@ export default function LandingQuoteModal() {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-md animate-fadeIn overscroll-none">
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-2 min-[375px]:p-3 sm:p-4 bg-black/60 backdrop-blur-md animate-fadeIn overscroll-none">
       {/* Click outside backdrop to close */}
       <div 
         className="fixed inset-0 -z-10 cursor-pointer touch-none" 
@@ -206,7 +206,7 @@ export default function LandingQuoteModal() {
 
       {/* Modal Dialog Card */}
       <div 
-        className="relative w-full max-w-xl max-h-[92vh] flex flex-col bg-white border border-gray-100 rounded-3xl p-5 sm:p-6 shadow-2xl overflow-hidden animate-scaleUp text-left overscroll-contain"
+        className="relative w-full max-w-xl max-h-[94vh] sm:max-h-[92vh] flex flex-col bg-white border border-gray-100 rounded-2xl sm:rounded-3xl p-3.5 min-[375px]:p-4 sm:p-6 shadow-2xl overflow-hidden animate-scaleUp text-left overscroll-contain"
         style={{ fontFamily: "Matter, sans-serif" }}
       >
         {/* Top Gradient Accent Bar */}
@@ -216,62 +216,64 @@ export default function LandingQuoteModal() {
         <button
           type="button"
           onClick={() => !loading && setIsOpen(false)}
-          className="absolute top-4 right-4 p-2 rounded-full text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition cursor-pointer"
+          className="absolute top-2.5 right-2.5 sm:top-4 sm:right-4 p-1.5 sm:p-2 rounded-full text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition cursor-pointer z-20"
           aria-label="Close modal"
         >
-          <X className="w-5 h-5" />
+          <X className="w-4 h-4 sm:w-5 sm:h-5" />
         </button>
 
         {!submitted ? (
-          <div>
+          <div className="flex flex-col flex-1 min-h-0">
             {/* Modal Header */}
-            <div className="pr-8 mb-3.5">
-              <div className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full bg-red-50 text-red-600 border border-red-100 text-[11px] font-bold font-[Matter] mb-1">
-                <Sparkles className="w-3 h-3 text-red-500" />
+            <div className="pr-7 sm:pr-8 mb-2.5 sm:mb-3.5 shrink-0">
+              <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-red-50 text-red-600 border border-red-100 text-[10.5px] sm:text-[11px] font-bold font-[Matter] mb-1">
+                <Sparkles className="w-3 h-3 text-red-500 shrink-0" />
                 <span>Get Free Architecture & Quote</span>
               </div>
-              <h2 className="text-base sm:text-xl font-bold text-gray-950 font-[Matter] tracking-tight leading-snug">
-                {step === 1 ? "Step 1 of 2: Your Contact & Business Location" : "Step 2 of 2: Define Your Project Scope & Requirements"}
+              <h2 className="text-xs min-[375px]:text-sm sm:text-lg md:text-xl font-bold text-gray-950 font-[Matter] tracking-tight leading-snug">
+                {step === 1 ? "Step 1 of 2: Contact & Business Location" : "Step 2 of 2: Define Project Scope"}
               </h2>
               
               {/* Progress 2-Step Bar */}
-              <div className="flex items-center gap-2 mt-2">
+              <div className="flex items-center gap-2 mt-1.5 sm:mt-2">
                 <div className={`h-1.5 flex-1 rounded-full transition-colors ${step >= 1 ? "bg-red-600" : "bg-gray-200"}`} />
                 <div className={`h-1.5 flex-1 rounded-full transition-colors ${step >= 2 ? "bg-red-600" : "bg-gray-200"}`} />
-                <span className="text-[11px] font-bold text-gray-500 shrink-0 font-[Matter]">
+                <span className="text-[10px] min-[375px]:text-[11px] font-bold text-gray-500 shrink-0 font-[Matter] whitespace-nowrap">
                   Step {step} of 2
                 </span>
               </div>
             </div>
 
-            {/* Step 1 or Step 2 */}
-            {step === 1 && (
-              <QuoteModalStep1
-                formData={formData}
-                onChange={handleFieldChange}
-                onNext={handleStep1Next}
-                error={step1Error}
-              />
-            )}
+            {/* Scrollable Content Container for 320px - 768px Viewports */}
+            <div className="flex-1 min-h-0 overflow-y-auto scrollbar-thin overscroll-contain pr-0.5 sm:pr-1">
+              {step === 1 && (
+                <QuoteModalStep1
+                  formData={formData}
+                  onChange={handleFieldChange}
+                  onNext={handleStep1Next}
+                  error={step1Error}
+                />
+              )}
 
-            {step === 2 && (
-              <QuoteModalStep2
-                formData={formData}
-                onChange={handleFieldChange}
-                onBack={() => setStep(1)}
-                onSubmit={handleSubmit}
-                loading={loading}
-                error={submitError}
-              />
-            )}
+              {step === 2 && (
+                <QuoteModalStep2
+                  formData={formData}
+                  onChange={handleFieldChange}
+                  onBack={() => setStep(1)}
+                  onSubmit={handleSubmit}
+                  loading={loading}
+                  error={submitError}
+                />
+              )}
+            </div>
 
             {/* Trust Footer */}
-            <div className="mt-3.5 pt-3 border-t border-gray-100 flex items-center justify-between text-[11px] text-gray-500 font-poppins font-light">
-              <span className="inline-flex items-center gap-1">
+            <div className="mt-2.5 sm:mt-3.5 pt-2.5 sm:pt-3 border-t border-gray-100 flex items-center justify-between text-[10px] min-[375px]:text-[11px] text-gray-500 font-poppins font-light shrink-0 gap-2">
+              <span className="inline-flex items-center gap-1 min-w-0">
                 <ShieldCheck className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                100% Privacy & Zero Spam Guarantee
+                <span>100% Privacy & Zero Spam</span>
               </span>
-              <span>15-Min Response Time</span>
+              <span className="shrink-0 whitespace-nowrap">15-Min Response</span>
             </div>
           </div>
         ) : (
