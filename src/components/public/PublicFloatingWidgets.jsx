@@ -4,7 +4,7 @@ import Image from "next/image";
 import { useState, useEffect } from "react";
 import { usePathname } from "next/navigation";
 import { supabase } from "@/lib/supabase";
-import LeadCaptureModal from "@/components/public/LeadCaptureModal";
+import LandingQuoteModal from "@/components/public/landing/LandingQuoteModal";
 import AiChatbotWidget from "@/components/public/AiChatbotWidget";
 
 const PORTAL_ROUTES = ["/login", "/crm"];
@@ -69,72 +69,78 @@ export default function PublicFloatingWidgets() {
     return null;
   }
 
+  // Routes where floating widgets (Instagram, Chatbot, WhatsApp) must be completely hidden
+  const isHiddenFloatingRoute = pathname === "/get-quote" || pathname === "/thank-you";
+
   return (
     <>
-      {/* Global Lead Capture Popup Modal (Public only) */}
-      <LeadCaptureModal />
+      {/* Global Meta 2-Step Quote & Architecture Modal (Public across all pages, except thank-you where user already converted) */}
+      {pathname !== "/thank-you" && <LandingQuoteModal />}
 
-      {/* Global Interactive AI Chatbot Widget (Public only) */}
-      <AiChatbotWidget />
+      {/* Floating Widgets (Instagram, Ask Ananya AI, WhatsApp) - Hidden on /get-quote and /thank-you pages */}
+      {!isHiddenFloatingRoute && (
+        <>
+          {/* Global Interactive AI Chatbot Widget (Public only) */}
+          <AiChatbotWidget />
 
-      {/* Floating Instagram Social Button (Public only) */}
-      <a
-        className="fixed left-3 bottom-4 z-50 sm:left-5 sm:bottom-6 md:left-6 md:bottom-8 transition-transform duration-300 hover:scale-125 hover:-translate-y-2 hover:rotate-6 animate-floatingSmooth"
-        href="https://www.instagram.com/texwebsolution.in/"
-        target="_blank"
-        rel="noopener noreferrer"
-        aria-label="Follow TexWeb Solution on Instagram"
-      >
-        <div className="relative w-13 h-13 sm:w-12 sm:h-12 md:w-14 md:h-14 lg:w-14 lg:h-14">
-          <Image
-            width={240}
-            height={240}
-            alt="Instagram"
-            className="object-contain drop-shadow-[0_0_8px_rgba(255,0,150,0.25)] hover:drop-shadow-[0_0_15px_rgba(255,50,180,0.45)] transition-all duration-300"
-            src="https://qfbsszbgmipbercujiak.supabase.co/storage/v1/object/public/site-assets/common/Insta.svg"
-            style={{
-              position: "absolute",
-              height: "100%",
-              width: "100%",
-              left: 0,
-              top: 0,
-              right: 0,
-              bottom: 0,
-              color: "transparent",
-            }}
-          />
-        </div>
-      </a>
+          {/* Floating Instagram Social Button (Public only) */}
+          <a
+            className="fixed left-3 bottom-4 z-50 sm:left-5 sm:bottom-6 md:left-6 md:bottom-8 transition-transform duration-300 hover:scale-125 hover:-translate-y-2 hover:rotate-6 animate-floatingSmooth"
+            href="https://www.instagram.com/texwebsolution.in/"
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label="Follow TexWeb Solution on Instagram"
+          >
+            <div className="relative w-13 h-13 sm:w-12 sm:h-12 md:w-14 md:h-14 lg:w-14 lg:h-14">
+              <Image
+                width={240}
+                height={240}
+                alt="Instagram"
+                className="object-contain drop-shadow-[0_0_8px_rgba(255,0,150,0.25)] hover:drop-shadow-[0_0_15px_rgba(255,50,180,0.45)] transition-all duration-300"
+                src="https://qfbsszbgmipbercujiak.supabase.co/storage/v1/object/public/site-assets/common/Insta.svg"
+                style={{
+                  position: "absolute",
+                  height: "100%",
+                  width: "100%",
+                  left: 0,
+                  top: 0,
+                  right: 0,
+                  bottom: 0,
+                  color: "transparent",
+                }}
+              />
+            </div>
+          </a>
 
-      {/* Floating WhatsApp Quick Action Button (Public only, hidden on get-quote page) */}
-      {pathname !== "/get-quote" && (
-        <a
-          className="fixed right-3 bottom-4 z-50 sm:right-5 sm:bottom-6 md:right-6 md:bottom-8 transition-transform duration-300 hover:scale-125 hover:-translate-y-2 hover:rotate-6 animate-floatingSmooth"
-          href="https://wa.me/+917462827259"
-          target="_blank"
-          rel="noopener noreferrer"
-          aria-label="Chat with TexWeb Solution on WhatsApp"
-        >
-          <div className="relative w-15 h-15 sm:w-12 sm:h-12 md:w-14 md:h-14 lg:w-16 lg:h-16">
-            <Image
-              width={64}
-              height={64}
-              alt="WhatsApp"
-              className="object-contain drop-shadow-[0_0_8px_rgba(0,255,70,0.25)] hover:drop-shadow-[0_0_15px_rgba(0,255,100,0.45)] transition-all duration-300"
-              src="https://qfbsszbgmipbercujiak.supabase.co/storage/v1/object/public/site-assets/common/WhatsApp.svg"
-              style={{
-                position: "absolute",
-                height: "100%",
-                width: "100%",
-                left: 0,
-                top: 0,
-                right: 0,
-                bottom: 0,
-                color: "transparent",
-              }}
-            />
-          </div>
-        </a>
+          {/* Floating WhatsApp Quick Action Button (Public only) */}
+          <a
+            className="fixed right-3 bottom-4 z-50 sm:right-5 sm:bottom-6 md:right-6 md:bottom-8 transition-transform duration-300 hover:scale-125 hover:-translate-y-2 hover:rotate-6 animate-floatingSmooth"
+            href="https://wa.me/+917462827259"
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label="Chat with TexWeb Solution on WhatsApp"
+          >
+            <div className="relative w-15 h-15 sm:w-12 sm:h-12 md:w-14 md:h-14 lg:w-16 lg:h-16">
+              <Image
+                width={64}
+                height={64}
+                alt="WhatsApp"
+                className="object-contain drop-shadow-[0_0_8px_rgba(0,255,70,0.25)] hover:drop-shadow-[0_0_15px_rgba(0,255,100,0.45)] transition-all duration-300"
+                src="https://qfbsszbgmipbercujiak.supabase.co/storage/v1/object/public/site-assets/common/WhatsApp.svg"
+                style={{
+                  position: "absolute",
+                  height: "100%",
+                  width: "100%",
+                  left: 0,
+                  top: 0,
+                  right: 0,
+                  bottom: 0,
+                  color: "transparent",
+                }}
+              />
+            </div>
+          </a>
+        </>
       )}
     </>
   );

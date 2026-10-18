@@ -35,6 +35,27 @@ export default function LandingQuoteModal() {
   const [step1Error, setStep1Error] = useState("");
   const [submitError, setSubmitError] = useState("");
 
+  // Auto-open modal after 3.5 seconds on website load if not dismissed in current session
+  useEffect(() => {
+    const hasSeenModal = typeof window !== "undefined" && sessionStorage.getItem("texweb_quote_modal_dismissed");
+    if (!hasSeenModal) {
+      const timer = setTimeout(() => {
+        setIsOpen(true);
+        trackMetaEvent("ViewContent", { source: "auto_popup_timer" });
+      }, 3500);
+      return () => clearTimeout(timer);
+    }
+  }, []);
+
+  const handleClose = () => {
+    if (!loading) {
+      setIsOpen(false);
+      if (typeof window !== "undefined") {
+        sessionStorage.setItem("texweb_quote_modal_dismissed", "true");
+      }
+    }
+  };
+
   // Listen for global openQuoteModal event from any CTA button across the page
   useEffect(() => {
     const handleOpenModal = (e) => {
@@ -175,6 +196,7 @@ export default function LandingQuoteModal() {
 
       if (typeof window !== "undefined") {
         sessionStorage.setItem("meta_lead_event_fired", "true");
+        sessionStorage.setItem("texweb_quote_modal_dismissed", "true");
       }
 
       setIsOpen(false);
@@ -205,7 +227,7 @@ export default function LandingQuoteModal() {
       {/* Click outside backdrop to close */}
       <div 
         className="fixed inset-0 -z-10 cursor-pointer touch-none" 
-        onClick={() => !loading && setIsOpen(false)}
+        onClick={handleClose}
       />
 
       {/* Modal Dialog Card */}
@@ -219,7 +241,7 @@ export default function LandingQuoteModal() {
         {/* Close Button */}
         <button
           type="button"
-          onClick={() => !loading && setIsOpen(false)}
+          onClick={handleClose}
           className="absolute top-2.5 right-2.5 sm:top-4 sm:right-4 p-1.5 sm:p-2 rounded-full text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition cursor-pointer z-20"
           aria-label="Close modal"
         >

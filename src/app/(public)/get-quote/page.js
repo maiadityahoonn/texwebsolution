@@ -3,7 +3,6 @@
 import Image from "next/image";
 import { ArrowRight, Sparkles, ShieldCheck, Clock } from "lucide-react";
 import LandingHeroSection from "@/components/public/landing/LandingHeroSection";
-import LandingQuoteModal from "@/components/public/landing/LandingQuoteModal";
 import LandingOfferingsSection from "@/components/public/landing/LandingOfferingsSection";
 import LandingPortfolioSection from "@/components/public/landing/LandingPortfolioSection";
 import TestimonialsSwiper from "@/components/public/TestimonialsSwiper";
@@ -21,9 +20,6 @@ export default function GetQuotePage() {
 
   return (
     <div className="relative w-full bg-white overflow-hidden selection:bg-red-600 selection:text-white">
-      {/* 1. Interactive 2-Step Quote & Architecture Modal (Opens on Click) */}
-      <LandingQuoteModal />
-
       {/* 3. Hero Section (Hook & Primary CTA) */}
       <LandingHeroSection />
 
