@@ -79,7 +79,7 @@ export function buildTrackingNotes({ service, budget, timeline, message, extra =
 /**
  * Client-Side Meta Pixel Event Trigger
  */
-export function trackMetaEvent(eventName, customData = {}) {
+export function trackMetaEvent(eventName, customData = {}, eventId = null) {
   if (typeof window === "undefined") return;
 
   try {
@@ -91,6 +91,9 @@ export function trackMetaEvent(eventName, customData = {}) {
       page_path: window.location.pathname,
       timestamp: new Date().toISOString()
     };
+    if (eventId) {
+      eventPayload.event_id = String(eventId);
+    }
 
     if (typeof window.fbq === "function") {
       const standardEvents = [
@@ -103,10 +106,20 @@ export function trackMetaEvent(eventName, customData = {}) {
         "Search"
       ];
 
+      const options = eventId ? { eventID: String(eventId) } : undefined;
+
       if (standardEvents.includes(eventName)) {
-        window.fbq("track", eventName, eventPayload);
+        if (options) {
+          window.fbq("track", eventName, eventPayload, options);
+        } else {
+          window.fbq("track", eventName, eventPayload);
+        }
       } else {
-        window.fbq("trackCustom", eventName, eventPayload);
+        if (options) {
+          window.fbq("trackCustom", eventName, eventPayload, options);
+        } else {
+          window.fbq("trackCustom", eventName, eventPayload);
+        }
       }
     }
 

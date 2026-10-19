@@ -163,6 +163,8 @@ export default function LandingQuoteModal() {
         },
       });
 
+      const eventId = "lead_" + Date.now() + "_" + Math.random().toString(36).substring(2, 9);
+
       const response = await fetch("/api/leads/create", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -173,6 +175,7 @@ export default function LandingQuoteModal() {
           service: formData.service,
           source: sourceLabel,
           notes: notes,
+          event_id: eventId,
         }),
       });
 
@@ -181,18 +184,26 @@ export default function LandingQuoteModal() {
         throw new Error(data.error || "Unable to submit your quote request right now.");
       }
 
-      trackMetaEvent("Lead", {
-        content_name: formData.service,
-        content_category: formData.what_type_of_business_do_you_have,
-        currency: "INR",
-        value: 35000,
-      });
+      trackMetaEvent(
+        "Lead",
+        {
+          content_name: formData.service,
+          content_category: formData.what_type_of_business_do_you_have,
+          currency: "INR",
+          value: 35000,
+        },
+        eventId
+      );
 
-      trackMetaEvent("CompleteRegistration", {
-        status: "successful",
-        service: formData.service,
-        city: formData.city,
-      });
+      trackMetaEvent(
+        "CompleteRegistration",
+        {
+          status: "successful",
+          service: formData.service,
+          city: formData.city,
+        },
+        eventId
+      );
 
       if (typeof window !== "undefined") {
         sessionStorage.setItem("meta_lead_event_fired", "true");

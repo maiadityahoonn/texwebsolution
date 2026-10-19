@@ -16,13 +16,25 @@ function getAdminClient() {
   });
 }
 
-async function sendMetaCrmEvent(request, lead, status = "New") {
+async function sendMetaCrmEvent(request, lead, status = "New", eventId = null) {
   try {
     const url = new URL("/api/meta/crm-events", request.url);
     await fetch(url, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ lead, status }),
+      headers: {
+        "Content-Type": "application/json",
+        "user-agent": request.headers.get("user-agent") || "",
+        "x-forwarded-for": request.headers.get("x-forwarded-for") || "",
+        "cookie": request.headers.get("cookie") || "",
+        "referer": request.headers.get("referer") || "",
+      },
+      body: JSON.stringify({
+        lead,
+        status,
+        event_id: eventId || undefined,
+        action_source: "website",
+        event_source_url: request.headers.get("referer") || undefined,
+      }),
     });
   } catch (err) {
     console.warn("Meta CRM CAPI event skipped:", err?.message || err);
@@ -49,6 +61,7 @@ export async function POST(request) {
   }
 
   const body = await request.json().catch(() => ({}));
+  const eventId = cleanText(body.event_id || body.eventId, 120) || null;
   const payload = {
     name: cleanText(body.name, 120),
     phone: cleanPhone(body.phone),
@@ -77,7 +90,7 @@ export async function POST(request) {
     return NextResponse.json({ error: "Unable to submit inquiry right now." }, { status: 400 });
   }
 
-  if (data) await sendMetaCrmEvent(request, data, data.status || "New");
+  if (data) await sendMetaCrmEvent(request, data, data.status || "New", eventId);
   await cacheDel("crm:leads-summary:all");
   return NextResponse.json({ ok: true });
 }

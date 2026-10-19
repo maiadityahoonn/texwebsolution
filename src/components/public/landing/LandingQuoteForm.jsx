@@ -73,6 +73,8 @@ export default function LandingQuoteForm() {
         }
       });
 
+      const eventId = "lead_" + Date.now() + "_" + Math.random().toString(36).substring(2, 9);
+
       const response = await fetch("/api/leads/create", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -83,6 +85,7 @@ export default function LandingQuoteForm() {
           service: formData.service,
           source: sourceLabel,
           notes: notes,
+          event_id: eventId,
         }),
       });
 
@@ -91,17 +94,25 @@ export default function LandingQuoteForm() {
         throw new Error(data.error || "Unable to submit your quote request right now.");
       }
 
-      trackMetaEvent("Lead", {
-        content_name: formData.service,
-        content_category: "Meta Ads Quote Request",
-        currency: "INR",
-        value: formData.budget.includes("₹75k") ? 75000 : formData.budget.includes("₹35k") ? 35000 : 20000,
-      });
+      trackMetaEvent(
+        "Lead",
+        {
+          content_name: formData.service,
+          content_category: "Meta Ads Quote Request",
+          currency: "INR",
+          value: formData.budget.includes("₹75k") ? 75000 : formData.budget.includes("₹35k") ? 35000 : 20000,
+        },
+        eventId
+      );
 
-      trackMetaEvent("CompleteRegistration", {
-        status: "successful",
-        service: formData.service,
-      });
+      trackMetaEvent(
+        "CompleteRegistration",
+        {
+          status: "successful",
+          service: formData.service,
+        },
+        eventId
+      );
 
       if (typeof window !== "undefined") {
         sessionStorage.setItem("meta_lead_event_fired", "true");

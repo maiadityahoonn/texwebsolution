@@ -1,6 +1,6 @@
 import crypto from "crypto";
 import { NextResponse } from "next/server";
-import { cleanPhone, cleanText, isBodyTooLarge, isJsonRequest, normalizeEmail } from "@/lib/apiSecurity";
+import { cleanPhone, cleanText, getClientIp, isBodyTooLarge, isJsonRequest, normalizeEmail } from "@/lib/apiSecurity";
 import { cacheDel, cacheSetNx } from "@/lib/upstashCache";
 
 const DATASET_ID = process.env.META_CAPI_DATASET_ID || "1117053014586521";
@@ -23,6 +23,26 @@ function extractMetaLeadId(lead) {
   const notes = String(lead?.notes || "");
   const match = notes.match(/(?:Meta Lead ID|Meta ID|Leadgen ID)\s*:\s*(?:l:)?(\d{10,25})/i);
   return match?.[1] || "";
+}
+
+function extractFbclid(lead) {
+  const notes = String(lead?.notes || "");
+  const match = notes.match(/fbclid:\s*([A-Za-z0-9_-]+)/i);
+  return match?.[1] || "";
+}
+
+function getMetaCookies(request) {
+  const cookieHeader = request.headers.get("cookie") || "";
+  let fbp = "";
+  let fbc = "";
+
+  const matchFbp = cookieHeader.match(/(?:^|;\s*)_fbp=([^;]+)/);
+  if (matchFbp) fbp = decodeURIComponent(matchFbp[1]);
+
+  const matchFbc = cookieHeader.match(/(?:^|;\s*)_fbc=([^;]+)/);
+  if (matchFbc) fbc = decodeURIComponent(matchFbc[1]);
+
+  return { fbp, fbc };
 }
 
 function mapEventName(status) {
@@ -60,35 +80,62 @@ export async function POST(request) {
   if (phone) userData.ph = [sha256(phone)];
   if (metaLeadId) userData.lead_id = metaLeadId;
 
+  // Add browser / network signals for enhanced Event Match Quality (EMQ) & Deduplication
+  const clientIp = body.client_ip_address || getClientIp(request);
+  if (clientIp && clientIp !== "local") {
+    userData.client_ip_address = clientIp;
+  }
+  const clientUa = body.client_user_agent || request.headers.get("user-agent");
+  if (clientUa) {
+    userData.client_user_agent = clientUa;
+  }
+  const cookies = getMetaCookies(request);
+  const fbclid = extractFbclid(lead);
+  const fbp = body.fbp || cookies.fbp;
+  const fbc = body.fbc || cookies.fbc || (fbclid ? `fb.1.${Math.floor(Date.now() / 1000)}.${fbclid}` : "");
+  if (fbp) userData.fbp = fbp;
+  if (fbc) userData.fbc = fbc;
+
   if (!Object.keys(userData).length) {
     return NextResponse.json({ ok: true, skipped: true, reason: "No matchable user data available." });
   }
 
   const eventTime = Math.floor(new Date(body.event_time || lead.updated_at || lead.created_at || Date.now()).getTime() / 1000);
   const eventName = mapEventName(body.status || lead.status);
+  const eventId = body.event_id || lead.event_id || null;
+  const actionSource = body.action_source || (eventId ? "website" : "system_generated");
+  const eventSourceUrl = body.event_source_url || request.headers.get("referer") || undefined;
+
+  const eventItem = {
+    action_source: actionSource,
+    event_name: eventName,
+    event_time: Number.isFinite(eventTime) ? eventTime : Math.floor(Date.now() / 1000),
+    custom_data: {
+      event_source: actionSource === "website" ? "website" : "crm",
+      lead_event_source: CRM_NAME,
+      crm_status: cleanText(body.status || lead.status || "New", 80),
+      service: cleanText(lead.service || "", 120),
+      source: cleanText(lead.source || "", 120),
+    },
+    user_data: userData,
+  };
+
+  if (eventId) {
+    eventItem.event_id = String(eventId);
+  }
+  if (eventSourceUrl && actionSource === "website") {
+    eventItem.event_source_url = eventSourceUrl;
+  }
+
   const payload = {
-    data: [
-      {
-        action_source: "system_generated",
-        event_name: eventName,
-        event_time: Number.isFinite(eventTime) ? eventTime : Math.floor(Date.now() / 1000),
-        custom_data: {
-          event_source: "crm",
-          lead_event_source: CRM_NAME,
-          crm_status: cleanText(body.status || lead.status || "New", 80),
-          service: cleanText(lead.service || "", 120),
-          source: cleanText(lead.source || "", 120),
-        },
-        user_data: userData,
-      },
-    ],
+    data: [eventItem],
   };
 
   if (process.env.META_CAPI_TEST_EVENT_CODE) {
     payload.test_event_code = process.env.META_CAPI_TEST_EVENT_CODE;
   }
 
-  const idempotencySubject = metaLeadId || email || phone || lead.id || "";
+  const idempotencySubject = eventId || metaLeadId || email || phone || lead.id || "";
   const idempotencyKey = idempotencySubject
     ? `crm:capi:idempotency:${idempotencySubject}:${eventName}:${cleanText(body.status || lead.status || "New", 80)}`
     : "";
