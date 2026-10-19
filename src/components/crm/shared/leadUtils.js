@@ -100,12 +100,32 @@ export function getLeadNextAction(lead, followUps = [], meetings = []) {
   return "Review conversation and move to next pipeline stage.";
 }
 
+function cleanBudgetValue(val) {
+  if (!val) return "-";
+  const str = String(val).trim();
+  const parenMatch = str.match(/^([^(]+)/);
+  if (parenMatch && parenMatch[1].trim()) {
+    return parenMatch[1].trim().replace(/_/g, " ");
+  }
+  return str.replace(/_/g, " ");
+}
+
 export function getLeadBudget(lead) {
   if (!lead) return "-";
-  if (lead.budget_range) return lead.budget_range;
+  if (lead.budget_range) return cleanBudgetValue(lead.budget_range);
   if (!lead.notes) return "-";
-  const match = lead.notes.match(/Budget:\s*([^|]+)/i);
-  return match ? match[1].trim() : "-";
+  const match = lead.notes.match(/Budget:\s*([^\n\r|]+)/i);
+  if (!match) return "-";
+  return cleanBudgetValue(match[1]);
+}
+
+export function getLeadFullBudget(lead) {
+  if (!lead) return "-";
+  if (lead.budget_range) return String(lead.budget_range).trim().replace(/_/g, " ");
+  if (!lead.notes) return "-";
+  const match = lead.notes.match(/Budget:\s*([^\n\r|]+)/i);
+  if (!match) return "-";
+  return match[1].trim().replace(/_/g, " ");
 }
 
 export function getLeadLocation(lead) {
@@ -114,8 +134,31 @@ export function getLeadLocation(lead) {
     return [lead.city, lead.state].filter(Boolean).join(", ");
   }
   if (!lead.notes) return "-";
-  const match = lead.notes.match(/Location:\s*([^|]+)/i);
-  return match ? match[1].trim() : "-";
+  const match = lead.notes.match(/Location:\s*([^\n\r|]+)/i);
+  if (match) return match[1].trim();
+  const cityMatch = lead.notes.match(/City:\s*([^\n\r|]+)/i);
+  const stateMatch = lead.notes.match(/State:\s*([^\n\r|]+)/i);
+  if (cityMatch || stateMatch) {
+    return [cityMatch?.[1]?.trim(), stateMatch?.[1]?.trim()].filter(Boolean).join(", ");
+  }
+  return "-";
+}
+
+export function getLeadMetaAttribution(lead) {
+  if (!lead?.notes) return null;
+  const match = lead.notes.match(/\[Meta Ads Attribution:\s*([^\]]+)\]/i);
+  if (!match) return null;
+  const raw = match[1].trim();
+  const pairs = {};
+  raw.split("|").forEach((part) => {
+    const idx = part.indexOf(":");
+    if (idx !== -1) {
+      const k = part.slice(0, idx).trim();
+      const v = part.slice(idx + 1).trim();
+      if (k && v) pairs[k] = v;
+    }
+  });
+  return Object.keys(pairs).length > 0 ? pairs : null;
 }
 
 export function getLeadLossReason(lead, linkedDeal) {
@@ -135,7 +178,8 @@ export function formatLeadAnswer(value) {
 }
 
 export function getLeadDisplayNotes(lead) {
-  const cleanParts = String(lead?.notes || "")
+  const cleanNotes = String(lead?.notes || "").replace(/\[Meta Ads Attribution:[^\]]+\]/gi, "");
+  const cleanParts = cleanNotes
     .split(/[|\n]+/)
     .map((part) => part.trim())
     .filter(Boolean)
@@ -146,7 +190,8 @@ export function getLeadDisplayNotes(lead) {
 
 export function parseLeadNoteFields(lead) {
   const fields = [];
-  String(lead?.notes || "")
+  const cleanNotes = String(lead?.notes || "").replace(/\[Meta Ads Attribution:[^\]]+\]/gi, "");
+  cleanNotes
     .split(/[|\n]+/)
     .map((part) => part.trim())
     .filter(Boolean)
@@ -199,7 +244,7 @@ export function getLeadFormAnswers(lead) {
   const rawAnswerFields = getLeadRawFormAnswers(lead);
   const baseFields = [
     { label: "Service Looking For", value: lead?.service || getLeadNoteValue(noteFields, ["Service"]) },
-    { label: "Budget Range", value: getLeadNoteValue(noteFields, ["Budget"]) || getLeadBudget(lead) },
+    { label: "Budget Range", value: getLeadNoteValue(noteFields, ["Budget"]) || getLeadFullBudget(lead) },
     { label: "City / State", value: getLeadNoteValue(noteFields, ["Location"]) || getLeadLocation(lead) },
   ];
   const reserved = new Set([

@@ -138,6 +138,7 @@ export default function CrmModalHost({
   openCommercialModal,
   openInvoiceModal,
   openStageModal,
+  onDeleteLead,
 }) {
   return (
     <>
@@ -153,6 +154,7 @@ export default function CrmModalHost({
         onReopenLead={handleReopenLead}
         onOpenLeadFollowUp={openLeadFollowUpModal}
         onOpenSalesMeeting={openLeadMeetingModal}
+        onDeleteLead={onDeleteLead}
         currentUser={currentUser}
         currentProfile={currentProfile}
         defaultMeetLink={defaultMeetLink}

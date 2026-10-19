@@ -1,15 +1,17 @@
 "use client";
 
 import { useMemo } from "react";
-import { X, Phone, Mail, AlertCircle, Video, Clock, Pencil, RotateCcw } from "lucide-react";
+import { X, Phone, Mail, AlertCircle, Video, Clock, Pencil, RotateCcw, Sparkles, Trash2 } from "lucide-react";
 import ActivityTimeline from "@/components/crm/shared/ActivityTimeline";
 import WhatsAppIcon from "../WhatsAppIcon";
 import {
   getLeadBudget,
+  getLeadFullBudget,
   getLeadLocation,
   getLeadLossReason,
   getLeadDisplayNotes,
   getLeadFormAnswers,
+  getLeadMetaAttribution,
 } from "../leadUtils";
 import { formatStatusLabel, getLatestMeetingSnippet, getLatestNoteSnippet } from "../meetingUtils";
 
@@ -25,6 +27,7 @@ export default function LeadDetailsDrawer({
   onReopenLead,
   onOpenLeadFollowUp,
   onOpenSalesMeeting,
+  onDeleteLead,
   currentUser = null,
   currentProfile = null,
   defaultMeetLink = "https://meet.google.com/new",
@@ -43,6 +46,11 @@ export default function LeadDetailsDrawer({
     if (!selectedLead) return null;
     return getLeadLossReason(selectedLead, selectedLeadDeal);
   }, [selectedLead, selectedLeadDeal]);
+
+  const selectedLeadMetaAttribution = useMemo(() => {
+    if (!selectedLead) return null;
+    return getLeadMetaAttribution(selectedLead);
+  }, [selectedLead]);
 
   const selectedLeadActivity = useMemo(() => {
     if (!selectedLead) return { meetings: [], followUps: [] };
@@ -118,7 +126,7 @@ export default function LeadDetailsDrawer({
             </div>
             <div className="p-2.5 rounded-xl bg-gray-50 dark:bg-slate-800/60">
               <span className="text-gray-400 text-[10px] block">Budget Range</span>
-              <span className="font-semibold text-emerald-600 dark:text-emerald-400">
+              <span className="font-semibold text-emerald-600 dark:text-emerald-400" title={getLeadFullBudget(selectedLead)}>
                 {getLeadBudget(selectedLead)}
               </span>
             </div>
@@ -135,6 +143,32 @@ export default function LeadDetailsDrawer({
               </span>
             </div>
           </div>
+
+          {selectedLeadMetaAttribution && (
+            <div className="p-3 rounded-xl bg-purple-50/70 dark:bg-purple-950/30 border border-purple-100 dark:border-purple-900/40 text-xs space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-purple-700 dark:text-purple-300 font-bold uppercase text-[10.5px] tracking-wide flex items-center gap-1.5">
+                  <Sparkles className="w-3.5 h-3.5 text-purple-600 dark:text-purple-400" />
+                  Meta Ads Campaign Attribution
+                </span>
+                {selectedLeadMetaAttribution.Campaign && (
+                  <span className="px-2 py-0.5 rounded-full text-[9.5px] font-bold bg-purple-100 dark:bg-purple-900/50 text-purple-800 dark:text-purple-200">
+                    {selectedLeadMetaAttribution.Campaign}
+                  </span>
+                )}
+              </div>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                {Object.entries(selectedLeadMetaAttribution).map(([k, v]) => (
+                  <div key={k} className="bg-white/80 dark:bg-slate-900/60 p-2 rounded-lg border border-purple-100/60 dark:border-purple-900/30">
+                    <span className="text-[10px] text-gray-400 block font-semibold">{k}</span>
+                    <span className="text-[11px] font-bold text-gray-800 dark:text-white truncate block font-mono" title={v}>
+                      {v}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           <div className="p-3 rounded-xl bg-gray-50 dark:bg-slate-800/60 text-xs">
             <span className="text-gray-400 text-[10px] block font-semibold uppercase mb-2">
@@ -319,6 +353,21 @@ export default function LeadDetailsDrawer({
             >
               <Pencil className="w-3.5 h-3.5" />
               <span>Edit Lead</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                if (window.confirm(`Are you sure you want to permanently delete lead "${selectedLead.name}"? This action cannot be undone.`)) {
+                  onDeleteLead?.(selectedLead.id);
+                  onClose();
+                }
+              }}
+              className="px-3 py-1.5 rounded-xl text-xs font-semibold text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/40 hover:bg-rose-100 dark:hover:bg-rose-900/40 transition flex items-center gap-1.5 cursor-pointer"
+              title="Delete Junk / Faltu Lead"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+              <span>Delete Lead</span>
             </button>
           </div>
 

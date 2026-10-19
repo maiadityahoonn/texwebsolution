@@ -626,6 +626,7 @@ export default function CrmWorkspaceView({
         openCommercialModal={modals.openCommercialModal}
         openInvoiceModal={modals.openInvoiceModal}
         openStageModal={modals.openStageModal}
+        onDeleteLead={onDeleteLead || modals.handleDelete}
       />
     </div>
   );

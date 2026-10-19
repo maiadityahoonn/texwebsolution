@@ -36,6 +36,7 @@ export default function LeadTable({
   openLeadFollowUpModal,
   openLostModal,
   handleOpenEdit,
+  handleDelete,
   pagination,
 }) {
   const searchParams = useSearchParams();
@@ -101,6 +102,7 @@ export default function LeadTable({
                     openLeadFollowUpModal={openLeadFollowUpModal}
                     openLostModal={openLostModal}
                     handleOpenEdit={handleOpenEdit}
+                    handleDelete={handleDelete}
                   />
                 ))}
               </tbody>

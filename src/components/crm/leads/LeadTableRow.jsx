@@ -14,7 +14,9 @@ import {
   TrendingUp,
   Video,
   XCircle,
+  Trash2,
 } from "lucide-react";
+import { getLeadFullBudget } from "../shared/leadUtils";
 
 function WhatsAppIcon({ className = "w-4 h-4" }) {
   return (
@@ -43,6 +45,7 @@ export default function LeadTableRow({
   openLeadFollowUpModal = () => {},
   openLostModal = () => {},
   handleOpenEdit = () => {},
+  handleDelete = () => {},
 }) {
   const budget = getLeadBudget(lead);
   const linkedDeal = deals.find((deal) => deal.lead_id === lead.id);
@@ -199,9 +202,9 @@ export default function LeadTableRow({
         {budget !== "-" ? (
           <span
             className="inline-flex items-center px-2 py-1 rounded-lg text-[11px] leading-snug font-bold bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 border border-emerald-200/60 dark:border-emerald-800/40 align-middle whitespace-nowrap"
-            title={budget}
+            title={getLeadFullBudget(lead)}
           >
-            {budget.replace(/_/g, " ")}
+            {budget}
           </span>
         ) : (
           <span className="text-gray-400 text-xs">-</span>
@@ -303,6 +306,19 @@ export default function LeadTableRow({
             aria-label="View Details & Timeline"
           >
             <Eye className="w-3.5 h-3.5" />
+          </button>
+
+          <button
+            onClick={() => {
+              if (window.confirm(`Are you sure you want to permanently delete lead "${lead.name}"? This action cannot be undone.`)) {
+                handleDelete?.(lead.id);
+              }
+            }}
+            className="p-1.5 rounded-lg text-rose-600 bg-rose-50 dark:bg-rose-950/40 hover:bg-rose-100 dark:hover:bg-rose-900/40 transition shrink-0 cursor-pointer"
+            title="Delete Junk / Faltu Lead"
+            aria-label="Delete Lead"
+          >
+            <Trash2 className="w-3.5 h-3.5" />
           </button>
         </div>
       </td>
