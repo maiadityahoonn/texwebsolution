@@ -370,8 +370,8 @@ export default function Home() {
         {/* FAQ Accordion */}
         <FaqAccordion />
 
-        {/* Team section mobile/desktop layout (Show only 4 on home with See More button) */}
-        <TeamSection limit={4} showSeeMore={true} />
+        {/* Team section mobile/desktop layout (Show only 2 on home with See More button) */}
+        <TeamSection limit={2} showSeeMore={true} />
 
         {/* Get In Touch section */}
         <GetInTouchSection />

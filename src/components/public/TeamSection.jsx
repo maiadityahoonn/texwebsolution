@@ -28,7 +28,13 @@ export default function TeamSection({ limit, showSeeMore = false }) {
 
   if (loading || team.length === 0) return null;
 
-  const displayedTeam = limit ? team.slice(0, limit) : team;
+  // On limited/homepage view, feature Aditya Kumar Gupta & Meraj Hussain; show all on about-us
+  const displayedTeam = limit
+    ? team.filter((m) => {
+        const n = m.name?.toLowerCase() || "";
+        return n.includes("aditya") || n.includes("meraj");
+      }).slice(0, limit)
+    : team;
 
   return (
     <section className="py-10 sm:py-12 w-full font-[Matter]" id="about-us">
@@ -92,7 +98,7 @@ export default function TeamSection({ limit, showSeeMore = false }) {
       </div>
 
       {/* Desktop Grid View */}
-      <div className="hidden sm:grid max-w-7xl mx-auto grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-x-7 gap-y-20 px-6 pt-2 pb-12">
+      <div className={`hidden sm:grid ${displayedTeam.length <= 2 ? "max-w-3xl grid-cols-2" : "max-w-7xl grid-cols-2 md:grid-cols-3 lg:grid-cols-4"} mx-auto gap-x-8 gap-y-20 px-6 pt-2 pb-12 justify-center`}>
         {displayedTeam.map((member) => (
           <div
             key={member.name}
