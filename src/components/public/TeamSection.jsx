@@ -54,8 +54,8 @@ export default function TeamSection({ limit, showSeeMore = false }) {
         >
           {displayedTeam.map((member) => (
             <SwiperSlide key={member.name}>
-              <div className="px-1 pb-4">
-                <div className="relative p-[2px] rounded-[26px] bg-gradient-to-b from-red-500/50 via-red-200/40 to-gray-200/60 hover:from-red-600 hover:via-red-400 hover:to-red-600 transition-all duration-500 shadow-sm hover:shadow-[0_15px_35px_-8px_rgba(220,38,38,0.2)] group">
+              <div className="px-1 pb-16">
+                <div className="relative p-[2px] rounded-[26px] bg-gradient-to-b from-red-500/50 via-red-200/40 to-gray-200/60 hover:from-red-600 hover:via-red-400 hover:to-red-600 transition-all duration-500 group">
                   {/* Photo Container */}
                   <div className="relative w-full aspect-[4/5] rounded-[24px] overflow-hidden cursor-pointer bg-neutral-50">
                     <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent opacity-50 group-hover:opacity-75 transition-opacity duration-500 z-10 pointer-events-none" />
@@ -68,7 +68,7 @@ export default function TeamSection({ limit, showSeeMore = false }) {
                   </div>
 
                   {/* Floating Info Box with matching Gradient Border (Hover & Without Hover) */}
-                  <div className="absolute bottom-0 translate-y-1/2 left-3 right-3 p-[2px] rounded-2xl bg-gradient-to-b from-red-500/50 via-red-200/40 to-gray-200/60 group-hover:from-red-600 group-hover:via-red-400 group-hover:to-red-600 transition-all duration-500 shadow-[0_10px_25px_rgba(0,0,0,0.08)] group-hover:shadow-[0_16px_36px_rgba(220,38,38,0.22)] z-30">
+                  <div className="absolute bottom-0 translate-y-1/2 left-3 right-3 p-[2px] rounded-2xl bg-gradient-to-b from-red-500/50 via-red-200/40 to-gray-200/60 group-hover:from-red-600 group-hover:via-red-400 group-hover:to-red-600 transition-all duration-500 z-30">
                     <div className="bg-white/95 backdrop-blur-md rounded-[14px] p-3.5 text-left">
                       <span className="text-[10px] font-bold text-red-600 tracking-wider uppercase mb-0.5 block">
                         {member.role}
@@ -96,7 +96,7 @@ export default function TeamSection({ limit, showSeeMore = false }) {
         {displayedTeam.map((member) => (
           <div
             key={member.name}
-            className="relative p-[2px] rounded-[26px] bg-gradient-to-b from-red-500/50 via-red-200/40 to-gray-200/60 hover:from-red-600 hover:via-red-400 hover:to-red-600 transition-all duration-500 shadow-sm hover:shadow-[0_15px_35px_-8px_rgba(220,38,38,0.25)] group"
+            className="relative p-[2px] rounded-[26px] bg-gradient-to-b from-red-500/50 via-red-200/40 to-gray-200/60 hover:from-red-600 hover:via-red-400 hover:to-red-600 transition-all duration-500 group"
           >
             {/* Photo Container */}
             <div className="relative w-full aspect-[4/5] rounded-[24px] overflow-hidden cursor-pointer bg-neutral-50">
@@ -110,7 +110,7 @@ export default function TeamSection({ limit, showSeeMore = false }) {
             </div>
 
             {/* Floating Info Box with matching Gradient Border (Hover & Without Hover) */}
-            <div className="absolute bottom-0 translate-y-1/2 left-3 right-3 sm:left-3.5 sm:right-3.5 p-[2px] rounded-2xl bg-gradient-to-b from-red-500/50 via-red-200/40 to-gray-200/60 group-hover:from-red-600 group-hover:via-red-400 group-hover:to-red-600 transition-all duration-500 shadow-[0_10px_25px_rgba(0,0,0,0.08)] group-hover:shadow-[0_16px_36px_rgba(220,38,38,0.22)] z-30">
+            <div className="absolute bottom-0 translate-y-1/2 left-3 right-3 sm:left-3.5 sm:right-3.5 p-[2px] rounded-2xl bg-gradient-to-b from-red-500/50 via-red-200/40 to-gray-200/60 group-hover:from-red-600 group-hover:via-red-400 group-hover:to-red-600 transition-all duration-500 z-30">
               <div className="bg-white/95 backdrop-blur-md rounded-[14px] p-3.5 sm:p-4 text-left">
                 <span className="text-[10px] font-bold text-red-600 tracking-wider uppercase mb-0.5 block">
                   {member.role}
@@ -132,13 +132,13 @@ export default function TeamSection({ limit, showSeeMore = false }) {
 
       {/* See More / View All CTA Button */}
       {showSeeMore && (
-        <div className="mt-6 sm:mt-8 flex justify-center px-4">
+        <div className="mt-2 sm:mt-8 flex justify-center px-4 w-full">
           <Link
             href="/about-us"
-            className="inline-flex items-center gap-2.5 px-7 py-3.5 rounded-full bg-gradient-to-r from-red-600 to-red-500 hover:from-red-700 hover:to-red-600 text-white font-medium text-sm transition-all duration-300 shadow-md shadow-red-500/25 hover:shadow-lg hover:shadow-red-500/35 hover:scale-[1.03] active:scale-[0.98] group"
+            className="inline-flex items-center justify-center gap-2 px-5 min-[360px]:px-7 py-2.5 min-[360px]:py-3.5 rounded-full bg-gradient-to-r from-red-600 to-red-500 hover:from-red-700 hover:to-red-600 text-white font-medium text-xs min-[360px]:text-sm transition-all duration-300 shadow-md shadow-red-500/25 hover:shadow-lg hover:shadow-red-500/35 hover:scale-[1.03] active:scale-[0.98] group max-w-full truncate"
           >
-            <span>See More Members</span>
-            <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform duration-300" />
+            <span className="truncate">See More Members</span>
+            <ArrowRight className="w-4 h-4 shrink-0 group-hover:translate-x-1 transition-transform duration-300" />
           </Link>
         </div>
       )}

@@ -17,29 +17,29 @@ export default function GetInTouchSection() {
         <p className="text-sm sm:text-base text-gray-500 font-poppins font-light max-w-xl mx-auto mb-8 sm:mb-10 leading-relaxed">
           Have a custom project or need a pre-built solution? Reach out to us, and we&apos;ll help you bring your vision to life.
         </p>
-        <div className="flex flex-col sm:flex-row justify-center items-center gap-4">
+        <div className="flex flex-col sm:flex-row justify-center items-center gap-3 sm:gap-4 w-full max-w-md sm:max-w-none mx-auto">
           <a
             href="mailto:info@texwebsolution.in"
-            className="w-full sm:w-auto px-7 py-3 bg-red-600 text-white font-semibold rounded-full hover:bg-red-700 transition-colors shadow-md shadow-red-600/15 text-center flex items-center justify-center gap-2"
+            className="w-full sm:w-auto px-5 sm:px-7 py-2.5 sm:py-3 bg-red-600 text-white font-semibold text-xs min-[360px]:text-sm rounded-full hover:bg-red-700 transition-colors shadow-md shadow-red-600/15 text-center flex items-center justify-center gap-2 max-w-full truncate"
           >
-            <Mail className="w-4 h-4" />
-            <span>Email Us</span>
+            <Mail className="w-4 h-4 shrink-0" />
+            <span className="truncate">Email Us</span>
           </a>
           <a
             href="https://wa.me/+917462827259"
             target="_blank"
             rel="noopener noreferrer"
-            className="w-full sm:w-auto px-7 py-3 bg-white text-gray-800 font-semibold border border-gray-200 rounded-full hover:border-green-600 hover:text-green-600 hover:bg-green-50/20 transition-all shadow-sm text-center flex items-center justify-center gap-2.5"
+            className="w-full sm:w-auto px-5 sm:px-7 py-2.5 sm:py-3 bg-white text-gray-800 font-semibold text-xs min-[360px]:text-sm border border-gray-200 rounded-full hover:border-green-600 hover:text-green-600 hover:bg-green-50/20 transition-all shadow-sm text-center flex items-center justify-center gap-2.5 max-w-full truncate"
           >
-            <Image width={64} height={64} src="https://qfbsszbgmipbercujiak.supabase.co/storage/v1/object/public/site-assets/common/WhatsApp.svg" alt="WhatsApp" className="w-5 h-5 object-contain" />
-            <span>Chat on WhatsApp</span>
+            <Image width={64} height={64} src="https://qfbsszbgmipbercujiak.supabase.co/storage/v1/object/public/site-assets/common/WhatsApp.svg" alt="WhatsApp" className="w-4 h-4 object-contain shrink-0" />
+            <span className="truncate">Chat on WhatsApp</span>
           </a>
           <a
             href="tel:07554601839"
-            className="w-full sm:w-auto px-7 py-3 bg-white text-gray-800 font-semibold border border-gray-200 rounded-full hover:border-blue-600 hover:text-blue-600 hover:bg-blue-50/20 transition-all shadow-sm text-center flex items-center justify-center gap-2"
+            className="w-full sm:w-auto px-5 sm:px-7 py-2.5 sm:py-3 bg-white text-gray-800 font-semibold text-xs min-[360px]:text-sm border border-gray-200 rounded-full hover:border-blue-600 hover:text-blue-600 hover:bg-blue-50/20 transition-all shadow-sm text-center flex items-center justify-center gap-2 max-w-full truncate"
           >
-            <PhoneCall className="w-4 h-4 text-blue-600" />
-            <span>Call: 0755-4601839</span>
+            <PhoneCall className="w-4 h-4 text-blue-600 shrink-0" />
+            <span className="truncate">Call: 0755-4601839</span>
           </a>
         </div>
       </div>

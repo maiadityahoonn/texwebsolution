@@ -91,27 +91,27 @@ export default function HomePricingSection() {
         <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-8 sm:mb-10">
           
           {/* Monthly / Yearly Switch */}
-          <div className="inline-flex p-1.5 bg-neutral-100 border border-gray-200 rounded-full shadow-inner gap-1">
+          <div className="inline-flex p-1 min-[360px]:p-1.5 bg-neutral-100 border border-gray-200 rounded-full shadow-inner gap-1 max-w-full">
             <button
               onClick={() => setSelectedBilling("monthly")}
-              className={`px-5 py-2 rounded-full text-xs sm:text-sm font-bold transition-all duration-300 ${
+              className={`px-3 min-[360px]:px-5 py-1.5 min-[360px]:py-2 rounded-full text-[11px] min-[360px]:text-xs sm:text-sm font-bold transition-all duration-300 truncate ${
                 selectedBilling === "monthly"
                   ? "bg-white text-gray-950 shadow-md shadow-black/5"
                   : "text-gray-600 hover:text-black"
               }`}
             >
-              Monthly Billing
+              <span className="truncate">Monthly Billing</span>
             </button>
             <button
               onClick={() => setSelectedBilling("yearly")}
-              className={`px-5 py-2 rounded-full text-xs sm:text-sm font-bold transition-all duration-300 flex items-center gap-1.5 ${
+              className={`px-3 min-[360px]:px-5 py-1.5 min-[360px]:py-2 rounded-full text-[11px] min-[360px]:text-xs sm:text-sm font-bold transition-all duration-300 flex items-center gap-1 min-[360px]:gap-1.5 truncate ${
                 selectedBilling === "yearly"
                   ? "bg-red-600 text-white shadow-md shadow-red-600/30"
                   : "text-gray-600 hover:text-black"
               }`}
             >
-              <span>Yearly Offer</span>
-              <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-full ${
+              <span className="truncate">Yearly Offer</span>
+              <span className={`text-[9px] min-[360px]:text-[10px] font-black uppercase px-1.5 min-[360px]:px-2 py-0.5 rounded-full shrink-0 ${
                 selectedBilling === "yearly" ? "bg-white text-red-600" : "bg-emerald-100 text-emerald-700"
               }`}>
                 2 Mos Free
@@ -215,11 +215,11 @@ export default function HomePricingSection() {
                 href={getWhatsAppLink("Basic", "basic")}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="w-full py-3.5 px-6 rounded-2xl bg-gray-900 text-white font-semibold text-center text-sm hover:bg-red-600 transition-all duration-300 shadow-md hover:shadow-red-600/20 flex items-center justify-center gap-2 group"
+                className="w-full py-3 min-[360px]:py-3.5 px-3 min-[360px]:px-6 rounded-2xl bg-gray-900 text-white font-semibold text-center text-xs min-[360px]:text-sm hover:bg-red-600 transition-all duration-300 shadow-md hover:shadow-red-600/20 flex items-center justify-center gap-2 group min-w-0"
               >
                 <Image width={64} height={64} src="https://qfbsszbgmipbercujiak.supabase.co/storage/v1/object/public/site-assets/common/WhatsApp.svg" alt="WhatsApp" className="w-4 h-4 object-contain shrink-0" />
-                <span>Start Basic at {activePlans.basic.display}{selectedBilling === "yearly" ? "/yr" : "/mo"}</span>
-                <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                <span className="truncate">Start Basic at {activePlans.basic.display}{selectedBilling === "yearly" ? "/yr" : "/mo"}</span>
+                <ArrowRight className="w-4 h-4 shrink-0 group-hover:translate-x-1 transition-transform" />
               </a>
             </div>
           </div>
@@ -310,11 +310,11 @@ export default function HomePricingSection() {
                 href={getWhatsAppLink("Standard", "standard")}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="w-full py-4 px-6 rounded-2xl bg-red-600 text-white font-semibold text-center text-sm hover:bg-red-700 transition-all duration-300 shadow-lg shadow-red-600/30 flex items-center justify-center gap-2 group"
+                className="w-full py-3.5 min-[360px]:py-4 px-3 min-[360px]:px-6 rounded-2xl bg-red-600 text-white font-semibold text-center text-xs min-[360px]:text-sm hover:bg-red-700 transition-all duration-300 shadow-lg shadow-red-600/30 flex items-center justify-center gap-2 group min-w-0"
               >
                 <Image width={64} height={64} src="https://qfbsszbgmipbercujiak.supabase.co/storage/v1/object/public/site-assets/common/WhatsApp.svg" alt="WhatsApp" className="w-4 h-4 object-contain shrink-0" />
-                <span>Get Standard at {activePlans.standard.display}{selectedBilling === "yearly" ? "/yr" : "/mo"}</span>
-                <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                <span className="truncate">Get Standard at {activePlans.standard.display}{selectedBilling === "yearly" ? "/yr" : "/mo"}</span>
+                <ArrowRight className="w-4 h-4 shrink-0 group-hover:translate-x-1 transition-transform" />
               </a>
             </div>
           </div>
@@ -395,11 +395,11 @@ export default function HomePricingSection() {
                 href={getWhatsAppLink("Premium", "premium")}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="w-full py-3.5 px-6 rounded-2xl bg-gray-900 text-white font-semibold text-center text-sm hover:bg-red-600 transition-all duration-300 shadow-md hover:shadow-red-600/20 flex items-center justify-center gap-2 group"
+                className="w-full py-3 min-[360px]:py-3.5 px-3 min-[360px]:px-6 rounded-2xl bg-gray-900 text-white font-semibold text-center text-xs min-[360px]:text-sm hover:bg-red-600 transition-all duration-300 shadow-md hover:shadow-red-600/20 flex items-center justify-center gap-2 group min-w-0"
               >
                 <Image width={64} height={64} src="https://qfbsszbgmipbercujiak.supabase.co/storage/v1/object/public/site-assets/common/WhatsApp.svg" alt="WhatsApp" className="w-4 h-4 object-contain shrink-0" />
-                <span>Start Premium at {activePlans.premium.display}{selectedBilling === "yearly" ? "/yr" : "/mo"}</span>
-                <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                <span className="truncate">Start Premium at {activePlans.premium.display}{selectedBilling === "yearly" ? "/yr" : "/mo"}</span>
+                <ArrowRight className="w-4 h-4 shrink-0 group-hover:translate-x-1 transition-transform" />
               </a>
             </div>
           </div>
@@ -407,13 +407,13 @@ export default function HomePricingSection() {
         </div>
 
         {/* See More / View All Pricing Plans CTA Button */}
-        <div className="flex items-center justify-center pt-2">
+        <div className="flex items-center justify-center pt-2 px-4 w-full">
           <Link
             href="/pricing"
-            className="inline-flex items-center gap-2.5 px-8 py-4 rounded-full bg-red-600 hover:bg-red-700 text-white font-semibold text-sm sm:text-base transition-all duration-300 shadow-lg shadow-red-600/25 hover:shadow-xl hover:shadow-red-600/35 hover:scale-105 active:scale-95 group"
+            className="inline-flex items-center justify-center gap-2 px-5 min-[360px]:px-8 py-3 min-[360px]:py-4 rounded-full bg-red-600 hover:bg-red-700 text-white font-semibold text-xs min-[360px]:text-sm sm:text-base transition-all duration-300 shadow-lg shadow-red-600/25 hover:shadow-xl hover:shadow-red-600/35 hover:scale-105 active:scale-95 group max-w-full truncate"
           >
-            <span>See More Plans &amp; Comparison Table</span>
-            <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform duration-300" />
+            <span className="truncate">See More Plans &amp; Comparison Table</span>
+            <ArrowRight className="w-4 h-4 shrink-0 group-hover:translate-x-1 transition-transform duration-300" />
           </Link>
         </div>
 

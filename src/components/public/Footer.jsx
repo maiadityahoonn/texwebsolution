@@ -43,7 +43,7 @@ export default function Footer() {
 
   return (
     <footer className="relative border-t border-gray-200 overflow-hidden w-full bg-cover bg-center" style={{ fontFamily: "Matter" }}>
-      <div className="relative z-10 max-w-7xl mx-auto px-3 sm:px-4 lg:px-5 py-16">
+      <div className="relative z-10 max-w-7xl mx-auto px-3 sm:px-4 lg:px-5 pt-6 sm:pt-10 lg:pt-14 pb-12 sm:pb-16">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-10 lg:gap-12 items-start">
           {/* Newsletter / Contact Section */}
           <div className="flex flex-col justify-center space-y-6">

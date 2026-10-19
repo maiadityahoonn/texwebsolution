@@ -114,19 +114,19 @@ export default function FeaturesSection() {
           >
             <Link
               href={item.link}
-              className="group bg-white/95 backdrop-blur-xl flex flex-col justify-between rounded-[22.5px] overflow-hidden p-4 sm:p-5 h-full transition-all duration-500 hover:-translate-y-1"
+              className="group bg-white/95 backdrop-blur-xl flex flex-col justify-between rounded-[22.5px] overflow-hidden p-0 sm:p-5 h-full transition-all duration-500 hover:-translate-y-1"
             >
               <div>
-                {/* Balanced Thumbnail Container */}
-                <div className={`relative w-full h-32 sm:h-36 rounded-xl overflow-hidden bg-gradient-to-br from-neutral-50 to-neutral-100/70 p-2.5 flex items-center justify-center mb-3.5 transition-all duration-500 ${item.imgBgHover}`}>
+                {/* Full width image on mobile, balanced thumbnail container on desktop */}
+                <div className={`relative w-full aspect-[4/3] sm:aspect-auto sm:h-36 sm:rounded-xl overflow-hidden bg-gradient-to-br from-neutral-50 to-neutral-100/70 p-0 sm:p-2.5 flex items-center justify-center sm:mb-3.5 transition-all duration-500 ${item.imgBgHover}`}>
                   <Image width={800} height={600}
                     alt={item.title}
-                    className="max-h-full max-w-full object-contain rounded-lg transition-transform duration-500 group-hover:scale-105"
+                    className="w-full h-full object-cover sm:object-contain sm:rounded-lg transition-transform duration-500 group-hover:scale-105"
                     src={item.image}
                   />
                 </div>
 
-                <div className="w-full text-left px-0.5">
+                <div className="w-full text-left px-2.5 pt-3 pb-2 sm:p-0 sm:px-0.5">
                   {/* Refined chip badge */}
                   <span className={`inline-block px-2.5 py-0.5 text-xs font-semibold font-[Matter] border rounded-full uppercase tracking-wider mb-2 ${item.badgeClass}`}>
                     {item.badge}
@@ -145,10 +145,12 @@ export default function FeaturesSection() {
               </div>
 
               {/* Bottom Action Link */}
-              <div className="w-full text-left px-0.5 mt-3.5 pt-3 border-t border-gray-100">
-                <div className={`flex items-center gap-1.5 text-xs sm:text-sm font-semibold ${item.accentColor} transition-colors duration-300`}>
-                  <span>{item.linkText}</span>
-                  <ArrowRight className="w-3.5 h-3.5 transition-transform duration-300 group-hover:translate-x-1" />
+              <div className="w-full text-left px-2.5 pb-3 pt-0 sm:p-0 sm:px-0.5 sm:mt-3.5 sm:pt-3 sm:border-t sm:border-gray-100">
+                <div className="pt-2.5 border-t border-gray-100 sm:pt-0 sm:border-0">
+                  <div className={`flex items-center gap-1.5 text-xs sm:text-sm font-semibold ${item.accentColor} transition-colors duration-300`}>
+                    <span>{item.linkText}</span>
+                    <ArrowRight className="w-3.5 h-3.5 transition-transform duration-300 group-hover:translate-x-1" />
+                  </div>
                 </div>
               </div>
             </Link>

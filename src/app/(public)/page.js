@@ -165,7 +165,7 @@ export default function Home() {
         {/* Hero Section */}
         <div className="flex flex-col items-center text-center px-4 justify-start bg-transparent pt-1 sm:pt-2 pb-6 sm:pb-8">
           <h1 className="sr-only">TexWeb Solution - Tailor-Made Website, Mobile App Development & Digital Marketing Agency</h1>
-          <div className="relative w-full mx-auto -mt-1 sm:-mt-2 md:-mt-3 px-4 sm:px-8 max-w-full md:max-w-3xl lg:max-w-[740px]">
+          <div className="relative w-full mx-auto -mt-2.5 min-[375px]:-mt-3 sm:-mt-2.5 md:-mt-3 px-4 sm:px-8 max-w-full md:max-w-3xl lg:max-w-[740px]">
             <Image width={800} height={600}
               alt="TexWeb Solution - Custom Website and Mobile App Development Agency"
               className="w-full h-auto object-contain"
@@ -182,21 +182,21 @@ export default function Home() {
             </div>
           )}
 
-          <div className="flex space-x-3 sm:space-x-4 mt-1 sm:mt-2 lg:mt-2.5 z-10">
-            <Link href="/customized/websites">
+          <div className="flex space-x-2 min-[360px]:space-x-2.5 sm:space-x-4 mt-1 sm:mt-2 lg:mt-2.5 z-10 max-w-full px-2">
+            <Link href="/customized/websites" className="min-w-0">
               <button
-                className="w-32 py-3.5 text-sm sm:w-44 sm:text-base lg:py-4 bg-red-600 text-white rounded-full transition-transform hover:scale-105 hover:bg-red-700 shadow-md shadow-red-600/15"
+                className="w-[110px] min-[360px]:w-28 min-[375px]:w-[118px] py-2 min-[375px]:py-2.5 text-[11px] min-[360px]:text-xs min-[375px]:text-[13px] sm:w-44 sm:py-3.5 sm:text-base lg:py-4 bg-red-600 text-white rounded-full transition-transform hover:scale-105 hover:bg-red-700 shadow-md shadow-red-600/15 truncate px-2"
                 style={{ fontFamily: "Matter", fontWeight: 500 }}
               >
-                {cmsHero?.cta?.replace(/&apos;/g, "'") || "Let's Explore"}
+                <span className="truncate block">{cmsHero?.cta?.replace(/&apos;/g, "'") || "Let's Explore"}</span>
               </button>
             </Link>
-            <Link href="/contact">
+            <Link href="/contact" className="min-w-0">
               <button
-                className="w-32 py-3.5 text-sm sm:w-44 sm:text-base lg:py-4 bg-white text-black rounded-full border border-gray-300 transition-transform hover:scale-105 hover:bg-red-50/20 hover:border-red-600 hover:text-red-600"
+                className="w-[110px] min-[360px]:w-28 min-[375px]:w-[118px] py-2 min-[375px]:py-2.5 text-[11px] min-[360px]:text-xs min-[375px]:text-[13px] sm:w-44 sm:py-3.5 sm:text-base lg:py-4 bg-white text-black rounded-full border border-gray-300 transition-transform hover:scale-105 hover:bg-red-50/20 hover:border-red-600 hover:text-red-600 truncate px-2"
                 style={{ fontFamily: "Matter", fontWeight: 500 }}
               >
-                Contact Us
+                <span className="truncate block">Contact Us</span>
               </button>
             </Link>
           </div>
@@ -284,7 +284,7 @@ export default function Home() {
                       </div>
 
                       {/* Content Section */}
-                      <div className="p-6 flex flex-col flex-grow">
+                      <div className="px-3.5 py-4 sm:p-6 flex flex-col flex-grow">
                         {/* Tags */}
                         <div className="flex flex-wrap gap-1.5 mb-3.5">
                           {project.tags.map((tag) => (
@@ -320,11 +320,11 @@ export default function Home() {
           </div>
 
           {/* View All CTA */}
-          <div className="flex justify-center mt-8 sm:mt-10">
-            <Link href="/customized/websites" className="relative inline-flex items-center group">
-              <button className="relative z-10 px-8 py-3.5 bg-red-600 text-white rounded-full text-sm font-semibold hover:bg-red-700 shadow-md shadow-red-600/15 hover:shadow-lg hover:shadow-red-600/25 hover:scale-105 transition-all duration-300 flex items-center gap-2 transform">
-                View All Projects
-                <svg className="w-4 h-4 transform group-hover:translate-x-1 transition-transform duration-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+          <div className="flex justify-center mt-8 sm:mt-10 px-4 w-full">
+            <Link href="/customized/websites" className="relative inline-flex items-center group max-w-full">
+              <button className="relative z-10 px-6 sm:px-8 py-3 sm:py-3.5 bg-red-600 text-white rounded-full text-xs min-[360px]:text-sm font-semibold hover:bg-red-700 shadow-md shadow-red-600/15 hover:shadow-lg hover:shadow-red-600/25 hover:scale-105 transition-all duration-300 flex items-center justify-center gap-2 transform max-w-full truncate">
+                <span className="truncate">View All Projects</span>
+                <svg className="w-4 h-4 shrink-0 transform group-hover:translate-x-1 transition-transform duration-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M14 5l7 7m0 0l-7 7m7-7H3" />
                 </svg>
               </button>

@@ -86,21 +86,21 @@ export default function PrebuiltSection() {
 
                   <div className="flex justify-center md:justify-start">
                     {product.buttonLink.startsWith("http") ? (
-                      <a href={safeExternalUrl(product.buttonLink)} target="_blank" rel="noopener noreferrer">
+                      <a href={safeExternalUrl(product.buttonLink)} target="_blank" rel="noopener noreferrer" className="max-w-full min-w-0">
                         <button 
-                          className="px-6 py-2 bg-red-600 text-white rounded-full shadow-md hover:scale-[1.05] hover:bg-red-700 active:scale-[0.96] transition-all duration-100 shadow-red-600/10" 
+                          className="px-5 min-[360px]:px-6 py-2 bg-red-600 text-white rounded-full shadow-md hover:scale-[1.05] hover:bg-red-700 active:scale-[0.96] transition-all duration-100 shadow-red-600/10 max-w-full truncate text-xs min-[360px]:text-sm" 
                           style={{ fontFamily: "Matter" }}
                         >
-                          {product.buttonText}
+                          <span className="truncate">{product.buttonText}</span>
                         </button>
                       </a>
                     ) : (
-                      <Link href={safeInternalPath(product.buttonLink, "/contact")}>
+                      <Link href={safeInternalPath(product.buttonLink, "/contact")} className="max-w-full min-w-0">
                         <button 
-                          className="px-6 py-2 bg-red-600 text-white rounded-full shadow-md hover:scale-[1.05] hover:bg-red-700 active:scale-[0.96] transition-all duration-100 shadow-red-600/10" 
+                          className="px-5 min-[360px]:px-6 py-2 bg-red-600 text-white rounded-full shadow-md hover:scale-[1.05] hover:bg-red-700 active:scale-[0.96] transition-all duration-100 shadow-red-600/10 max-w-full truncate text-xs min-[360px]:text-sm" 
                           style={{ fontFamily: "Matter" }}
                         >
-                          {product.buttonText}
+                          <span className="truncate">{product.buttonText}</span>
                         </button>
                       </Link>
                     )}
