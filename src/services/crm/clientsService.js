@@ -28,30 +28,7 @@ export async function getClients() {
     return data || [];
   } catch (err) {
     console.warn('Fallback: getClients from cache:', err.message);
-    return readLocalCache(LOCAL_CLIENTS_KEY, [
-      {
-        id: 'client-001',
-        name: 'Apex Digital Labs',
-        company_name: 'Apex Global Enterprises',
-        email: 'contact@apexdigital.io',
-        phone: '+91 98765 43210',
-        website: 'https://apexdigital.io',
-        industry: 'Technology & SaaS',
-        status: 'active',
-        created_at: new Date(Date.now() - 7 * 86400000).toISOString(),
-      },
-      {
-        id: 'client-002',
-        name: 'Zenith Healthtech',
-        company_name: 'Zenith Care Solutions',
-        email: 'info@zenithhealth.com',
-        phone: '+91 91234 56789',
-        website: 'https://zenithhealth.com',
-        industry: 'Healthcare',
-        status: 'active',
-        created_at: new Date(Date.now() - 3 * 86400000).toISOString(),
-      },
-    ]);
+    return readLocalCache(LOCAL_CLIENTS_KEY, []);
   }
 }
 

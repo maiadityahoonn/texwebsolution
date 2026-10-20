@@ -8,6 +8,7 @@ import FollowUpsView from "../followups/FollowUpsView";
 import MeetingsView from "../meetings/MeetingsView";
 import ReportsView from "../reports/ReportsView";
 import DashboardView from "../dashboard/DashboardView";
+import ClientsView from "../clients/ClientsView";
 
 export default function CrmWorkspaceViewSwitch({
   viewMode,
@@ -371,6 +372,14 @@ export default function CrmWorkspaceViewSwitch({
       );
 
     case "clients":
+      return (
+        <ClientsView
+          clients={clients}
+          deals={deals}
+          onOpenDirectWhatsapp={onOpenDirectWhatsapp}
+        />
+      );
+
     default:
       return (
         <LeadsView
