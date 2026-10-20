@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useRef, useState } from "react";
+import React, { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -9,9 +9,9 @@ import {
   Calendar,
   CreditCard,
   FileText,
-  Grid,
   Home,
   MessageSquare,
+  MoreHorizontal,
   Phone,
   Settings,
   ShieldCheck,
@@ -23,11 +23,47 @@ import {
 } from "lucide-react";
 
 /**
- * Exact sequence, button tabs, names and icons matching desktop/laptop CrmSidebar.jsx:
+ * Primary 4 tabs on the fixed mobile bottom bar:
  * 1. Dashboard
  * 2. Leads
  * 3. Sales Pipeline
  * 4. Follow-ups
+ * 5. More (opens drawer)
+ */
+export const PRIMARY_BOTTOM_NAV = [
+  {
+    key: "dashboard",
+    href: "/crm/dashboard",
+    section: "overview",
+    label: "Dashboard",
+    icon: Home,
+  },
+  {
+    key: "leads",
+    href: "/crm/leads",
+    section: "crm",
+    label: "Leads",
+    icon: Target,
+  },
+  {
+    key: "pipeline",
+    href: "/crm/pipeline",
+    section: "pipeline",
+    label: "Sales Pipeline",
+    icon: TrendingUp,
+  },
+  {
+    key: "followups",
+    href: "/crm/followups",
+    section: "sales_followups",
+    label: "Follow-ups",
+    icon: Phone,
+  },
+];
+
+/**
+ * Remaining modules placed inside the "More" drawer,
+ * following the exact desktop sidebar sequence & naming:
  * 5. Meetings
  * 6. Quotation
  * 7. Agreements
@@ -38,43 +74,7 @@ import {
  * 12. Team Chat
  * 13. Profile & Settings
  */
-export const CRM_SIDEBAR_SEQUENCE = [
-  {
-    key: "dashboard",
-    href: "/crm/dashboard",
-    section: "overview",
-    label: "Dashboard",
-    icon: Home,
-    color: "#dc2626",
-    iconClass: "text-red-500",
-  },
-  {
-    key: "leads",
-    href: "/crm/leads",
-    section: "crm",
-    label: "Leads",
-    icon: Target,
-    color: "#ea580c",
-    iconClass: "text-orange-500",
-  },
-  {
-    key: "pipeline",
-    href: "/crm/pipeline",
-    section: "pipeline",
-    label: "Sales Pipeline",
-    icon: TrendingUp,
-    color: "#4f46e5",
-    iconClass: "text-emerald-500",
-  },
-  {
-    key: "followups",
-    href: "/crm/followups",
-    section: "sales_followups",
-    label: "Follow-ups",
-    icon: Phone,
-    color: "#0d9488",
-    iconClass: "text-teal-600 dark:text-teal-400",
-  },
+export const MORE_BOTTOM_NAV = [
   {
     key: "meetings",
     href: "/crm/meetings",
@@ -82,7 +82,7 @@ export const CRM_SIDEBAR_SEQUENCE = [
     label: "Meetings",
     icon: Calendar,
     color: "#2563eb",
-    iconClass: "text-cyan-500",
+    iconClass: "text-blue-500",
   },
   {
     key: "quotation",
@@ -91,7 +91,7 @@ export const CRM_SIDEBAR_SEQUENCE = [
     label: "Quotation",
     icon: FileText,
     color: "#0284c7",
-    iconClass: "text-orange-500",
+    iconClass: "text-cyan-500",
   },
   {
     key: "agreements",
@@ -100,7 +100,7 @@ export const CRM_SIDEBAR_SEQUENCE = [
     label: "Agreements",
     icon: ShieldCheck,
     color: "#9333ea",
-    iconClass: "text-indigo-500",
+    iconClass: "text-purple-500",
   },
   {
     key: "invoices",
@@ -109,7 +109,7 @@ export const CRM_SIDEBAR_SEQUENCE = [
     label: "Invoices",
     icon: CreditCard,
     color: "#d97706",
-    iconClass: "text-emerald-500",
+    iconClass: "text-amber-500",
   },
   {
     key: "payments",
@@ -118,7 +118,7 @@ export const CRM_SIDEBAR_SEQUENCE = [
     label: "Payments",
     icon: Wallet,
     color: "#059669",
-    iconClass: "text-lime-600",
+    iconClass: "text-emerald-500",
   },
   {
     key: "clients",
@@ -127,7 +127,7 @@ export const CRM_SIDEBAR_SEQUENCE = [
     label: "Clients",
     icon: Building2,
     color: "#e11d48",
-    iconClass: "text-blue-500",
+    iconClass: "text-rose-500",
   },
   {
     key: "reports",
@@ -153,99 +153,82 @@ export const CRM_SIDEBAR_SEQUENCE = [
     section: "settings",
     label: "Profile & Settings",
     icon: Settings,
-    color: "#334155",
-    iconClass: "text-slate-600 dark:text-slate-400",
+    color: "#475569",
+    iconClass: "text-slate-500",
   },
 ];
 
 export default function CrmMobileNav({
-  activeSection,
-  chatMobilePane,
-  isDark,
+  activeSection = "crm",
+  chatMobilePane = "channels",
+  isDark = false,
   unreadCount = 0,
 }) {
   const pathname = usePathname() || "";
-  const navScrollRef = useRef(null);
-  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [mobileMoreOpen, setMobileMoreOpen] = useState(false);
+  const isChatOpen = activeSection === "chat" && chatMobilePane === "chat";
 
-  const isChatOpen = (activeSection === "chat" || pathname.startsWith("/crm/chat")) && chatMobilePane === "chat";
+  function checkIsActive(item) {
+    if (!item?.href) return false;
+    if (pathname === item.href) return true;
+    if (item.href === "/crm/dashboard") return pathname === "/crm" || pathname === "/crm/dashboard";
+    if (item.href === "/crm/leads") return pathname.startsWith("/crm/leads");
+    if (item.href === "/crm/pipeline") return pathname.startsWith("/crm/pipeline");
+    if (item.href === "/crm/followups") return pathname.startsWith("/crm/followups");
+    return pathname.startsWith(item.href);
+  }
 
-  // Check if a specific nav item is active
-  const checkIsActive = (item) => {
-    if (item.href === "/crm/dashboard") {
-      return pathname === "/crm/dashboard" || activeSection === "overview";
-    }
-    if (item.href === "/crm/leads") {
-      return pathname === "/crm/leads" || pathname === "/crm" || activeSection === "crm";
-    }
-    return pathname === item.href || pathname.startsWith(item.href + "/") || activeSection === item.section;
-  };
-
-  // Automatically scroll the active tab to center when route changes
-  useEffect(() => {
-    if (!navScrollRef.current) return;
-    const activeBtn = navScrollRef.current.querySelector("[data-active='true']");
-    if (activeBtn) {
-      activeBtn.scrollIntoView({ inline: "center", behavior: "smooth", block: "nearest" });
-    }
-  }, [pathname, activeSection]);
-
-  if (isChatOpen) return null;
+  const isMoreActive =
+    mobileMoreOpen || MORE_BOTTOM_NAV.some((item) => checkIsActive(item));
 
   return (
     <>
-      {/* 1. All-Tabs Quick Grid Drawer (opened by the Grid button) */}
-      {drawerOpen && (
+      {/* "More" Slide-up Modal Drawer */}
+      {mobileMoreOpen && (
         <div className="fixed inset-0 z-50 md:hidden flex flex-col justify-end">
-          {/* Backdrop */}
+          {/* Backdrop Overlay */}
           <div
-            className="fixed inset-0 bg-black/60 backdrop-blur-xs transition-opacity cursor-pointer animate-fadeIn"
-            onClick={() => setDrawerOpen(false)}
-            aria-label="Close menu"
+            className="fixed inset-0 bg-black/60 backdrop-blur-xs transition-opacity animate-in fade-in duration-200"
+            onClick={() => setMobileMoreOpen(false)}
+            aria-hidden="true"
           />
 
-          {/* Drawer Container */}
+          {/* Drawer Sheet */}
           <div
-            className={`relative w-full max-h-[85dvh] rounded-t-[28px] border-t shadow-2xl flex flex-col z-10 overflow-hidden ${
+            className={`relative z-10 w-full max-h-[82vh] flex flex-col rounded-t-3xl shadow-2xl transition-all border-t ${
               isDark
                 ? "bg-[#111113] border-neutral-800 text-neutral-100"
-                : "bg-white border-gray-200 text-gray-900 shadow-black/20"
+                : "bg-white border-gray-200 text-gray-900"
             }`}
-            style={{
-              paddingBottom: "calc(env(safe-area-inset-bottom) + 1rem)",
-            }}
           >
-            {/* Pull Bar */}
-            <div
-              className="pt-3 pb-1.5 flex justify-center shrink-0 cursor-pointer"
-              onClick={() => setDrawerOpen(false)}
-            >
-              <div className="w-11 h-1.5 rounded-full bg-gray-300 dark:bg-neutral-700" />
+            {/* Grab Handle */}
+            <div className="w-full flex items-center justify-center pt-3 pb-1">
+              <span className="w-10 h-1 rounded-full bg-gray-300 dark:bg-neutral-700" />
             </div>
 
             {/* Header */}
-            <div className="px-5 pt-1 pb-3 flex items-center justify-between border-b border-gray-100 dark:border-neutral-800/80 shrink-0">
+            <div className="flex items-center justify-between px-5 py-3 border-b border-gray-100 dark:border-neutral-800/80">
               <div>
-                <span className="text-[11px] font-extrabold tracking-widest uppercase text-gray-400 dark:text-neutral-500 font-sans block">
-                  CRM WORKSPACE NAVIGATION
-                </span>
-                <span className="text-sm font-black text-gray-900 dark:text-white">
-                  All 13 Modules
-                </span>
+                <h3 className="text-base font-black tracking-tight text-gray-900 dark:text-white font-[Matter]">
+                  More Modules
+                </h3>
+                <p className="text-[11px] text-gray-500 dark:text-neutral-400 mt-0.5">
+                  All modules, tools & settings
+                </p>
               </div>
               <button
                 type="button"
-                onClick={() => setDrawerOpen(false)}
-                className="w-8 h-8 rounded-full flex items-center justify-center text-gray-400 hover:text-gray-700 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-neutral-800 transition cursor-pointer"
+                onClick={() => setMobileMoreOpen(false)}
+                className="w-8 h-8 rounded-full flex items-center justify-center border border-gray-200 dark:border-neutral-700 hover:bg-gray-100 dark:hover:bg-neutral-800 transition active:scale-95 cursor-pointer text-gray-500 dark:text-neutral-400"
                 aria-label="Close"
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
 
-            {/* Complete Grid List matching desktop sequence */}
-            <div className="overflow-y-auto flex-1 overscroll-contain p-3 grid grid-cols-2 gap-2 no-scrollbar">
-              {CRM_SIDEBAR_SEQUENCE.map((item, index) => {
+            {/* Modules List */}
+            <div className="overflow-y-auto px-3 py-3 space-y-1 pb-[calc(env(safe-area-inset-bottom)+1.25rem)]">
+              {MORE_BOTTOM_NAV.map((item) => {
                 const Icon = item.icon;
                 const isActive = checkIsActive(item);
 
@@ -253,35 +236,37 @@ export default function CrmMobileNav({
                   <Link
                     key={item.key}
                     href={item.href}
-                    onClick={() => setDrawerOpen(false)}
-                    className={`flex items-center gap-3 p-3 rounded-2xl border transition-all cursor-pointer ${
+                    onClick={() => setMobileMoreOpen(false)}
+                    className={`w-full flex items-center justify-between px-3.5 py-3 rounded-2xl transition-all cursor-pointer ${
                       isActive
-                        ? "border-red-500 bg-red-50/70 dark:bg-red-500/10 text-red-600 dark:text-red-400 shadow-xs font-bold"
-                        : isDark
-                        ? "border-neutral-800/80 bg-neutral-900/40 text-neutral-200 hover:bg-neutral-800/60"
-                        : "border-gray-100 bg-gray-50/70 text-gray-800 hover:bg-gray-100/80"
+                        ? "bg-red-50 text-red-600 dark:bg-red-500/15 dark:text-red-400 font-bold shadow-2xs"
+                        : "text-gray-800 dark:text-neutral-200 hover:bg-gray-50 dark:hover:bg-neutral-800/60 active:scale-[0.99]"
                     }`}
                   >
-                    <div
-                      className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${
-                        isActive
-                          ? "bg-red-600 text-white shadow-xs"
-                          : isDark
-                          ? "bg-neutral-800 text-neutral-300"
-                          : "bg-white text-gray-700 shadow-2xs border border-gray-100"
-                      }`}
-                    >
-                      <Icon className="w-4.5 h-4.5 stroke-[2]" />
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <div className="text-xs font-bold truncate leading-tight">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div
+                        className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${
+                          isActive
+                            ? "bg-red-600 text-white shadow-xs"
+                            : isDark
+                            ? "bg-neutral-800/90 text-neutral-300"
+                            : "bg-gray-100 text-gray-700"
+                        }`}
+                      >
+                        <Icon className="w-4.5 h-4.5 stroke-[2]" />
+                      </div>
+                      <span className="text-sm font-semibold truncate font-[Matter]">
                         {item.label}
-                      </div>
-                      <div className="text-[10px] text-gray-400 dark:text-neutral-500 truncate leading-tight mt-0.5">
-                        #{index + 1} Module
-                      </div>
+                      </span>
                     </div>
-                    <ChevronRight className="w-3.5 h-3.5 text-gray-400 shrink-0" />
+
+                    <ChevronRight
+                      className={`w-4 h-4 shrink-0 transition-transform ${
+                        isActive
+                          ? "text-red-600 dark:text-red-400"
+                          : "text-gray-400 dark:text-neutral-500"
+                      }`}
+                    />
                   </Link>
                 );
               })}
@@ -290,98 +275,106 @@ export default function CrmMobileNav({
         </div>
       )}
 
-      {/* 2. Primary Fixed Bottom Navigation Bar */}
+      {/* Primary Fixed Bottom Navigation (Classic 5-column design) */}
       <nav
-        aria-label="CRM Mobile Footer Navigation"
-        className={`fixed left-0 right-0 bottom-0 z-40 md:hidden border-t transition-colors duration-200 select-none shadow-[0_-4px_20px_-4px_rgba(0,0,0,0.06)] ${
+        className={`${
+          isChatOpen ? "!hidden" : "block"
+        } fixed left-0 right-0 bottom-0 z-40 md:hidden border-t px-1 pt-1 pb-[calc(env(safe-area-inset-bottom)+0.35rem)] transition-colors duration-200 select-none ${
           isDark
-            ? "bg-[#0b0b0c]/95 backdrop-blur-xl border-neutral-800 text-neutral-400"
-            : "bg-white/95 backdrop-blur-xl border-gray-200/90 text-gray-600"
+            ? "bg-[#0b0b0c]/95 backdrop-blur-md border-neutral-800 text-neutral-400"
+            : "bg-white/95 backdrop-blur-md border-gray-200/90 text-gray-600 shadow-lg shadow-black/5"
         }`}
-        style={{
-          paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 0.35rem)",
-        }}
       >
-        <div className="flex items-center justify-between w-full">
-          {/* Scrollable Tabs Container matching Desktop Sidebar sequence 1-to-1 */}
-          <div
-            ref={navScrollRef}
-            className="flex-1 min-w-0 flex items-center overflow-x-auto no-scrollbar scroll-smooth snap-x snap-mandatory py-1 px-1.5 gap-1"
-          >
-            {CRM_SIDEBAR_SEQUENCE.map((item) => {
-              const Icon = item.icon;
-              const isActive = checkIsActive(item);
+        <div className="grid grid-cols-5 items-center">
+          {PRIMARY_BOTTOM_NAV.map((item) => {
+            const Icon = item.icon;
+            const isActive = checkIsActive(item);
 
-              return (
-                <Link
-                  key={item.key}
-                  href={item.href}
-                  data-active={isActive ? "true" : "false"}
-                  className={`min-w-[70px] sm:min-w-[76px] h-13 flex flex-col items-center justify-center gap-0.5 rounded-xl px-1.5 py-1 transition-all shrink-0 snap-center cursor-pointer group ${
+            return (
+              <Link
+                key={item.key}
+                href={item.href}
+                className="relative min-w-0 h-13 flex flex-col items-center justify-center gap-0.5 transition cursor-pointer group"
+                aria-label={item.label}
+                title={item.label}
+              >
+                <div
+                  className={`relative px-3 py-1 rounded-full transition-all duration-200 flex items-center justify-center ${
                     isActive
                       ? isDark
-                        ? "text-red-400 font-extrabold"
-                        : "text-red-600 font-extrabold"
+                        ? "bg-red-500/15 text-red-400 scale-105"
+                        : "bg-red-50 text-red-600 scale-105 shadow-2xs"
                       : isDark
-                      ? "text-neutral-400 hover:text-white"
-                      : "text-gray-500 hover:text-gray-900"
+                      ? "text-neutral-400 group-hover:text-white"
+                      : "text-gray-500 group-hover:text-gray-900"
                   }`}
-                  aria-label={item.label}
-                  title={item.label}
                 >
-                  <div
-                    className={`relative px-2.5 py-1 rounded-full transition-all duration-200 flex items-center justify-center ${
-                      isActive
-                        ? isDark
-                          ? "bg-red-500/15 text-red-400 scale-105"
-                          : "bg-red-50 text-red-600 scale-105 shadow-2xs"
-                        : isDark
-                        ? "text-neutral-400 group-hover:text-white"
-                        : "text-gray-500 group-hover:text-gray-900"
+                  <Icon
+                    className={`w-5 h-5 transition-transform ${
+                      isActive ? "stroke-[2.2]" : "stroke-[1.75]"
                     }`}
-                  >
-                    <Icon
-                      className={`w-4.5 h-4.5 transition-transform ${
-                        isActive ? "stroke-[2.3]" : "stroke-[1.8]"
+                  />
+                  {item.key === "leads" && unreadCount > 0 && (
+                    <span
+                      className={`absolute -top-1 -right-1 min-w-4 h-4 px-1 rounded-full bg-red-600 text-white text-[9px] font-black flex items-center justify-center ring-2 ${
+                        isDark ? "ring-[#0b0b0c]" : "ring-white"
                       }`}
-                    />
-                    {item.key === "chat" && unreadCount > 0 && (
-                      <span
-                        className={`absolute -top-1 -right-1 min-w-3.5 h-3.5 px-0.5 rounded-full bg-red-600 text-white text-[8px] font-black flex items-center justify-center ring-2 ${
-                          isDark ? "ring-[#0b0b0c]" : "ring-white"
-                        }`}
-                      >
-                        {unreadCount > 9 ? "9+" : unreadCount}
-                      </span>
-                    )}
-                  </div>
-                  <span className="w-full text-[9.5px] tracking-tight leading-tight truncate text-center block">
-                    {item.label}
-                  </span>
-                  {isActive && (
-                    <span className="w-1 h-1 rounded-full bg-red-600 dark:bg-red-400 mt-0.5 shrink-0" />
+                    >
+                      {unreadCount > 9 ? "9+" : unreadCount}
+                    </span>
                   )}
-                </Link>
-              );
-            })}
-          </div>
+                </div>
+                <span
+                  className={`w-full px-0.5 text-[10px] truncate text-center transition-colors leading-normal pb-0.5 ${
+                    isActive
+                      ? isDark
+                        ? "font-extrabold text-red-400"
+                        : "font-extrabold text-red-600"
+                      : isDark
+                      ? "font-medium text-neutral-400 group-hover:text-white"
+                      : "font-medium text-gray-500 group-hover:text-gray-900"
+                  }`}
+                >
+                  {item.label}
+                </span>
+              </Link>
+            );
+          })}
 
-          {/* Quick "All Tabs" Drawer Trigger Button on the right edge */}
+          {/* 5th Tab: "More" Trigger */}
           <button
             type="button"
-            onClick={() => setDrawerOpen(true)}
-            aria-label="All Modules Menu"
-            title="All Modules Menu"
-            className={`shrink-0 w-11 h-13 flex flex-col items-center justify-center gap-0.5 border-l px-1 transition-colors cursor-pointer ${
-              isDark
-                ? "border-neutral-800 text-neutral-400 hover:text-white bg-[#0b0b0c]/60"
-                : "border-gray-200 text-gray-500 hover:text-gray-900 bg-gray-50/50"
-            }`}
+            onClick={() => setMobileMoreOpen((prev) => !prev)}
+            className="relative min-w-0 h-13 flex flex-col items-center justify-center gap-0.5 transition cursor-pointer group"
+            aria-label="More Modules"
+            title="More Modules"
           >
-            <div className="p-1 rounded-lg">
-              <Grid className="w-4.5 h-4.5 stroke-[2]" />
+            <div
+              className={`relative px-3 py-1 rounded-full transition-all duration-200 flex items-center justify-center ${
+                isMoreActive
+                  ? isDark
+                    ? "bg-red-500/15 text-red-400 scale-105"
+                    : "bg-red-50 text-red-600 scale-105 shadow-2xs"
+                  : isDark
+                  ? "text-neutral-400 group-hover:text-white"
+                  : "text-gray-500 group-hover:text-gray-900"
+              }`}
+            >
+              <MoreHorizontal className="w-5 h-5 stroke-[2]" />
             </div>
-            <span className="text-[9px] font-bold tracking-tight">All</span>
+            <span
+              className={`w-full px-0.5 text-[10px] truncate text-center transition-colors leading-normal pb-0.5 ${
+                isMoreActive
+                  ? isDark
+                    ? "font-extrabold text-red-400"
+                    : "font-extrabold text-red-600"
+                  : isDark
+                  ? "font-medium text-neutral-400 group-hover:text-white"
+                  : "font-medium text-gray-500 group-hover:text-gray-900"
+              }`}
+            >
+              More
+            </span>
           </button>
         </div>
       </nav>

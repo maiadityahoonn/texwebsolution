@@ -125,11 +125,11 @@ export default function CrmSidebar({
       <div className="admin-sidebar-header h-16 px-4 sm:px-5 flex items-center justify-between border-b border-gray-200/80 dark:border-slate-800/80 shrink-0">
         <Link href="/crm/dashboard" className="admin-sidebar-logo flex items-center group min-w-0">
           <Image
-            width={140}
-            height={38}
+            width={150}
+            height={40}
             alt="TexWeb Solution Logo"
-            src="https://qfbsszbgmipbercujiak.supabase.co/storage/v1/object/public/site-assets/texweb-full-logo-original.png"
-            className="admin-sidebar-full-logo h-8 w-auto max-w-[152px] object-contain shrink-0 group-hover:scale-105 transition-transform"
+            src="https://qfbsszbgmipbercujiak.supabase.co/storage/v1/object/public/site-assets/texweb-brand-logo.png"
+            className="admin-sidebar-full-logo h-8 w-auto max-w-[155px] object-contain shrink-0 group-hover:scale-105 transition-transform dark:bg-white dark:px-2 dark:py-0.5 dark:rounded-xl shadow-2xs"
             style={{ width: "auto" }}
             priority
           />
@@ -174,11 +174,11 @@ export default function CrmSidebar({
           </div>
         </Link>
 
-        {/* CRM & Sales */}
+        {/* Sales & Pipeline */}
         <div className="admin-sidebar-divider border-t border-gray-100 dark:border-slate-800/80 my-2 mx-1" />
         <div className="admin-sidebar-group-header px-3 pt-2 pb-1">
           <span className="admin-sidebar-group-title text-[10px] font-black uppercase tracking-wider text-gray-400 dark:text-neutral-500">
-            CRM & Sales
+            Sales & Pipeline
           </span>
         </div>
 

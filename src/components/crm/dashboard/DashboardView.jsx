@@ -8,6 +8,7 @@ import DashboardRecentLeads from "./DashboardRecentLeads";
 import DashboardSourceBreakdown from "./DashboardSourceBreakdown";
 import DashboardQuickNav from "./DashboardQuickNav";
 import { computeDashboardMetrics } from "./dashboardUtils";
+import { DashboardSkeleton } from "../shared/CrmSkeletons";
 
 export default function DashboardView({
   isReportsLoading = false,
@@ -45,6 +46,10 @@ export default function DashboardView({
       }),
     [leads, deals, followUps, salesMeetings, dateFilter, matchesDateFilter]
   );
+
+  if (isReportsLoading && leads.length === 0 && deals.length === 0 && followUps.length === 0) {
+    return <DashboardSkeleton />;
+  }
 
   return (
     <div className="space-y-4 pb-8">

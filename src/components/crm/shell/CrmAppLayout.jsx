@@ -358,7 +358,7 @@ export default function CrmAppLayout({ children }) {
                   })()}
 
                   <div className="min-w-0 flex-1">
-                    <h1 className="text-lg sm:text-xl font-black tracking-tight text-gray-900 dark:text-white truncate font-[Matter] leading-tight">
+                    <h1 className="text-lg sm:text-xl font-black tracking-tight text-gray-900 dark:text-white truncate font-[Matter] leading-normal py-0.5">
                       {meta.title}
                     </h1>
                     {meta.desc && (
@@ -405,7 +405,41 @@ export default function CrmAppLayout({ children }) {
                 </div>
               </div>
             </header>
-            <div className="p-4 sm:p-6">{children}</div>
+            <div className="p-3 sm:p-4 md:p-6">
+              {/* Mobile Page Sub-Header (Directly below top header) */}
+              {activeSection !== "chat" && (
+                <div className="flex md:hidden items-center justify-between gap-2 mb-3 px-3 py-2 bg-white/95 dark:bg-[#111113]/95 backdrop-blur-md rounded-2xl border border-gray-200/90 dark:border-neutral-800/90 shadow-2xs">
+                  {/* Left: Page Icon & Page Name */}
+                  <div className="flex items-center gap-2 min-w-0 flex-1">
+                    {(() => {
+                      const SubIcon = meta.icon || Target;
+                      const bgColor = meta.color || "#ea580c";
+                      const colorFrom = meta.colorFrom || bgColor;
+                      const colorTo = meta.colorTo || bgColor;
+                      return (
+                        <div
+                          className="w-7 h-7 rounded-lg flex items-center justify-center text-white shrink-0 shadow-2xs"
+                          style={{
+                            backgroundColor: bgColor,
+                            backgroundImage: `linear-gradient(135deg, ${colorFrom}, ${colorTo})`,
+                          }}
+                        >
+                          <SubIcon className="w-4 h-4 stroke-[2.3] text-white" />
+                        </div>
+                      );
+                    })()}
+                    <h1 className="text-base font-black tracking-tight text-gray-900 dark:text-white truncate font-[Matter] leading-normal py-0.5">
+                      {meta.title}
+                    </h1>
+                  </div>
+
+                  {/* Right: Page Actions with Icon & Short Text */}
+                  <div id="crm-mobile-page-actions" className="flex items-center gap-1.5 shrink-0 flex-nowrap" />
+                </div>
+              )}
+
+              {children}
+            </div>
           </main>
         </div>
 

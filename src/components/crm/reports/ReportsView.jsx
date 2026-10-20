@@ -39,6 +39,18 @@ export default function ReportsView({
   openAddDealModal = () => {},
   openLostModal = () => {},
 }) {
+  const overdueFollowUpsCount = Array.isArray(aiInsights?.overdueFollowUps)
+    ? aiInsights.overdueFollowUps.length
+    : typeof aiInsights?.overdueFollowUps === "number"
+    ? aiInsights.overdueFollowUps
+    : 0;
+
+  const staleDealsCount = Array.isArray(aiInsights?.staleDeals)
+    ? aiInsights.staleDeals.length
+    : typeof aiInsights?.staleDeals === "number"
+    ? aiInsights.staleDeals
+    : 0;
+
   if (isReportsLoading) {
     return <ReportsSkeleton />;
   }
@@ -170,10 +182,10 @@ export default function ReportsView({
           </div>
           <div className="flex flex-wrap gap-2 text-[11px] font-bold">
             <span className="px-2.5 py-1 rounded-full bg-red-50 text-red-600">
-              {aiInsights.overdueFollowUps} overdue
+              {overdueFollowUpsCount} overdue
             </span>
             <span className="px-2.5 py-1 rounded-full bg-amber-50 text-amber-600">
-              {aiInsights.staleDeals} stale deals
+              {staleDealsCount} stale deals
             </span>
             {(stats.lostCount > 0 || stats.lostDealsCount > 0) && (
               <span className="px-2.5 py-1 rounded-full bg-rose-50 text-rose-600">

@@ -330,7 +330,7 @@ export default function NotificationCenterModal({
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
               {[
-                { key: "lead_alerts", label: "CRM & New Leads", icon: Target },
+                { key: "lead_alerts", label: "New Leads & Deals", icon: Target },
                 { key: "task_alerts", label: "Tasks & Deadlines", icon: Briefcase },
                 { key: "chat_alerts", label: "Chat & Mentions", icon: MessageSquare },
                 { key: "project_alerts", label: "Project Status", icon: Briefcase },

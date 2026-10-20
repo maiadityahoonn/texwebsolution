@@ -147,8 +147,8 @@ export default function CrmWorkspaceView({
     const updateTarget = () => {
       const isMobile = typeof window !== "undefined" && window.innerWidth < 768;
       const el = isMobile
-        ? document.getElementById("crm-mobile-header-actions") || document.getElementById(headerActionsSlotId)
-        : document.getElementById(headerActionsSlotId) || document.getElementById("crm-mobile-header-actions");
+        ? document.getElementById("crm-mobile-page-actions") || document.getElementById(headerActionsSlotId)
+        : document.getElementById(headerActionsSlotId) || document.getElementById("crm-mobile-page-actions");
       if (el) setHeaderActionsTarget(el);
     };
     updateTarget();
@@ -287,6 +287,7 @@ export default function CrmWorkspaceView({
   });
 
   const isCurrentViewLoading =
+    (viewMode === "dashboard" && isReportsLoading) ||
     (viewMode === "leads" && isLeadsLoading && filteredLeads.length === 0) ||
     (viewMode === "pipeline" && isPipelineLoading && visiblePipelineDeals.length === 0) ||
     (viewMode === "followups" && isFollowUpsLoading && filteredFollowUps.length === 0) ||

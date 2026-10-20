@@ -45,7 +45,7 @@ export const DOMAIN_OPTIONS = [
   { value: "ai_automation", label: "AI Automation & Chatbots" },
   { value: "design", label: "UI / UX Design & Branding" },
   { value: "management", label: "Operations & HR" },
-  { value: "sales", label: "Client Sales & CRM" },
+  { value: "sales", label: "Client Sales & Pipeline" },
 ];
 
 export function domainLabel(value) {
@@ -57,7 +57,7 @@ export function profileDepartmentLabel(profile) {
   if (!profile) return "All Departments";
   if (profile.role === "super_admin" || profile.role === "admin") return "All Departments";
   if (profile.role === "hr") return "HR Management";
-  if (["sales_head", "sales_executive", "telecaller"].includes(profile.role)) return "Sales & CRM";
+  if (["sales_head", "sales_executive", "telecaller"].includes(profile.role)) return "Sales & Pipeline";
   if (["tech_lead", "pm"].includes(profile.role)) return "Engineering & Tech";
   if (profile.role === "smm_head") return "Digital Marketing & SMM";
   if (profile.role === "finance_head") return "Finance & Accounts";

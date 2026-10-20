@@ -126,7 +126,7 @@ export function buildAiInsights({ leads, deals, followUps, salesMeetings }) {
       !["closed_won", "closed_lost"].includes(deal.pipeline_stage) &&
       new Date(deal.updated_at || deal.created_at || Date.now()).getTime() < Date.now() - 3 * 86400000
   );
-  return { rankedLeads, overdueFollowUps, staleDeals, warmStaleDeals };
+  return { rankedLeads, overdueFollowUps, staleDeals: staleDeals.length, staleDealsList: staleDeals, warmStaleDeals };
 }
 
 export function buildSalesReport({ leads, deals, followUps, leadSummary, dateFilter, matchesDateFilter }) {

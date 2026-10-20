@@ -4,6 +4,7 @@ import React from "react";
 import TablePagination from "../shared/TablePagination";
 import { PIPELINE_STAGES } from "../shared/leadUtils";
 import PipelineColumn from "./PipelineColumn";
+import { PipelineSkeleton } from "../shared/CrmSkeletons";
 
 export default function PipelineView({
   isPipelineLoading = false,
@@ -50,6 +51,10 @@ export default function PipelineView({
     statusFilter === "lost"
       ? [{ id: "closed_lost", label: "Closed Lost Deals", color: "bg-rose-500" }]
       : PIPELINE_STAGES;
+
+  if (isPipelineLoading && paginatedPipelineDeals.length === 0) {
+    return <PipelineSkeleton />;
+  }
 
   return (
     <>

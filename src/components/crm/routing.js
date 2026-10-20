@@ -1,5 +1,5 @@
 export const CRM_ROUTE_DEFINITIONS = [
-  { slug: "dashboard", section: "overview", viewMode: "dashboard", label: "CRM Dashboard" },
+  { slug: "dashboard", section: "overview", viewMode: "dashboard", label: "Dashboard" },
   { slug: "leads", section: "crm", viewMode: "leads", label: "Leads" },
   { slug: "pipeline", section: "pipeline", viewMode: "pipeline", label: "Sales Pipeline" },
   { slug: "followups", section: "sales_followups", viewMode: "followups", label: "Follow-ups" },

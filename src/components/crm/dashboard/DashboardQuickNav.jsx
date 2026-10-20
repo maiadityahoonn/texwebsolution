@@ -82,7 +82,7 @@ export default function DashboardQuickNav({
       <div className="flex items-center justify-between mb-4">
         <div>
           <div className="text-sm sm:text-base font-bold text-gray-900 dark:text-white">
-            Quick CRM Workspaces
+            Quick Workspaces
           </div>
           <p className="text-xs text-gray-500 dark:text-neutral-400 mt-0.5">
             Direct datewise shortcuts to active sales and delivery modules

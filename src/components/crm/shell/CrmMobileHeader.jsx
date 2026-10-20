@@ -1,9 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import Image from "next/image";
-import { Bell, Moon, Sun, Target } from "lucide-react";
-import { SECTION_META } from "./CrmShellConfig";
+import { Bell, Moon, Sun } from "lucide-react";
 
 export default function CrmMobileHeader({
   activeSection = "crm",
@@ -18,12 +16,6 @@ export default function CrmMobileHeader({
 }) {
   const isChatOpen = activeSection === "chat" && chatMobilePane === "chat";
 
-  const meta = SECTION_META[activeSection] || SECTION_META.crm;
-  const SectionIcon = meta?.icon || Target;
-  const sectionBgColor = meta?.color || "#ea580c";
-  const sectionGradientFrom = meta?.colorFrom || sectionBgColor;
-  const sectionGradientTo = meta?.colorTo || sectionBgColor;
-
   return (
     <header
       className={`${
@@ -37,49 +29,25 @@ export default function CrmMobileHeader({
         paddingTop: "env(safe-area-inset-top, 0px)",
       }}
     >
-      {/* Left: Brand Mini Logo + Divider + Active Section Badge */}
-      <div className="flex items-center gap-2 min-w-0 flex-1">
-        {/* Brand App Icon */}
+      {/* Left: Official TexWeb Solution Brand Logo */}
+      <div className="flex items-center shrink-0">
         <Link
           href="/crm/dashboard"
-          className="shrink-0 flex items-center group"
-          title="TexWeb CRM Dashboard"
-          aria-label="TexWeb CRM Dashboard"
+          className="flex items-center group py-0.5"
+          title="TexWeb Solution"
+          aria-label="TexWeb Solution"
         >
-          <Image
-            width={32}
-            height={32}
-            alt="TexWeb"
-            src="/logo.png"
-            className="w-8 h-8 rounded-xl object-contain shadow-xs group-hover:scale-105 transition-transform"
-            priority
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src="https://qfbsszbgmipbercujiak.supabase.co/storage/v1/object/public/site-assets/texweb-brand-logo.png"
+            alt="TexWeb Solution"
+            className="h-8 w-auto max-w-[155px] sm:max-w-[175px] object-contain group-hover:scale-105 transition-transform dark:bg-white dark:px-2 dark:py-1 dark:rounded-xl shadow-2xs"
           />
         </Link>
-
-        {/* Subtle vertical separator */}
-        <span className="w-px h-5 bg-gray-200 dark:bg-neutral-800 shrink-0" />
-
-        {/* Current Active Section Badge & Title */}
-        <div className="flex items-center gap-1.5 min-w-0 truncate">
-          <div
-            className="w-6 h-6 rounded-lg flex items-center justify-center text-white shrink-0 shadow-2xs"
-            style={{
-              backgroundColor: sectionBgColor,
-              backgroundImage: `linear-gradient(135deg, ${sectionGradientFrom}, ${sectionGradientTo})`,
-            }}
-          >
-            <SectionIcon className="w-3.5 h-3.5 stroke-[2.3] text-white" />
-          </div>
-          <span className="text-xs sm:text-sm font-black tracking-tight text-gray-900 dark:text-white truncate font-[Matter]">
-            {meta?.title || "CRM"}
-          </span>
-        </div>
       </div>
 
-      {/* Right Controls: Action Portal, Theme Toggle, Notification Bell, User Avatar */}
+      {/* Right Controls: Theme Toggle, Notification Bell, User Avatar */}
       <div className="flex items-center gap-1.5 shrink-0">
-        {/* Dynamic Mobile Action Buttons Slot (portal target for + Add Lead, + Add Deal, Refresh) */}
-        <div id="crm-mobile-header-actions" className="flex items-center gap-1 shrink-0 flex-nowrap" />
 
         {/* Theme Mode Toggle Button */}
         <button

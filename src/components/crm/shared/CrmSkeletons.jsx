@@ -48,7 +48,15 @@ export function PipelineSkeleton() {
 
 export function StatusCardsSkeleton({ cards = 4 }) {
   return (
-    <div className="grid gap-3 grid-cols-2 lg:grid-cols-4">
+    <div
+      className={`grid gap-3 ${
+        cards === 6
+          ? "grid-cols-2 sm:grid-cols-3 xl:grid-cols-6"
+          : cards === 5
+          ? "grid-cols-2 sm:grid-cols-3 xl:grid-cols-5"
+          : "grid-cols-2 lg:grid-cols-4"
+      }`}
+    >
       {Array.from({ length: cards }).map((_, index) => (
         <div key={index} className="p-4 rounded-2xl bg-white dark:bg-[#18150f] border border-gray-100 dark:border-[#3a3020] shadow-2xs">
           <div className="flex items-center justify-between gap-2">
@@ -196,6 +204,64 @@ export function CommercialsSkeleton() {
       </div>
       <div className="rounded-2xl bg-white dark:bg-[#18150f] border border-gray-100 dark:border-[#3a3020] overflow-hidden shadow-2xs">
         <TableSkeleton rows={6} columns={6} />
+      </div>
+    </div>
+  );
+}
+
+export function DashboardSkeleton() {
+  return (
+    <div className="space-y-4 pb-8">
+      {/* 6 KPI Cards Skeleton */}
+      <StatusCardsSkeleton cards={6} />
+
+      {/* Mid Section: Pipeline Funnel + Priority Schedule */}
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 items-stretch">
+        <div className="rounded-2xl bg-white dark:bg-[#18150f] border border-gray-100 dark:border-[#3a3020] p-4 sm:p-5 shadow-2xs space-y-4">
+          <div className="flex items-center justify-between">
+            <div className="h-4 w-36 rounded-full bg-gray-100 dark:bg-slate-800 animate-pulse" />
+            <div className="h-4 w-20 rounded-full bg-gray-100 dark:bg-slate-800 animate-pulse" />
+          </div>
+          <div className="space-y-3">
+            {[0, 1, 2, 3, 4].map((i) => (
+              <div key={i} className="h-8 rounded-xl bg-gray-100 dark:bg-slate-800 animate-pulse" />
+            ))}
+          </div>
+        </div>
+
+        <div className="rounded-2xl bg-white dark:bg-[#18150f] border border-gray-100 dark:border-[#3a3020] p-4 sm:p-5 shadow-2xs space-y-4">
+          <div className="flex items-center justify-between">
+            <div className="h-4 w-44 rounded-full bg-gray-100 dark:bg-slate-800 animate-pulse" />
+            <div className="h-4 w-16 rounded-full bg-gray-100 dark:bg-slate-800 animate-pulse" />
+          </div>
+          <div className="space-y-3">
+            {[0, 1, 2, 3].map((i) => (
+              <div key={i} className="p-3 rounded-xl bg-gray-50 dark:bg-[#211d14] border border-gray-100 dark:border-[#3a3020] flex items-center justify-between">
+                <div className="space-y-2 flex-1">
+                  <div className="h-3 w-40 rounded-full bg-gray-200 dark:bg-slate-800 animate-pulse" />
+                  <div className="h-2.5 w-24 rounded-full bg-gray-200 dark:bg-slate-800 animate-pulse" />
+                </div>
+                <div className="h-8 w-20 rounded-lg bg-gray-200 dark:bg-slate-800 animate-pulse" />
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Bottom Section: Recent Leads + Lead Source Breakdown */}
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-4 items-stretch">
+        <div className="xl:col-span-2 rounded-2xl bg-white dark:bg-[#18150f] border border-gray-100 dark:border-[#3a3020] p-4 sm:p-5 shadow-2xs space-y-3">
+          <div className="h-4 w-32 rounded-full bg-gray-100 dark:bg-slate-800 animate-pulse" />
+          <TableSkeleton rows={4} columns={4} />
+        </div>
+        <div className="rounded-2xl bg-white dark:bg-[#18150f] border border-gray-100 dark:border-[#3a3020] p-4 sm:p-5 shadow-2xs space-y-3">
+          <div className="h-4 w-28 rounded-full bg-gray-100 dark:bg-slate-800 animate-pulse" />
+          <div className="space-y-2">
+            {[0, 1, 2, 3].map((i) => (
+              <div key={i} className="h-10 rounded-xl bg-gray-100 dark:bg-slate-800 animate-pulse" />
+            ))}
+          </div>
+        </div>
       </div>
     </div>
   );

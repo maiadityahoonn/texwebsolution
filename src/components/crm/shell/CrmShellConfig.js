@@ -113,7 +113,7 @@ export const SECTION_META = {
   clients: {
     title: "Clients",
     desc: "Client accounts created after won deals.",
-    tag: "Accounts & CRM",
+    tag: "Accounts & Clients",
     gradient: "from-rose-600 to-pink-600",
     color: "#e11d48",
     colorFrom: "#e11d48",
@@ -131,7 +131,7 @@ export const SECTION_META = {
     icon: BarChart3,
   },
   overview: {
-    title: "CRM Dashboard",
+    title: "Dashboard",
     desc: "Sales snapshot, reminders, and pipeline health.",
     tag: "Executive View",
     gradient: "from-red-600 to-rose-600",
@@ -142,7 +142,7 @@ export const SECTION_META = {
   },
   chat: {
     title: "Team Chat",
-    desc: "CRM team conversations and internal client handoff messages.",
+    desc: "Team conversations and internal client handoff messages.",
     tag: "Communication",
     gradient: "from-emerald-600 to-teal-600",
     color: "#059669",
@@ -152,7 +152,7 @@ export const SECTION_META = {
   },
   alerts: {
     title: "Notifications",
-    desc: "CRM reminders, lead alerts, meeting updates, and priority actions.",
+    desc: "Reminders, lead alerts, meeting updates, and priority actions.",
     tag: "Alerts",
     gradient: "from-red-600 to-rose-600",
     color: "#dc2626",
@@ -162,7 +162,7 @@ export const SECTION_META = {
   },
   settings: {
     title: "Profile & Settings",
-    desc: "Manage your CRM profile, password, theme, and account controls.",
+    desc: "Manage your profile, password, theme, and account controls.",
     tag: "Account",
     gradient: "from-slate-700 to-slate-900",
     color: "#334155",

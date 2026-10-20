@@ -14,7 +14,7 @@ export default function MetaLeadsPreviewTable({
       <div className="flex items-center justify-between">
         <span className="text-xs font-black text-gray-900 dark:text-white flex items-center gap-1.5">
           <CheckCircle2 className="w-4 h-4 text-emerald-500" />
-          <span>{parsedLeads.length} leads ready for CRM + Meta CAPI</span>
+          <span>{parsedLeads.length} leads ready for import & Meta CAPI</span>
         </span>
         <button
           type="button"

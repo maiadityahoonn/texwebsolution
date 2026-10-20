@@ -93,7 +93,7 @@ export default function MetaLeadsImportModal({ isOpen, onClose, onImport, onImpo
                 </span>
               </h2>
               <p className="text-xs text-gray-500 dark:text-slate-400">
-                Excel, Google Sheet, or Meta exports ko CRM me import karo; CRM save ke baad Meta CAPI event auto-send hota hai.
+                Excel, Google Sheet, ya Meta exports ko import karo; save hone ke baad Meta CAPI event auto-send hota hai.
               </p>
             </div>
           </div>
@@ -235,7 +235,7 @@ export default function MetaLeadsImportModal({ isOpen, onClose, onImport, onImpo
                 onClick={handleConfirmImport}
                 className="px-5 py-2 rounded-xl bg-gradient-to-r from-pink-600 via-rose-600 to-orange-600 hover:opacity-90 text-white text-xs font-bold shadow-md shadow-pink-500/20 transition active:scale-95 cursor-pointer disabled:opacity-50"
               >
-                {isImporting ? "Importing..." : `Import ${parsedLeads.length} Leads to CRM`}
+                {isImporting ? "Importing..." : `Import ${parsedLeads.length} Leads`}
               </button>
             )}
           </div>

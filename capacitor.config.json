@@ -1,6 +1,6 @@
 {
   "appId": "in.texwebsolution.crm",
-  "appName": "TexWeb CRM",
+  "appName": "TexWeb Solution",
   "webDir": "public",
   "bundledWebRuntime": false,
   "server": {

@@ -2,6 +2,7 @@
 
 import React from "react";
 import { Search, Calendar } from "lucide-react";
+import { DateFilterSkeleton } from "../shared/CrmSkeletons";
 
 export default function CrmDateFilterBar({
   viewMode = "leads",
@@ -35,7 +36,10 @@ export default function CrmDateFilterBar({
 
       {/* Date Filter Toolbar */}
       {viewMode !== "reports" && (
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 p-3 rounded-2xl bg-white dark:bg-[#18150f] border border-gray-100 dark:border-[#3a3020]">
+        isCurrentViewLoading ? (
+          <DateFilterSkeleton />
+        ) : (
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 p-3 rounded-2xl bg-white dark:bg-[#18150f] border border-gray-100 dark:border-[#3a3020]">
             <div className="flex items-center gap-2 text-xs font-bold text-gray-500 dark:text-neutral-400">
               <Calendar className="w-4 h-4" />
               <span>Date Filter</span>
@@ -88,6 +92,7 @@ export default function CrmDateFilterBar({
               )}
             </div>
           </div>
+        )
       )}
     </>
   );
