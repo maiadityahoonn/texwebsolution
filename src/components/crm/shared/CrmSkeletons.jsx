@@ -21,9 +21,9 @@ export function TableSkeleton({ rows = 5, columns = 6 }) {
 
 export function PipelineSkeleton() {
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3">
+    <div className="flex overflow-x-auto pb-4 sm:pb-0 sm:overflow-x-visible sm:grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3 snap-x snap-mandatory">
       {PIPELINE_STAGES.map((stage) => (
-        <div key={stage.id} className="rounded-2xl bg-white dark:bg-[#18150f] border border-gray-100 dark:border-[#3a3020] p-3 shadow-2xs min-h-[350px]">
+        <div key={stage.id} className="w-[84vw] sm:w-auto shrink-0 sm:shrink snap-center rounded-2xl bg-white dark:bg-[#18150f] border border-gray-100 dark:border-[#3a3020] p-3 shadow-2xs min-h-[350px]">
           <div className="flex items-center justify-between pb-2 border-b border-gray-100 dark:border-[#3a3020]">
             <div className="flex items-center gap-2">
               <span className={`w-2 h-2 rounded-full ${stage.color}`} />

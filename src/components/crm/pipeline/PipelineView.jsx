@@ -59,11 +59,11 @@ export default function PipelineView({
   return (
     <>
       <div
-        className={`grid grid-cols-1 ${
+        className={`flex overflow-x-auto pb-4 sm:pb-0 sm:overflow-x-visible gap-3 snap-x snap-mandatory ${
           statusFilter === "lost"
-            ? "sm:grid-cols-2 lg:grid-cols-3"
-            : "sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5"
-        } gap-3`}
+            ? "sm:grid sm:grid-cols-2 lg:grid-cols-3"
+            : "sm:grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5"
+        }`}
       >
         {stages.map((col) => {
           const colDeals = paginatedPipelineDeals.filter(

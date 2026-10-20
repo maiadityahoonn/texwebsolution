@@ -35,7 +35,7 @@ export default function PipelineColumn({
     <div
       onDragOver={(e) => e.preventDefault()}
       onDrop={() => handleDealDrop(col.id)}
-      className={`flex flex-col rounded-2xl bg-white dark:bg-[#18150f] border border-gray-100 dark:border-[#3a3020] p-3 shadow-2xs min-h-[350px] transition ${
+      className={`w-[84vw] sm:w-auto shrink-0 sm:shrink snap-center flex flex-col rounded-2xl bg-white dark:bg-[#18150f] border border-gray-100 dark:border-[#3a3020] p-3 shadow-2xs min-h-[350px] transition ${
         draggedDealId ? "ring-1 ring-orange-400/40" : ""
       }`}
     >

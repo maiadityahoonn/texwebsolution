@@ -314,15 +314,6 @@ export default function CrmMobileNav({
                       isActive ? "stroke-[2.2]" : "stroke-[1.75]"
                     }`}
                   />
-                  {item.key === "leads" && unreadCount > 0 && (
-                    <span
-                      className={`absolute -top-1 -right-1 min-w-4 h-4 px-1 rounded-full bg-red-600 text-white text-[9px] font-black flex items-center justify-center ring-2 ${
-                        isDark ? "ring-[#0b0b0c]" : "ring-white"
-                      }`}
-                    >
-                      {unreadCount > 9 ? "9+" : unreadCount}
-                    </span>
-                  )}
                 </div>
                 <span
                   className={`w-full px-0.5 text-[10px] truncate text-center transition-colors leading-normal pb-0.5 ${
