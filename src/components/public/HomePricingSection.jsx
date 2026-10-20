@@ -69,7 +69,7 @@ export default function HomePricingSection() {
       <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-[700px] h-[350px] bg-red-100/40 rounded-full blur-[140px] pointer-events-none -z-10" />
       <div className="absolute bottom-10 right-10 w-96 h-96 bg-rose-100/30 rounded-full blur-[120px] pointer-events-none -z-10" />
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="max-w-7xl mx-auto px-3 min-[360px]:px-4 sm:px-6 lg:px-8">
         
         {/* Section Header */}
         <div className="text-center max-w-5xl mx-auto mb-6 sm:mb-8">
@@ -78,23 +78,23 @@ export default function HomePricingSection() {
             <span>Pricing Plans</span>
           </div>
 
-          <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-[40px] font-bold text-center bg-gradient-to-r from-gray-900 to-red-600 bg-clip-text text-transparent leading-tight pb-1 mb-2">
+          <h2 className="text-xl min-[360px]:text-2xl sm:text-3xl md:text-4xl lg:text-[40px] font-bold text-center bg-gradient-to-r from-gray-900 to-red-600 bg-clip-text text-transparent leading-tight pb-1 mb-2">
             Transparent Pricing &amp; Flexible Plans
           </h2>
 
-          <p className="text-sm sm:text-base text-gray-500 font-light font-poppins max-w-xl mx-auto">
+          <p className="text-xs min-[360px]:text-sm sm:text-base text-gray-500 font-light font-poppins max-w-xl mx-auto">
             Choose the perfect system for your business with zero hidden fees and no heavy upfront capital.
           </p>
         </div>
 
         {/* Billing & Currency Controls */}
-        <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-8 sm:mb-10">
+        <div className="flex flex-col sm:flex-row items-center justify-center gap-3 min-[360px]:gap-4 mb-8 sm:mb-10">
           
           {/* Monthly / Yearly Switch */}
           <div className="inline-flex p-1 min-[360px]:p-1.5 bg-neutral-100 border border-gray-200 rounded-full shadow-inner gap-1 max-w-full">
             <button
               onClick={() => setSelectedBilling("monthly")}
-              className={`px-3 min-[360px]:px-5 py-1.5 min-[360px]:py-2 rounded-full text-[11px] min-[360px]:text-xs sm:text-sm font-bold transition-all duration-300 truncate ${
+              className={`px-2.5 min-[360px]:px-5 py-1.5 min-[360px]:py-2 rounded-full text-[10px] min-[360px]:text-xs sm:text-sm font-bold transition-all duration-300 truncate ${
                 selectedBilling === "monthly"
                   ? "bg-white text-gray-950 shadow-md shadow-black/5"
                   : "text-gray-600 hover:text-black"
@@ -104,14 +104,14 @@ export default function HomePricingSection() {
             </button>
             <button
               onClick={() => setSelectedBilling("yearly")}
-              className={`px-3 min-[360px]:px-5 py-1.5 min-[360px]:py-2 rounded-full text-[11px] min-[360px]:text-xs sm:text-sm font-bold transition-all duration-300 flex items-center gap-1 min-[360px]:gap-1.5 truncate ${
+              className={`px-2.5 min-[360px]:px-5 py-1.5 min-[360px]:py-2 rounded-full text-[10px] min-[360px]:text-xs sm:text-sm font-bold transition-all duration-300 flex items-center gap-1 min-[360px]:gap-1.5 truncate ${
                 selectedBilling === "yearly"
                   ? "bg-red-600 text-white shadow-md shadow-red-600/30"
                   : "text-gray-600 hover:text-black"
               }`}
             >
               <span className="truncate">Yearly Offer</span>
-              <span className={`text-[9px] min-[360px]:text-[10px] font-black uppercase px-1.5 min-[360px]:px-2 py-0.5 rounded-full shrink-0 ${
+              <span className={`text-[8.5px] min-[360px]:text-[10px] font-black uppercase px-1 min-[360px]:px-2 py-0.5 rounded-full shrink-0 ${
                 selectedBilling === "yearly" ? "bg-white text-red-600" : "bg-emerald-100 text-emerald-700"
               }`}>
                 2 Mos Free
@@ -128,7 +128,7 @@ export default function HomePricingSection() {
                   <button
                     key={key}
                     onClick={() => setSelectedCurrency(key)}
-                    className={`px-3.5 py-1.5 rounded-full text-xs font-bold transition-all duration-300 ${
+                    className={`px-2.5 min-[360px]:px-3.5 py-1 min-[360px]:py-1.5 rounded-full text-[11px] min-[360px]:text-xs font-bold transition-all duration-300 ${
                       active
                         ? "bg-red-600 text-white shadow-md shadow-red-600/25 scale-[1.03]"
                         : "text-gray-700 hover:text-black hover:bg-white/70"
@@ -144,17 +144,17 @@ export default function HomePricingSection() {
         </div>
 
         {/* 3 Pricing Cards Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 lg:gap-8 items-stretch mb-12">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 min-[360px]:gap-8 lg:gap-8 items-stretch mb-12">
           
           {/* 1. BASIC PLAN */}
-          <div className="relative rounded-[32px] bg-white border border-gray-200 shadow-sm hover:shadow-xl transition-all duration-300 flex flex-col p-6 sm:p-8">
+          <div className="relative rounded-[28px] min-[360px]:rounded-[32px] bg-white border border-gray-200 shadow-sm hover:shadow-xl transition-all duration-300 flex flex-col p-4 min-[360px]:p-6 sm:p-8">
             <div className="mb-6">
               <div className="flex items-center justify-between gap-2 mb-3">
-                <span className="inline-block px-3 py-1 bg-gray-100 text-gray-800 rounded-full text-xs font-bold uppercase tracking-wider">
+                <span className="inline-block px-2.5 min-[360px]:px-3 py-1 bg-gray-100 text-gray-800 rounded-full text-[11px] min-[360px]:text-xs font-bold uppercase tracking-wider">
                   Basic Plan
                 </span>
                 {selectedBilling === "yearly" && (
-                  <span className="text-[11px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 rounded-full flex items-center gap-1">
+                  <span className="text-[10px] min-[360px]:text-[11px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 min-[360px]:px-2.5 py-0.5 rounded-full flex items-center gap-1">
                     <Gift className="w-3 h-3 text-emerald-600" />
                     2 Mos Free
                   </span>
@@ -162,14 +162,14 @@ export default function HomePricingSection() {
               </div>
 
               <div className="flex items-baseline gap-1">
-                <span className="text-4xl sm:text-5xl font-extrabold text-gray-950 transition-all">{activePlans.basic.display}</span>
-                <span className="text-sm font-medium text-gray-500">{activePlans.basic.period}</span>
+                <span className="text-3xl min-[360px]:text-4xl sm:text-5xl font-extrabold text-gray-950 transition-all">{activePlans.basic.display}</span>
+                <span className="text-xs min-[360px]:text-sm font-medium text-gray-500">{activePlans.basic.period}</span>
               </div>
 
               {selectedBilling === "yearly" ? (
-                <div className="mt-1.5 flex items-center gap-1.5 text-xs font-medium text-gray-500">
+                <div className="mt-1.5 flex items-center gap-1.5 text-[11px] min-[360px]:text-xs font-medium text-gray-500">
                   <span className="font-bold text-emerald-600">{activePlans.basic.savings}</span>
-                  <span>• Equivalent to {activePlans.basic.equivalent}</span>
+                  <span>• {activePlans.basic.equivalent}</span>
                 </div>
               ) : (
                 <p className="mt-1 text-xs text-gray-400">{activePlans.basic.subText}</p>
@@ -225,12 +225,12 @@ export default function HomePricingSection() {
           </div>
 
           {/* 2. STANDARD PLAN (MOST POPULAR) */}
-          <div className="relative rounded-[32px] bg-gradient-to-b from-red-600 to-red-700 p-[2px] shadow-xl hover:shadow-2xl transition-all duration-300 flex flex-col transform md:-translate-y-2">
-            <div className="bg-white rounded-[30px] p-6 sm:p-8 flex-1 flex flex-col justify-between relative overflow-hidden">
+          <div className="relative rounded-[28px] min-[360px]:rounded-[32px] bg-gradient-to-b from-red-600 to-red-700 p-[2px] shadow-xl hover:shadow-2xl transition-all duration-300 flex flex-col transform md:-translate-y-2">
+            <div className="bg-white rounded-[26px] min-[360px]:rounded-[30px] p-4 min-[360px]:p-6 sm:p-8 flex-1 flex flex-col justify-between relative overflow-hidden">
               
               {/* Popular Ribbon */}
               <div className="absolute top-0 right-0">
-                <div className="bg-gradient-to-r from-red-600 to-orange-500 text-white text-[11px] font-bold uppercase tracking-wider py-1.5 px-6 rounded-bl-2xl shadow-sm flex items-center gap-1">
+                <div className="bg-gradient-to-r from-red-600 to-orange-500 text-white text-[10px] min-[360px]:text-[11px] font-bold uppercase tracking-wider py-1 px-4 min-[360px]:px-6 rounded-bl-2xl shadow-sm flex items-center gap-1">
                   <Zap className="w-3.5 h-3.5 fill-white" />
                   Most Popular
                 </div>
@@ -239,11 +239,11 @@ export default function HomePricingSection() {
               <div>
                 <div className="mb-6 pt-2">
                   <div className="flex items-center gap-2 mb-3">
-                    <span className="inline-block px-3 py-1 bg-red-100 text-red-700 rounded-full text-xs font-bold uppercase tracking-wider">
+                    <span className="inline-block px-2.5 min-[360px]:px-3 py-1 bg-red-100 text-red-700 rounded-full text-[11px] min-[360px]:text-xs font-bold uppercase tracking-wider">
                       Standard Plan
                     </span>
                     {selectedBilling === "yearly" && (
-                      <span className="text-[11px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 rounded-full flex items-center gap-1">
+                      <span className="text-[10px] min-[360px]:text-[11px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 min-[360px]:px-2.5 py-0.5 rounded-full flex items-center gap-1">
                         <Gift className="w-3 h-3 text-emerald-600" />
                         2 Mos Free
                       </span>
@@ -251,14 +251,14 @@ export default function HomePricingSection() {
                   </div>
 
                   <div className="flex items-baseline gap-1">
-                    <span className="text-4xl sm:text-5xl font-extrabold text-gray-950 transition-all">{activePlans.standard.display}</span>
-                    <span className="text-sm font-medium text-gray-500">{activePlans.standard.period}</span>
+                    <span className="text-3xl min-[360px]:text-4xl sm:text-5xl font-extrabold text-gray-950 transition-all">{activePlans.standard.display}</span>
+                    <span className="text-xs min-[360px]:text-sm font-medium text-gray-500">{activePlans.standard.period}</span>
                   </div>
 
                   {selectedBilling === "yearly" ? (
-                    <div className="mt-1.5 flex items-center gap-1.5 text-xs font-medium text-gray-500">
+                    <div className="mt-1.5 flex items-center gap-1.5 text-[11px] min-[360px]:text-xs font-medium text-gray-500">
                       <span className="font-bold text-emerald-600">{activePlans.standard.savings}</span>
-                      <span>• Equivalent to {activePlans.standard.equivalent}</span>
+                      <span>• {activePlans.standard.equivalent}</span>
                     </div>
                   ) : (
                     <p className="mt-1 text-xs text-gray-400">{activePlans.standard.subText}</p>
@@ -310,7 +310,7 @@ export default function HomePricingSection() {
                 href={getWhatsAppLink("Standard", "standard")}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="w-full py-3.5 min-[360px]:py-4 px-3 min-[360px]:px-6 rounded-2xl bg-red-600 text-white font-semibold text-center text-xs min-[360px]:text-sm hover:bg-red-700 transition-all duration-300 shadow-lg shadow-red-600/30 flex items-center justify-center gap-2 group min-w-0"
+                className="w-full py-3 min-[360px]:py-4 px-3 min-[360px]:px-6 rounded-2xl bg-red-600 text-white font-semibold text-center text-xs min-[360px]:text-sm hover:bg-red-700 transition-all duration-300 shadow-lg shadow-red-600/30 flex items-center justify-center gap-2 group min-w-0"
               >
                 <Image width={64} height={64} src="https://qfbsszbgmipbercujiak.supabase.co/storage/v1/object/public/site-assets/common/WhatsApp.svg" alt="WhatsApp" className="w-4 h-4 object-contain shrink-0" />
                 <span className="truncate">Get Standard at {activePlans.standard.display}{selectedBilling === "yearly" ? "/yr" : "/mo"}</span>
@@ -320,15 +320,15 @@ export default function HomePricingSection() {
           </div>
 
           {/* 3. PREMIUM PLAN */}
-          <div className="relative rounded-[32px] bg-white border border-gray-200 shadow-sm hover:shadow-xl transition-all duration-300 flex flex-col p-6 sm:p-8">
+          <div className="relative rounded-[28px] min-[360px]:rounded-[32px] bg-white border border-gray-200 shadow-sm hover:shadow-xl transition-all duration-300 flex flex-col p-4 min-[360px]:p-6 sm:p-8">
             <div className="mb-6">
               <div className="flex items-center justify-between gap-2 mb-3">
-                <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-amber-100 text-amber-800 rounded-full text-xs font-bold uppercase tracking-wider">
+                <span className="inline-flex items-center gap-1.5 px-2.5 min-[360px]:px-3 py-1 bg-amber-100 text-amber-800 rounded-full text-[11px] min-[360px]:text-xs font-bold uppercase tracking-wider">
                   <Crown className="w-3.5 h-3.5 text-amber-600" />
                   Premium Plan
                 </span>
                 {selectedBilling === "yearly" && (
-                  <span className="text-[11px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 rounded-full flex items-center gap-1">
+                  <span className="text-[10px] min-[360px]:text-[11px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 min-[360px]:px-2.5 py-0.5 rounded-full flex items-center gap-1">
                     <Gift className="w-3 h-3 text-emerald-600" />
                     2 Mos Free
                   </span>
@@ -336,14 +336,14 @@ export default function HomePricingSection() {
               </div>
 
               <div className="flex items-baseline gap-1">
-                <span className="text-4xl sm:text-5xl font-extrabold text-gray-950 transition-all">{activePlans.premium.display}</span>
-                <span className="text-sm font-medium text-gray-500">{activePlans.premium.period}</span>
+                <span className="text-3xl min-[360px]:text-4xl sm:text-5xl font-extrabold text-gray-950 transition-all">{activePlans.premium.display}</span>
+                <span className="text-xs min-[360px]:text-sm font-medium text-gray-500">{activePlans.premium.period}</span>
               </div>
 
               {selectedBilling === "yearly" ? (
-                <div className="mt-1.5 flex items-center gap-1.5 text-xs font-medium text-gray-500">
+                <div className="mt-1.5 flex items-center gap-1.5 text-[11px] min-[360px]:text-xs font-medium text-gray-500">
                   <span className="font-bold text-emerald-600">{activePlans.premium.savings}</span>
-                  <span>• Equivalent to {activePlans.premium.equivalent}</span>
+                  <span>• {activePlans.premium.equivalent}</span>
                 </div>
               ) : (
                 <p className="mt-1 text-xs text-gray-400">{activePlans.premium.subText}</p>
@@ -407,10 +407,10 @@ export default function HomePricingSection() {
         </div>
 
         {/* See More / View All Pricing Plans CTA Button */}
-        <div className="flex items-center justify-center pt-2 px-4 w-full">
+        <div className="flex items-center justify-center pt-2 px-3 min-[360px]:px-4 w-full">
           <Link
             href="/pricing"
-            className="inline-flex items-center justify-center gap-2 px-5 min-[360px]:px-8 py-3 min-[360px]:py-4 rounded-full bg-red-600 hover:bg-red-700 text-white font-semibold text-xs min-[360px]:text-sm sm:text-base transition-all duration-300 shadow-lg shadow-red-600/25 hover:shadow-xl hover:shadow-red-600/35 hover:scale-105 active:scale-95 group max-w-full truncate"
+            className="inline-flex items-center justify-center gap-2 px-4 min-[360px]:px-8 py-2.5 min-[360px]:py-4 rounded-full bg-red-600 hover:bg-red-700 text-white font-semibold text-xs min-[360px]:text-sm sm:text-base transition-all duration-300 shadow-lg shadow-red-600/25 hover:shadow-xl hover:shadow-red-600/35 hover:scale-105 active:scale-95 group max-w-full truncate"
           >
             <span className="truncate">See More Plans &amp; Comparison Table</span>
             <ArrowRight className="w-4 h-4 shrink-0 group-hover:translate-x-1 transition-transform duration-300" />

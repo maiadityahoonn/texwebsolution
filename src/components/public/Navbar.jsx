@@ -208,7 +208,7 @@ export default function Navbar() {
         <div className="relative xl:hidden w-[94%] max-w-3xl">
           {/* Mobile Navigation Bar */}
           <div
-            className={`flex w-full justify-between items-center px-4 sm:px-6 py-2.5 border rounded-full transition-all duration-300 z-50 ${isScrolled
+            className={`flex w-full justify-between items-center px-3 min-[360px]:px-4 sm:px-6 py-2 min-[360px]:py-2.5 border rounded-full transition-all duration-300 z-50 ${isScrolled
                 ? "bg-white/95 backdrop-blur-md border-gray-200/90 shadow-lg shadow-black/5"
                 : "bg-white border-gray-200 shadow-sm"
               }`}
@@ -218,7 +218,7 @@ export default function Navbar() {
                 width={140}
                 height={40}
                 alt="TexWeb Solution"
-                className="h-[32px] min-[375px]:h-[36px] min-[425px]:h-[40px] md:h-[44px] w-auto object-contain"
+                className="h-[28px] min-[360px]:h-[32px] min-[375px]:h-[36px] min-[425px]:h-[40px] md:h-[44px] w-auto object-contain"
                 src="https://qfbsszbgmipbercujiak.supabase.co/storage/v1/object/public/site-assets/texweb-full-logo-original.png"
                 style={{ width: "auto" }}
                 priority
@@ -230,7 +230,7 @@ export default function Navbar() {
               aria-label="Toggle menu"
             >
               <div className="transition-transform duration-300 ease-out transform">
-                {isOpen ? <X size={26} className="rotate-90 transition-transform duration-300" /> : <Menu size={26} />}
+                {isOpen ? <X size={24} className="rotate-90 transition-transform duration-300" /> : <Menu size={24} />}
               </div>
             </button>
           </div>

@@ -59,30 +59,30 @@ export default function LandingFaqSection() {
       <div className="absolute top-1/4 left-10 w-72 h-72 bg-red-50/40 rounded-full blur-3xl pointer-events-none -z-10" />
       <div className="absolute bottom-10 right-10 w-80 h-80 bg-neutral-100/60 rounded-full blur-3xl pointer-events-none -z-10" />
 
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="max-w-4xl mx-auto px-3 min-[360px]:px-6 lg:px-8">
         
         {/* Header */}
         <div className="text-center max-w-2xl mx-auto mb-8 sm:mb-10">
-          <div className="inline-flex items-center gap-1.5 px-4 py-1 bg-red-50 text-red-600 border border-red-100 shadow-xs rounded-full font-semibold text-xs sm:text-sm font-[Matter] mb-3">
+          <div className="inline-flex items-center gap-1.5 px-3 min-[360px]:px-4 py-1 bg-red-50 text-red-600 border border-red-100 shadow-xs rounded-full font-semibold text-[11px] min-[360px]:text-xs sm:text-sm font-[Matter] mb-2.5 sm:mb-3 max-w-[95%] truncate">
             <Sparkles className="w-3.5 h-3.5 text-red-500" />
             <span>Got Questions? We Have Answers</span>
           </div>
-          <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold bg-gradient-to-r from-gray-950 via-gray-900 to-red-600 bg-clip-text text-transparent leading-tight tracking-tight pb-1 mb-3">
+          <h2 className="text-xl min-[360px]:text-2xl sm:text-3xl md:text-4xl font-bold bg-gradient-to-r from-gray-950 via-gray-900 to-red-600 bg-clip-text text-transparent leading-tight tracking-tight pb-1 mb-2.5 sm:mb-3">
             Frequently Asked Questions
           </h2>
-          <p className="text-xs sm:text-sm md:text-base text-gray-500 font-poppins font-light leading-relaxed">
+          <p className="text-xs min-[360px]:text-sm md:text-base text-gray-500 font-poppins font-light leading-relaxed">
             Everything you need to know about our Website Development, Mobile Apps, and Meta Ads growth services.
           </p>
         </div>
 
         {/* 6 FAQs Accordion List */}
-        <div className="space-y-3.5">
+        <div className="space-y-3 min-[360px]:space-y-3.5">
           {LANDING_FAQS.map((faq, index) => {
             const isOpen = openIndex === index;
             return (
               <div
                 key={index}
-                className={`border rounded-2xl transition-all duration-300 overflow-hidden ${
+                className={`border rounded-xl min-[360px]:rounded-2xl transition-all duration-300 overflow-hidden ${
                   isOpen
                     ? "border-red-600/40 bg-white shadow-md shadow-red-500/5 ring-1 ring-red-600/20"
                     : "border-gray-200 bg-white hover:border-gray-300 shadow-2xs"
@@ -91,21 +91,21 @@ export default function LandingFaqSection() {
                 <button
                   type="button"
                   onClick={() => toggleFaq(index)}
-                  className="w-full text-left px-5 sm:px-6 py-4 sm:py-5 flex items-center justify-between gap-4 cursor-pointer focus:outline-none"
+                  className="w-full text-left px-3 min-[360px]:px-5 sm:px-6 py-3 min-[360px]:py-4 sm:py-5 flex items-center justify-between gap-2.5 min-[360px]:gap-4 cursor-pointer focus:outline-none"
                   aria-expanded={isOpen}
                 >
-                  <div className="space-y-1 pr-2">
-                    <span className="inline-block text-[10px] font-bold uppercase tracking-wider text-red-600 bg-red-50 px-2 py-0.5 rounded">
+                  <div className="space-y-1 pr-1.5 sm:pr-2 min-w-0 flex-1">
+                    <span className="inline-block text-[9.5px] min-[360px]:text-[10px] font-bold uppercase tracking-wider text-red-600 bg-red-50 px-2 py-0.5 rounded">
                       {faq.category}
                     </span>
-                    <h3 className={`text-sm sm:text-base font-bold transition-colors ${
+                    <h3 className={`text-[13px] min-[360px]:text-sm sm:text-base font-bold transition-colors ${
                       isOpen ? "text-red-600" : "text-gray-900 hover:text-red-600"
                     }`}>
                       {faq.question}
                     </h3>
                   </div>
 
-                  <span className={`p-2 rounded-full shrink-0 transition-transform duration-300 ${
+                  <span className={`p-1 min-[360px]:p-2 rounded-full shrink-0 transition-transform duration-300 ${
                     isOpen ? "rotate-180 bg-red-50 text-red-600" : "bg-gray-100 text-gray-500"
                   }`}>
                     <ChevronDown className="w-4 h-4" />
@@ -113,7 +113,7 @@ export default function LandingFaqSection() {
                 </button>
 
                 {isOpen && (
-                  <div className="px-5 sm:px-6 pb-5 pt-1 text-xs sm:text-sm text-gray-600 font-poppins font-light leading-relaxed border-t border-gray-100">
+                  <div className="px-3 min-[360px]:px-5 sm:px-6 pb-4 sm:pb-5 pt-1 text-xs min-[360px]:text-sm text-gray-600 font-poppins font-light leading-relaxed border-t border-gray-100">
                     <p>{faq.answer}</p>
                   </div>
                 )}
@@ -123,7 +123,7 @@ export default function LandingFaqSection() {
         </div>
 
         {/* Bottom Direct Query CTA */}
-        <div className="mt-8 sm:mt-10 text-center p-5 bg-gray-50 border border-gray-200 rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-3">
+        <div className="mt-8 sm:mt-10 text-center p-3.5 min-[360px]:p-5 bg-gray-50 border border-gray-200 rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-3">
           <p className="text-xs sm:text-sm text-gray-700 font-medium">
             Have a custom requirement or question not listed here?
           </p>
@@ -132,7 +132,7 @@ export default function LandingFaqSection() {
             target="_blank"
             rel="noopener noreferrer"
             onClick={() => trackMetaEvent("Contact", { method: "whatsapp", source: "faq_bottom" })}
-            className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-full text-xs sm:text-sm font-semibold transition-all shrink-0 shadow-xs cursor-pointer"
+            className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-full text-xs sm:text-sm font-semibold transition-all shrink-0 shadow-xs cursor-pointer truncate"
           >
             <Image
               src="https://qfbsszbgmipbercujiak.supabase.co/storage/v1/object/public/site-assets/common/WhatsApp.svg"
@@ -141,7 +141,7 @@ export default function LandingFaqSection() {
               height={16}
               className="w-4 h-4 object-contain brightness-0 invert"
             />
-            <span>Chat on WhatsApp</span>
+            <span className="truncate">Chat on WhatsApp</span>
           </a>
         </div>
 

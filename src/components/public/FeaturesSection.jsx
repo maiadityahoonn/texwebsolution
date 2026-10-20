@@ -97,14 +97,14 @@ export default function FeaturesSection() {
       <div className="inline-block px-4 py-1 bg-red-50 text-red-600 border border-red-100 shadow-sm rounded-full font-semibold text-xs sm:text-sm font-[Matter] mb-3">
         Our Offerings
       </div>
-      <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-[40px] font-bold text-center bg-gradient-to-r from-gray-900 to-red-600 bg-clip-text text-transparent mb-3 px-3 leading-tight pb-1">
+      <h2 className="text-xl min-[360px]:text-2xl sm:text-3xl md:text-4xl lg:text-[40px] font-bold text-center bg-gradient-to-r from-gray-900 to-red-600 bg-clip-text text-transparent mb-3 px-3 leading-tight pb-1">
         Smart Tech Options to Grow Your Business
       </h2>
-      <p className="text-sm sm:text-base text-gray-500 font-poppins font-light max-w-xl mx-auto px-4 mb-8 sm:mb-10 text-center leading-relaxed">
+      <p className="text-xs min-[360px]:text-sm sm:text-base text-gray-500 font-poppins font-light max-w-xl mx-auto px-3 min-[360px]:px-4 mb-8 sm:mb-10 text-center leading-relaxed">
         Choose the right software path for your venture — from bespoke custom coding and ready SaaS to AI automation.
       </p>
 
-      <div className="w-full max-w-7xl px-4 sm:px-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 sm:gap-6 justify-center">
+      <div className="w-full max-w-7xl px-3 min-[360px]:px-4 sm:px-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 min-[360px]:gap-5 sm:gap-6 justify-center">
         {OFFERINGS.map((item, index) => (
           <div
             key={item.id}

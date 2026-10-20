@@ -38,14 +38,14 @@ export default function TeamSection({ limit, showSeeMore = false }) {
 
   return (
     <section className="py-10 sm:py-12 w-full font-[Matter]" id="about-us">
-      <div className="max-w-7xl mx-auto text-center mb-8 sm:mb-10 px-4">
+      <div className="max-w-7xl mx-auto text-center mb-8 sm:mb-10 px-3 min-[360px]:px-4">
         <div className="inline-block px-4 py-1 bg-red-50 text-red-600 border border-red-100 shadow-sm rounded-full site-label font-semibold text-xs sm:text-sm font-[Matter] mb-3">
           Our Team
         </div>
-        <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-[40px] font-bold text-center bg-gradient-to-r from-gray-900 to-red-600 bg-clip-text text-transparent mb-3 px-3 leading-tight pb-1">
+        <h2 className="text-xl min-[360px]:text-2xl sm:text-3xl md:text-4xl lg:text-[40px] font-bold text-center bg-gradient-to-r from-gray-900 to-red-600 bg-clip-text text-transparent mb-3 px-3 leading-tight pb-1">
           Team Behind Wonders
         </h2>
-        <p className="text-sm sm:text-base text-gray-500 font-poppins font-light max-w-xl mx-auto leading-relaxed">
+        <p className="text-xs min-[360px]:text-sm sm:text-base text-gray-500 font-poppins font-light max-w-xl mx-auto leading-relaxed">
           Meet the engineers, creative designers, and growth strategists driving TexWeb Solution.
         </p>
       </div>
@@ -53,17 +53,23 @@ export default function TeamSection({ limit, showSeeMore = false }) {
       {/* Mobile / Tablet Carousel View */}
       <div className="block sm:hidden w-full">
         <Swiper
-          className="w-full pb-16 px-4"
-          spaceBetween={18}
-          slidesPerView={1.25}
+          className="w-full pb-16 px-2 min-[360px]:px-4"
+          spaceBetween={14}
+          slidesPerView={1.16}
           centeredSlides={true}
+          breakpoints={{
+            360: {
+              slidesPerView: 1.25,
+              spaceBetween: 18,
+            },
+          }}
         >
           {displayedTeam.map((member) => (
             <SwiperSlide key={member.name}>
               <div className="px-1 pb-16">
-                <div className="relative p-[2px] rounded-[26px] bg-gradient-to-b from-red-500/50 via-red-200/40 to-gray-200/60 hover:from-red-600 hover:via-red-400 hover:to-red-600 transition-all duration-500 group">
+                <div className="relative p-[2px] rounded-[24px] min-[360px]:rounded-[26px] bg-gradient-to-b from-red-500/50 via-red-200/40 to-gray-200/60 hover:from-red-600 hover:via-red-400 hover:to-red-600 transition-all duration-500 group">
                   {/* Photo Container */}
-                  <div className="relative w-full aspect-[4/5] rounded-[24px] overflow-hidden cursor-pointer bg-neutral-50">
+                  <div className="relative w-full aspect-[4/5] rounded-[22px] min-[360px]:rounded-[24px] overflow-hidden cursor-pointer bg-neutral-50">
                     <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent opacity-50 group-hover:opacity-75 transition-opacity duration-500 z-10 pointer-events-none" />
                     <Image width={800} height={600}
                       alt={member.name}
@@ -74,17 +80,17 @@ export default function TeamSection({ limit, showSeeMore = false }) {
                   </div>
 
                   {/* Floating Info Box with matching Gradient Border (Hover & Without Hover) */}
-                  <div className="absolute bottom-0 translate-y-1/2 left-3 right-3 p-[2px] rounded-2xl bg-gradient-to-b from-red-500/50 via-red-200/40 to-gray-200/60 group-hover:from-red-600 group-hover:via-red-400 group-hover:to-red-600 transition-all duration-500 z-30">
-                    <div className="bg-white/95 backdrop-blur-md rounded-[14px] p-3.5 text-left">
+                  <div className="absolute bottom-0 translate-y-1/2 left-2 right-2 min-[360px]:left-3 min-[360px]:right-3 p-[2px] rounded-2xl bg-gradient-to-b from-red-500/50 via-red-200/40 to-gray-200/60 group-hover:from-red-600 group-hover:via-red-400 group-hover:to-red-600 transition-all duration-500 z-30">
+                    <div className="bg-white/95 backdrop-blur-md rounded-[14px] p-2.5 min-[360px]:p-3.5 text-left">
                       <span className="text-[10px] font-bold text-red-600 tracking-wider uppercase mb-0.5 block">
                         {member.role}
                       </span>
-                      <h3 className="text-gray-950 font-extrabold text-base leading-tight flex items-center justify-between gap-2 mb-1">
+                      <h3 className="text-gray-950 font-extrabold text-sm min-[360px]:text-base leading-tight flex items-center justify-between gap-2 mb-1">
                         {member.name}
                         <span className="w-1.5 h-1.5 bg-red-600 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-500 shrink-0"></span>
                       </h3>
                       {member.desc && (
-                        <p className="text-[11px] text-gray-500 leading-tight font-light font-poppins line-clamp-2">
+                        <p className="text-[10px] min-[360px]:text-[11px] text-gray-500 leading-tight font-light font-poppins line-clamp-2">
                           {member.desc}
                         </p>
                       )}
@@ -138,10 +144,10 @@ export default function TeamSection({ limit, showSeeMore = false }) {
 
       {/* See More / View All CTA Button */}
       {showSeeMore && (
-        <div className="mt-2 sm:mt-8 flex justify-center px-4 w-full">
+        <div className="mt-2 sm:mt-8 flex justify-center px-3 min-[360px]:px-4 w-full">
           <Link
             href="/about-us"
-            className="inline-flex items-center justify-center gap-2 px-5 min-[360px]:px-7 py-2.5 min-[360px]:py-3.5 rounded-full bg-gradient-to-r from-red-600 to-red-500 hover:from-red-700 hover:to-red-600 text-white font-medium text-xs min-[360px]:text-sm transition-all duration-300 shadow-md shadow-red-500/25 hover:shadow-lg hover:shadow-red-500/35 hover:scale-[1.03] active:scale-[0.98] group max-w-full truncate"
+            className="inline-flex items-center justify-center gap-2 px-4 min-[360px]:px-7 py-2.5 min-[360px]:py-3.5 rounded-full bg-gradient-to-r from-red-600 to-red-500 hover:from-red-700 hover:to-red-600 text-white font-medium text-xs min-[360px]:text-sm transition-all duration-300 shadow-md shadow-red-500/25 hover:shadow-lg hover:shadow-red-500/35 hover:scale-[1.03] active:scale-[0.98] group max-w-full truncate"
           >
             <span className="truncate">See More Members</span>
             <ArrowRight className="w-4 h-4 shrink-0 group-hover:translate-x-1 transition-transform duration-300" />

@@ -84,12 +84,12 @@ export default function FaqAccordion({ faqs, badge = "Common Inquiries" }) {
 
         <button
           onClick={() => toggleFaq(originalIndex)}
-          className={`w-full flex justify-between items-center px-3 min-[360px]:px-4 sm:px-6 py-3 min-[360px]:py-3.5 sm:py-5 text-left font-semibold transition-colors focus:outline-none ${
+          className={`w-full flex justify-between items-center px-2.5 min-[360px]:px-4 sm:px-6 py-2.5 min-[360px]:py-3.5 sm:py-5 text-left font-semibold transition-colors focus:outline-none ${
             isOpen ? "text-red-600 bg-red-50/5" : "text-gray-800 hover:text-red-600"
           }`}
         >
-          <div className="pr-2.5 sm:pr-4 min-w-0 flex-1">
-            <span className="text-[13px] min-[360px]:text-sm sm:text-base md:text-lg tracking-tight leading-snug sm:leading-normal">{faq.question}</span>
+          <div className="pr-2 sm:pr-4 min-w-0 flex-1">
+            <span className="text-[12.5px] min-[360px]:text-sm sm:text-base md:text-lg tracking-tight leading-snug sm:leading-normal">{faq.question}</span>
           </div>
           <div className={`p-1 min-[360px]:p-1.5 rounded-full transition-all duration-300 shrink-0 ${
             isOpen ? "bg-red-50 text-red-600 rotate-180" : "bg-gray-50 text-gray-400 group-hover:bg-red-50 group-hover:text-red-600"
@@ -99,10 +99,10 @@ export default function FaqAccordion({ faqs, badge = "Common Inquiries" }) {
         </button>
         <div 
           className={`transition-all duration-300 ease-in-out overflow-hidden ${
-            isOpen ? "max-h-[700px] border-t border-gray-50" : "max-h-0"
+            isOpen ? "max-h-[1200px] border-t border-gray-50" : "max-h-0"
           }`}
         >
-          <p className="px-3 min-[360px]:px-4 sm:px-6 py-3 min-[360px]:py-3.5 sm:py-5 text-gray-600 text-xs min-[360px]:text-sm sm:text-base leading-relaxed bg-neutral-50/20">
+          <p className="px-2.5 min-[360px]:px-4 sm:px-6 py-2.5 min-[360px]:py-3.5 sm:py-5 text-gray-600 text-xs min-[360px]:text-sm sm:text-base leading-relaxed bg-neutral-50/20">
             {faq.answer}
           </p>
         </div>
@@ -117,7 +117,7 @@ export default function FaqAccordion({ faqs, badge = "Common Inquiries" }) {
       <div className="absolute top-0 right-1/4 w-[30rem] h-[30rem] bg-red-50/10 rounded-full blur-3xl -z-10 pointer-events-none" />
       <div className="absolute bottom-0 left-1/4 w-[30rem] h-[30rem] bg-neutral-100/30 rounded-full blur-3xl -z-10 pointer-events-none" />
 
-      <div className="max-w-6xl mx-auto px-3 min-[360px]:px-4">
+      <div className="max-w-6xl mx-auto px-2.5 min-[360px]:px-4">
         <div className="text-center mb-6 min-[360px]:mb-8 sm:mb-10">
           <div className="inline-block px-3 min-[360px]:px-4 py-1 bg-red-50 text-red-600 border border-red-100 shadow-sm rounded-full site-label font-semibold text-[11px] min-[360px]:text-xs sm:text-sm font-[Matter] mb-2.5 sm:mb-3 max-w-[92%] truncate">
             {badge}
@@ -130,14 +130,14 @@ export default function FaqAccordion({ faqs, badge = "Common Inquiries" }) {
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 min-[360px]:gap-4 sm:gap-5 w-full items-start">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5 min-[360px]:gap-4 sm:gap-5 w-full items-start">
           {/* Left Column Stack */}
-          <div className="space-y-3 min-[360px]:space-y-4 sm:space-y-5 flex flex-col w-full">
+          <div className="space-y-2.5 min-[360px]:space-y-4 sm:space-y-5 flex flex-col w-full">
             {leftCol.map((faq) => renderFaqCard(faq))}
           </div>
 
           {/* Right Column Stack */}
-          <div className="space-y-3 min-[360px]:space-y-4 sm:space-y-5 flex flex-col w-full">
+          <div className="space-y-2.5 min-[360px]:space-y-4 sm:space-y-5 flex flex-col w-full">
             {rightCol.map((faq) => renderFaqCard(faq))}
           </div>
         </div>

@@ -163,9 +163,9 @@ export default function Home() {
         <Navbar />
 
         {/* Hero Section */}
-        <div className="flex flex-col items-center text-center px-4 justify-start bg-transparent pt-1 sm:pt-2 pb-6 sm:pb-8">
+        <div className="flex flex-col items-center text-center px-3 min-[360px]:px-4 justify-start bg-transparent pt-1 sm:pt-2 pb-6 sm:pb-8">
           <h1 className="sr-only">TexWeb Solution - Tailor-Made Website, Mobile App Development & Digital Marketing Agency</h1>
-          <div className="relative w-full mx-auto -mt-2.5 min-[375px]:-mt-3 sm:-mt-2.5 md:-mt-3 px-4 sm:px-8 max-w-full md:max-w-3xl lg:max-w-[740px]">
+          <div className="relative w-full mx-auto -mt-2.5 min-[375px]:-mt-3 sm:-mt-2.5 md:-mt-3 px-2 min-[360px]:px-4 sm:px-8 max-w-full md:max-w-3xl lg:max-w-[740px]">
             <Image width={800} height={600}
               alt="TexWeb Solution - Custom Website and Mobile App Development Agency"
               className="w-full h-auto object-contain"
@@ -176,13 +176,13 @@ export default function Home() {
           </div>
 
           {(cmsHero?.title || cmsHero?.subtitle) && (
-            <div className="max-w-2xl mx-auto px-4 -mt-2 sm:-mt-4 mb-3">
-              {cmsHero.title && <h2 className="text-lg sm:text-2xl font-bold text-gray-900 leading-tight" style={{ fontFamily: "Matter" }}>{cmsHero.title}</h2>}
-              {cmsHero.subtitle && <p className="text-xs sm:text-sm text-gray-600 mt-1 font-poppins">{cmsHero.subtitle}</p>}
+            <div className="max-w-2xl mx-auto px-3 min-[360px]:px-4 -mt-2 sm:-mt-4 mb-3">
+              {cmsHero.title && <h2 className="text-base min-[360px]:text-lg sm:text-2xl font-bold text-gray-900 leading-tight" style={{ fontFamily: "Matter" }}>{cmsHero.title}</h2>}
+              {cmsHero.subtitle && <p className="text-[11px] min-[360px]:text-xs sm:text-sm text-gray-600 mt-1 font-poppins">{cmsHero.subtitle}</p>}
             </div>
           )}
 
-          <div className="flex space-x-2 min-[360px]:space-x-2.5 sm:space-x-4 mt-1 sm:mt-2 lg:mt-2.5 z-10 max-w-full px-2">
+          <div className="flex space-x-2 min-[360px]:space-x-2.5 sm:space-x-4 mt-1 sm:mt-2 lg:mt-2.5 z-10 max-w-full px-1 min-[360px]:px-2">
             <Link href="/customized/websites" className="min-w-0">
               <button
                 className="w-[110px] min-[360px]:w-28 min-[375px]:w-[118px] py-2 min-[375px]:py-2.5 text-[11px] min-[360px]:text-xs min-[375px]:text-[13px] sm:w-44 sm:py-3.5 sm:text-base lg:py-4 bg-red-600 text-white rounded-full transition-transform hover:scale-105 hover:bg-red-700 shadow-md shadow-red-600/15 truncate px-2"
@@ -201,13 +201,13 @@ export default function Home() {
             </Link>
           </div>
 
-          <div className="inline-flex items-center gap-2 sm:gap-4 mt-3">
-            <div className="flex -space-x-3 scale-[0.85] sm:scale-90 origin-left">
+          <div className="inline-flex items-center gap-1.5 min-[360px]:gap-2 sm:gap-4 mt-3">
+            <div className="flex -space-x-3 scale-[0.8] min-[360px]:scale-[0.85] sm:scale-90 origin-left">
               <Image width={96} height={96} className="w-8 h-8 sm:w-10 sm:h-10 rounded-full border-2 border-red-600 object-cover bg-white shadow-sm" src="https://qfbsszbgmipbercujiak.supabase.co/storage/v1/object/public/site-assets/home/prof1.png" alt="Audience 1" />
               <Image width={96} height={96} className="w-8 h-8 sm:w-10 sm:h-10 rounded-full border-2 border-red-600 object-cover bg-white shadow-sm" src="https://qfbsszbgmipbercujiak.supabase.co/storage/v1/object/public/site-assets/home/prof2.png" alt="Audience 2" />
               <Image width={96} height={96} className="w-8 h-8 sm:w-10 sm:h-10 rounded-full border-2 border-red-600 object-cover bg-white shadow-sm" src="https://qfbsszbgmipbercujiak.supabase.co/storage/v1/object/public/site-assets/home/prof3.png" alt="Audience 3" />
             </div>
-            <p className="text-gray-700 text-sm sm:text-lg leading-none" style={{ fontFamily: "Matter" }}>
+            <p className="text-gray-700 text-xs min-[360px]:text-sm sm:text-lg leading-none" style={{ fontFamily: "Matter" }}>
               Trusted by <AnimatedCounter target={90} suffix="k+" className="text-red-600 font-semibold" /> Audience
             </p>
           </div>
@@ -241,20 +241,20 @@ export default function Home() {
           <div className="absolute top-0 left-1/4 w-[35rem] h-[35rem] bg-red-50/30 rounded-full blur-3xl -z-10 pointer-events-none" />
           <div className="absolute bottom-0 right-1/4 w-[35rem] h-[35rem] bg-neutral-100/50 rounded-full blur-3xl -z-10 pointer-events-none" />
 
-          <div className="max-w-5xl mx-auto text-center px-4 mb-8 sm:mb-10">
+          <div className="max-w-5xl mx-auto text-center px-3 min-[360px]:px-4 mb-8 sm:mb-10">
             <div className="inline-block px-4 py-1 bg-red-50 text-red-600 border border-red-100 shadow-sm rounded-full site-label font-semibold text-xs sm:text-sm font-[Matter] mb-3">
               Featured Projects
             </div>
-            <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-[40px] font-bold bg-gradient-to-r from-gray-900 to-red-600 bg-clip-text text-transparent leading-tight tracking-tight pb-1 mb-3">
+            <h2 className="text-xl min-[360px]:text-2xl sm:text-3xl md:text-4xl lg:text-[40px] font-bold bg-gradient-to-r from-gray-900 to-red-600 bg-clip-text text-transparent leading-tight tracking-tight pb-1 mb-3">
               Transforming Concepts Into Live Platforms
             </h2>
-            <p className="text-sm sm:text-base text-gray-500 font-poppins font-light max-w-xl mx-auto leading-relaxed">
+            <p className="text-xs min-[360px]:text-sm sm:text-base text-gray-500 font-poppins font-light max-w-xl mx-auto leading-relaxed">
               Explore some of our most impactful custom platforms, websites, and mobile apps built for client growth.
             </p>
           </div>
 
-          <div className="max-w-6xl mx-auto px-4">
-            <div className="grid gap-8 md:gap-10 justify-center grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="max-w-6xl mx-auto px-3 min-[360px]:px-4">
+            <div className="grid gap-6 min-[360px]:gap-8 md:gap-10 justify-center grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
               {featuredProjects.slice(0, 6).map((project) => (
                 <a
                   key={project.title}
@@ -263,8 +263,8 @@ export default function Home() {
                   rel="noopener noreferrer"
                   className="flex"
                 >
-                  <div className="p-[2px] rounded-[26px] sm:rounded-[30px] bg-gradient-to-b from-red-500/40 via-red-200/30 to-gray-200/50 hover:from-red-600 hover:via-red-400 hover:to-red-600 transition-all duration-500 shadow-sm hover:shadow-[0_20px_40px_-10px_rgba(220,38,38,0.2)] w-full max-w-sm mx-auto group">
-                    <div className="relative flex flex-col h-full bg-white/95 backdrop-blur-xl rounded-[24px] sm:rounded-[28px] overflow-hidden text-left">
+                  <div className="p-[2px] rounded-[24px] min-[360px]:rounded-[26px] sm:rounded-[30px] bg-gradient-to-b from-red-500/40 via-red-200/30 to-gray-200/50 hover:from-red-600 hover:via-red-400 hover:to-red-600 transition-all duration-500 shadow-sm hover:shadow-[0_20px_40px_-10px_rgba(220,38,38,0.2)] w-full max-w-sm mx-auto group">
+                    <div className="relative flex flex-col h-full bg-white/95 backdrop-blur-xl rounded-[22px] min-[360px]:rounded-[24px] sm:rounded-[28px] overflow-hidden text-left">
                       {/* Image Section */}
                       <div className="relative w-full overflow-hidden bg-gray-50">
                         {/* Hover Overlay */}
@@ -284,9 +284,9 @@ export default function Home() {
                       </div>
 
                       {/* Content Section */}
-                      <div className="px-3.5 py-4 sm:p-6 flex flex-col flex-grow">
+                      <div className="px-3 py-3.5 min-[360px]:px-3.5 sm:p-6 flex flex-col flex-grow">
                         {/* Tags */}
-                        <div className="flex flex-wrap gap-1.5 mb-3.5">
+                        <div className="flex flex-wrap gap-1.5 mb-3">
                           {project.tags.map((tag) => (
                             <span
                               key={tag}
@@ -298,17 +298,17 @@ export default function Home() {
                         </div>
 
                         {/* Title */}
-                        <h3 className="text-lg font-bold text-gray-900 group-hover:text-red-600 transition-colors flex items-center justify-between mb-2">
+                        <h3 className="text-base min-[360px]:text-lg font-bold text-gray-900 group-hover:text-red-600 transition-colors flex items-center justify-between mb-2">
                           <span className="line-clamp-1">{project.title}</span>
                           <span className="text-gray-400 group-hover:text-red-500 group-hover:translate-x-1 transition-all duration-300 transform">
-                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                            <svg className="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                               <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
                             </svg>
                           </span>
                         </h3>
 
                         {/* Description */}
-                        <p className="text-gray-600 text-sm leading-relaxed line-clamp-3 flex-grow">
+                        <p className="text-gray-600 text-xs min-[360px]:text-sm leading-relaxed line-clamp-3 flex-grow">
                           {project.bullets[0]}
                         </p>
                       </div>
@@ -320,9 +320,9 @@ export default function Home() {
           </div>
 
           {/* View All CTA */}
-          <div className="flex justify-center mt-8 sm:mt-10 px-4 w-full">
+          <div className="flex justify-center mt-8 sm:mt-10 px-3 min-[360px]:px-4 w-full">
             <Link href="/customized/websites" className="relative inline-flex items-center group max-w-full">
-              <button className="relative z-10 px-6 sm:px-8 py-3 sm:py-3.5 bg-red-600 text-white rounded-full text-xs min-[360px]:text-sm font-semibold hover:bg-red-700 shadow-md shadow-red-600/15 hover:shadow-lg hover:shadow-red-600/25 hover:scale-105 transition-all duration-300 flex items-center justify-center gap-2 transform max-w-full truncate">
+              <button className="relative z-10 px-5 min-[360px]:px-8 py-2.5 min-[360px]:py-3.5 bg-red-600 text-white rounded-full text-xs min-[360px]:text-sm font-semibold hover:bg-red-700 shadow-md shadow-red-600/15 hover:shadow-lg hover:shadow-red-600/25 hover:scale-105 transition-all duration-300 flex items-center justify-center gap-2 transform max-w-full truncate">
                 <span className="truncate">View All Projects</span>
                 <svg className="w-4 h-4 shrink-0 transform group-hover:translate-x-1 transition-transform duration-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M14 5l7 7m0 0l-7 7m7-7H3" />

@@ -21,13 +21,17 @@ export default function ReelsCarousel({
 }) {
   const [activeIndex, setActiveIndex] = useState(0);
   const [isDesktop, setIsDesktop] = useState(false);
+  const [isSmallMobile, setIsSmallMobile] = useState(false);
 
   const [isPaused, setIsPaused] = useState(false);
   const [touchStartX, setTouchStartX] = useState(null);
   const [touchEndX, setTouchEndX] = useState(null);
 
   useEffect(() => {
-    const handleResize = () => setIsDesktop(window.innerWidth >= 1024);
+    const handleResize = () => {
+      setIsDesktop(window.innerWidth >= 1024);
+      setIsSmallMobile(window.innerWidth < 360);
+    };
     handleResize();
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);
@@ -77,7 +81,7 @@ export default function ReelsCarousel({
   const cardVariants = {
     center: { x: 0, scale: 1, opacity: 1, filter: "blur(0px)", zIndex: 25 },
     sideNear: (custom) => ({
-      x: custom * (isDesktop ? 360 : 210),
+      x: custom * (isDesktop ? 360 : (isSmallMobile ? 180 : 210)),
       scale: isDesktop ? 0.85 : 0.88,
       opacity: 0.65,
       filter: "blur(2.5px)",
@@ -98,12 +102,12 @@ export default function ReelsCarousel({
         {badge}
       </div>
       <h2
-        className="text-2xl sm:text-3xl md:text-4xl lg:text-[40px] font-bold text-center bg-gradient-to-r from-gray-900 to-red-600 bg-clip-text text-transparent mb-2 px-3 leading-tight pb-1"
+        className="text-xl min-[360px]:text-2xl sm:text-3xl md:text-4xl lg:text-[40px] font-bold text-center bg-gradient-to-r from-gray-900 to-red-600 bg-clip-text text-transparent mb-2 px-3 leading-tight pb-1"
         style={{ fontFamily: "Matter" }}
       >
         Trusted by <AnimatedCounter target={audienceCount} suffix="k+" /> People
       </h2>
-      <p className="text-sm sm:text-base text-gray-500 font-poppins font-light max-w-xl mx-auto px-4 mb-3 sm:mb-4 leading-relaxed">
+      <p className="text-xs min-[360px]:text-sm sm:text-base text-gray-500 font-poppins font-light max-w-xl mx-auto px-3 min-[360px]:px-4 mb-3 sm:mb-4 leading-relaxed">
         Watch our latest viral videos, client project breakdowns, and modern tech workflows.
       </p>
 
@@ -116,7 +120,7 @@ export default function ReelsCarousel({
         onTouchEnd={handleTouchEnd}
       >
         {/* 3D Stack Slider Frame (Exact height to fit 9:16 cards without extra gaps) */}
-        <div className="relative flex items-center justify-center h-[430px] lg:h-[570px] w-full max-w-[1400px]">
+        <div className="relative flex items-center justify-center h-[390px] min-[360px]:h-[430px] lg:h-[570px] w-full max-w-[1400px]">
           <AnimatePresence initial={false} mode="popLayout">
             {reelsList.map((reel, index) => {
               let offset = ((index - activeIndex) % total + total) % total;
@@ -133,8 +137,8 @@ export default function ReelsCarousel({
               }
 
               // Exact 9:16 aspect ratio (1080x1920)
-              let width = isDesktop ? 320 : 240;
-              let height = isDesktop ? 568 : 427;
+              let width = isDesktop ? 320 : (isSmallMobile ? 216 : 240);
+              let height = isDesktop ? 568 : (isSmallMobile ? 384 : 427);
 
               return (
                 <motion.div
@@ -177,14 +181,14 @@ export default function ReelsCarousel({
         </div>
 
         {/* Dot Indicators (Clean, Automatic & Fingers Swipe) */}
-        <div className="flex items-center justify-center gap-2.5 mt-4 sm:mt-5 z-20">
+        <div className="flex items-center justify-center gap-1.5 min-[360px]:gap-2.5 mt-3 sm:mt-5 z-20">
           {reelsList.map((_, index) => (
             <button
               key={index}
               type="button"
               onClick={() => setActiveIndex(index)}
-              className={`h-3 rounded-full transition-all duration-300 cursor-pointer ${
-                index === activeIndex ? "w-8 bg-red-600 shadow-sm shadow-red-600/30" : "w-3 bg-gray-300 hover:bg-gray-400"
+              className={`h-2.5 min-[360px]:h-3 rounded-full transition-all duration-300 cursor-pointer ${
+                index === activeIndex ? "w-6 min-[360px]:w-8 bg-red-600 shadow-sm shadow-red-600/30" : "w-2.5 min-[360px]:w-3 bg-gray-300 hover:bg-gray-400"
               }`}
               aria-label={`Go to slide ${index + 1}`}
             />

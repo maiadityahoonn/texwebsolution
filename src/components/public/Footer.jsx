@@ -48,12 +48,12 @@ export default function Footer() {
           {/* Newsletter / Contact Section */}
           <div className="flex flex-col justify-center space-y-6">
             <div>
-              <h3 className="text-gray-400 text-sm font-medium mb-3">Contact us at</h3>
-              <div className="space-y-2.5 text-sm sm:text-base font-semibold text-gray-800">
+              <h3 className="text-gray-400 text-xs min-[360px]:text-sm font-medium mb-3">Contact us at</h3>
+              <div className="space-y-2.5 text-xs min-[360px]:text-sm sm:text-base font-semibold text-gray-800">
                 <p>
                   <a href="mailto:info@texwebsolution.in" className="inline-flex items-center gap-2 hover:text-red-600 transition-colors">
                     <Mail className="w-4 h-4 text-red-600 shrink-0" />
-                    <span>info@texwebsolution.in</span>
+                    <span className="break-all min-[360px]:break-normal">info@texwebsolution.in</span>
                   </a>
                 </p>
                 <p>
@@ -68,7 +68,7 @@ export default function Footer() {
                     <span>0755-4601839 (Calling Desk)</span>
                   </a>
                 </p>
-                <div className="pt-1.5 flex items-start gap-2 text-xs text-gray-600 font-poppins leading-relaxed">
+                <div className="pt-1.5 flex items-start gap-2 text-[11px] min-[360px]:text-xs text-gray-600 font-poppins leading-relaxed">
                   <MapPin className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
                   <span>A3-405, Kokta Bypass Rd, opposite Transport Nagar, PMAY, Bhopal, Madhya Pradesh 462028</span>
                 </div>
@@ -182,7 +182,7 @@ export default function Footer() {
 
       {/* Bottom Bar for Copyright and CIN */}
       <div className="border-t border-gray-150/65 w-full pt-6 pb-20 sm:pb-6 text-center text-xs text-gray-500 bg-gray-50/50 relative z-10">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-2.5 sm:gap-3">
+        <div className="max-w-7xl mx-auto px-3 min-[360px]:px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-2.5 sm:gap-3">
           <p className="font-poppins font-light text-gray-600">
             © 2026 TexWeb Solution Pvt. Ltd. All rights reserved.
           </p>
