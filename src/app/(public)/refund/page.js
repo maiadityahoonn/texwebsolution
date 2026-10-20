@@ -18,32 +18,32 @@ export default function RefundPage() {
     <div className="w-full flex flex-col bg-white">
       {/* Hero Header Wrapper */}
       <div 
-        className="relative w-full flex flex-col bg-no-repeat bg-center bg-cover min-h-[45vh] sm:min-h-[50vh]" 
+        className="relative w-full flex flex-col bg-no-repeat bg-center bg-cover min-h-0 md:min-h-[340px]" 
         style={{ backgroundImage: "url('https://qfbsszbgmipbercujiak.supabase.co/storage/v1/object/public/site-assets/common/Bg2.png')" }}
       >
         <Navbar />
 
-        <div className="flex-1 flex flex-col justify-center items-center text-center px-4 sm:px-6 pt-12 pb-16">
-          <div className="inline-block px-4 py-1 bg-red-50 text-red-600 border border-red-100 shadow-sm rounded-full font-semibold text-xs sm:text-sm font-[Matter] mb-4">
+        <div className="flex-1 flex flex-col justify-center items-center text-center px-3 min-[360px]:px-4 sm:px-6 pt-0 pb-3.5 min-[360px]:pb-4 sm:py-6 md:py-8">
+          <div className="inline-block px-3.5 py-1 bg-red-50 text-red-600 border border-red-100 shadow-sm rounded-full font-semibold text-[11px] min-[360px]:text-xs sm:text-sm font-[Matter] mb-3 sm:mb-4">
             {legal.badge}
           </div>
           <h1 
-            className="text-3xl sm:text-5xl md:text-6xl font-bold bg-gradient-to-r from-gray-900 to-red-600 bg-clip-text text-transparent leading-tight pb-2" 
+            className="text-2xl min-[360px]:text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold bg-gradient-to-r from-gray-900 to-red-600 bg-clip-text text-transparent leading-tight pb-1" 
             style={{ fontFamily: "Matter, sans-serif" }}
           >
             {legal.title}
           </h1>
-          <p className="mt-4 text-sm sm:text-base text-gray-600 max-w-xl mx-auto font-poppins font-light">
+          <p className="mt-2.5 sm:mt-4 text-xs min-[360px]:text-sm sm:text-base text-gray-600 max-w-xl mx-auto font-poppins font-light px-2">
             {legal.subtitle}
           </p>
         </div>
       </div>
 
       {/* Main Legal Content */}
-      <main className="w-full py-10 sm:py-12 px-4 sm:px-6 max-w-4xl mx-auto font-poppins text-gray-700 leading-relaxed">
+      <main className="w-full py-8 sm:py-12 px-3 min-[360px]:px-4 sm:px-6 max-w-4xl mx-auto font-poppins text-gray-700 leading-relaxed">
         <div className="space-y-8 sm:space-y-12">
           
-          <section className="bg-slate-50/70 border border-gray-100 rounded-3xl p-5 sm:p-8 shadow-sm">
+          <section className="bg-slate-50/70 border border-gray-100 rounded-2xl min-[360px]:rounded-3xl p-4 min-[360px]:p-5 sm:p-8 shadow-sm">
             <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-4 font-[Matter]">1. Overview</h2>
             <p className="mb-4">
               At <strong>TexWeb Solution Pvt. Ltd.</strong> (&quot;TexWeb Solution&quot;, &quot;we&quot;, &quot;our&quot;), we are dedicated to delivering world-class software development, prebuilt SaaS platforms, custom AI automation agents, and high-conversion digital marketing solutions.
@@ -53,7 +53,7 @@ export default function RefundPage() {
             </p>
           </section>
 
-          <section className="bg-red-50/50 border border-red-100 rounded-3xl p-5 sm:p-8 shadow-sm">
+          <section className="bg-red-50/50 border border-red-100 rounded-2xl min-[360px]:rounded-3xl p-4 min-[360px]:p-5 sm:p-8 shadow-sm">
             <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-4 font-[Matter]">2. No Refund Policy</h2>
             <p className="mb-4 font-medium text-gray-900">
               All payments, milestone deposits, and fees paid to TexWeb Solution Pvt. Ltd. are strictly non-refundable.
@@ -117,7 +117,7 @@ export default function RefundPage() {
             </ul>
           </section>
 
-          <section className="bg-slate-50/70 border border-gray-100 rounded-3xl p-5 sm:p-8 shadow-sm">
+          <section className="bg-slate-50/70 border border-gray-100 rounded-2xl min-[360px]:rounded-3xl p-4 min-[360px]:p-5 sm:p-8 shadow-sm">
             <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-4 font-[Matter]">6. Contact Information</h2>
             <p className="mb-4 font-light">
               For any questions regarding our Refund Policy or payment terms, please contact our billing desk:

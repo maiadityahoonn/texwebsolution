@@ -206,7 +206,6 @@ export default function LandingQuoteModal() {
       );
 
       if (typeof window !== "undefined") {
-        sessionStorage.setItem("meta_lead_event_fired", "true");
         sessionStorage.setItem("texweb_quote_modal_dismissed", "true");
       }
 

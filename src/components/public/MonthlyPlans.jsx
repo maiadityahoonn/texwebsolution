@@ -145,7 +145,7 @@ export default function MonthlyPlans() {
       <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-[700px] h-[350px] bg-red-100/40 rounded-full blur-[140px] pointer-events-none -z-10" />
       <div className="absolute bottom-10 right-10 w-96 h-96 bg-rose-100/30 rounded-full blur-[120px] pointer-events-none -z-10" />
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="max-w-7xl mx-auto px-2.5 min-[360px]:px-4 sm:px-6 lg:px-8">
         {/* Section Header */}
         <div className="text-center max-w-3xl mx-auto mb-8 sm:mb-10">
           <div className="inline-block px-4 py-1 bg-red-50 text-red-600 border border-red-100 shadow-sm rounded-full site-label font-semibold text-xs sm:text-sm font-[Matter] mb-3">
@@ -160,14 +160,14 @@ export default function MonthlyPlans() {
           </p>
 
           {/* Industry Pills Selector */}
-          <div className="mt-6 flex flex-wrap justify-center gap-2 sm:gap-2.5">
+          <div className="mt-6 flex flex-wrap justify-center gap-1.5 sm:gap-2.5">
             {industries.map((ind) => {
               const active = selectedIndustry === ind.id;
               return (
                 <button
                   key={ind.id}
                   onClick={() => setSelectedIndustry(ind.id)}
-                  className={`px-3.5 py-1.5 rounded-full text-xs sm:text-sm font-medium transition-all duration-300 border ${
+                  className={`px-2.5 min-[360px]:px-3.5 py-1 min-[360px]:py-1.5 rounded-full text-[11px] min-[360px]:text-xs sm:text-sm font-medium whitespace-nowrap transition-all duration-300 border ${
                     active
                       ? "bg-red-600 text-white border-red-600 shadow-md shadow-red-600/20 scale-105"
                       : "bg-white text-gray-700 border-gray-200 hover:border-red-300 hover:bg-red-50/50"
@@ -186,11 +186,11 @@ export default function MonthlyPlans() {
           <div className="mt-8 pt-2 flex flex-col sm:flex-row items-center justify-center gap-4 sm:gap-6">
             
             {/* Monthly / Yearly Billing Toggle */}
-            <div className="flex items-center p-1 bg-neutral-100 border border-gray-200 rounded-full shadow-inner">
+            <div className="flex items-center p-0.5 min-[360px]:p-1 bg-neutral-100 border border-gray-200 rounded-full shadow-inner max-w-full overflow-hidden">
               <button
                 type="button"
                 onClick={() => setSelectedBilling("monthly")}
-                className={`px-4 sm:px-5 py-2 rounded-full text-xs sm:text-sm font-bold transition-all duration-300 ${
+                className={`px-2.5 min-[360px]:px-4 sm:px-5 py-1.5 min-[360px]:py-2 rounded-full text-[10.5px] min-[360px]:text-xs sm:text-sm font-bold whitespace-nowrap transition-all duration-300 ${
                   selectedBilling === "monthly"
                     ? "bg-white text-gray-900 shadow-md scale-[1.02]"
                     : "text-gray-600 hover:text-gray-900"
@@ -201,14 +201,14 @@ export default function MonthlyPlans() {
               <button
                 type="button"
                 onClick={() => setSelectedBilling("yearly")}
-                className={`px-4 sm:px-5 py-2 rounded-full text-xs sm:text-sm font-bold transition-all duration-300 flex items-center gap-2 ${
+                className={`px-2 min-[360px]:px-4 sm:px-5 py-1.5 min-[360px]:py-2 rounded-full text-[10.5px] min-[360px]:text-xs sm:text-sm font-bold whitespace-nowrap transition-all duration-300 flex items-center gap-1 min-[360px]:gap-2 ${
                   selectedBilling === "yearly"
                     ? "bg-gradient-to-r from-red-600 to-rose-600 text-white shadow-md shadow-red-600/25 scale-[1.02]"
                     : "text-gray-600 hover:text-gray-900"
                 }`}
               >
-                <span>Annual Billing</span>
-                <span className={`text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full transition-colors ${
+                <span className="whitespace-nowrap">Annual Billing</span>
+                <span className={`text-[8.5px] min-[360px]:text-[10px] font-extrabold uppercase px-1 min-[360px]:px-2 py-0.5 rounded-full whitespace-nowrap shrink-0 transition-colors ${
                   selectedBilling === "yearly"
                     ? "bg-white text-red-600"
                     : "bg-red-100 text-red-700"
@@ -219,16 +219,16 @@ export default function MonthlyPlans() {
             </div>
 
             {/* Currency Selector */}
-            <div className="flex items-center gap-2">
-              <span className="text-xs font-bold text-gray-500 uppercase tracking-wider">Currency:</span>
-              <div className="inline-flex p-1 bg-neutral-100 border border-gray-200 rounded-full shadow-inner gap-1">
+            <div className="flex items-center gap-1.5 min-[360px]:gap-2">
+              <span className="text-[11px] min-[360px]:text-xs font-bold text-gray-500 uppercase tracking-wider whitespace-nowrap">Currency:</span>
+              <div className="inline-flex p-0.5 min-[360px]:p-1 bg-neutral-100 border border-gray-200 rounded-full shadow-inner gap-0.5 min-[360px]:gap-1">
                 {Object.entries(currencies).map(([key, c]) => {
                   const active = selectedCurrency === key;
                   return (
                     <button
                       key={key}
                       onClick={() => setSelectedCurrency(key)}
-                      className={`px-3.5 py-1.5 rounded-full text-xs font-bold transition-all duration-300 ${
+                      className={`px-2.5 min-[360px]:px-3.5 py-1 min-[360px]:py-1.5 rounded-full text-[10.5px] min-[360px]:text-xs font-bold whitespace-nowrap transition-all duration-300 ${
                         active
                           ? "bg-red-600 text-white shadow-md shadow-red-600/25 scale-[1.03]"
                           : "text-gray-700 hover:text-black hover:bg-white/70"
@@ -248,7 +248,7 @@ export default function MonthlyPlans() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8 lg:gap-8 items-stretch mb-16">
           
           {/* 1. BASIC PLAN */}
-          <div className="relative rounded-[32px] bg-white border border-gray-200 shadow-sm hover:shadow-xl transition-all duration-300 flex flex-col p-6 sm:p-8">
+          <div className="relative rounded-2xl min-[360px]:rounded-[32px] bg-white border border-gray-200 shadow-sm hover:shadow-xl transition-all duration-300 flex flex-col p-4 min-[360px]:p-6 sm:p-8 text-left">
             <div className="mb-6">
               <div className="flex items-center justify-between gap-2 mb-3">
                 <span className="inline-block px-3 py-1 bg-gray-100 text-gray-800 rounded-full text-xs font-bold uppercase tracking-wider">
@@ -263,7 +263,7 @@ export default function MonthlyPlans() {
               </div>
 
               <div className="flex items-baseline gap-1">
-                <span className="text-4xl sm:text-5xl font-extrabold text-gray-950 transition-all">{activePlans.basic.display}</span>
+                <span className="text-3xl min-[360px]:text-4xl sm:text-5xl font-extrabold text-gray-950 transition-all">{activePlans.basic.display}</span>
                 <span className="text-sm font-medium text-gray-500">{activePlans.basic.period}</span>
               </div>
 
@@ -332,18 +332,18 @@ export default function MonthlyPlans() {
                 href={getWhatsAppLink("Basic", "basic")}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="w-full py-3.5 px-6 rounded-2xl bg-gray-900 text-white font-semibold text-center text-sm hover:bg-red-600 transition-all duration-300 shadow-md hover:shadow-red-600/20 flex items-center justify-center gap-2 group"
+                className="w-full py-3 min-[360px]:py-3.5 px-2 min-[360px]:px-4 sm:px-6 rounded-2xl bg-gray-900 text-white font-semibold text-center text-[11px] min-[360px]:text-xs sm:text-sm hover:bg-red-600 transition-all duration-300 shadow-md hover:shadow-red-600/20 flex items-center justify-center gap-1.5 min-[360px]:gap-2 group whitespace-nowrap"
               >
-                <Image width={64} height={64} src="https://qfbsszbgmipbercujiak.supabase.co/storage/v1/object/public/site-assets/common/WhatsApp.svg" alt="WhatsApp" className="w-4 h-4 object-contain shrink-0" />
-                <span>Start Basic at {activePlans.basic.display}{selectedBilling === "yearly" ? "/yr" : "/mo"}</span>
-                <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                <Image width={64} height={64} src="https://qfbsszbgmipbercujiak.supabase.co/storage/v1/object/public/site-assets/common/WhatsApp.svg" alt="WhatsApp" className="w-3.5 h-3.5 min-[360px]:w-4 min-[360px]:h-4 object-contain shrink-0" />
+                <span className="whitespace-nowrap">Start Basic at {activePlans.basic.display}{selectedBilling === "yearly" ? "/yr" : "/mo"}</span>
+                <ArrowRight className="w-3.5 h-3.5 min-[360px]:w-4 min-[360px]:h-4 shrink-0 group-hover:translate-x-1 transition-transform" />
               </a>
             </div>
           </div>
 
           {/* 2. STANDARD PLAN (MOST POPULAR) */}
-          <div className="relative rounded-[32px] bg-gradient-to-b from-red-600 to-red-700 p-[2px] shadow-xl hover:shadow-2xl transition-all duration-300 flex flex-col transform md:-translate-y-2">
-            <div className="bg-white rounded-[30px] p-6 sm:p-8 flex-1 flex flex-col justify-between relative overflow-hidden">
+          <div className="relative rounded-2xl min-[360px]:rounded-[32px] bg-gradient-to-b from-red-600 to-red-700 p-[2px] shadow-xl hover:shadow-2xl transition-all duration-300 flex flex-col transform md:-translate-y-2">
+            <div className="bg-white rounded-[14px] min-[360px]:rounded-[30px] p-4 min-[360px]:p-6 sm:p-8 flex-1 flex flex-col justify-between relative overflow-hidden text-left">
               
               {/* Popular Ribbon */}
               <div className="absolute top-0 right-0">
@@ -368,7 +368,7 @@ export default function MonthlyPlans() {
                   </div>
 
                   <div className="flex items-baseline gap-1">
-                    <span className="text-4xl sm:text-5xl font-extrabold text-gray-950 transition-all">{activePlans.standard.display}</span>
+                    <span className="text-3xl min-[360px]:text-4xl sm:text-5xl font-extrabold text-gray-950 transition-all">{activePlans.standard.display}</span>
                     <span className="text-sm font-medium text-gray-500">{activePlans.standard.period}</span>
                   </div>
 
@@ -443,17 +443,17 @@ export default function MonthlyPlans() {
                 href={getWhatsAppLink("Standard", "standard")}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="w-full py-4 px-6 rounded-2xl bg-red-600 text-white font-semibold text-center text-sm hover:bg-red-700 transition-all duration-300 shadow-lg shadow-red-600/30 flex items-center justify-center gap-2 group"
+                className="w-full py-3 min-[360px]:py-3.5 sm:py-4 px-2 min-[360px]:px-4 sm:px-6 rounded-2xl bg-red-600 text-white font-semibold text-center text-[11px] min-[360px]:text-xs sm:text-sm hover:bg-red-700 transition-all duration-300 shadow-lg shadow-red-600/30 flex items-center justify-center gap-1.5 min-[360px]:gap-2 group whitespace-nowrap"
               >
-                <Image width={64} height={64} src="https://qfbsszbgmipbercujiak.supabase.co/storage/v1/object/public/site-assets/common/WhatsApp.svg" alt="WhatsApp" className="w-4 h-4 object-contain shrink-0" />
-                <span>Get Standard at {activePlans.standard.display}{selectedBilling === "yearly" ? "/yr" : "/mo"}</span>
-                <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                <Image width={64} height={64} src="https://qfbsszbgmipbercujiak.supabase.co/storage/v1/object/public/site-assets/common/WhatsApp.svg" alt="WhatsApp" className="w-3.5 h-3.5 min-[360px]:w-4 min-[360px]:h-4 object-contain shrink-0" />
+                <span className="whitespace-nowrap">Get Standard at {activePlans.standard.display}{selectedBilling === "yearly" ? "/yr" : "/mo"}</span>
+                <ArrowRight className="w-3.5 h-3.5 min-[360px]:w-4 min-[360px]:h-4 shrink-0 group-hover:translate-x-1 transition-transform" />
               </a>
             </div>
           </div>
 
           {/* 3. PREMIUM PLAN */}
-          <div className="relative rounded-[32px] bg-white border border-gray-200 shadow-sm hover:shadow-xl transition-all duration-300 flex flex-col p-6 sm:p-8">
+          <div className="relative rounded-2xl min-[360px]:rounded-[32px] bg-white border border-gray-200 shadow-sm hover:shadow-xl transition-all duration-300 flex flex-col p-4 min-[360px]:p-6 sm:p-8 text-left">
             <div className="mb-6">
               <div className="flex items-center justify-between gap-2 mb-3">
                 <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-amber-100 text-amber-800 rounded-full text-xs font-bold uppercase tracking-wider">
@@ -469,7 +469,7 @@ export default function MonthlyPlans() {
               </div>
 
               <div className="flex items-baseline gap-1">
-                <span className="text-4xl sm:text-5xl font-extrabold text-gray-950 transition-all">{activePlans.premium.display}</span>
+                <span className="text-3xl min-[360px]:text-4xl sm:text-5xl font-extrabold text-gray-950 transition-all">{activePlans.premium.display}</span>
                 <span className="text-sm font-medium text-gray-500">{activePlans.premium.period}</span>
               </div>
 
@@ -536,11 +536,11 @@ export default function MonthlyPlans() {
                 href={getWhatsAppLink("Premium", "premium")}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="w-full py-3.5 px-6 rounded-2xl bg-gray-900 text-white font-semibold text-center text-sm hover:bg-red-600 transition-all duration-300 shadow-md hover:shadow-red-600/20 flex items-center justify-center gap-2 group"
+                className="w-full py-3 min-[360px]:py-3.5 px-2 min-[360px]:px-4 sm:px-6 rounded-2xl bg-gray-900 text-white font-semibold text-center text-[11px] min-[360px]:text-xs sm:text-sm hover:bg-red-600 transition-all duration-300 shadow-md hover:shadow-red-600/20 flex items-center justify-center gap-1.5 min-[360px]:gap-2 group whitespace-nowrap"
               >
-                <Image width={64} height={64} src="https://qfbsszbgmipbercujiak.supabase.co/storage/v1/object/public/site-assets/common/WhatsApp.svg" alt="WhatsApp" className="w-4 h-4 object-contain shrink-0" />
-                <span>Start Premium at {activePlans.premium.display}{selectedBilling === "yearly" ? "/yr" : "/mo"}</span>
-                <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                <Image width={64} height={64} src="https://qfbsszbgmipbercujiak.supabase.co/storage/v1/object/public/site-assets/common/WhatsApp.svg" alt="WhatsApp" className="w-3.5 h-3.5 min-[360px]:w-4 min-[360px]:h-4 object-contain shrink-0" />
+                <span className="whitespace-nowrap">Start Premium at {activePlans.premium.display}{selectedBilling === "yearly" ? "/yr" : "/mo"}</span>
+                <ArrowRight className="w-3.5 h-3.5 min-[360px]:w-4 min-[360px]:h-4 shrink-0 group-hover:translate-x-1 transition-transform" />
               </a>
             </div>
           </div>
@@ -548,7 +548,7 @@ export default function MonthlyPlans() {
         </div>
 
         {/* 8-Step Business Workflow Strip */}
-        <div className="mt-8 mb-16 p-6 sm:p-10 bg-white rounded-3xl border border-gray-200/80 shadow-sm">
+        <div className="mt-8 mb-16 p-4 min-[360px]:p-6 sm:p-10 bg-white rounded-2xl min-[360px]:rounded-3xl border border-gray-200/80 shadow-sm">
           <div className="text-center max-w-2xl mx-auto mb-8">
             <div className="inline-block px-4 py-1 bg-red-50 text-red-600 border border-red-100 shadow-sm rounded-full site-label font-semibold text-xs sm:text-sm font-[Matter] mb-4">
               Workflow System
@@ -582,8 +582,8 @@ export default function MonthlyPlans() {
         </div>
 
         {/* Feature Comparison Table */}
-        <div className="mb-16 bg-white rounded-3xl border border-gray-200 overflow-hidden shadow-sm">
-          <div className="py-5 px-6 sm:px-8 bg-neutral-50/70 border-b border-gray-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div className="mb-16 bg-white rounded-2xl min-[360px]:rounded-3xl border border-gray-200 overflow-hidden shadow-sm">
+          <div className="py-4 min-[360px]:py-5 px-4 min-[360px]:px-6 sm:px-8 bg-neutral-50/70 border-b border-gray-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-left">
             <div>
               <h3 className="text-lg sm:text-xl font-bold text-gray-900">
                 Detailed Feature Comparison Matrix
@@ -666,7 +666,7 @@ export default function MonthlyPlans() {
         {/* Important Terms & Information Card (From Poster 3/3) */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-12">
           {/* Third-Party API Costs Note */}
-          <div className="p-6 sm:p-7 rounded-3xl bg-neutral-50 border border-gray-200">
+          <div className="p-4 min-[360px]:p-6 sm:p-7 rounded-2xl min-[360px]:rounded-3xl bg-neutral-50 border border-gray-200 text-left">
             <div className="flex items-center gap-2.5 mb-3 text-red-600">
               <CreditCard className="w-5 h-5" />
               <h4 className="text-base font-bold text-gray-900">Third-Party / API Costs (Paid by Client)</h4>
@@ -695,7 +695,7 @@ export default function MonthlyPlans() {
           </div>
 
           {/* Pricing & Service Terms */}
-          <div className="p-6 sm:p-7 rounded-3xl bg-neutral-50 border border-gray-200">
+          <div className="p-4 min-[360px]:p-6 sm:p-7 rounded-2xl min-[360px]:rounded-3xl bg-neutral-50 border border-gray-200 text-left">
             <div className="flex items-center gap-2.5 mb-3 text-red-600">
               <ShieldCheck className="w-5 h-5" />
               <h4 className="text-base font-bold text-gray-900">Transparent Pricing &amp; Service Terms</h4>
@@ -726,8 +726,8 @@ export default function MonthlyPlans() {
         </div>
 
         {/* Bottom Banner: Custom Requirements Callout */}
-        <div className="relative rounded-3xl bg-gradient-to-r from-gray-950 via-red-950 to-gray-950 p-8 sm:p-10 text-white flex flex-col md:flex-row items-center justify-between gap-6 shadow-xl">
-          <div className="max-w-2xl text-center md:text-left">
+        <div className="relative rounded-2xl min-[360px]:rounded-3xl bg-gradient-to-r from-gray-950 via-red-950 to-gray-950 p-4 min-[360px]:p-6 sm:p-10 text-white flex flex-col md:flex-row items-start md:items-center justify-between gap-6 shadow-xl text-left">
+          <div className="max-w-2xl text-left">
             <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-red-600/30 text-red-300 border border-red-500/30 rounded-full text-xs font-semibold mb-3">
               <Sparkles className="w-3.5 h-3.5" />
               <span>100% Custom Business Architecture</span>
@@ -740,22 +740,22 @@ export default function MonthlyPlans() {
             </p>
           </div>
 
-          <div className="shrink-0 flex flex-col sm:flex-row items-center gap-3 w-full md:w-auto">
+          <div className="shrink-0 flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 sm:gap-3 w-full md:w-auto">
             <a
               href="https://wa.me/917462827259?text=Hi%20TexWeb%2C%20I%20want%20to%20discuss%20custom%20monthly%20requirements%20for%20my%20business."
               target="_blank"
               rel="noopener noreferrer"
-              className="w-full sm:w-auto px-7 py-3.5 rounded-full bg-red-600 hover:bg-red-700 text-white font-semibold text-sm transition-all shadow-md shadow-red-600/30 flex items-center justify-center gap-2.5 group"
+              className="w-full sm:w-auto px-4 min-[360px]:px-7 py-3 min-[360px]:py-3.5 rounded-full bg-red-600 hover:bg-red-700 text-white font-semibold text-xs min-[360px]:text-sm transition-all shadow-md shadow-red-600/30 flex items-center justify-center gap-2 min-[360px]:gap-2.5 group whitespace-nowrap"
             >
-              <Image width={64} height={64} src="https://qfbsszbgmipbercujiak.supabase.co/storage/v1/object/public/site-assets/common/WhatsApp.svg" alt="WhatsApp" className="w-5 h-5 object-contain" />
-              <span>Discuss on WhatsApp</span>
+              <Image width={64} height={64} src="https://qfbsszbgmipbercujiak.supabase.co/storage/v1/object/public/site-assets/common/WhatsApp.svg" alt="WhatsApp" className="w-4 h-4 min-[360px]:w-5 min-[360px]:h-5 object-contain shrink-0" />
+              <span className="whitespace-nowrap">Discuss on WhatsApp</span>
             </a>
             <a
               href="tel:07554601839"
-              className="w-full sm:w-auto px-7 py-3.5 rounded-full bg-white/10 hover:bg-white/20 text-white font-medium text-sm transition-all border border-white/20 text-center flex items-center justify-center gap-2"
+              className="w-full sm:w-auto px-4 min-[360px]:px-7 py-3 min-[360px]:py-3.5 rounded-full bg-white/10 hover:bg-white/20 text-white font-medium text-xs min-[360px]:text-sm transition-all border border-white/20 text-center flex items-center justify-center gap-2 whitespace-nowrap"
             >
-              <PhoneCall className="w-4 h-4 text-white" />
-              <span>Call: 0755-4601839</span>
+              <PhoneCall className="w-3.5 h-3.5 min-[360px]:w-4 min-[360px]:h-4 text-white shrink-0" />
+              <span className="whitespace-nowrap">Call: 0755-4601839</span>
             </a>
           </div>
         </div>

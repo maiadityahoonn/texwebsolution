@@ -138,10 +138,10 @@ export default function Reviews3DCarousel({
 
               let width, height;
               if (position === "center") {
-                width = isDesktop ? 440 : 310;
+                width = isDesktop ? 440 : 295;
                 height = isDesktop ? 205 : 200;
               } else if (position === "sideNear") {
-                width = isDesktop ? 370 : 270;
+                width = isDesktop ? 370 : 260;
                 height = isDesktop ? 185 : 180;
               } else {
                 width = 340;

@@ -45,7 +45,7 @@ export default function CustomizedPageContent({ activeTab = "websites" }) {
     <div className="w-full flex flex-col bg-white">
       {/* Hero Header Wrapper */}
       <div 
-        className="relative w-full flex flex-col bg-no-repeat bg-center bg-cover min-h-[70vh] sm:min-h-[75vh] md:min-h-screen" 
+        className="relative w-full flex flex-col bg-no-repeat bg-center bg-cover min-h-0 md:min-h-[500px] lg:min-h-[560px]" 
         style={{ backgroundImage: "url('https://qfbsszbgmipbercujiak.supabase.co/storage/v1/object/public/site-assets/common/Bg2.png')" }}
       >
         <Navbar />
@@ -54,16 +54,16 @@ export default function CustomizedPageContent({ activeTab = "websites" }) {
         <Image src="https://qfbsszbgmipbercujiak.supabase.co/storage/v1/object/public/site-assets/common/customized_code.png" alt="" aria-hidden="true" width={192} height={192} className="hidden md:block absolute top-28 right-12 w-36 lg:w-48 h-auto opacity-80 animate-floatingSmooth pointer-events-none select-none" />
         <Image src="https://qfbsszbgmipbercujiak.supabase.co/storage/v1/object/public/site-assets/common/customized_gears.png" alt="" aria-hidden="true" width={176} height={176} className="hidden md:block absolute bottom-24 left-8 w-32 lg:w-44 h-auto opacity-70 animate-floatingSmooth pointer-events-none select-none" style={{ animationDelay: '1.5s' }} />
 
-        <div className="flex-1 flex flex-col justify-start pt-12 md:justify-center md:pt-0">
-          <section className="flex flex-1 items-start md:items-center justify-start md:justify-center text-center px-4 sm:px-6 pt-12 sm:pt-14 md:pt-0">
+        <div className="flex-1 flex flex-col justify-center pt-0 pb-3 min-[360px]:pb-3.5 sm:py-6 md:py-8">
+          <section className="flex items-center justify-center text-center px-3 min-[360px]:px-4 sm:px-6">
             <div className="w-full">
               <h1 
-                className="text-3xl sm:text-5xl md:text-6xl lg:text-7xl font-bold bg-gradient-to-r from-gray-900 to-red-600 bg-clip-text text-transparent leading-snug sm:leading-tight pb-2" 
+                className="text-2xl min-[360px]:text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold bg-gradient-to-r from-gray-900 to-red-600 bg-clip-text text-transparent leading-tight tracking-tight pb-1" 
                 style={{ fontFamily: "Matter, sans-serif" }}
               >
                 {hero.title}
               </h1>
-              <p className="mt-4 sm:mt-6 text-sm sm:text-base md:text-lg text-gray-500/80 max-w-md sm:max-w-xl md:max-w-2xl mx-auto font-poppins font-light leading-relaxed">
+              <p className="mt-2.5 sm:mt-4 text-xs min-[360px]:text-sm sm:text-base md:text-lg text-gray-500/85 max-w-md sm:max-w-xl md:max-w-2xl mx-auto font-poppins font-light leading-relaxed px-2">
                 {hero.subtitle}
               </p>
             </div>
@@ -104,7 +104,7 @@ export default function CustomizedPageContent({ activeTab = "websites" }) {
       </div>
 
       {/* Customized Projects Tab Switcher */}
-      <div className="w-full flex flex-col items-center text-center pt-10 sm:pt-12 pb-6 sm:pb-8 px-4 sm:px-6 font-poppins">
+      <div className="w-full flex flex-col items-center text-center pt-8 sm:pt-12 pb-6 sm:pb-8 px-2.5 min-[360px]:px-4 sm:px-6 font-poppins">
         <CustomizedTabs activeTab={activeTab} />
       </div>
 

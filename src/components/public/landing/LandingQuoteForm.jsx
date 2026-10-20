@@ -114,10 +114,6 @@ export default function LandingQuoteForm() {
         eventId
       );
 
-      if (typeof window !== "undefined") {
-        sessionStorage.setItem("meta_lead_event_fired", "true");
-      }
-
       const queryParams = new URLSearchParams({
         name: formData.name.trim(),
         service: formData.service || "Web / App Development",

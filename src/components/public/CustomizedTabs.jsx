@@ -300,24 +300,24 @@ export default function CustomizedTabs({ activeTab: propActiveTab, defaultTab = 
 
   return (
     <section className="mt-4 w-full font-[Matter]" id="customized">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-        <div className="inline-block px-4 py-1 bg-red-50 text-red-600 border border-red-100 shadow-sm rounded-full site-label font-semibold text-xs sm:text-sm font-[Matter] mb-4">
+      <div className="max-w-7xl mx-auto px-2 min-[360px]:px-4 sm:px-6 lg:px-8 text-center">
+        <div className="inline-block px-3.5 min-[360px]:px-4 py-1 bg-red-50 text-red-600 border border-red-100 shadow-sm rounded-full site-label font-semibold text-[11px] min-[360px]:text-xs sm:text-sm font-[Matter] mb-3 sm:mb-4">
           {section.badge}
         </div>
         
-        <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold text-center bg-gradient-to-r from-gray-900 to-red-600 bg-clip-text text-transparent mb-10 px-3 leading-tight pb-1">
+        <h2 className="text-2xl min-[360px]:text-3xl sm:text-4xl md:text-5xl font-bold text-center bg-gradient-to-r from-gray-900 to-red-600 bg-clip-text text-transparent mb-8 sm:mb-10 px-3 leading-tight pb-1">
           {section.title}
         </h2>
 
         {/* Tab Buttons */}
-        <div className="flex items-center justify-center mb-14">
+        <div className="flex items-center justify-center mb-10 sm:mb-14">
           <div className="relative flex bg-gray-100 p-1 rounded-full border border-gray-200 shadow-inner">
             {/* Sliding highlight overlay */}
             <div 
               className={`absolute top-1 bottom-1 rounded-full bg-red-600 shadow-md transition-all duration-300 ease-out ${
                 activeTab === "websites" 
-                  ? "left-1 w-[100px] sm:w-[120px]" 
-                  : "left-[104px] sm:left-[124px] w-[120px] sm:w-[140px]"
+                  ? "left-1 w-[92px] min-[360px]:w-[100px] sm:w-[120px]" 
+                  : "left-[96px] min-[360px]:left-[104px] sm:left-[124px] w-[108px] min-[360px]:w-[120px] sm:w-[140px]"
               }`}
             />
             
@@ -329,7 +329,7 @@ export default function CustomizedTabs({ activeTab: propActiveTab, defaultTab = 
                   el.scrollIntoView({ behavior: "smooth", block: "start" });
                 }
               }}
-              className={`relative inline-flex items-center justify-center rounded-full px-4 py-2 text-sm sm:text-base font-medium transition-all duration-300 z-10 w-[100px] sm:w-[120px] select-none ${
+              className={`relative inline-flex items-center justify-center rounded-full px-3 min-[360px]:px-4 py-2 text-xs min-[360px]:text-sm sm:text-base font-medium transition-all duration-300 z-10 w-[92px] min-[360px]:w-[100px] sm:w-[120px] select-none ${
                 activeTab === "websites" ? "text-white font-semibold" : "text-gray-500 hover:text-black"
               }`}
             >
@@ -343,7 +343,7 @@ export default function CustomizedTabs({ activeTab: propActiveTab, defaultTab = 
                   el.scrollIntoView({ behavior: "smooth", block: "start" });
                 }
               }}
-              className={`relative inline-flex items-center justify-center rounded-full px-4 py-2 text-sm sm:text-base font-medium transition-all duration-300 z-10 w-[120px] sm:w-[140px] select-none ${
+              className={`relative inline-flex items-center justify-center rounded-full px-3 min-[360px]:px-4 py-2 text-xs min-[360px]:text-sm sm:text-base font-medium transition-all duration-300 z-10 w-[108px] min-[360px]:w-[120px] sm:w-[140px] select-none ${
                 activeTab === "applications" ? "text-white font-semibold" : "text-gray-500 hover:text-black"
               }`}
             >
@@ -353,24 +353,24 @@ export default function CustomizedTabs({ activeTab: propActiveTab, defaultTab = 
         </div>
 
         {/* Staggered detailed grid list */}
-        <div className="w-full max-w-7xl mx-auto px-0 sm:px-6 md:px-12 space-y-14 sm:space-y-20 md:space-y-24">
+        <div className="w-full max-w-7xl mx-auto px-0 sm:px-4 md:px-12 space-y-10 min-[360px]:space-y-14 sm:space-y-20 md:space-y-24">
           {currentList.map((project, index) => {
             const isImageLeft = index % 2 === 0;
 
             return (
               <div 
                 key={project.title}
-                className="grid md:grid-cols-2 gap-8 md:gap-12 items-center px-0 md:px-6"
+                className="grid md:grid-cols-2 gap-5 min-[360px]:gap-6 sm:gap-8 md:gap-12 items-center px-0 md:px-6 text-left"
               >
                 {/* Image Side */}
                 <div 
-                  className={`flex justify-center items-center rounded-3xl bg-[#F3F3F3] w-full max-w-md aspect-[4/3] overflow-hidden p-3 sm:p-4 md:p-6 shadow-inner mx-auto ${
+                  className={`flex justify-center items-center rounded-2xl min-[360px]:rounded-3xl bg-[#F3F3F3] w-full max-w-md aspect-[4/3] overflow-hidden p-2.5 min-[360px]:p-3 sm:p-4 md:p-6 shadow-inner mx-auto ${
                     isImageLeft ? "md:order-1" : "md:order-2"
                   }`}
                 >
                   <Image width={800} height={600} 
                     alt={project.imageAlt} 
-                    className="rounded-2xl max-h-full max-w-full h-auto w-auto object-contain hover:scale-[1.03] transition-all duration-150" 
+                    className="rounded-xl min-[360px]:rounded-2xl max-h-full max-w-full h-auto w-auto object-contain hover:scale-[1.03] transition-all duration-150" 
                     src={project.image ? (project.image.startsWith("/") || project.image.startsWith("http") ? project.image : `/${project.image}`) : "/placeholder.png"}
                     loading="lazy"
                   />
@@ -378,32 +378,32 @@ export default function CustomizedTabs({ activeTab: propActiveTab, defaultTab = 
 
                 {/* Text / Details Side */}
                 <div 
-                  className={`rounded-xl p-4 text-left ${
+                  className={`rounded-xl p-1.5 min-[360px]:p-3 sm:p-4 text-left ${
                     isImageLeft ? "md:order-2" : "md:order-1"
                   }`}
                 >
                   <h3 
-                    className="text-2xl md:text-3xl text-gray-900 mb-6 text-center md:text-left font-medium" 
+                    className="text-xl min-[360px]:text-2xl md:text-3xl text-gray-900 mb-3.5 sm:mb-6 text-left font-medium leading-snug" 
                     style={{ fontFamily: "Matter" }}
                   >
                     {project.title}
                   </h3>
                   
-                  <ul className="space-y-4 mb-6 font-poppins">
+                  <ul className="space-y-3 sm:space-y-4 mb-5 sm:mb-6 font-poppins text-left">
                     {project.bullets.map((bullet, idx) => (
-                      <li key={idx} className="flex items-start gap-2 text-gray-600 text-sm md:text-sm">
-                        <span className="shrink-0 w-8 h-8 rounded-lg bg-red-50 text-red-600 flex items-center justify-center text-sm font-bold">
+                      <li key={idx} className="flex items-start gap-2.5 text-gray-600 text-xs min-[360px]:text-sm text-left">
+                        <span className="shrink-0 w-6 h-6 min-[360px]:w-7 min-[360px]:h-7 sm:w-8 sm:h-8 rounded-lg bg-red-50 text-red-600 flex items-center justify-center text-xs min-[360px]:text-sm font-bold">
                           {String(idx + 1).padStart(2, "0")}
                         </span>
-                        <p className="flex-1 mt-1">{bullet}</p>
+                        <p className="flex-1 mt-0.5 min-[360px]:mt-1 leading-relaxed text-left">{bullet}</p>
                       </li>
                     ))}
                   </ul>
 
-                  <div className="flex justify-center md:justify-start">
+                  <div className="flex justify-start text-left">
                     <a href={safeExternalUrl(project.buttonLink)} target="_blank" rel="noopener noreferrer" className="max-w-full min-w-0">
                       <button 
-                        className="px-5 min-[360px]:px-6 py-2 bg-red-600 text-white rounded-full shadow-md hover:scale-[1.05] hover:bg-red-700 active:scale-[0.96] transition-all duration-100 shadow-red-600/10 max-w-full truncate text-xs min-[360px]:text-sm" 
+                        className="px-5 min-[360px]:px-6 py-2 bg-red-600 text-white rounded-full shadow-md hover:scale-[1.05] hover:bg-red-700 active:scale-[0.96] transition-all duration-100 shadow-red-600/10 max-w-full truncate text-xs min-[360px]:text-sm font-medium" 
                         style={{ fontFamily: "Matter" }}
                       >
                         <span className="truncate">{project.buttonText}</span>

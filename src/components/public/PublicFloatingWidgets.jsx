@@ -59,26 +59,17 @@ export default function PublicFloatingWidgets() {
     return null;
   }
 
-  // If user is logged in, hide floating widgets (Insta, Chatbot, WhatsApp, Lead Capture)
-  if (isLoggedIn) {
-    return null;
-  }
-
-  // Prevent flash while checking auth on initial client hydration
-  if (isCheckingAuth) {
-    return null;
-  }
-
   // Routes where floating widgets (Instagram, Chatbot, WhatsApp) must be completely hidden
   const isHiddenFloatingRoute = pathname === "/get-quote" || pathname === "/thank-you";
+  const showFloatingWidgets = !isHiddenFloatingRoute && !isLoggedIn && !isCheckingAuth;
 
   return (
     <>
       {/* Global Meta 2-Step Quote & Architecture Modal (Public across all pages, except thank-you where user already converted) */}
       {pathname !== "/thank-you" && <LandingQuoteModal />}
 
-      {/* Floating Widgets (Instagram, Ask Ananya AI, WhatsApp) - Hidden on /get-quote and /thank-you pages */}
-      {!isHiddenFloatingRoute && (
+      {/* Floating Widgets (Instagram, Ask Ananya AI, WhatsApp) - Hidden on /get-quote, /thank-you, and for logged-in users */}
+      {showFloatingWidgets && (
         <>
           {/* Global Interactive AI Chatbot Widget (Public only) */}
           <AiChatbotWidget />

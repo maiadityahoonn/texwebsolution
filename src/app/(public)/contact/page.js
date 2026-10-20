@@ -4,17 +4,31 @@ import { useState } from "react";
 import Image from "next/image";
 import Navbar from "@/components/public/Navbar";
 import { createStaticCms } from "@/lib/staticCms";
-import { addLeadConfirmed } from "@/utils/leadStorage";
-import CommonMarquee from "@/components/public/CommonMarquee";
 import FaqAccordion from "@/components/public/FaqAccordion";
-import GetInTouchSection from "@/components/public/GetInTouchSection";
 import Footer from "@/components/public/Footer";
-import { Mail, Copy, Check, MessageSquare, Clock, Send, Sparkles, PhoneCall, ShieldCheck, MapPin } from "lucide-react";
+import {
+  Mail,
+  Copy,
+  Check,
+  Clock,
+  Sparkles,
+  PhoneCall,
+  ShieldCheck,
+  MapPin,
+  Globe,
+  Smartphone,
+  Bot,
+  TrendingUp,
+  Layers,
+  RefreshCw,
+  ArrowRight,
+  CheckCircle2,
+} from "lucide-react";
 
 const CONTACT_FAQS = [
   {
     question: "How quickly will your team respond to my project inquiry?",
-    answer: "We guarantee a response within 24 business hours. Our technical consultants will review your project requirements and reach out with a clear consultation plan."
+    answer: "We guarantee a response within 15 to 30 minutes during business hours. Our technical consultants will review your project requirements and reach out with a clear consultation plan."
   },
   {
     question: "Can we schedule a live strategy call or product demo?",
@@ -38,12 +52,49 @@ const CONTACT_FAQS = [
   }
 ];
 
-const SERVICE_OPTIONS = [
-  "AI Automation & Bots",
-  "Digital Marketing & Reels",
-  "Custom Web / Mobile App",
-  "Prebuilt Software Solution",
-  "Full-Stack Growth Package"
+const CONSULTATION_SERVICES = [
+  {
+    key: "Website Development",
+    title: "Website Development",
+    subtitle: "Custom Business Sites, E-Commerce & Portals",
+    icon: Globe,
+    badge: "Popular",
+  },
+  {
+    key: "App Development (iOS/Android)",
+    title: "Mobile App Development",
+    subtitle: "Android, iOS & Hybrid Native Apps",
+    icon: Smartphone,
+    badge: "High Growth",
+  },
+  {
+    key: "AI Chatbot & Automation",
+    title: "AI Chatbot & Automation",
+    subtitle: "WhatsApp Auto-Reply & Business Bots",
+    icon: Bot,
+    badge: "Trending",
+  },
+  {
+    key: "Meta Ads & Digital Marketing",
+    title: "Meta Ads & Growth",
+    subtitle: "Verified Lead Generation & Scaling",
+    icon: TrendingUp,
+    badge: "High ROI",
+  },
+  {
+    key: "ERP, CRM & Business Systems",
+    title: "ERP, CRM & Software",
+    subtitle: "Lead CRM, Billing, HMS & Systems",
+    icon: Layers,
+    badge: "Enterprise",
+  },
+  {
+    key: "Website Redesign",
+    title: "Website Redesign",
+    subtitle: "UI/UX Revamp & Mobile Speed Fix",
+    icon: RefreshCw,
+    badge: "Speed Boost",
+  },
 ];
 
 export default function ContactPage() {
@@ -53,18 +104,7 @@ export default function ContactPage() {
     subtitle: "Whether you need AI Automation, custom software engineering, high-ROI digital marketing, or ready-to-deploy prebuilt SaaS, our team is ready to scale your business.",
   });
   const faqs = cms.list("contact.faqs", "faqs", CONTACT_FAQS);
-  const serviceOptions = cms.list("contact.services", "options", SERVICE_OPTIONS);
-  const [formData, setFormData] = useState({
-    name: "",
-    email: "",
-    phone: "",
-    service: "AI Automation & Bots",
-    subject: "",
-    message: ""
-  });
   const [copied, setCopied] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [submitStatus, setSubmitStatus] = useState(null);
 
   const handleCopyEmail = () => {
     navigator.clipboard.writeText("info@texwebsolution.in");
@@ -72,42 +112,16 @@ export default function ContactPage() {
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const handleInputChange = (e) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
-  };
-
-  const handleServiceSelect = (serviceName) => {
-    setFormData((prev) => ({ ...prev, service: serviceName }));
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setIsSubmitting(true);
-    setSubmitStatus(null);
-
-    try {
-      await addLeadConfirmed({
-        name: formData.name,
-        email: formData.email,
-        phone: formData.phone,
-        service: formData.service,
-        source: "Contact Form",
-        notes: `${formData.subject ? `Subject: ${formData.subject}. ` : ''}${formData.message}`
-      });
-      setIsSubmitting(false);
-      setSubmitStatus("success");
-      setFormData({
-        name: "",
-        email: "",
-        phone: "",
-        service: "AI Automation & Bots",
-        subject: "",
-        message: ""
-      });
-    } catch {
-      setIsSubmitting(false);
-      setSubmitStatus("error");
+  const handleOpenModal = (serviceName = null) => {
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(
+        new CustomEvent("openQuoteModal", {
+          detail: {
+            service: serviceName || "Website Development",
+            source: "contact_page",
+          },
+        })
+      );
     }
   };
 
@@ -115,7 +129,7 @@ export default function ContactPage() {
     <div className="w-full flex flex-col bg-white">
       {/* Hero Header Wrapper */}
       <div 
-        className="relative w-full flex flex-col bg-no-repeat bg-center bg-cover min-h-[70vh] sm:min-h-[75vh] md:min-h-screen" 
+        className="relative w-full flex flex-col bg-no-repeat bg-center bg-cover min-h-0 md:min-h-[500px] lg:min-h-[560px]" 
         style={{ backgroundImage: "url('https://qfbsszbgmipbercujiak.supabase.co/storage/v1/object/public/site-assets/common/Bg2.png')" }}
       >
         <Navbar />
@@ -124,18 +138,19 @@ export default function ContactPage() {
         <Image src="https://qfbsszbgmipbercujiak.supabase.co/storage/v1/object/public/site-assets/common/contact_mail.png" alt="" aria-hidden="true" width={192} height={192} className="hidden md:block absolute top-28 right-12 w-36 lg:w-48 h-auto opacity-80 animate-floatingSmooth pointer-events-none select-none mix-blend-multiply" />
         <Image src="https://qfbsszbgmipbercujiak.supabase.co/storage/v1/object/public/site-assets/common/contact_chat.png" alt="" aria-hidden="true" width={176} height={176} className="hidden md:block absolute bottom-24 left-8 w-32 lg:w-44 h-auto opacity-70 animate-floatingSmooth pointer-events-none select-none mix-blend-multiply" style={{ animationDelay: '1s' }} />
 
-        <div className="flex-1 flex flex-col justify-start pt-12 md:justify-center md:pt-0">
-          <section className="flex flex-1 items-start md:items-center justify-start md:justify-center text-center px-4 sm:px-6 pt-12 sm:pt-14 md:pt-0">
+        <div className="flex-1 flex flex-col justify-center pt-0 pb-3 min-[360px]:pb-3.5 sm:py-6 md:py-8">
+          <section className="flex items-center justify-center text-center px-3 min-[360px]:px-4 sm:px-6">
             <div className="w-full">
               <h1 
-                className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold bg-gradient-to-r from-gray-900 via-gray-800 to-red-600 bg-clip-text text-transparent leading-snug sm:leading-tight pb-2" 
+                className="text-2xl min-[360px]:text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold bg-gradient-to-r from-gray-900 via-gray-800 to-red-600 bg-clip-text text-transparent leading-tight tracking-tight pb-1" 
                 style={{ fontFamily: "Matter, sans-serif" }}
               >
                 {hero.title}
               </h1>
-              <p className="mt-4 sm:mt-6 text-sm sm:text-base md:text-lg text-gray-500/80 max-w-md sm:max-w-xl md:max-w-2xl mx-auto font-poppins font-light leading-relaxed">
+              <p className="mt-2.5 sm:mt-4 text-xs min-[360px]:text-sm sm:text-base md:text-lg text-gray-500/85 max-w-md sm:max-w-xl md:max-w-2xl mx-auto font-poppins font-light leading-relaxed px-2">
                 {hero.subtitle}
               </p>
+
             </div>
           </section>
         </div>
@@ -173,33 +188,33 @@ export default function ContactPage() {
         </div>
       </div>
 
-      {/* Contact Form Section */}
-      <section className="py-10 sm:py-12 px-4 sm:px-6 max-w-7xl mx-auto w-full" style={{ fontFamily: "Matter, sans-serif" }}>
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-start">
+      {/* Contact Hub & Form Modal Trigger Section */}
+      <section className="py-8 sm:py-12 px-2.5 min-[360px]:px-4 sm:px-6 max-w-7xl mx-auto w-full" style={{ fontFamily: "Matter, sans-serif" }}>
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-start">
           
           {/* Info Side (Left Column) */}
-          <div className="lg:col-span-5 space-y-8">
+          <div className="lg:col-span-5 space-y-6 sm:space-y-8 text-left">
             <div>
-              <div className="inline-block px-4 py-1 bg-red-50 text-red-600 border border-red-100 shadow-sm rounded-full site-label font-semibold text-xs sm:text-sm font-[Matter] mb-4">
+              <div className="inline-block px-4 py-1 bg-red-50 text-red-600 border border-red-100 shadow-sm rounded-full site-label font-semibold text-xs sm:text-sm font-[Matter] mb-3 sm:mb-4">
                 Reach Out Directly
               </div>
-              <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold bg-gradient-to-r from-gray-900 via-gray-800 to-red-600 bg-clip-text text-transparent leading-tight pb-1">
+              <h2 className="text-2xl min-[360px]:text-3xl sm:text-4xl md:text-5xl font-bold bg-gradient-to-r from-gray-900 via-gray-800 to-red-600 bg-clip-text text-transparent leading-tight pb-1">
                 Connect directly with our team
               </h2>
-              <p className="mt-4 text-gray-500 leading-relaxed text-sm sm:text-base font-poppins font-light">
+              <p className="mt-3 sm:mt-4 text-gray-500 leading-relaxed text-xs min-[360px]:text-sm sm:text-base font-poppins font-light">
                 Whether you prefer email, instant WhatsApp chat, or submitting a detailed inquiry, we are ready to analyze your requirements and deliver tailored results.
               </p>
             </div>
 
             {/* Direct Contact Cards */}
-            <div className="space-y-4 font-poppins">
+            <div className="space-y-3 sm:space-y-4 font-poppins text-left">
               
               {/* Email Card */}
-              <div className="bg-white border border-gray-100 rounded-2xl p-5 shadow-sm hover:shadow-md transition-all duration-300">
+              <div className="bg-white border border-gray-100 rounded-2xl p-4 min-[360px]:p-5 shadow-sm hover:shadow-md transition-all duration-300 text-left">
                 <div className="flex items-center justify-between gap-3">
-                  <div className="flex items-center gap-4 min-w-0">
-                    <div className="p-3 bg-red-50 text-red-600 rounded-xl">
-                      <Mail size={22} />
+                  <div className="flex items-center gap-3.5 min-w-0">
+                    <div className="p-2.5 sm:p-3 bg-red-50 text-red-600 rounded-xl shrink-0">
+                      <Mail size={20} className="sm:w-[22px] sm:h-[22px]" />
                     </div>
                     <div className="min-w-0">
                       <h4 className="font-semibold text-gray-800 text-sm sm:text-base font-[Matter]">Email Us</h4>
@@ -208,8 +223,9 @@ export default function ContactPage() {
                   </div>
                   <button 
                     onClick={handleCopyEmail}
-                    className="p-2 hover:bg-gray-50 rounded-lg text-gray-400 hover:text-gray-600 transition-colors"
+                    className="p-2 hover:bg-gray-50 rounded-lg text-gray-400 hover:text-gray-600 transition-colors shrink-0 cursor-pointer"
                     title="Copy Email"
+                    type="button"
                   >
                     {copied ? <Check size={18} className="text-green-500" /> : <Copy size={18} />}
                   </button>
@@ -221,19 +237,19 @@ export default function ContactPage() {
                 href="https://wa.me/+917462827259" 
                 target="_blank" 
                 rel="noopener noreferrer"
-                className="block bg-white border border-gray-100 rounded-2xl p-5 shadow-sm hover:shadow-md hover:border-green-500/20 transition-all duration-300 group"
+                className="block bg-white border border-gray-100 rounded-2xl p-4 min-[360px]:p-5 shadow-sm hover:shadow-md hover:border-green-500/20 transition-all duration-300 group text-left"
               >
                 <div className="flex flex-col min-[420px]:flex-row min-[420px]:items-center justify-between gap-3">
-                  <div className="flex items-center gap-4 min-w-0">
-                    <div className="p-3 bg-green-50 rounded-xl group-hover:bg-green-100 transition-colors flex items-center justify-center">
-                      <Image src="https://qfbsszbgmipbercujiak.supabase.co/storage/v1/object/public/site-assets/common/WhatsApp.svg" alt="WhatsApp" width={22} height={22} className="w-[22px] h-[22px] object-contain" />
+                  <div className="flex items-center gap-3.5 min-w-0">
+                    <div className="p-2.5 sm:p-3 bg-green-50 rounded-xl group-hover:bg-green-100 transition-colors flex items-center justify-center shrink-0">
+                      <Image src="https://qfbsszbgmipbercujiak.supabase.co/storage/v1/object/public/site-assets/common/WhatsApp.svg" alt="WhatsApp" width={22} height={22} className="w-5 h-5 sm:w-[22px] sm:h-[22px] object-contain" />
                     </div>
                     <div className="min-w-0">
                       <h4 className="font-semibold text-gray-800 text-sm sm:text-base font-[Matter]">WhatsApp Support</h4>
                       <p className="text-xs sm:text-sm text-gray-500 font-medium">+91 7462827259</p>
                     </div>
                   </div>
-                  <span className="text-xs font-semibold text-green-600 px-3 py-1 bg-green-50 rounded-full group-hover:bg-green-100 transition-colors font-[Matter]">
+                  <span className="text-xs font-semibold text-green-600 px-3 py-1 bg-green-50 rounded-full group-hover:bg-green-100 transition-colors font-[Matter] self-start min-[420px]:self-auto">
                     Chat Now
                   </span>
                 </div>
@@ -242,32 +258,32 @@ export default function ContactPage() {
               {/* Calling Desk Card */}
               <a 
                 href="tel:07554601839" 
-                className="block bg-white border border-gray-100 rounded-2xl p-5 shadow-sm hover:shadow-md hover:border-blue-500/20 transition-all duration-300 group"
+                className="block bg-white border border-gray-100 rounded-2xl p-4 min-[360px]:p-5 shadow-sm hover:shadow-md hover:border-blue-500/20 transition-all duration-300 group text-left"
               >
                 <div className="flex flex-col min-[420px]:flex-row min-[420px]:items-center justify-between gap-3">
-                  <div className="flex items-center gap-4 min-w-0">
-                    <div className="p-3 bg-blue-50 rounded-xl group-hover:bg-blue-100 transition-colors flex items-center justify-center text-blue-600">
-                      <PhoneCall size={22} />
+                  <div className="flex items-center gap-3.5 min-w-0">
+                    <div className="p-2.5 sm:p-3 bg-blue-50 rounded-xl group-hover:bg-blue-100 transition-colors flex items-center justify-center text-blue-600 shrink-0">
+                      <PhoneCall size={20} className="sm:w-[22px] sm:h-[22px]" />
                     </div>
                     <div className="min-w-0">
                       <h4 className="font-semibold text-gray-800 text-sm sm:text-base font-[Matter]">Calling Desk</h4>
                       <p className="text-xs sm:text-sm text-gray-500 font-medium">0755-4601839</p>
                     </div>
                   </div>
-                  <span className="text-xs font-semibold text-blue-600 px-3 py-1 bg-blue-50 rounded-full group-hover:bg-blue-100 transition-colors font-[Matter]">
+                  <span className="text-xs font-semibold text-blue-600 px-3 py-1 bg-blue-50 rounded-full group-hover:bg-blue-100 transition-colors font-[Matter] self-start min-[420px]:self-auto">
                     Call Now
                   </span>
                 </div>
               </a>
 
               {/* HQ Office Address Card */}
-              <div className="bg-white border border-gray-100 rounded-2xl p-5 shadow-sm hover:shadow-md transition-all duration-300">
-                <div className="flex items-start gap-4">
-                  <div className="p-3 bg-red-50 text-red-600 rounded-xl mt-0.5 shrink-0">
-                    <MapPin size={22} />
+              <div className="bg-white border border-gray-100 rounded-2xl p-4 min-[360px]:p-5 shadow-sm hover:shadow-md transition-all duration-300 text-left">
+                <div className="flex items-start gap-3.5">
+                  <div className="p-2.5 sm:p-3 bg-red-50 text-red-600 rounded-xl mt-0.5 shrink-0">
+                    <MapPin size={20} className="sm:w-[22px] sm:h-[22px]" />
                   </div>
                   <div>
-                    <div className="flex items-center gap-2 mb-1">
+                    <div className="flex flex-wrap items-center gap-2 mb-1">
                       <h4 className="font-semibold text-gray-900 text-sm sm:text-base font-[Matter]">HQ Office</h4>
                       <span className="px-2 py-0.5 bg-red-100 text-red-700 text-[10px] font-bold rounded-full font-[Matter]">Headquarters</span>
                     </div>
@@ -279,13 +295,13 @@ export default function ContactPage() {
               </div>
 
               {/* Branch Office Address Card */}
-              <div className="bg-white border border-gray-100 rounded-2xl p-5 shadow-sm hover:shadow-md transition-all duration-300">
-                <div className="flex items-start gap-4">
-                  <div className="p-3 bg-rose-50 text-rose-600 rounded-xl mt-0.5 shrink-0">
-                    <MapPin size={22} />
+              <div className="bg-white border border-gray-100 rounded-2xl p-4 min-[360px]:p-5 shadow-sm hover:shadow-md transition-all duration-300 text-left">
+                <div className="flex items-start gap-3.5">
+                  <div className="p-2.5 sm:p-3 bg-rose-50 text-rose-600 rounded-xl mt-0.5 shrink-0">
+                    <MapPin size={20} className="sm:w-[22px] sm:h-[22px]" />
                   </div>
                   <div>
-                    <div className="flex items-center gap-2 mb-1">
+                    <div className="flex flex-wrap items-center gap-2 mb-1">
                       <h4 className="font-semibold text-gray-900 text-sm sm:text-base font-[Matter]">Branch Office</h4>
                       <span className="px-2 py-0.5 bg-gray-100 text-gray-700 text-[10px] font-bold rounded-full font-[Matter]">Madhya Pradesh</span>
                     </div>
@@ -296,165 +312,111 @@ export default function ContactPage() {
                 </div>
               </div>
 
-
             </div>
           </div>
 
-          {/* Form Side (Right Column) */}
+          {/* Form Modal Hub Side (Right Column) */}
           <div className="lg:col-span-7">
-            <div className="bg-white border border-gray-100 rounded-3xl p-6 sm:p-10 shadow-xl relative overflow-hidden">
+            <div className="bg-white border border-gray-100 rounded-2xl min-[360px]:rounded-3xl p-4 min-[360px]:p-6 sm:p-8 md:p-10 shadow-xl relative overflow-hidden text-left">
               <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-red-600 via-rose-500 to-amber-500"></div>
               
-              <h3 className="text-xl sm:text-2xl font-bold text-gray-900 mb-2">Send us a Message</h3>
-              <p className="text-xs sm:text-sm text-gray-500 font-poppins font-light mb-6">Fill in your requirements below and our team will get back to you with a personalized proposal.</p>
-              
-              <form onSubmit={handleSubmit} className="space-y-6">
-                
-                {/* Service Interest Selector */}
-                <div className="space-y-2">
-                  <label className="site-label font-semibold text-xs sm:text-sm font-[Matter] text-gray-700 block">
-                    What service are you looking for?
-                  </label>
-                  <div className="flex flex-wrap gap-2 pt-1">
-                    {serviceOptions.map((opt) => {
-                      const isSelected = formData.service === opt;
-                      return (
-                        <button
-                          key={opt}
-                          type="button"
-                          onClick={() => handleServiceSelect(opt)}
-                          className={`px-3.5 py-1.5 rounded-full text-xs font-semibold font-[Matter] transition-all duration-200 border ${
-                            isSelected
-                              ? "bg-red-600 text-white border-red-600 shadow-sm"
-                              : "bg-gray-50 text-gray-600 border-gray-200 hover:border-red-300 hover:bg-red-50/50"
-                          }`}
-                        >
-                          {opt}
-                        </button>
-                      );
-                    })}
-                  </div>
+              <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-red-50 text-red-600 border border-red-100 rounded-full text-xs font-semibold font-[Matter]">
+                  <Sparkles size={13} className="text-red-500" />
+                  Instant Project Consultation & Quote
+                </span>
+                <span className="text-[11px] sm:text-xs font-medium text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 rounded-full flex items-center gap-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                  Architects Online Now
+                </span>
+              </div>
+
+              <h3 className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-900 mb-2 leading-tight">
+                Request a Custom Proposal & Timeline
+              </h3>
+              <p className="text-xs sm:text-sm text-gray-500 font-poppins font-light mb-6 leading-relaxed">
+                Click any service below to open our interactive 2-step inquiry form. Our solution architects will analyze your requirements, prepare a milestone estimate, and connect with you.
+              </p>
+
+              {/* Service Cards Grid */}
+              <div className="space-y-2.5 sm:space-y-3 mb-6">
+                <label className="site-label font-semibold text-xs sm:text-sm font-[Matter] text-gray-700 block">
+                  Select your required service to get started:
+                </label>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 sm:gap-3">
+                  {CONSULTATION_SERVICES.map((srv) => {
+                    const IconComponent = srv.icon;
+                    return (
+                      <button
+                        key={srv.key}
+                        type="button"
+                        onClick={() => handleOpenModal(srv.key)}
+                        className="group flex items-start gap-3 p-3 sm:p-3.5 rounded-xl border border-gray-200 bg-gray-50/60 hover:bg-white hover:border-red-400 hover:shadow-md transition-all duration-200 text-left cursor-pointer active:scale-[0.98]"
+                      >
+                        <div className="p-2 bg-white rounded-lg border border-gray-100 text-red-600 group-hover:bg-red-600 group-hover:text-white transition-colors shrink-0 shadow-2xs mt-0.5">
+                          <IconComponent size={18} />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center justify-between gap-1 mb-0.5">
+                            <h4 className="font-semibold text-gray-900 text-xs sm:text-sm font-[Matter] truncate group-hover:text-red-600 transition-colors">
+                              {srv.title}
+                            </h4>
+                            <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-red-100/60 text-red-700 shrink-0 font-[Matter]">
+                              {srv.badge}
+                            </span>
+                          </div>
+                          <p className="text-[11px] text-gray-500 font-poppins line-clamp-1">
+                            {srv.subtitle}
+                          </p>
+                        </div>
+                      </button>
+                    );
+                  })}
                 </div>
+              </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                  {/* Name Input */}
-                  <div className="space-y-2">
-                    <label htmlFor="name" className="site-label font-semibold text-xs sm:text-sm font-[Matter] text-gray-700">Full Name</label>
-                    <input 
-                      type="text" 
-                      id="name"
-                      name="name"
-                      value={formData.name}
-                      onChange={handleInputChange}
-                      required
-                      placeholder="e.g. Dr. Bhuleshwar Patel"
-                      className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm placeholder-gray-400 focus:outline-none focus:border-red-500 focus:ring-2 focus:ring-red-100 transition-all font-poppins"
-                    />
+              {/* Primary Launch Action Card */}
+              <div className="bg-gradient-to-br from-red-600 via-rose-600 to-red-700 text-white rounded-2xl p-5 sm:p-6 shadow-lg shadow-red-600/20 text-left relative overflow-hidden mb-6">
+                <div className="absolute -right-10 -bottom-10 w-36 h-36 bg-white/10 rounded-full blur-xl pointer-events-none"></div>
+                <div className="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2">
+                      <Sparkles size={18} className="text-yellow-300" />
+                      <h4 className="font-bold text-base sm:text-lg font-[Matter]">
+                        Launch 2-Step Project Inquiry
+                      </h4>
+                    </div>
+                    <p className="text-xs sm:text-sm text-red-100 font-poppins font-light leading-snug">
+                      Get instant budget estimates, timeline roadmap & dedicated technical support.
+                    </p>
                   </div>
-
-                  {/* Email Input */}
-                  <div className="space-y-2">
-                    <label htmlFor="email" className="site-label font-semibold text-xs sm:text-sm font-[Matter] text-gray-700 flex items-center gap-1.5">
-                      <Mail className="w-3.5 h-3.5 text-red-600" />
-                      <span>Email Address</span>
-                    </label>
-                    <input 
-                      type="email" 
-                      id="email"
-                      name="email"
-                      value={formData.email}
-                      onChange={handleInputChange}
-                      required
-                      placeholder="name@company.com"
-                      className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm placeholder-gray-400 focus:outline-none focus:border-red-500 focus:ring-2 focus:ring-red-100 transition-all font-poppins"
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                  {/* Phone Input */}
-                  <div className="space-y-2">
-                    <label htmlFor="phone" className="site-label font-semibold text-xs sm:text-sm font-[Matter] text-gray-700 flex items-center gap-1.5">
-                      <Image src="https://qfbsszbgmipbercujiak.supabase.co/storage/v1/object/public/site-assets/common/WhatsApp.svg" alt="WhatsApp" width={14} height={14} className="w-3.5 h-3.5 object-contain" />
-                      <span>Phone / WhatsApp Number</span>
-                    </label>
-                    <input 
-                      type="tel" 
-                      id="phone"
-                      name="phone"
-                      value={formData.phone}
-                      onChange={handleInputChange}
-                      required
-                      placeholder="+91 98765 43210"
-                      className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm placeholder-gray-400 focus:outline-none focus:border-red-500 focus:ring-2 focus:ring-red-100 transition-all font-poppins"
-                    />
-                  </div>
-
-                  {/* Subject Input */}
-                  <div className="space-y-2">
-                    <label htmlFor="subject" className="site-label font-semibold text-xs sm:text-sm font-[Matter] text-gray-700">Subject</label>
-                    <input 
-                      type="text" 
-                      id="subject"
-                      name="subject"
-                      value={formData.subject}
-                      onChange={handleInputChange}
-                      required
-                      placeholder="e.g. AI Automation & Web Development Inquiry"
-                      className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm placeholder-gray-400 focus:outline-none focus:border-red-500 focus:ring-2 focus:ring-red-100 transition-all font-poppins"
-                    />
-                  </div>
-                </div>
-
-                {/* Message Input */}
-                <div className="space-y-2">
-                  <label htmlFor="message" className="site-label font-semibold text-xs sm:text-sm font-[Matter] text-gray-700">Message & Project Details</label>
-                  <textarea 
-                    id="message"
-                    name="message"
-                    rows={4}
-                    value={formData.message}
-                    onChange={handleInputChange}
-                    required
-                    placeholder="Tell us about your project goals, preferred timelines, or any specific requirements..."
-                    className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm placeholder-gray-400 focus:outline-none focus:border-red-500 focus:ring-2 focus:ring-red-100 transition-all resize-none font-poppins"
-                  ></textarea>
-                </div>
-
-                {/* Submit button & feedback */}
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-2">
-                  
-                  {submitStatus === "success" && (
-                    <span className="text-xs sm:text-sm font-semibold text-green-700 bg-green-50 border border-green-200 px-4 py-2 rounded-xl flex items-center gap-2 font-[Matter]">
-                      <Check size={16} /> Thank you! Our team will reach out within 24 hours.
-                    </span>
-                  )}
-                  {submitStatus === "error" && (
-                    <span className="text-xs sm:text-sm font-semibold text-red-600 bg-red-50 border border-red-200 px-4 py-2 rounded-xl font-[Matter]">
-                      Failed to send message. Please try again or WhatsApp us directly.
-                    </span>
-                  )}
-                  <div></div>
-
-                  <button 
-                    type="submit" 
-                    disabled={isSubmitting}
-                    className="flex items-center justify-center gap-2 px-8 py-3.5 bg-red-600 hover:bg-red-700 disabled:bg-gray-400 text-white rounded-full font-semibold transition-all shadow-md shadow-red-600/15 active:scale-95 text-sm sm:text-base shrink-0 font-[Matter]"
+                  <button
+                    type="button"
+                    onClick={() => handleOpenModal()}
+                    className="inline-flex items-center justify-center gap-2 px-5 py-3 sm:px-6 sm:py-3.5 bg-white text-red-600 hover:bg-neutral-100 font-bold text-xs sm:text-sm rounded-full transition-all shadow-md active:scale-95 shrink-0 cursor-pointer font-[Matter]"
                   >
-                    {isSubmitting ? (
-                      <>
-                        <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
-                        Sending Message...
-                      </>
-                    ) : (
-                      <>
-                        Send Message <Send size={16} />
-                      </>
-                    )}
+                    <span>Fill Inquiry Form</span>
+                    <ArrowRight size={16} />
                   </button>
                 </div>
+              </div>
 
-              </form>
+              {/* Trust & Guarantee Highlights */}
+              <div className="pt-2 border-t border-gray-100 grid grid-cols-2 sm:grid-cols-3 gap-3 font-poppins text-left">
+                <div className="flex items-center gap-2 text-gray-700 text-[11px] sm:text-xs">
+                  <Clock size={15} className="text-red-500 shrink-0" />
+                  <span>15-Min Response</span>
+                </div>
+                <div className="flex items-center gap-2 text-gray-700 text-[11px] sm:text-xs">
+                  <ShieldCheck size={15} className="text-emerald-500 shrink-0" />
+                  <span>100% NDA Protected</span>
+                </div>
+                <div className="flex items-center gap-2 text-gray-700 text-[11px] sm:text-xs col-span-2 sm:col-span-1">
+                  <CheckCircle2 size={15} className="text-blue-500 shrink-0" />
+                  <span>Transparent Pricing</span>
+                </div>
+              </div>
+
             </div>
           </div>
 

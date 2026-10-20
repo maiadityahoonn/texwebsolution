@@ -100,41 +100,41 @@ export default function ProductDetailPage({ params: paramsPromise }) {
     <div className="w-full flex flex-col bg-white overflow-x-hidden">
       {/* Hero Header Area */}
       <div
-        className="relative w-full flex flex-col bg-no-repeat bg-center bg-cover min-h-[75vh] md:min-h-screen pb-12"
+        className="relative w-full flex flex-col bg-no-repeat bg-center bg-cover min-h-0 md:min-h-[560px] pb-6 sm:pb-8 md:pb-12"
         style={{ backgroundImage: "url('https://qfbsszbgmipbercujiak.supabase.co/storage/v1/object/public/site-assets/common/Bg2.png')" }}
       >
         <Navbar />
 
-        <div className="flex-1 flex flex-col justify-center px-4 sm:px-6 py-6 md:py-10">
+        <div className="flex-1 flex flex-col justify-center px-3 min-[360px]:px-4 sm:px-6 pt-0 pb-3 min-[360px]:pb-3.5 md:py-8">
           <div className="max-w-7xl mx-auto w-full grid md:grid-cols-12 gap-8 md:gap-12 items-center">
 
             {/* Left side: Heading and Subtitle */}
             <div className="md:col-span-7 text-left">
 
               {/* Hero Badges */}
-              <div className="flex flex-wrap items-center gap-3 mb-5">
-                <span className="inline-flex items-center gap-2 px-3.5 py-1.5 bg-emerald-50 text-emerald-700 border border-emerald-100 rounded-full site-label font-semibold text-xs sm:text-sm font-[Matter]">
+              <div className="flex flex-wrap items-center gap-2 sm:gap-3 mb-3.5 sm:mb-5">
+                <span className="inline-flex items-center gap-2 px-3 py-1 sm:px-3.5 sm:py-1.5 bg-emerald-50 text-emerald-700 border border-emerald-100 rounded-full site-label font-semibold text-[11px] min-[360px]:text-xs sm:text-sm font-[Matter]">
                   Launch Ready SaaS
                 </span>
-                <span className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-red-50 text-red-600 border border-red-100 rounded-full site-label font-semibold text-xs sm:text-sm font-[Matter]">
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 sm:px-3.5 sm:py-1.5 bg-red-50 text-red-600 border border-red-100 rounded-full site-label font-semibold text-[11px] min-[360px]:text-xs sm:text-sm font-[Matter]">
                   Prebuilt Solution
                 </span>
               </div>
 
               <h1
-                className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold bg-gradient-to-r from-gray-900 via-gray-800 to-red-600 bg-clip-text text-transparent leading-tight pb-2"
+                className="text-2xl min-[360px]:text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold bg-gradient-to-r from-gray-900 via-gray-800 to-red-600 bg-clip-text text-transparent leading-tight pb-1"
                 style={{ fontFamily: "Matter, sans-serif" }}
               >
                 {visibleProduct.title}
               </h1>
-              <p className="mt-4 text-base sm:text-lg text-gray-600/90 max-w-2xl font-poppins font-light leading-relaxed">
+              <p className="mt-2.5 sm:mt-4 text-xs min-[360px]:text-sm sm:text-base md:text-lg text-gray-600/90 max-w-2xl font-poppins font-light leading-relaxed">
                 {visibleProduct.subtitle}
               </p>
 
               {/* Action Buttons in Hero */}
-              <div className="flex flex-col sm:flex-row sm:flex-wrap items-stretch sm:items-center gap-3 sm:gap-4 mt-8">
+              <div className="flex flex-col sm:flex-row sm:flex-wrap items-stretch sm:items-center gap-2.5 sm:gap-4 mt-5 sm:mt-8">
                 <Link href={`/contact?product=${encodeURIComponent(visibleProduct.title)}`}>
-                  <button className="w-full sm:w-auto px-8 py-3.5 bg-red-600 text-white rounded-full shadow-lg shadow-red-600/15 hover:bg-red-700 hover:scale-[1.02] active:scale-[0.98] transition-all font-semibold font-[Matter]">
+                  <button className="w-full sm:w-auto px-6 min-[360px]:px-8 py-3 sm:py-3.5 bg-red-600 text-white rounded-full shadow-lg shadow-red-600/15 hover:bg-red-700 hover:scale-[1.02] active:scale-[0.98] transition-all font-semibold text-xs min-[360px]:text-sm sm:text-base font-[Matter]">
                     Request a Demo
                   </button>
                 </Link>
@@ -143,8 +143,8 @@ export default function ProductDetailPage({ params: paramsPromise }) {
                   target="_blank"
                   rel="noopener noreferrer"
                 >
-                  <button className="w-full sm:w-auto px-8 py-3.5 bg-white border border-gray-200 text-gray-950 rounded-full shadow-sm hover:bg-neutral-50 hover:scale-[1.02] active:scale-[0.98] transition-all font-semibold font-[Matter] flex items-center justify-center gap-2">
-                    <Image width={64} height={64} src="https://qfbsszbgmipbercujiak.supabase.co/storage/v1/object/public/site-assets/common/WhatsApp.svg" alt="WhatsApp" className="w-5 h-5" /> WhatsApp Live
+                  <button className="w-full sm:w-auto px-6 min-[360px]:px-8 py-3 sm:py-3.5 bg-white border border-gray-200 text-gray-950 rounded-full shadow-sm hover:bg-neutral-50 hover:scale-[1.02] active:scale-[0.98] transition-all font-semibold text-xs min-[360px]:text-sm sm:text-base font-[Matter] flex items-center justify-center gap-2">
+                    <Image width={64} height={64} src="https://qfbsszbgmipbercujiak.supabase.co/storage/v1/object/public/site-assets/common/WhatsApp.svg" alt="WhatsApp" className="w-4 h-4 sm:w-5 sm:h-5" /> WhatsApp Live
                   </button>
                 </a>
               </div>
@@ -191,29 +191,29 @@ export default function ProductDetailPage({ params: paramsPromise }) {
       </div>
 
       {/* What All We Offer Section */}
-      <section className="py-10 sm:py-12 bg-white font-poppins border-t border-gray-100">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 text-center">
+      <section className="py-8 sm:py-12 bg-white font-poppins border-t border-gray-100">
+        <div className="max-w-7xl mx-auto px-2.5 min-[360px]:px-4 sm:px-6 text-center">
           <span className="inline-block px-5 py-2 bg-red-50 text-red-600 border border-red-100/80 shadow-sm rounded-full site-label font-semibold text-xs sm:text-sm font-[Matter]">
             Features & Capabilities
           </span>
-          <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold bg-gradient-to-r from-gray-900 to-red-600 bg-clip-text text-transparent leading-tight mt-4 mb-8 sm:mb-10" style={{ fontFamily: "Matter" }}>
+          <h2 className="text-2xl min-[360px]:text-3xl sm:text-4xl md:text-5xl font-bold bg-gradient-to-r from-gray-900 to-red-600 bg-clip-text text-transparent leading-tight mt-3 sm:mt-4 mb-6 sm:mb-10" style={{ fontFamily: "Matter" }}>
             What All We Offer
           </h2>
 
-          <div className="space-y-10 sm:space-y-14">
+          <div className="space-y-8 sm:space-y-14">
             {visibleProduct.offers.map((offer, index) => {
               const isImageLeft = index % 2 === 0;
               return (
                 <div
                   key={offer.title}
-                  className="grid md:grid-cols-2 gap-8 md:gap-12 lg:gap-16 items-center text-left"
+                  className="grid md:grid-cols-2 gap-6 sm:gap-8 md:gap-12 lg:gap-16 items-center text-left"
                 >
                   {/* Image Side */}
                   <div
-                    className={`flex justify-center items-center rounded-3xl bg-[#F5F5F5] w-full max-w-lg aspect-[4/3] overflow-hidden p-3 sm:p-6 shadow-inner relative group border border-neutral-100/50 mx-auto ${isImageLeft ? "md:order-1" : "md:order-2"
+                    className={`flex justify-center items-center rounded-2xl min-[360px]:rounded-3xl bg-[#F5F5F5] w-full max-w-lg aspect-[4/3] overflow-hidden p-2 min-[360px]:p-3 sm:p-6 shadow-inner relative group border border-neutral-100/50 mx-auto ${isImageLeft ? "md:order-1" : "md:order-2"
                       }`}
                   >
-                    <div className="absolute inset-0 bg-gradient-to-tr from-red-500/5 via-rose-500/5 to-transparent rounded-3xl pointer-events-none"></div>
+                    <div className="absolute inset-0 bg-gradient-to-tr from-red-500/5 via-rose-500/5 to-transparent rounded-2xl min-[360px]:rounded-3xl pointer-events-none"></div>
                     {offer.image ? (
                       <Image width={800} height={600}
                         alt={offer.title}
@@ -222,31 +222,31 @@ export default function ProductDetailPage({ params: paramsPromise }) {
                         loading="lazy"
                       />
                     ) : (
-                      <div className="w-[90%] aspect-video rounded-xl bg-white/80 backdrop-blur-sm border border-neutral-200/50 flex flex-col items-center justify-center p-6 text-center relative z-10 shadow-lg">
-                        <Sparkles className="w-12 h-12 text-red-500 mb-3" />
-                        <h4 className="font-semibold text-gray-900 font-[Matter]">{offer.title}</h4>
-                        <p className="text-xs text-gray-500 mt-1 max-w-[200px]">Production-ready interface mockup loading...</p>
+                      <div className="w-[90%] aspect-video rounded-xl bg-white/80 backdrop-blur-sm border border-neutral-200/50 flex flex-col items-center justify-center p-4 sm:p-6 text-center relative z-10 shadow-lg">
+                        <Sparkles className="w-10 h-10 sm:w-12 sm:h-12 text-red-500 mb-2 sm:mb-3" />
+                        <h4 className="font-semibold text-gray-900 font-[Matter] text-sm sm:text-base">{offer.title}</h4>
+                        <p className="text-[11px] sm:text-xs text-gray-500 mt-1 max-w-[200px]">Production-ready interface mockup loading...</p>
                       </div>
                     )}
                   </div>
 
                   {/* Text Side */}
                   <div
-                    className={`p-2 lg:p-6 ${isImageLeft ? "md:order-2" : "md:order-1"
+                    className={`p-1 min-[360px]:p-2 lg:p-6 text-left ${isImageLeft ? "md:order-2" : "md:order-1"
                       }`}
                   >
-                    <div className="flex items-center gap-3.5 mb-5">
+                    <div className="flex items-center gap-3.5 mb-3 sm:mb-5">
                       <span className="shrink-0 w-8 h-8 rounded-lg bg-red-50 text-red-600 flex items-center justify-center text-sm font-bold font-[Matter]">
                         {String(index + 1).padStart(2, "0")}
                       </span>
                       <h3
-                        className="text-2xl md:text-3xl font-bold text-gray-900 font-[Matter]"
+                        className="text-xl min-[360px]:text-2xl md:text-3xl font-bold text-gray-900 font-[Matter]"
                       >
                         {offer.title}
                       </h3>
                     </div>
 
-                    <p className="text-base text-gray-600/90 leading-relaxed font-light mb-6">
+                    <p className="text-xs min-[360px]:text-sm sm:text-base text-gray-600/90 leading-relaxed font-light mb-4 sm:mb-6">
                       {offer.desc}
                     </p>
 
@@ -264,37 +264,37 @@ export default function ProductDetailPage({ params: paramsPromise }) {
 
       {/* Why Choose Our Solution Section */}
       {visibleProduct.whyChooseUs && visibleProduct.whyChooseUs.length > 0 && (
-        <section className="py-10 sm:py-12 bg-gradient-to-b from-neutral-50 to-white border-y border-gray-100 font-poppins">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 text-center">
+        <section className="py-8 sm:py-12 bg-gradient-to-b from-neutral-50 to-white border-y border-gray-100 font-poppins">
+          <div className="max-w-7xl mx-auto px-2.5 min-[360px]:px-4 sm:px-6 text-center">
             <span className="inline-block px-5 py-2 bg-red-50 text-red-600 border border-red-100/80 shadow-sm rounded-full site-label font-semibold text-xs sm:text-sm font-[Matter]">
               Strategic Advantages
             </span>
-            <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold bg-gradient-to-r from-gray-900 to-red-600 bg-clip-text text-transparent leading-tight mt-4 mb-8 sm:mb-10" style={{ fontFamily: "Matter" }}>
+            <h2 className="text-2xl min-[360px]:text-3xl sm:text-4xl md:text-5xl font-bold bg-gradient-to-r from-gray-900 to-red-600 bg-clip-text text-transparent leading-tight mt-3 sm:mt-4 mb-6 sm:mb-10" style={{ fontFamily: "Matter" }}>
               Why Choose Our Solution?
             </h2>
 
-            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-8 text-left">
+            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 lg:gap-8 text-left">
               {visibleProduct.whyChooseUs.map((item, idx) => (
                 <div
                   key={idx}
-                  className="bg-white p-8 rounded-3xl border border-neutral-100/80 hover:border-red-200/80 shadow-sm hover:shadow-lg hover:shadow-red-500/5 hover:-translate-y-1 transition-all duration-300 flex flex-col relative group overflow-hidden"
+                  className="bg-white p-4 min-[360px]:p-6 sm:p-8 rounded-2xl min-[360px]:rounded-3xl border border-neutral-100/80 hover:border-red-200/80 shadow-sm hover:shadow-lg hover:shadow-red-500/5 hover:-translate-y-1 transition-all duration-300 flex flex-col relative group overflow-hidden text-left"
                 >
                   {/* Subtle Top Border Glow */}
                   <div className="absolute top-0 left-0 w-full h-[2px] bg-gradient-to-r from-red-500/0 via-red-500/40 to-red-500/0 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
 
-                  <div className="w-12 h-12 rounded-2xl bg-red-50 text-red-600 flex items-center justify-center mb-6 shrink-0 shadow-sm group-hover:scale-105 group-hover:bg-red-600 group-hover:text-white transition-all duration-300">
+                  <div className="w-10 h-10 min-[360px]:w-12 min-[360px]:h-12 rounded-2xl bg-red-50 text-red-600 flex items-center justify-center mb-4 sm:mb-6 shrink-0 shadow-sm group-hover:scale-105 group-hover:bg-red-600 group-hover:text-white transition-all duration-300">
                     {item.icon ? (
-                      <Image width={800} height={600} src={item.icon} alt={item.title} className="w-6 h-6 object-contain group-hover:invert transition-all duration-300" />
+                      <Image width={800} height={600} src={item.icon} alt={item.title} className="w-5 h-5 min-[360px]:w-6 min-[360px]:h-6 object-contain group-hover:invert transition-all duration-300" />
                     ) : (
-                      <Sparkles className="w-6 h-6" />
+                      <Sparkles className="w-5 h-5 min-[360px]:w-6 min-[360px]:h-6" />
                     )}
                   </div>
 
-                  <h3 className="text-lg font-bold text-gray-900 mb-3 font-[Matter] group-hover:text-red-600 transition-colors duration-300">
+                  <h3 className="text-base min-[360px]:text-lg font-bold text-gray-900 mb-2 sm:mb-3 font-[Matter] group-hover:text-red-600 transition-colors duration-300">
                     {item.title}
                   </h3>
 
-                  <p className="text-sm text-gray-500 leading-relaxed font-light flex-1">
+                  <p className="text-xs min-[360px]:text-sm text-gray-500 leading-relaxed font-light flex-1">
                     {item.desc}
                   </p>
                 </div>

@@ -191,14 +191,22 @@ export default function Home() {
                 <span className="truncate block">{cmsHero?.cta?.replace(/&apos;/g, "'") || "Let's Explore"}</span>
               </button>
             </Link>
-            <Link href="/contact" className="min-w-0">
-              <button
-                className="w-[110px] min-[360px]:w-28 min-[375px]:w-[118px] py-2 min-[375px]:py-2.5 text-[11px] min-[360px]:text-xs min-[375px]:text-[13px] sm:w-44 sm:py-3.5 sm:text-base lg:py-4 bg-white text-black rounded-full border border-gray-300 transition-transform hover:scale-105 hover:bg-red-50/20 hover:border-red-600 hover:text-red-600 truncate px-2"
-                style={{ fontFamily: "Matter", fontWeight: 500 }}
-              >
-                <span className="truncate block">Contact Us</span>
-              </button>
-            </Link>
+            <button
+              type="button"
+              onClick={() => {
+                if (typeof window !== "undefined") {
+                  window.dispatchEvent(
+                    new CustomEvent("openQuoteModal", {
+                      detail: { source: "home_hero_contact_us" },
+                    })
+                  );
+                }
+              }}
+              className="w-[110px] min-[360px]:w-28 min-[375px]:w-[118px] py-2 min-[375px]:py-2.5 text-[11px] min-[360px]:text-xs min-[375px]:text-[13px] sm:w-44 sm:py-3.5 sm:text-base lg:py-4 bg-white text-black rounded-full border border-gray-300 transition-transform hover:scale-105 hover:bg-red-50/20 hover:border-red-600 hover:text-red-600 truncate px-2 cursor-pointer"
+              style={{ fontFamily: "Matter", fontWeight: 500 }}
+            >
+              <span className="truncate block">Contact Us</span>
+            </button>
           </div>
 
           <div className="inline-flex items-center gap-1.5 min-[360px]:gap-2 sm:gap-4 mt-3">

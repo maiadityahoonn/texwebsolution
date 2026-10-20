@@ -1,6 +1,46 @@
 "use client";
 
 export const META_PIXEL_ID = process.env.NEXT_PUBLIC_META_PIXEL_ID || "1117053014586521";
+const PENDING_META_LEAD_KEY = "texweb_pending_meta_lead_conversion";
+const PENDING_META_LEAD_MAX_AGE_MS = 30 * 60 * 1000;
+
+export function queueMetaLeadConversion({ eventId, leadData = {}, registrationData = {} }) {
+  if (typeof window === "undefined" || !eventId) return false;
+
+  try {
+    const stored = sessionStorage.getItem(PENDING_META_LEAD_KEY);
+    const previous = stored ? JSON.parse(stored) : null;
+    const sameEvent = previous?.eventId === String(eventId) ? previous : {};
+    sessionStorage.setItem(PENDING_META_LEAD_KEY, JSON.stringify({
+      eventId: String(eventId),
+      leadData: { ...(sameEvent.leadData || {}), ...leadData },
+      registrationData: { ...(sameEvent.registrationData || {}), ...registrationData },
+      createdAt: Date.now(),
+    }));
+    return true;
+  } catch (_) {
+    return false;
+  }
+}
+
+export function consumePendingMetaLeadConversion() {
+  if (typeof window === "undefined") return null;
+
+  try {
+    const stored = sessionStorage.getItem(PENDING_META_LEAD_KEY);
+    sessionStorage.removeItem(PENDING_META_LEAD_KEY);
+    if (!stored) return null;
+
+    const pending = JSON.parse(stored);
+    const createdAt = Number(pending?.createdAt || 0);
+    if (!pending?.eventId || !createdAt || Date.now() - createdAt > PENDING_META_LEAD_MAX_AGE_MS) {
+      return null;
+    }
+    return pending;
+  } catch (_) {
+    return null;
+  }
+}
 
 /**
  * Safely parse and persist UTM and ad tracking parameters
@@ -83,6 +123,19 @@ export function trackMetaEvent(eventName, customData = {}, eventId = null) {
   if (typeof window === "undefined") return;
 
   try {
+    const isDeferredConversion =
+      eventId &&
+      window.location.pathname !== "/thank-you" &&
+      (eventName === "Lead" || eventName === "CompleteRegistration");
+    if (isDeferredConversion) {
+      queueMetaLeadConversion({
+        eventId,
+        leadData: eventName === "Lead" ? customData : {},
+        registrationData: eventName === "CompleteRegistration" ? customData : {},
+      });
+      return;
+    }
+
     const params = getTrackingParams();
     const eventPayload = {
       ...customData,

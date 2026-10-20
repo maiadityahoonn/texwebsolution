@@ -128,7 +128,6 @@ export default function Footer() {
                 <h4 className="text-gray-400 text-base font-medium mb-4 text-left">More Resources</h4>
                 <nav className="space-y-3 text-left">
                   {[
-                    { name: "Login", href: "/login" },
                     { name: "Refund Policy", href: "/refund" },
                     { name: "Privacy Policy", href: "/privacy" },
                     { name: "Terms & Conditions", href: "/terms" }
@@ -181,8 +180,8 @@ export default function Footer() {
       </div>
 
       {/* Bottom Bar for Copyright and CIN */}
-      <div className="border-t border-gray-150/65 w-full pt-6 pb-20 sm:pb-6 text-center text-xs text-gray-500 bg-gray-50/50 relative z-10">
-        <div className="max-w-7xl mx-auto px-3 min-[360px]:px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-2.5 sm:gap-3">
+      <div className="border-t border-gray-150/65 w-full py-3 sm:py-3.5 text-center text-xs text-gray-500 bg-gray-50/50 relative z-10">
+        <div className="max-w-7xl mx-auto px-3 min-[360px]:px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-1.5 sm:gap-3">
           <p className="font-poppins font-light text-gray-600">
             © 2026 TexWeb Solution Pvt. Ltd. All rights reserved.
           </p>

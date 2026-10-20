@@ -111,7 +111,7 @@ export default function DigitalMarketingPage() {
     <div className="w-full flex flex-col bg-white">
       {/* Hero Header Wrapper */}
       <div
-        className="relative w-full flex flex-col bg-no-repeat bg-center bg-cover min-h-[70vh] sm:min-h-[75vh] md:min-h-screen"
+        className="relative w-full flex flex-col bg-no-repeat bg-center bg-cover min-h-0 md:min-h-[500px] lg:min-h-[560px]"
         style={{ backgroundImage: "url('https://qfbsszbgmipbercujiak.supabase.co/storage/v1/object/public/site-assets/common/Bg2.png')" }}
       >
         <Navbar />
@@ -131,16 +131,16 @@ export default function DigitalMarketingPage() {
           style={{ animationDelay: '1.2s' }}
         />
 
-        <div className="flex-1 flex flex-col justify-start pt-12 md:justify-center md:pt-0">
-          <section className="flex flex-1 items-start md:items-center justify-start md:justify-center text-center px-4 sm:px-6 pt-12 sm:pt-14 md:pt-0">
+        <div className="flex-1 flex flex-col justify-center pt-0 pb-3 min-[360px]:pb-3.5 sm:py-6 md:py-8">
+          <section className="flex items-center justify-center text-center px-3 min-[360px]:px-4 sm:px-6">
             <div className="w-full">
               <h1 
-                className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold bg-gradient-to-r from-gray-900 to-red-600 bg-clip-text text-transparent leading-snug sm:leading-tight pb-2" 
+                className="text-2xl min-[360px]:text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold bg-gradient-to-r from-gray-900 to-red-600 bg-clip-text text-transparent leading-tight tracking-tight pb-1" 
                 style={{ fontFamily: "Matter, sans-serif" }}
               >
                 {hero.title}
               </h1>
-              <p className="mt-4 sm:mt-6 text-sm sm:text-base md:text-lg text-gray-600 max-w-3xl mx-auto px-2 leading-relaxed font-poppins">
+              <p className="mt-2.5 sm:mt-4 text-xs min-[360px]:text-sm sm:text-base md:text-lg text-gray-600 max-w-3xl mx-auto px-2 leading-relaxed font-poppins">
                 {hero.subtitle}
               </p>
             </div>
@@ -185,32 +185,32 @@ export default function DigitalMarketingPage() {
       </div>
 
       {/* Services List Section */}
-      <div className="w-full flex flex-col items-center text-center pt-10 sm:pt-12 pb-12 sm:pb-16 px-4 sm:px-6" style={{ fontFamily: "Matter, sans-serif" }}>
-        <div className="inline-block px-4 py-1 bg-red-50 text-red-600 border border-red-100 shadow-sm rounded-full site-label font-semibold text-xs sm:text-sm font-[Matter] mb-3">
+      <div className="w-full flex flex-col items-center text-center pt-8 sm:pt-12 pb-12 sm:pb-16 px-2.5 min-[360px]:px-4 sm:px-6" style={{ fontFamily: "Matter, sans-serif" }}>
+        <div className="inline-block px-3.5 min-[360px]:px-4 py-1 bg-red-50 text-red-600 border border-red-100 shadow-sm rounded-full site-label font-semibold text-[11px] min-[360px]:text-xs sm:text-sm font-[Matter] mb-2.5 sm:mb-3">
           Our Marketing Catalog
         </div>
-        <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold text-center bg-gradient-to-r from-gray-900 to-red-600 bg-clip-text text-transparent leading-tight pb-1 mb-10 sm:mb-12">
+        <h2 className="text-2xl min-[360px]:text-3xl sm:text-4xl md:text-5xl font-bold text-center bg-gradient-to-r from-gray-900 to-red-600 bg-clip-text text-transparent leading-tight pb-1 mb-8 sm:mb-12">
           Explore Our Marketing Solutions
         </h2>
 
-        <div className="w-full max-w-7xl mx-auto px-0 sm:px-6 md:px-12 space-y-12 sm:space-y-16 md:space-y-20">
+        <div className="w-full max-w-7xl mx-auto px-0 sm:px-4 md:px-12 space-y-10 min-[360px]:space-y-12 sm:space-y-16 md:space-y-20">
           {services.map((service, index) => {
             const isImageLeft = index % 2 === 0;
 
             return (
               <div
                 key={service.title}
-                className="grid md:grid-cols-2 gap-8 md:gap-12 items-center px-0 md:px-6"
+                className="grid md:grid-cols-2 gap-5 min-[360px]:gap-6 sm:gap-8 md:gap-12 items-center px-0 md:px-6 text-left"
               >
                 {/* Image Side */}
                 <div
-                  className={`flex justify-center items-center rounded-3xl bg-[#F6FBF9] border border-gray-100 w-full max-w-md aspect-[4/3] overflow-hidden p-3 md:p-4 shadow-sm ${
+                  className={`flex justify-center items-center rounded-2xl min-[360px]:rounded-3xl bg-[#F6FBF9] border border-gray-100 w-full max-w-md aspect-[4/3] overflow-hidden p-2.5 min-[360px]:p-3 md:p-4 shadow-sm mx-auto ${
                     isImageLeft ? "md:order-1" : "md:order-2"
                   }`}
                 >
                   <Image width={800} height={600}
                     alt={service.imageAlt}
-                    className="rounded-2xl w-full h-full object-cover hover:scale-[1.03] transition-all duration-300"
+                    className="rounded-xl min-[360px]:rounded-2xl w-full h-full object-cover hover:scale-[1.03] transition-all duration-300"
                     src={service.image}
                     loading="lazy"
                   />
@@ -218,41 +218,43 @@ export default function DigitalMarketingPage() {
 
                 {/* Text Side */}
                 <div
-                  className={`rounded-xl p-4 text-left ${isImageLeft ? "md:order-2" : "md:order-1"
+                  className={`rounded-xl p-1.5 min-[360px]:p-3 sm:p-4 text-left ${isImageLeft ? "md:order-2" : "md:order-1"
                     }`}
                 >
                   <h3
-                    className="text-2xl md:text-3xl text-gray-900 mb-4 font-medium"
+                    className="text-xl min-[360px]:text-2xl md:text-3xl text-gray-900 mb-2.5 sm:mb-4 text-left font-medium leading-snug"
                   >
                     {service.title}
                   </h3>
 
-                  <p className="text-gray-500 font-poppins font-light text-sm md:text-base leading-relaxed mb-6">
+                  <p className="text-gray-500 font-poppins font-light text-xs min-[360px]:text-sm sm:text-base leading-relaxed mb-4 sm:mb-6 text-left">
                     {service.desc}
                   </p>
 
-                  <ul className="space-y-4 mb-8 font-poppins">
+                  <ul className="space-y-3 sm:space-y-4 mb-5 sm:mb-8 font-poppins text-left">
                     {service.bullets.map((bullet, idx) => (
-                      <li key={idx} className="flex items-start gap-2 text-gray-600 text-sm md:text-sm">
-                        <span className="shrink-0 w-8 h-8 rounded-lg bg-red-50 text-red-600 flex items-center justify-center text-sm font-bold">
+                      <li key={idx} className="flex items-start gap-2.5 text-gray-600 text-xs min-[360px]:text-sm text-left">
+                        <span className="shrink-0 w-6 h-6 min-[360px]:w-7 min-[360px]:h-7 sm:w-8 sm:h-8 rounded-lg bg-red-50 text-red-600 flex items-center justify-center text-xs min-[360px]:text-sm font-bold">
                           {String(idx + 1).padStart(2, "0")}
                         </span>
-                        <p className="flex-1 mt-1">{bullet}</p>
+                        <p className="flex-1 mt-0.5 min-[360px]:mt-1 leading-relaxed text-left">{bullet}</p>
                       </li>
                     ))}
                   </ul>
 
+                  <div className="flex justify-start text-left">
                     <a
                       href={`https://wa.me/+917462827259?text=${encodeURIComponent(
                         `Hi, I'm interested in ${service.title} (Digital Marketing)`
                       )}`}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="px-6 py-2.5 bg-red-600 text-white rounded-full shadow-md hover:scale-[1.05] hover:bg-red-700 active:scale-[0.96] transition-all duration-100 shadow-red-600/10 font-medium inline-flex items-center gap-2"
+                      className="px-4 min-[360px]:px-6 py-2.5 bg-red-600 text-white rounded-full shadow-md hover:scale-[1.05] hover:bg-red-700 active:scale-[0.96] transition-all duration-100 shadow-red-600/10 font-medium inline-flex items-center gap-2 text-xs min-[360px]:text-sm max-w-full truncate"
                     >
-                      <Image width={64} height={64} src="https://qfbsszbgmipbercujiak.supabase.co/storage/v1/object/public/site-assets/common/WhatsApp.svg" alt="WhatsApp" className="w-4 h-4 object-contain" />
-                      <span>Enquire on WhatsApp</span>
+                      <Image width={64} height={64} src="https://qfbsszbgmipbercujiak.supabase.co/storage/v1/object/public/site-assets/common/WhatsApp.svg" alt="WhatsApp" className="w-4 h-4 object-contain shrink-0" />
+                      <span className="truncate">Enquire on WhatsApp</span>
                     </a>
+                  </div>
                 </div>
               </div>
             );
