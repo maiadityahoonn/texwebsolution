@@ -170,7 +170,6 @@ export default function CrmAppLayout({ children }) {
 
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [settingsMenuOpen, setSettingsMenuOpen] = useState(false);
-  const [mobileMoreOpen, setMobileMoreOpen] = useState(false);
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -210,30 +209,6 @@ export default function CrmAppLayout({ children }) {
     if (!sessionUser?.id || !profiles.length) return [];
     return profiles.filter((profile) => profile?.id);
   }, [profiles, sessionUser?.id]);
-
-  const mobilePrimaryNavItems = useMemo(
-    () => [
-      { key: "overview", href: "/crm/dashboard", section: "overview", label: "Dashboard", icon: Home },
-      { key: "crm", href: "/crm/leads", section: "crm", label: "CRM", icon: Target },
-      { key: "chat", href: "/crm/chat", section: "chat", label: "Chat", icon: MessageSquare },
-      { key: "alerts", href: "/crm/alerts", section: "alerts", label: "Alerts", icon: Bell, badge: unreadCount },
-    ],
-    [unreadCount]
-  );
-
-  const mobileMoreNavItems = useMemo(
-    () => [
-      ...CRM_NAV.filter((item) => item.section !== "crm" && item.section !== "overview").map((item) => ({
-        key: item.section,
-        href: item.href,
-        section: item.section,
-        label: item.label,
-        icon: item.icon,
-      })),
-      { key: "settings", href: "/crm/settings", section: "settings", label: "Settings", icon: Settings },
-    ],
-    []
-  );
 
   const handleConvertToClientAndProject = useCallback(
     async (leadOrDeal) => {
@@ -306,16 +281,7 @@ export default function CrmAppLayout({ children }) {
   };
 
   if (!sessionUser || !userProfile) {
-    return (
-      <div className="min-h-screen bg-gray-50 dark:bg-[#0b0b0c] flex items-center justify-center p-6">
-        <div className="text-center space-y-3">
-          <div className="w-12 h-12 rounded-2xl bg-orange-100 text-orange-600 flex items-center justify-center mx-auto animate-pulse">
-            <Target className="w-6 h-6" />
-          </div>
-          <p className="text-sm font-semibold text-gray-700 dark:text-neutral-300">Checking CRM access...</p>
-        </div>
-      </div>
-    );
+    return <div className="min-h-screen bg-[#f8fafc] dark:bg-[#0b0b0c]" />;
   }
 
   const meta = SECTION_META[activeSection] || SECTION_META.crm;
@@ -343,26 +309,22 @@ export default function CrmAppLayout({ children }) {
         {/* Mobile Top Header */}
         <CrmMobileHeader
           activeSection={activeSection}
+          chatMobilePane={chatMobilePane}
           isDark={isDark}
           toggleTheme={toggleTheme}
           canUseAlerts={true}
           unreadCount={unreadCount}
           userProfile={userProfile}
           sessionUser={sessionUser}
+          onOpenNotifications={() => setNotificationModalOpen(true)}
         />
 
-        {/* Mobile Bottom Navigation */}
+        {/* Mobile Bottom Navigation - 13 Modules matching desktop sidebar sequence 1-to-1 */}
         <CrmMobileNav
           activeSection={activeSection}
+          chatMobilePane={chatMobilePane}
           isDark={isDark}
-          mobileMoreOpen={mobileMoreOpen}
-          setMobileMoreOpen={setMobileMoreOpen}
-          mobilePrimaryNavItems={mobilePrimaryNavItems}
-          mobileMoreNavItems={mobileMoreNavItems}
-          handleMobileNavItem={(item) => {
-            setMobileMoreOpen(false);
-            if (item.href) router.push(item.href);
-          }}
+          unreadCount={unreadCount}
         />
 
         {/* Main Content Viewport */}
@@ -371,9 +333,9 @@ export default function CrmAppLayout({ children }) {
             sidebarOpen ? "md:pl-64 sm:md:pl-68" : "md:pl-[72px]"
           }`}
         >
-          <main className="min-h-screen pt-16 md:pt-0 pb-20 md:pb-6">
-            {/* Unique & Attractive CRM Page Header with Pixel-Perfect Height Alignment */}
-            <header className="sticky top-0 z-30 h-16 bg-white/85 dark:bg-[#0b0b0c]/85 backdrop-blur-xl border-b border-gray-200/80 dark:border-slate-800/80 transition-colors duration-200">
+          <main className="min-h-screen pt-14 md:pt-0 pb-20 md:pb-6">
+            {/* Desktop CRM Page Header (hidden on mobile to prevent double header) */}
+            <header className="hidden md:flex sticky top-0 z-30 h-16 bg-white/85 dark:bg-[#0b0b0c]/85 backdrop-blur-xl border-b border-gray-200/80 dark:border-slate-800/80 transition-colors duration-200">
               <div className="h-full px-4 sm:px-6 flex items-center justify-between gap-3 sm:gap-4">
                 {/* Left Side: Crisp Vibrant Icon & Title (No Glow Shadow) */}
                 <div className="flex items-center gap-3 min-w-0 flex-1">

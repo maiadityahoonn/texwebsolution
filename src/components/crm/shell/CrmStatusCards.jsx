@@ -1,7 +1,5 @@
 "use client";
 
-import { StatusCardsSkeleton } from "../shared/CrmSkeletons";
-
 function isCardFilterActive({ viewMode, statusFilter, filterKey }) {
   if (!["leads", "pipeline", "followups", "sales_meetings"].includes(viewMode) || !filterKey) return false;
   return (
@@ -33,10 +31,6 @@ export default function CrmStatusCards({
   setMeetingPage = () => {},
 }) {
   if (pageStatusCards.length === 0) return null;
-
-  if (isLoading) {
-    return <StatusCardsSkeleton cards={Math.min(6, Math.max(1, pageStatusCards.length))} />;
-  }
 
   return (
     <div

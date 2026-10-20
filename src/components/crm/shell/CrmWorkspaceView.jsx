@@ -145,13 +145,18 @@ export default function CrmWorkspaceView({
       return;
     }
     const updateTarget = () => {
-      const el = document.getElementById(headerActionsSlotId);
+      const isMobile = typeof window !== "undefined" && window.innerWidth < 768;
+      const el = isMobile
+        ? document.getElementById("crm-mobile-header-actions") || document.getElementById(headerActionsSlotId)
+        : document.getElementById(headerActionsSlotId) || document.getElementById("crm-mobile-header-actions");
       if (el) setHeaderActionsTarget(el);
     };
     updateTarget();
+    window.addEventListener("resize", updateTarget);
     const timer = setTimeout(updateTarget, 30);
     const timer2 = setTimeout(updateTarget, 100);
     return () => {
+      window.removeEventListener("resize", updateTarget);
       clearTimeout(timer);
       clearTimeout(timer2);
     };

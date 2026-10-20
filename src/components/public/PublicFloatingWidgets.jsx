@@ -7,6 +7,8 @@ import { supabase } from "@/lib/supabase";
 import LandingQuoteModal from "@/components/public/landing/LandingQuoteModal";
 import AiChatbotWidget from "@/components/public/AiChatbotWidget";
 
+import { isAppMode } from "@/lib/isAppMode";
+
 const PORTAL_ROUTES = ["/login", "/crm"];
 
 export default function PublicFloatingWidgets() {
@@ -14,8 +16,11 @@ export default function PublicFloatingWidgets() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
 
-  // Check if current path is a private or auth/portal route
+  // Check if current path is a private or auth/portal route or app mode
   const isPortalRoute = PORTAL_ROUTES.some((route) => pathname?.startsWith(route));
+  if (isPortalRoute || isAppMode()) {
+    return null;
+  }
 
   useEffect(() => {
     let isMounted = true;

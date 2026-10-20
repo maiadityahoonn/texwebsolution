@@ -24,26 +24,26 @@ export default function CrmActionButtons({
           <button
             type="button"
             onClick={onAddLead}
-            className="h-9 px-3 sm:px-3.5 rounded-xl bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 text-white font-bold text-xs inline-flex items-center justify-center gap-1.5 transition-all shadow-2xs active:scale-95 cursor-pointer whitespace-nowrap"
+            className="h-8 sm:h-9 px-2.5 sm:px-3.5 rounded-xl bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 text-white font-bold text-[11px] sm:text-xs inline-flex items-center justify-center gap-1 sm:gap-1.5 transition-all shadow-2xs active:scale-95 cursor-pointer whitespace-nowrap"
           >
-            <Plus className="w-4 h-4 stroke-[2.5]" />
+            <Plus className="w-3.5 h-3.5 sm:w-4 sm:h-4 stroke-[2.5]" />
             <span>Add Lead</span>
           </button>
           <button
             type="button"
             onClick={onAddDeal}
-            className="h-9 px-3 sm:px-3.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-bold text-xs inline-flex items-center justify-center gap-1.5 transition-all shadow-2xs active:scale-95 cursor-pointer whitespace-nowrap"
+            className="h-8 sm:h-9 px-2.5 sm:px-3.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-bold text-[11px] sm:text-xs inline-flex items-center justify-center gap-1 sm:gap-1.5 transition-all shadow-2xs active:scale-95 cursor-pointer whitespace-nowrap"
           >
-            <Plus className="w-4 h-4 stroke-[2.5]" />
+            <Plus className="w-3.5 h-3.5 sm:w-4 sm:h-4 stroke-[2.5]" />
             <span>Add Deal</span>
           </button>
           <button
             type="button"
             onClick={onMetaImport}
-            className="h-9 px-3 rounded-xl border border-blue-200 dark:border-blue-900/60 bg-white dark:bg-slate-900 hover:bg-blue-50/70 dark:hover:bg-blue-950/40 text-blue-700 dark:text-blue-300 text-xs font-bold inline-flex items-center justify-center gap-1.5 transition-all shadow-2xs active:scale-95 cursor-pointer whitespace-nowrap"
+            className="h-8 sm:h-9 px-2.5 sm:px-3 rounded-xl border border-blue-200 dark:border-blue-900/60 bg-white dark:bg-slate-900 hover:bg-blue-50/70 dark:hover:bg-blue-950/40 text-blue-700 dark:text-blue-300 text-[11px] sm:text-xs font-bold inline-flex items-center justify-center gap-1 sm:gap-1.5 transition-all shadow-2xs active:scale-95 cursor-pointer whitespace-nowrap"
             title="Sync Meta/Instagram Inquiries"
           >
-            <Layers className="w-4 h-4 text-blue-500" />
+            <Layers className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-blue-500" />
             <span className="hidden sm:inline">Meta Leads</span>
           </button>
         </>
@@ -54,17 +54,17 @@ export default function CrmActionButtons({
           <button
             type="button"
             onClick={onAddDeal}
-            className="h-9 px-3 sm:px-3.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-bold text-xs inline-flex items-center justify-center gap-1.5 transition-all shadow-2xs active:scale-95 cursor-pointer whitespace-nowrap"
+            className="h-8 sm:h-9 px-2.5 sm:px-3.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-bold text-[11px] sm:text-xs inline-flex items-center justify-center gap-1 sm:gap-1.5 transition-all shadow-2xs active:scale-95 cursor-pointer whitespace-nowrap"
           >
-            <Plus className="w-4 h-4 stroke-[2.5]" />
+            <Plus className="w-3.5 h-3.5 sm:w-4 sm:h-4 stroke-[2.5]" />
             <span>Add Deal</span>
           </button>
           <button
             type="button"
             onClick={onAddLead}
-            className="h-9 px-3 sm:px-3.5 rounded-xl border border-rose-200 dark:border-rose-900/60 bg-white dark:bg-slate-900 hover:bg-rose-50/70 dark:hover:bg-rose-950/40 text-rose-700 dark:text-rose-300 text-xs font-bold inline-flex items-center justify-center gap-1.5 transition-all shadow-2xs active:scale-95 cursor-pointer whitespace-nowrap"
+            className="h-8 sm:h-9 px-2.5 sm:px-3.5 rounded-xl border border-rose-200 dark:border-rose-900/60 bg-white dark:bg-slate-900 hover:bg-rose-50/70 dark:hover:bg-rose-950/40 text-rose-700 dark:text-rose-300 text-[11px] sm:text-xs font-bold inline-flex items-center justify-center gap-1 sm:gap-1.5 transition-all shadow-2xs active:scale-95 cursor-pointer whitespace-nowrap"
           >
-            <Plus className="w-4 h-4 text-rose-500" />
+            <Plus className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-rose-500" />
             <span>Add Lead</span>
           </button>
         </>

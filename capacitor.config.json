@@ -1,0 +1,24 @@
+{
+  "appId": "in.texwebsolution.crm",
+  "appName": "TexWeb CRM",
+  "webDir": "public",
+  "bundledWebRuntime": false,
+  "server": {
+    "url": "https://texwebsolution.in/crm/dashboard",
+    "cleartext": true,
+    "allowNavigation": [
+      "texwebsolution.in",
+      "*.texwebsolution.in",
+      "*.supabase.co",
+      "localhost"
+    ]
+  },
+  "plugins": {
+    "SplashScreen": {
+      "launchShowDuration": 1200,
+      "launchAutoHide": true,
+      "backgroundColor": "#ffffff",
+      "showSpinner": false
+    }
+  }
+}

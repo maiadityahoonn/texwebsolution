@@ -204,19 +204,31 @@ export function useAuth({ setToast, onAuthSuccess, setProfiles } = {}) {
           data: { session },
         } = await supabase.auth.getSession();
         if (session?.user && isMounted) {
-          const {
-            data: { user },
-            error,
-          } = await supabase.auth.getUser();
-          if (error || !user) {
-            await supabase.auth.signOut({ scope: "local" });
-            setSessionUser(null);
-            setUserProfile(null);
-            setAuthMessage({
-              type: "error",
-              text: "Session expire ho gaya hai. Please login again.",
-            });
-            return;
+          let user = session.user;
+          try {
+            const { data: authUserData, error } = await supabase.auth.getUser();
+            const isAuthRevoked =
+              error &&
+              (error.status === 401 ||
+                error.status === 403 ||
+                error.message?.toLowerCase().includes("jwt") ||
+                error.message?.toLowerCase().includes("token expired") ||
+                error.message?.toLowerCase().includes("invalid login"));
+            if (isAuthRevoked) {
+              await supabase.auth.signOut({ scope: "local" });
+              setSessionUser(null);
+              setUserProfile(null);
+              setAuthMessage({
+                type: "error",
+                text: "Session expire ho gaya hai. Please login again.",
+              });
+              return;
+            }
+            if (authUserData?.user) {
+              user = authUserData.user;
+            }
+          } catch {
+            // Keep existing session user on network hitch
           }
           setSessionUser(user);
           await fetchProfile(user.id, user.email, user.user_metadata);
@@ -242,19 +254,31 @@ export function useAuth({ setToast, onAuthSuccess, setProfiles } = {}) {
           return;
         }
         if (session?.user) {
-          const {
-            data: { user },
-            error,
-          } = await supabase.auth.getUser();
-          if (error || !user) {
-            await supabase.auth.signOut({ scope: "local" });
-            setSessionUser(null);
-            setUserProfile(null);
-            setAuthMessage({
-              type: "error",
-              text: "Session expire ho gaya hai. Please login again.",
-            });
-            return;
+          let user = session.user;
+          try {
+            const { data: authUserData, error } = await supabase.auth.getUser();
+            const isAuthRevoked =
+              error &&
+              (error.status === 401 ||
+                error.status === 403 ||
+                error.message?.toLowerCase().includes("jwt") ||
+                error.message?.toLowerCase().includes("token expired") ||
+                error.message?.toLowerCase().includes("invalid login"));
+            if (isAuthRevoked) {
+              await supabase.auth.signOut({ scope: "local" });
+              setSessionUser(null);
+              setUserProfile(null);
+              setAuthMessage({
+                type: "error",
+                text: "Session expire ho gaya hai. Please login again.",
+              });
+              return;
+            }
+            if (authUserData?.user) {
+              user = authUserData.user;
+            }
+          } catch {
+            // Keep session on network error
           }
           setSessionUser(user);
           await fetchProfile(user.id, user.email, user.user_metadata);

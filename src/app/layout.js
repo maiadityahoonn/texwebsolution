@@ -5,6 +5,7 @@ import Script from "next/script";
 import "./globals.css";
 import PublicFloatingWidgets from "@/components/public/PublicFloatingWidgets";
 import AppSplashScreen from "@/components/public/AppSplashScreen";
+import AppBackButtonHandler from "@/components/crm/shell/AppBackButtonHandler";
 import ScrollToTop from "@/components/public/ScrollToTop";
 import MetaPixelTracker from "@/components/public/landing/MetaPixelTracker";
 
@@ -305,6 +306,9 @@ export default function RootLayout({ children }) {
 
         {/* Native Mobile / Web App Animated Brand Splash Screen */}
         <AppSplashScreen />
+
+        {/* Android Hardware Back Button & Exit App Handler */}
+        <AppBackButtonHandler />
 
         {children}
         

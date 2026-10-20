@@ -3,7 +3,6 @@
 import React from "react";
 import TablePagination from "../shared/TablePagination";
 import { PIPELINE_STAGES } from "../shared/leadUtils";
-import { PipelineSkeleton } from "../shared/CrmSkeletons";
 import PipelineColumn from "./PipelineColumn";
 
 export default function PipelineView({
@@ -36,10 +35,6 @@ export default function PipelineView({
   onNavigateSection = () => {},
   pagination = null,
 }) {
-  if (isPipelineLoading && visiblePipelineDeals.length === 0) {
-    return <PipelineSkeleton />;
-  }
-
   const {
     start: pipelinePageStart = 1,
     end: pipelinePageEnd = paginatedPipelineDeals.length,
