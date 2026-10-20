@@ -1,8 +1,9 @@
 {
   "appId": "in.texwebsolution.crm",
-  "appName": "TexWeb Solution",
+  "appName": "TW-CRM",
   "webDir": "public",
   "bundledWebRuntime": false,
+  "appendUserAgent": "Capacitor TW-CRM",
   "server": {
     "url": "https://texwebsolution.in/crm/dashboard",
     "cleartext": true,
@@ -15,10 +16,11 @@
   },
   "plugins": {
     "SplashScreen": {
-      "launchShowDuration": 1200,
-      "launchAutoHide": true,
+      "launchShowDuration": 0,
+      "launchAutoHide": false,
       "backgroundColor": "#ffffff",
-      "showSpinner": false
+      "showSpinner": false,
+      "androidSplashResourceName": "splash"
     }
   }
 }

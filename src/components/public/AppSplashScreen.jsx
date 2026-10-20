@@ -27,6 +27,23 @@ export default function AppSplashScreen() {
 
     let isMounted = true;
 
+    let cleanupListeners = null;
+
+    function dismissSplash() {
+      if (!isMounted) return;
+      setIsVisible(false);
+      setTimeout(() => {
+        if (isMounted) setShouldRender(false);
+      }, 500);
+      try {
+        if (window.Capacitor && typeof window.Capacitor.isNativePlatform === "function" && window.Capacitor.isNativePlatform()) {
+          import("@capacitor/splash-screen")
+            .then(({ SplashScreen }) => SplashScreen.hide({ fadeOutDuration: 400 }))
+            .catch(() => {});
+        }
+      } catch {}
+    }
+
     // Check session & enforce: Splash -> Login -> CRM Only flow
     async function checkSessionAndRoute() {
       try {
@@ -40,32 +57,51 @@ export default function AppSplashScreen() {
           if (!currentPath.startsWith("/crm")) {
             router.replace("/crm/dashboard");
           }
+
+          // If CRM data has already loaded, dismiss immediately
+          if (typeof window !== "undefined" && window.__CRM_DATA_LOADED__) {
+            dismissSplash();
+            return;
+          }
+
+          // Otherwise keep splash visible until all CRM data has arrived
+          const handleDataLoaded = () => {
+            window.removeEventListener("crm:data-loaded", handleDataLoaded);
+            dismissSplash();
+          };
+          window.addEventListener("crm:data-loaded", handleDataLoaded);
+
+          // Safety timeout (max 10s fallback in case of slow/offline network)
+          const fallbackTimer = setTimeout(() => {
+            window.removeEventListener("crm:data-loaded", handleDataLoaded);
+            dismissSplash();
+          }, 10000);
+
+          cleanupListeners = () => {
+            window.removeEventListener("crm:data-loaded", handleDataLoaded);
+            clearTimeout(fallbackTimer);
+          };
         } else {
           // User is NOT authenticated: ensure they go to /login
           if (currentPath !== "/login") {
             router.replace("/login");
           }
+          const loginTimer = setTimeout(() => {
+            dismissSplash();
+          }, 600);
+          cleanupListeners = () => clearTimeout(loginTimer);
         }
       } catch (err) {
         console.warn("Splash auth route check warning:", err);
+        dismissSplash();
       }
     }
 
     checkSessionAndRoute();
 
-    // Native app launch splash animation duration
-    const timer = setTimeout(() => {
-      if (isMounted) setIsVisible(false);
-    }, 1200);
-
-    const removeTimer = setTimeout(() => {
-      if (isMounted) setShouldRender(false);
-    }, 1700);
-
     return () => {
       isMounted = false;
-      clearTimeout(timer);
-      clearTimeout(removeTimer);
+      if (cleanupListeners) cleanupListeners();
     };
   }, [pathname, router]);
 
@@ -99,16 +135,16 @@ export default function AppSplashScreen() {
             width={72}
             height={72}
             src="/logo.png"
-            alt="TexWeb Solution"
+            alt="TW-CRM Logo"
             priority
             className="w-28 h-28 sm:w-32 sm:h-32 rounded-3xl object-contain shadow-2xl shadow-red-600/20"
           />
         </div>
 
-        {/* Brand Name (Red TEXWEB + Black SOLUTION) */}
+        {/* Brand Name (Red TW + Black CRM) */}
         <div className="flex items-center gap-2 text-2xl sm:text-3xl font-black tracking-[-0.04em] text-center leading-none mb-2.5">
-          <span className="text-red-600">TEXWEB</span>
-          <span className="text-gray-900">SOLUTION</span>
+          <span className="text-red-600">TW</span>
+          <span className="text-gray-900">CRM</span>
         </div>
 
         {/* Tagline */}

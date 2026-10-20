@@ -16,7 +16,28 @@ public class MainActivity extends BridgeActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            getWindow().getDecorView().setSystemUiVisibility(
+                android.view.View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR
+            );
+            getWindow().setStatusBarColor(android.graphics.Color.WHITE);
+        }
         requestAppPermissions();
+    }
+
+    @Override
+    public void onBackPressed() {
+        if (getBridge() != null && getBridge().getWebView() != null) {
+            String currentUrl = getBridge().getWebView().getUrl();
+            if (currentUrl != null) {
+                String clean = currentUrl.split("\\?")[0].replaceAll("/+$", "");
+                if (clean.endsWith("/crm/dashboard") || clean.endsWith("/crm") || clean.endsWith("/login")) {
+                    finishAffinity();
+                    return;
+                }
+            }
+        }
+        super.onBackPressed();
     }
 
     private void requestAppPermissions() {

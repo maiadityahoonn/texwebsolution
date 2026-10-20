@@ -1,7 +1,7 @@
 <?xml version='1.0' encoding='utf-8'?>
 <resources>
-    <string name="app_name">TexWeb Solution</string>
-    <string name="title_activity_main">TexWeb Solution</string>
+    <string name="app_name">TW-CRM</string>
+    <string name="title_activity_main">TW-CRM</string>
     <string name="package_name">in.texwebsolution.crm</string>
     <string name="custom_url_scheme">in.texwebsolution.crm</string>
 </resources>

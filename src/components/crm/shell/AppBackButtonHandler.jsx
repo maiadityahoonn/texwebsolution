@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import { usePathname, useRouter } from "next/navigation";
+import { isAppMode } from "@/lib/isAppMode";
 
 /**
  * AppBackButtonHandler manages Android hardware back button & web popstate events.
@@ -26,13 +27,15 @@ export default function AppBackButtonHandler() {
         // Check if Capacitor native environment is active
         const isNative =
           (window.Capacitor && typeof window.Capacitor.isNativePlatform === "function" && window.Capacitor.isNativePlatform()) ||
-          navigator.userAgent.includes("Capacitor");
+          navigator.userAgent.includes("Capacitor") ||
+          isAppMode();
 
         if (isNative) {
           const { App } = await import("@capacitor/app");
 
           const handle = await App.addListener("backButton", ({ canGoBack }) => {
-            const currentPath = window.location.pathname;
+            const rawPath = window.location.pathname || "";
+            const cleanPath = rawPath.split("?")[0].replace(/\/+$/, "");
 
             // 1. Check if any modal or drawer is open in the DOM
             const modalCloseBtn = document.querySelector(
@@ -46,14 +49,18 @@ export default function AppBackButtonHandler() {
 
             // 2. Check if we are at root screen (Dashboard or Login)
             const isRootScreen =
-              currentPath === "/crm/dashboard" ||
-              currentPath === "/crm" ||
-              currentPath === "/login" ||
-              currentPath === "/";
+              cleanPath === "/crm/dashboard" ||
+              cleanPath === "/crm" ||
+              cleanPath === "/login" ||
+              cleanPath === "";
 
             if (isRootScreen) {
-              // Exit the app gracefully without logging out
-              App.exitApp();
+              // Exit the app gracefully
+              try {
+                App.exitApp();
+              } catch (e) {
+                console.warn("App.exitApp failed:", e);
+              }
               return;
             }
 
@@ -76,18 +83,7 @@ export default function AppBackButtonHandler() {
 
     initNativeBackHandler();
 
-    // Web / PWA popstate guard
-    function handlePopState() {
-      const currentPath = window.location.pathname;
-      if (currentPath === "/crm/dashboard") {
-        window.history.pushState(null, "", "/crm/dashboard");
-      }
-    }
-
-    window.addEventListener("popstate", handlePopState);
-
     return () => {
-      window.removeEventListener("popstate", handlePopState);
       if (removeListener) removeListener();
     };
   }, [pathname, router]);

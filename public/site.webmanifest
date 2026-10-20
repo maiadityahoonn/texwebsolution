@@ -1,6 +1,6 @@
 {
-  "name": "TexWeb Solution",
-  "short_name": "TexWeb Solution",
+  "name": "TW-CRM",
+  "short_name": "TW-CRM",
   "description": "From idea to launch, TexWeb Solution builds bespoke web apps, ready SaaS software, AI workflows & growth marketing.",
   "start_url": "/crm/dashboard",
   "id": "/crm",

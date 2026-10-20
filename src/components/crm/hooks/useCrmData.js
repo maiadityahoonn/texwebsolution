@@ -137,6 +137,17 @@ export function useCrmData({ sessionUserId = "", pushLiveSalesNotification } = {
       loadedScopesRef.current.add(requestedScope);
     } finally {
       setCrmLoading(false);
+      if (typeof window !== "undefined") {
+        window.__CRM_DATA_LOADED__ = true;
+        window.dispatchEvent(new CustomEvent("crm:data-loaded"));
+        try {
+          if (window.Capacitor && typeof window.Capacitor.isNativePlatform === "function" && window.Capacitor.isNativePlatform()) {
+            import("@capacitor/splash-screen")
+              .then(({ SplashScreen }) => SplashScreen.hide({ fadeOutDuration: 400 }))
+              .catch(() => {});
+          }
+        } catch {}
+      }
     }
   }, []);
 

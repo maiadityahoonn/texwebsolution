@@ -20,15 +20,16 @@ export default function CrmMobileHeader({
     <header
       className={`${
         isChatOpen ? "!hidden" : "flex"
-      } fixed top-0 left-0 right-0 z-40 md:hidden h-14 px-3 items-center justify-between border-b transition-colors duration-200 select-none shadow-[0_2px_10px_-2px_rgba(0,0,0,0.06)] ${
+      } fixed top-0 left-0 right-0 z-40 md:hidden flex-col justify-end border-b transition-colors duration-200 select-none shadow-[0_2px_10px_-2px_rgba(0,0,0,0.06)] ${
         isDark
           ? "bg-[#0b0b0c]/95 backdrop-blur-xl border-neutral-800 text-neutral-100"
           : "bg-white/95 backdrop-blur-xl border-gray-200/90 text-gray-900"
       }`}
       style={{
-        paddingTop: "env(safe-area-inset-top, 0px)",
+        paddingTop: "max(env(safe-area-inset-top, 0px), 1.5rem)",
       }}
     >
+      <div className="w-full h-14 px-3 flex items-center justify-between">
       {/* Left: Official TexWeb Solution Brand Logo */}
       <div className="flex items-center shrink-0">
         <Link
@@ -106,6 +107,7 @@ export default function CrmMobileHeader({
             (userProfile?.full_name || sessionUser?.email || "U")[0]?.toUpperCase()
           )}
         </Link>
+      </div>
       </div>
     </header>
   );

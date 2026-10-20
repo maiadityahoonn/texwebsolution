@@ -333,7 +333,7 @@ export default function CrmAppLayout({ children }) {
             sidebarOpen ? "md:pl-64 sm:md:pl-68" : "md:pl-[72px]"
           }`}
         >
-          <main className="min-h-screen pt-14 md:pt-0 pb-20 md:pb-6">
+          <main className="min-h-screen pt-[calc(3.5rem+max(env(safe-area-inset-top,0px),1.5rem))] md:pt-0 pb-20 md:pb-6">
             {/* Desktop CRM Page Header (hidden on mobile to prevent double header) */}
             <header className="hidden md:flex sticky top-0 z-30 h-16 bg-white/85 dark:bg-[#0b0b0c]/85 backdrop-blur-xl border-b border-gray-200/80 dark:border-slate-800/80 transition-colors duration-200">
               <div className="h-full px-4 sm:px-6 flex items-center justify-between gap-3 sm:gap-4">
