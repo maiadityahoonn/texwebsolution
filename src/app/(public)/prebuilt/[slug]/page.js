@@ -100,12 +100,12 @@ export default function ProductDetailPage({ params: paramsPromise }) {
     <div className="w-full flex flex-col bg-white overflow-x-hidden">
       {/* Hero Header Area */}
       <div
-        className="relative w-full flex flex-col bg-no-repeat bg-center bg-cover min-h-0 md:min-h-[560px] pb-6 sm:pb-8 md:pb-12"
+        className="relative w-full flex flex-col bg-no-repeat bg-center bg-cover min-h-0 md:min-h-[560px] lg:min-h-screen pb-6 sm:pb-8 md:pb-12"
         style={{ backgroundImage: "url('https://qfbsszbgmipbercujiak.supabase.co/storage/v1/object/public/site-assets/common/Bg2.png')" }}
       >
         <Navbar />
 
-        <div className="flex-1 flex flex-col justify-center px-3 min-[360px]:px-4 sm:px-6 pt-0 pb-3 min-[360px]:pb-3.5 md:py-8">
+        <div className="flex-1 flex flex-col justify-center px-3 min-[360px]:px-4 sm:px-6 lg:px-8 pt-0 pb-3 min-[360px]:pb-3.5 md:py-8 lg:py-10">
           <div className="max-w-7xl mx-auto w-full grid md:grid-cols-12 gap-8 md:gap-12 items-center">
 
             {/* Left side: Heading and Subtitle */}
@@ -122,7 +122,7 @@ export default function ProductDetailPage({ params: paramsPromise }) {
               </div>
 
               <h1
-                className="text-2xl min-[360px]:text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold bg-gradient-to-r from-gray-900 via-gray-800 to-red-600 bg-clip-text text-transparent leading-tight pb-1"
+                className="text-2xl min-[360px]:text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold bg-gradient-to-r from-gray-900 via-gray-800 to-red-600 bg-clip-text text-transparent leading-tight pb-1 lg:pb-2"
                 style={{ fontFamily: "Matter, sans-serif" }}
               >
                 {visibleProduct.title}

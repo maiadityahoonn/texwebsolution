@@ -18,22 +18,22 @@ export default function RefundPage() {
     <div className="w-full flex flex-col bg-white">
       {/* Hero Header Wrapper */}
       <div 
-        className="relative w-full flex flex-col bg-no-repeat bg-center bg-cover min-h-0 md:min-h-[340px]" 
+        className="relative w-full flex flex-col bg-no-repeat bg-center bg-cover min-h-0 md:min-h-[340px] lg:min-h-[50vh]" 
         style={{ backgroundImage: "url('https://qfbsszbgmipbercujiak.supabase.co/storage/v1/object/public/site-assets/common/Bg2.png')" }}
       >
         <Navbar />
 
-        <div className="flex-1 flex flex-col justify-center items-center text-center px-3 min-[360px]:px-4 sm:px-6 pt-0 pb-3.5 min-[360px]:pb-4 sm:py-6 md:py-8">
+        <div className="flex-1 flex flex-col justify-center items-center text-center px-3 min-[360px]:px-4 sm:px-6 lg:px-8 pt-0 pb-3.5 min-[360px]:pb-4 sm:py-6 md:py-8 lg:pt-12 lg:pb-16">
           <div className="inline-block px-3.5 py-1 bg-red-50 text-red-600 border border-red-100 shadow-sm rounded-full font-semibold text-[11px] min-[360px]:text-xs sm:text-sm font-[Matter] mb-3 sm:mb-4">
             {legal.badge}
           </div>
           <h1 
-            className="text-2xl min-[360px]:text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold bg-gradient-to-r from-gray-900 to-red-600 bg-clip-text text-transparent leading-tight pb-1" 
+            className="text-2xl min-[360px]:text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold bg-gradient-to-r from-gray-900 to-red-600 bg-clip-text text-transparent leading-tight pb-1 lg:pb-2" 
             style={{ fontFamily: "Matter, sans-serif" }}
           >
             {legal.title}
           </h1>
-          <p className="mt-2.5 sm:mt-4 text-xs min-[360px]:text-sm sm:text-base text-gray-600 max-w-xl mx-auto font-poppins font-light px-2">
+          <p className="mt-2.5 sm:mt-4 text-xs min-[360px]:text-sm sm:text-base text-gray-600 max-w-xl mx-auto font-poppins font-light px-2 lg:px-0">
             {legal.subtitle}
           </p>
         </div>

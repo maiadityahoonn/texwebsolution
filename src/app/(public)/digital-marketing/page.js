@@ -111,7 +111,7 @@ export default function DigitalMarketingPage() {
     <div className="w-full flex flex-col bg-white">
       {/* Hero Header Wrapper */}
       <div
-        className="relative w-full flex flex-col bg-no-repeat bg-center bg-cover min-h-0 md:min-h-[500px] lg:min-h-[560px]"
+        className="relative w-full flex flex-col bg-no-repeat bg-center bg-cover min-h-0 md:min-h-[500px] lg:min-h-screen"
         style={{ backgroundImage: "url('https://qfbsszbgmipbercujiak.supabase.co/storage/v1/object/public/site-assets/common/Bg2.png')" }}
       >
         <Navbar />
@@ -131,16 +131,16 @@ export default function DigitalMarketingPage() {
           style={{ animationDelay: '1.2s' }}
         />
 
-        <div className="flex-1 flex flex-col justify-center pt-0 pb-3 min-[360px]:pb-3.5 sm:py-6 md:py-8">
-          <section className="flex items-center justify-center text-center px-3 min-[360px]:px-4 sm:px-6">
+        <div className="flex-1 flex flex-col justify-center pt-0 pb-3 min-[360px]:pb-3.5 sm:py-6 md:py-8 lg:py-0 lg:justify-center">
+          <section className="flex items-center justify-center text-center px-3 min-[360px]:px-4 sm:px-6 lg:px-8">
             <div className="w-full">
               <h1 
-                className="text-2xl min-[360px]:text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold bg-gradient-to-r from-gray-900 to-red-600 bg-clip-text text-transparent leading-tight tracking-tight pb-1" 
+                className="text-2xl min-[360px]:text-3xl sm:text-4xl md:text-5xl lg:text-7xl font-bold bg-gradient-to-r from-gray-900 to-red-600 bg-clip-text text-transparent leading-tight tracking-tight lg:leading-tight pb-1 lg:pb-2" 
                 style={{ fontFamily: "Matter, sans-serif" }}
               >
                 {hero.title}
               </h1>
-              <p className="mt-2.5 sm:mt-4 text-xs min-[360px]:text-sm sm:text-base md:text-lg text-gray-600 max-w-3xl mx-auto px-2 leading-relaxed font-poppins">
+              <p className="mt-2.5 sm:mt-4 lg:mt-6 text-xs min-[360px]:text-sm sm:text-base md:text-lg text-gray-600 max-w-3xl mx-auto px-2 lg:px-0 leading-relaxed font-poppins">
                 {hero.subtitle}
               </p>
             </div>
