@@ -163,7 +163,7 @@ export default function LandingFooter() {
 
       {/* Large Watermark Typography */}
       <div className="w-full flex justify-center pb-2 overflow-hidden px-4">
-        <svg viewBox="65 0 1070 120" width="100%" height="auto" className="select-none pointer-events-none">
+        <svg viewBox="65 0 1070 120" className="w-full h-auto select-none pointer-events-none">
           <defs>
             <linearGradient id="landing-watermark-grad" x1="0%" y1="0%" x2="0%" y2="100%">
               <stop offset="0%" stopColor="rgba(229, 231, 235, 0.9)" />
