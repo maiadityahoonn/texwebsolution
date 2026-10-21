@@ -50,13 +50,13 @@ export function useCrmServerSync({
         page: 1,
         pageSize: 500,
         search: "",
-        stage: statusFilter !== "all" ? statusFilter : "",
+        stage: "",
         ...range,
       });
     }, 350);
     return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [customDateRange?.from, customDateRange?.to, dateFilter, onFetchDealsPage, selectedDate, statusFilter, viewMode]);
+  }, [customDateRange?.from, customDateRange?.to, dateFilter, onFetchDealsPage, selectedDate, viewMode]);
 
   useEffect(() => {
     if (!onFetchFollowUpsPage || viewMode !== "followups") return;

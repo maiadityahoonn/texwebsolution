@@ -46,8 +46,6 @@ export function useCrmCalculations({
   leadSortOrder = "default",
   leadPage = 1,
   leadsPerPage = 10,
-  pipelinePage = 1,
-  pipelinePageSize = 20,
   followUpPage = 1,
   followUpPageSize = 10,
   meetingPage = 1,
@@ -284,43 +282,34 @@ export function useCrmCalculations({
   }, [deals, leads]);
 
   const visiblePipelineDeals = useMemo(() => {
+    const normalizedQuery = query.trim().toLowerCase();
     return allPipelineDeals.filter((deal) => {
       const stage = deal.pipeline_stage || deal.stage || "contacted";
       if (dateFilter !== "all" && !matchesDateFilter(deal, "created_at") && !matchesDateFilter(deal, "updated_at"))
         return false;
+      if (normalizedQuery) {
+        const linkedLead = dedupedLeads.find((lead) => String(lead.id) === String(deal.lead_id));
+        const searchableValues = [
+          deal.title,
+          deal.service,
+          deal.notes,
+          deal.loss_reason,
+          linkedLead?.name,
+          linkedLead?.phone,
+          linkedLead?.email,
+          linkedLead?.city,
+          linkedLead?.state,
+        ];
+        if (!searchableValues.some((value) => String(value || "").toLowerCase().includes(normalizedQuery))) {
+          return false;
+        }
+      }
       if (statusFilter === "lost") return stage === "closed_lost";
       if (statusFilter === "won" || statusFilter === "converted") return stage === "closed_won";
       if (statusFilter === "active") return !CLOSED_PIPELINE_STAGES.includes(stage);
-      if (stage === "closed_lost") return false;
       return true;
     });
-  }, [allPipelineDeals, dateFilter, matchesDateFilter, statusFilter]);
-
-  const pipelineTotal = useMemo(() => {
-    if (dateFilter !== "all" || query) {
-      return visiblePipelineDeals.length;
-    }
-    if (statusFilter === "all") {
-      const total = dealSummary?.total ?? dealPagination?.count ?? 0;
-      return total > visiblePipelineDeals.length ? total : visiblePipelineDeals.length;
-    }
-    const statusTotalMap = {
-      active: dealSummary?.active,
-      won: dealSummary?.won,
-      lost: dealSummary?.lost,
-    };
-    const expected = statusTotalMap[statusFilter];
-    if (typeof expected === "number" && expected > visiblePipelineDeals.length) {
-      return expected;
-    }
-    return visiblePipelineDeals.length;
-  }, [dateFilter, query, statusFilter, dealSummary, dealPagination?.count, visiblePipelineDeals.length]);
-  const pipelinePageCount = Math.max(1, Math.ceil(pipelineTotal / pipelinePageSize));
-  const safePipelinePage = Math.min(Math.max(1, pipelinePage), pipelinePageCount);
-  const paginatedPipelineDeals = useMemo(() => {
-    const start = (safePipelinePage - 1) * pipelinePageSize;
-    return visiblePipelineDeals.slice(start, start + pipelinePageSize);
-  }, [visiblePipelineDeals, pipelinePageSize, safePipelinePage]);
+  }, [allPipelineDeals, dateFilter, dedupedLeads, matchesDateFilter, query, statusFilter]);
 
   const followUpTotal = useMemo(() => {
     if (dateFilter !== "all" || query || (followUpScope && followUpScope !== "all")) {
@@ -520,10 +509,6 @@ export function useCrmCalculations({
     meetingTotal,
     allPipelineDeals,
     visiblePipelineDeals,
-    safePipelinePage,
-    pipelinePageCount,
-    paginatedPipelineDeals,
-    pipelineTotal,
     isLeadsLoading,
     isPipelineLoading,
     isFollowUpsLoading,

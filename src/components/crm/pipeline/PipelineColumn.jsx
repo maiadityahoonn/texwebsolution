@@ -28,6 +28,7 @@ export default function PipelineColumn({
   sendDealDocWhatsApp = () => {},
   openInvoiceModal = () => {},
   onNavigateSection = () => {},
+  preserveBoardWidth = false,
 }) {
   const colTotal = colDeals.reduce((sum, d) => sum + (Number(d.deal_value) || 0), 0);
 
@@ -35,7 +36,11 @@ export default function PipelineColumn({
     <div
       onDragOver={(e) => e.preventDefault()}
       onDrop={() => handleDealDrop(col.id)}
-      className={`w-[86vw] min-[360px]:w-[85vw] max-w-[280px] sm:w-auto shrink-0 sm:shrink snap-center flex flex-col rounded-2xl bg-white dark:bg-[#18150f] border border-gray-100 dark:border-[#3a3020] p-2 min-[360px]:p-3 shadow-2xs min-h-[350px] transition ${
+      className={`w-[86vw] min-[360px]:w-[85vw] max-w-[280px] shrink-0 snap-center flex flex-col rounded-2xl bg-white dark:bg-[#18150f] border border-gray-100 dark:border-[#3a3020] p-2 min-[360px]:p-3 shadow-2xs min-h-[350px] transition ${
+        preserveBoardWidth
+          ? "sm:w-[calc((100%-3rem)/5)] sm:min-w-[260px] sm:max-w-none sm:shrink-0"
+          : "sm:w-auto sm:shrink"
+      } ${
         draggedDealId ? "ring-1 ring-orange-400/40" : ""
       }`}
     >

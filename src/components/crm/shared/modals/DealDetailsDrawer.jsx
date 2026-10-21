@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   X,
   Target,
@@ -45,6 +45,10 @@ export default function DealDetailsDrawer({
   openStageModal,
 }) {
   const [dealModalTab, setDealModalTab] = useState("overview");
+
+  useEffect(() => {
+    setDealModalTab("overview");
+  }, [selectedDeal?.id]);
 
   if (!selectedDeal) return null;
 

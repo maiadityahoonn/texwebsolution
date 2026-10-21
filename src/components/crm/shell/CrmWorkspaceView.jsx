@@ -100,8 +100,6 @@ export default function CrmWorkspaceView({
   const [leadsPerPage, setLeadsPerPage] = useState(10);
   const [leadAlphabetFilter, setLeadAlphabetFilter] = useState("all");
   const [leadSortOrder, setLeadSortOrder] = useState("default");
-  const [pipelinePage, setPipelinePage] = useState(1);
-  const [pipelinePageSize, setPipelinePageSize] = useState(20);
   const [followUpPage, setFollowUpPage] = useState(1);
   const [followUpPageSize, setFollowUpPageSize] = useState(10);
   const [followUpScope, setFollowUpScope] = useState("all");
@@ -201,8 +199,6 @@ export default function CrmWorkspaceView({
     leadSortOrder,
     leadPage,
     leadsPerPage,
-    pipelinePage,
-    pipelinePageSize,
     followUpPage,
     followUpPageSize,
     meetingPage,
@@ -238,10 +234,6 @@ export default function CrmWorkspaceView({
     paginatedSalesMeetings,
     meetingTotal,
     visiblePipelineDeals,
-    safePipelinePage,
-    pipelinePageCount,
-    paginatedPipelineDeals,
-    pipelineTotal,
     isLeadsLoading,
     isPipelineLoading,
     isFollowUpsLoading,
@@ -398,7 +390,6 @@ export default function CrmWorkspaceView({
         statusFilter={statusFilter}
         setStatusFilter={setStatusFilter}
         setLeadPage={setLeadPage}
-        setPipelinePage={setPipelinePage}
         setFollowUpPage={setFollowUpPage}
         setMeetingPage={setMeetingPage}
       />
@@ -468,7 +459,6 @@ export default function CrmWorkspaceView({
         isPipelineLoading={isPipelineLoading}
         visiblePipelineDeals={visiblePipelineDeals}
         statusFilter={statusFilter}
-        paginatedPipelineDeals={paginatedPipelineDeals}
         dateFilter={dateFilter}
         matchesDateFilter={matchesDateFilter}
         draggedDealId={modals.draggedDealId}
@@ -487,12 +477,6 @@ export default function CrmWorkspaceView({
         sendDealDocWhatsApp={modals.sendDealDocWhatsApp}
         openInvoiceModal={modals.openInvoiceModal}
         onNavigateSection={onNavigateSection}
-        pipelineTotal={pipelineTotal}
-        safePipelinePage={safePipelinePage}
-        pipelinePageSize={pipelinePageSize}
-        pipelinePageCount={pipelinePageCount}
-        setPipelinePage={setPipelinePage}
-        setPipelinePageSize={setPipelinePageSize}
         // Commercials
         isCommercialsLoading={isCommercialsLoading}
         commercialDocs={commercialDocs}

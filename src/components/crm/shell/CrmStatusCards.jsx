@@ -28,7 +28,6 @@ export default function CrmStatusCards({
   statusFilter = "all",
   setStatusFilter = () => {},
   setLeadPage = () => {},
-  setPipelinePage = () => {},
   setFollowUpPage = () => {},
   setMeetingPage = () => {},
 }) {
@@ -62,7 +61,6 @@ export default function CrmStatusCards({
               if (isClickable && card.filterKey) {
                 setStatusFilter(card.filterKey);
                 setLeadPage(1);
-                setPipelinePage(1);
                 setFollowUpPage(1);
                 setMeetingPage(1);
               }

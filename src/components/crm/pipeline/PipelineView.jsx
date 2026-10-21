@@ -1,7 +1,6 @@
 "use client";
 
 import React from "react";
-import TablePagination from "../shared/TablePagination";
 import { PIPELINE_STAGES } from "../shared/leadUtils";
 import PipelineColumn from "./PipelineColumn";
 import { PipelineSkeleton } from "../shared/CrmSkeletons";
@@ -10,7 +9,6 @@ export default function PipelineView({
   isPipelineLoading = false,
   visiblePipelineDeals = [],
   statusFilter = "all",
-  paginatedPipelineDeals = [],
   dateFilter = "all",
   matchesDateFilter = () => true,
   draggedDealId = null,
@@ -34,92 +32,66 @@ export default function PipelineView({
   sendDealDocWhatsApp = () => {},
   openInvoiceModal = () => {},
   onNavigateSection = () => {},
-  pagination = null,
 }) {
-  const {
-    start: pipelinePageStart = 1,
-    end: pipelinePageEnd = paginatedPipelineDeals.length,
-    total: pipelineTotal = paginatedPipelineDeals.length,
-    page: safePipelinePage = 1,
-    pageCount: pipelinePageCount = 1,
-    pageSize: pipelinePageSize = 20,
-    setPage: setPipelinePage = () => {},
-    setPageSize: setPipelinePageSize = () => {},
-  } = pagination || {};
-
+  const closedLostStage = { id: "closed_lost", label: "Closed Lost", color: "bg-rose-500" };
   const stages =
     statusFilter === "lost"
-      ? [{ id: "closed_lost", label: "Closed Lost Deals", color: "bg-rose-500" }]
-      : PIPELINE_STAGES;
+      ? [closedLostStage]
+      : statusFilter === "all"
+        ? [...PIPELINE_STAGES, closedLostStage]
+        : PIPELINE_STAGES;
 
-  if (isPipelineLoading && paginatedPipelineDeals.length === 0) {
+  if (isPipelineLoading && visiblePipelineDeals.length === 0) {
     return <PipelineSkeleton />;
   }
 
   return (
-    <>
-      <div
-        className={`flex overflow-x-auto pb-4 sm:pb-0 sm:overflow-x-visible gap-2.5 min-[360px]:gap-3 snap-x snap-mandatory touch-pan-x no-scrollbar overscroll-x-contain ${
-          statusFilter === "lost"
-            ? "sm:grid sm:grid-cols-2 lg:grid-cols-3"
-            : "sm:grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5"
-        }`}
-      >
-        {stages.map((col) => {
-          const colDeals = paginatedPipelineDeals.filter(
-            (d) =>
-              (d.pipeline_stage || "contacted") === col.id &&
-              (dateFilter === "all" || matchesDateFilter(d, "created_at") || matchesDateFilter(d, "updated_at"))
-          );
+    <div
+      className={`flex overflow-x-auto pb-4 sm:pb-0 gap-2.5 min-[360px]:gap-3 snap-x snap-mandatory touch-pan-x no-scrollbar overscroll-x-contain ${
+        statusFilter === "lost"
+          ? "sm:grid sm:grid-cols-2 lg:grid-cols-3 sm:overflow-x-visible"
+          : statusFilter === "all"
+            ? "sm:flex sm:overflow-x-auto"
+            : "sm:grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 sm:overflow-x-visible"
+      }`}
+    >
+      {stages.map((col) => {
+        const colDeals = visiblePipelineDeals.filter(
+          (d) =>
+            (d.pipeline_stage || "contacted") === col.id &&
+            (dateFilter === "all" || matchesDateFilter(d, "created_at") || matchesDateFilter(d, "updated_at"))
+        );
 
-          return (
-            <PipelineColumn
-              key={col.id}
-              col={col}
-              colDeals={colDeals}
-              draggedDealId={draggedDealId}
-              handleDealDrop={handleDealDrop}
-              openAddDealModal={openAddDealModal}
-              leads={leads}
-              followUps={followUps}
-              salesMeetings={salesMeetings}
-              proposals={proposals}
-              quotations={quotations}
-              agreements={agreements}
-              invoices={invoices}
-              setDraggedDealId={setDraggedDealId}
-              setSelectedDeal={setSelectedDeal}
-              setDealModalTab={setDealModalTab}
-              handleOpenEditDeal={handleOpenEditDeal}
-              handleDealStageChange={handleDealStageChange}
-              openPipelineFollowUpModal={openPipelineFollowUpModal}
-              openMeetingWhatsApp={openMeetingWhatsApp}
-              openCommercialModal={openCommercialModal}
-              sendDealDocWhatsApp={sendDealDocWhatsApp}
-              openInvoiceModal={openInvoiceModal}
-              onNavigateSection={onNavigateSection}
-            />
-          );
-        })}
-      </div>
-
-      {/* Pagination Bar */}
-      {pipelineTotal > 0 && (
-        <div className="mt-3 rounded-2xl border border-gray-100 dark:border-[#3a3020] overflow-hidden shadow-2xs">
-          <TablePagination
-            label="deals"
-            start={pipelinePageStart}
-            end={pipelinePageEnd}
-            total={pipelineTotal}
-            page={safePipelinePage}
-            pageCount={pipelinePageCount}
-            pageSize={pipelinePageSize}
-            setPage={setPipelinePage}
-            setPageSize={setPipelinePageSize}
-            pageSizeLabel="Deals per page:"
+        return (
+          <PipelineColumn
+            key={col.id}
+            col={col}
+            colDeals={colDeals}
+            draggedDealId={draggedDealId}
+            handleDealDrop={handleDealDrop}
+            openAddDealModal={openAddDealModal}
+            leads={leads}
+            followUps={followUps}
+            salesMeetings={salesMeetings}
+            proposals={proposals}
+            quotations={quotations}
+            agreements={agreements}
+            invoices={invoices}
+            setDraggedDealId={setDraggedDealId}
+            setSelectedDeal={setSelectedDeal}
+            setDealModalTab={setDealModalTab}
+            handleOpenEditDeal={handleOpenEditDeal}
+            handleDealStageChange={handleDealStageChange}
+            openPipelineFollowUpModal={openPipelineFollowUpModal}
+            openMeetingWhatsApp={openMeetingWhatsApp}
+            openCommercialModal={openCommercialModal}
+            sendDealDocWhatsApp={sendDealDocWhatsApp}
+            openInvoiceModal={openInvoiceModal}
+            onNavigateSection={onNavigateSection}
+            preserveBoardWidth={statusFilter === "all"}
           />
-        </div>
-      )}
-    </>
+        );
+      })}
+    </div>
   );
 }

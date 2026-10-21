@@ -60,7 +60,6 @@ export default function CrmWorkspaceViewSwitch({
   isPipelineLoading,
   visiblePipelineDeals,
   statusFilter,
-  paginatedPipelineDeals,
   dateFilter,
   matchesDateFilter,
   draggedDealId,
@@ -79,12 +78,6 @@ export default function CrmWorkspaceViewSwitch({
   sendDealDocWhatsApp,
   openInvoiceModal,
   onNavigateSection,
-  pipelineTotal = 0,
-  safePipelinePage = 1,
-  pipelinePageSize = 20,
-  pipelinePageCount = 1,
-  setPipelinePage = () => {},
-  setPipelinePageSize = () => {},
   // Commercials View Props
   isCommercialsLoading,
   commercialDocs,
@@ -199,7 +192,6 @@ export default function CrmWorkspaceViewSwitch({
           isPipelineLoading={isPipelineLoading}
           visiblePipelineDeals={visiblePipelineDeals}
           statusFilter={statusFilter}
-          paginatedPipelineDeals={paginatedPipelineDeals}
           dateFilter={dateFilter}
           matchesDateFilter={matchesDateFilter}
           draggedDealId={draggedDealId}
@@ -223,17 +215,6 @@ export default function CrmWorkspaceViewSwitch({
           sendDealDocWhatsApp={sendDealDocWhatsApp}
           openInvoiceModal={openInvoiceModal}
           onNavigateSection={onNavigateSection}
-          pagination={{
-            label: "deals",
-            start: pipelineTotal === 0 ? 0 : (safePipelinePage - 1) * pipelinePageSize + 1,
-            end: Math.min(pipelineTotal, safePipelinePage * pipelinePageSize),
-            total: pipelineTotal,
-            page: safePipelinePage,
-            pageCount: pipelinePageCount || Math.ceil((pipelineTotal || 0) / (pipelinePageSize || 20)) || 1,
-            pageSize: pipelinePageSize,
-            setPage: setPipelinePage,
-            setPageSize: setPipelinePageSize,
-          }}
         />
       );
 
