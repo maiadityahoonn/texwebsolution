@@ -49,7 +49,7 @@ export default function PipelineDealCard({
     .filter(
       (item) =>
         (item.deal_id === deal.id || (deal.lead_id && item.lead_id === deal.lead_id)) &&
-        item.status === "scheduled"
+        !["cancelled", "completed", "no_show"].includes(item.status)
     )
     .sort(
       (a, b) => new Date(a.scheduled_at || 0).getTime() - new Date(b.scheduled_at || 0).getTime()

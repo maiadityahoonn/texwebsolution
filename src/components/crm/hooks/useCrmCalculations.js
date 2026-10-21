@@ -122,24 +122,43 @@ export function useCrmCalculations({
 
   const filteredFollowUps = useMemo(() => {
     const now = Date.now();
-    return followUps.filter((item) => {
-      if (!matchesDateFilter(item, "due_at")) return false;
-      const isOverdue = item.status === "pending" && item.due_at && new Date(item.due_at).getTime() < now;
-      const matchStatus =
-        statusFilter === "all" || !statusFilter
-          ? true
-          : statusFilter === "pending" || statusFilter === "active"
-          ? item.status === "pending" && !isOverdue
-          : statusFilter === "overdue"
-          ? isOverdue
-          : statusFilter === "done" || statusFilter === "completed"
-          ? item.status === "done"
-          : statusFilter === "missed"
-          ? item.status === "missed"
-          : true;
-      return matchStatus;
-    });
-  }, [followUps, matchesDateFilter, statusFilter]);
+    return followUps
+      .filter((item) => {
+        if (dateFilter !== "all") {
+          const matchesDue = matchesDateFilter(item, "due_at");
+          const matchesCreated = matchesDateFilter(item, "created_at");
+          if (!matchesDue && !matchesCreated) return false;
+        }
+        const isOverdue = item.status === "pending" && item.due_at && new Date(item.due_at).getTime() < now;
+        const matchStatus =
+          statusFilter === "all" || !statusFilter
+            ? true
+            : statusFilter === "pending" || statusFilter === "active"
+            ? (item.status === "pending" || item.status === "scheduled") && !isOverdue
+            : statusFilter === "overdue"
+            ? isOverdue
+            : statusFilter === "done" || statusFilter === "completed"
+            ? item.status === "done"
+            : statusFilter === "missed"
+            ? item.status === "missed"
+            : true;
+        return matchStatus;
+      })
+      .sort((a, b) => {
+        const aPending = a.status === "pending" || a.status === "scheduled" ? 1 : 0;
+        const bPending = b.status === "pending" || b.status === "scheduled" ? 1 : 0;
+        if (aPending !== bPending) return bPending - aPending;
+
+        if (aPending && bPending) {
+          const aDue = new Date(a.due_at || 0).getTime();
+          const bDue = new Date(b.due_at || 0).getTime();
+          if (Math.abs(aDue - bDue) > 60000) return aDue - bDue;
+          return new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime();
+        }
+
+        return new Date(b.created_at || b.due_at || 0).getTime() - new Date(a.created_at || a.due_at || 0).getTime();
+      });
+  }, [followUps, matchesDateFilter, statusFilter, dateFilter]);
 
   const filteredSalesMeetings = useMemo(() => {
     const todayStr = new Date().toDateString();
@@ -252,8 +271,10 @@ export function useCrmCalculations({
   }, [allPipelineDeals, dateFilter, matchesDateFilter]);
 
   const dateFilteredFollowUpsForStats = useMemo(() => {
-    return followUps.filter((item) => matchesDateFilter(item, "due_at"));
-  }, [followUps, matchesDateFilter]);
+    return followUps.filter(
+      (item) => dateFilter === "all" || matchesDateFilter(item, "due_at") || matchesDateFilter(item, "created_at")
+    );
+  }, [dateFilter, followUps, matchesDateFilter]);
 
   const dateFilteredMeetingsForStats = useMemo(() => {
     return salesMeetings.filter((item) => matchesDateFilter(item, "scheduled_at"));

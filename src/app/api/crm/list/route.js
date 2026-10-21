@@ -252,6 +252,14 @@ export async function GET(request) {
     } else if (dateTo) {
       query = query.or(`created_at.lte.${dateTo},updated_at.lte.${dateTo}`);
     }
+  } else if (resource === "sales_followups" && (dateFrom || dateTo)) {
+    if (dateFrom && dateTo) {
+      query = query.or(`and(due_at.gte.${dateFrom},due_at.lte.${dateTo}),and(created_at.gte.${dateFrom},created_at.lte.${dateTo})`);
+    } else if (dateFrom) {
+      query = query.or(`due_at.gte.${dateFrom},created_at.gte.${dateFrom}`);
+    } else if (dateTo) {
+      query = query.or(`due_at.lte.${dateTo},created_at.lte.${dateTo}`);
+    }
   } else {
     if (dateFrom) query = query.gte(config.dateField, dateFrom);
     if (dateTo) query = query.lte(config.dateField, dateTo);

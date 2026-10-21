@@ -61,10 +61,10 @@ export default function LeadTableRow({
     ? (stageOptions.find((stage) => stage.id === (linkedDeal.pipeline_stage || linkedDeal.stage))?.label || "Pipeline")
     : null;
   const nextLeadMeeting = salesMeetings
-    .filter((meeting) => meeting.lead_id === lead.id && !["cancelled", "completed", "no_show"].includes(meeting.status))
+    .filter((meeting) => (meeting.lead_id === lead.id || (linkedDeal && meeting.deal_id === linkedDeal.id)) && !["cancelled", "completed", "no_show"].includes(meeting.status))
     .sort((a, b) => new Date(a.scheduled_at || 0).getTime() - new Date(b.scheduled_at || 0).getTime())[0];
   const nextLeadFollowUp = followUps
-    .filter((followUp) => followUp.lead_id === lead.id && followUp.status === "pending")
+    .filter((followUp) => (followUp.lead_id === lead.id || (linkedDeal && followUp.deal_id === linkedDeal.id)) && followUp.status === "pending")
     .sort((a, b) => new Date(a.due_at || 0).getTime() - new Date(b.due_at || 0).getTime())[0];
 
   const isHighlighted = highlightParam && (
@@ -130,6 +130,7 @@ export default function LeadTableRow({
               type="button"
               onClick={(event) => {
                 event.stopPropagation();
+                setStatusFilter("all");
                 setViewMode("followups");
               }}
               className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9.5px] font-bold bg-amber-50 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-200/60 dark:border-amber-900/50 shrink-0 cursor-pointer hover:bg-amber-100 transition whitespace-nowrap min-w-0 max-w-[150px] min-[360px]:max-w-none"

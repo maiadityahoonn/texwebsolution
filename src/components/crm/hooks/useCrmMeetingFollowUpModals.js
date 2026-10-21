@@ -131,12 +131,13 @@ export function useCrmMeetingFollowUpModals({
   }
 
   function openPipelineFollowUpModal(deal) {
+    const l = leads.find((item) => item.id === deal?.lead_id);
     setFollowUpForm({
       title: `Follow up: ${deal.title}`,
-      lead_id: deal.lead_id || "",
-      client_id: "",
+      lead_id: deal.lead_id || l?.id || "",
+      client_id: deal.client_id || "",
       deal_id: deal.id || "",
-      channel: "whatsapp",
+      channel: l?.phone ? "whatsapp" : "phone",
       due_at: toLocalDateTimeInput(new Date(Date.now() + 24 * 60 * 60 * 1000)),
       reminder_before_minutes: DEFAULT_REMINDER_MINUTES,
       priority: "medium",
@@ -146,11 +147,12 @@ export function useCrmMeetingFollowUpModals({
   }
 
   function openLeadFollowUpModal(lead) {
+    const linkedDeal = deals.find((item) => item.lead_id === lead?.id);
     setFollowUpForm({
       title: `Follow up: ${lead?.name || "Lead"}`,
       lead_id: lead?.id || "",
-      client_id: "",
-      deal_id: "",
+      client_id: linkedDeal?.client_id || "",
+      deal_id: linkedDeal?.id || "",
       channel: lead?.phone ? "whatsapp" : "phone",
       due_at: toLocalDateTimeInput(new Date(Date.now() + 24 * 60 * 60 * 1000)),
       reminder_before_minutes: DEFAULT_REMINDER_MINUTES,
