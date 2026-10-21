@@ -44,10 +44,21 @@ export default function AppSplashScreen() {
       } catch {}
     }
 
+    // This timer must start before any auth await. Android WebView/PWA resume can
+    // leave a session refresh pending; the splash must never permanently cover
+    // the already-mounted CRM shell in that case.
+    const hardStopTimer = setTimeout(dismissSplash, 8000);
+
     // Check session & enforce: Splash -> Login -> CRM Only flow
     async function checkSessionAndRoute() {
       try {
-        const { data: { session } } = await supabase.auth.getSession();
+        const sessionResult = await Promise.race([
+          supabase.auth.getSession(),
+          new Promise((_, reject) =>
+            setTimeout(() => reject(new Error("Splash session check timeout")), 3500)
+          ),
+        ]);
+        const session = sessionResult?.data?.session;
         if (!isMounted) return;
 
         const currentPath = window.location.pathname;
@@ -71,11 +82,12 @@ export default function AppSplashScreen() {
           };
           window.addEventListener("crm:data-loaded", handleDataLoaded);
 
-          // Safety timeout (max 10s fallback in case of slow/offline network)
+          // CRM owns its own skeleton/loading states. Do not keep the global
+          // splash over the panel indefinitely while background data is slow.
           const fallbackTimer = setTimeout(() => {
             window.removeEventListener("crm:data-loaded", handleDataLoaded);
             dismissSplash();
-          }, 10000);
+          }, 3500);
 
           cleanupListeners = () => {
             window.removeEventListener("crm:data-loaded", handleDataLoaded);
@@ -101,6 +113,7 @@ export default function AppSplashScreen() {
 
     return () => {
       isMounted = false;
+      clearTimeout(hardStopTimer);
       if (cleanupListeners) cleanupListeners();
     };
   }, [pathname, router]);
@@ -108,12 +121,14 @@ export default function AppSplashScreen() {
   // If in App Mode and user lands on a public route, keep splash up while redirecting so marketing pages never show
   const isPublicRouteInApp = inApp && !pathname?.startsWith("/crm") && pathname !== "/login";
 
-  if (!shouldRender && !isPublicRouteInApp) return null;
+  if (!shouldRender) return null;
 
   return (
     <div
       className={`fixed inset-0 z-[99999] flex flex-col items-center justify-center bg-white text-gray-900 transition-opacity duration-500 ease-out select-none overflow-hidden ${
-        isVisible || isPublicRouteInApp ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
+        isVisible && (pathname?.startsWith("/crm") || pathname === "/login" || isPublicRouteInApp)
+          ? "opacity-100 pointer-events-auto"
+          : "opacity-0 pointer-events-none"
       }`}
       style={{
         backgroundImage: "url('https://qfbsszbgmipbercujiak.supabase.co/storage/v1/object/public/site-assets/common/Bg2.png')",

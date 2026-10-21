@@ -243,56 +243,66 @@ export function useAuth({ setToast, onAuthSuccess, setProfiles } = {}) {
     }
     checkAuth();
 
-    const { data: authListener } = supabase.auth.onAuthStateChange(async (event, session) => {
-      try {
-        if (!isMounted) return;
-        if (event === "PASSWORD_RECOVERY") {
-          setAuthMode("reset");
-          setAuthMessage({ type: "success", text: "Set a new password to complete secure account setup." });
-        }
-        if (event === "INITIAL_SESSION") {
-          return;
-        }
-        if (session?.user) {
-          let user = session.user;
-          try {
-            const { data: authUserData, error } = await supabase.auth.getUser();
-            const isAuthRevoked =
-              error &&
-              (error.status === 401 ||
-                error.status === 403 ||
-                error.message?.toLowerCase().includes("jwt") ||
-                error.message?.toLowerCase().includes("token expired") ||
-                error.message?.toLowerCase().includes("invalid login"));
-            if (isAuthRevoked) {
-              await supabase.auth.signOut({ scope: "local" });
-              setSessionUser(null);
-              setUserProfile(null);
-              setAuthMessage({
-                type: "error",
-                text: "Session expire ho gaya hai. Please login again.",
-              });
-              return;
-            }
-            if (authUserData?.user) {
-              user = authUserData.user;
-            }
-          } catch {
-            // Keep session on network error
+    const pendingAuthTimers = new Set();
+    const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
+      // Return from Supabase's auth callback immediately. A resumed PWA commonly
+      // emits TOKEN_REFRESHED; nested auth work inside that callback can wait on
+      // the same refresh lifecycle and block every getSession consumer.
+      const timer = setTimeout(async () => {
+        pendingAuthTimers.delete(timer);
+        try {
+          if (!isMounted) return;
+          if (event === "PASSWORD_RECOVERY") {
+            setAuthMode("reset");
+            setAuthMessage({ type: "success", text: "Set a new password to complete secure account setup." });
           }
-          setSessionUser(user);
-          await fetchProfile(user.id, user.email, user.user_metadata);
-        } else if (event === "SIGNED_OUT") {
-          setSessionUser(null);
-          setUserProfile(null);
+          if (event === "INITIAL_SESSION") {
+            return;
+          }
+          if (session?.user) {
+            let user = session.user;
+            try {
+              const { data: authUserData, error } = await supabase.auth.getUser();
+              const isAuthRevoked =
+                error &&
+                (error.status === 401 ||
+                  error.status === 403 ||
+                  error.message?.toLowerCase().includes("jwt") ||
+                  error.message?.toLowerCase().includes("token expired") ||
+                  error.message?.toLowerCase().includes("invalid login"));
+              if (isAuthRevoked) {
+                await supabase.auth.signOut({ scope: "local" });
+                setSessionUser(null);
+                setUserProfile(null);
+                setAuthMessage({
+                  type: "error",
+                  text: "Session expire ho gaya hai. Please login again.",
+                });
+                return;
+              }
+              if (authUserData?.user) {
+                user = authUserData.user;
+              }
+            } catch {
+              // Keep session on network error
+            }
+            setSessionUser(user);
+            await fetchProfile(user.id, user.email, user.user_metadata);
+          } else if (event === "SIGNED_OUT") {
+            setSessionUser(null);
+            setUserProfile(null);
+          }
+        } catch (err) {
+          console.warn("Auth state change error:", err?.message || err);
         }
-      } catch (err) {
-        console.warn("Auth state change error:", err?.message || err);
-      }
+      }, 0);
+      pendingAuthTimers.add(timer);
     });
 
     return () => {
       isMounted = false;
+      pendingAuthTimers.forEach((timer) => clearTimeout(timer));
+      pendingAuthTimers.clear();
       authListener?.subscription?.unsubscribe();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
