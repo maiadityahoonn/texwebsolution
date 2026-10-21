@@ -1,6 +1,17 @@
 "use client";
 
-import { Layers, Plus, RefreshCw, Settings } from "lucide-react";
+import {
+  Layers,
+  UserPlus,
+  Briefcase,
+  Clock,
+  Video,
+  FileText,
+  Receipt,
+  Settings,
+  RefreshCw,
+} from "lucide-react";
+import CrmDateFilterDropdown from "./CrmDateFilterDropdown";
 
 export default function CrmActionButtons({
   viewMode,
@@ -16,109 +27,127 @@ export default function CrmActionButtons({
   onMeetingSettings,
   onCommercial,
   onInvoice,
+  dateFilter,
+  setDateFilter,
+  selectedDate,
+  setSelectedDate,
+  customDateRange,
+  setCustomDateRange,
 }) {
   return (
-    <div className="flex items-center gap-1.5 sm:gap-2 shrink-0 flex-nowrap">
+    <div className="flex items-center gap-1 min-[360px]:gap-1.5 sm:gap-2 shrink-0 flex-nowrap min-w-0">
+      {/* Date Filter Icon Dropdown Trigger */}
+      {dateFilter !== undefined && (
+        <CrmDateFilterDropdown
+          dateFilter={dateFilter}
+          setDateFilter={setDateFilter}
+          selectedDate={selectedDate}
+          setSelectedDate={setSelectedDate}
+          customDateRange={customDateRange}
+          setCustomDateRange={setCustomDateRange}
+        />
+      )}
+
+      {/* Leads View Actions */}
       {viewMode === "leads" && (
         <>
           <button
             type="button"
             onClick={onAddLead}
-            className="h-7.5 sm:h-8.5 px-2 sm:px-3 rounded-lg sm:rounded-xl bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 text-white font-bold text-[11px] sm:text-xs inline-flex items-center justify-center gap-1 transition-all shadow-2xs active:scale-95 cursor-pointer shrink-0 whitespace-nowrap"
+            className="h-7.5 sm:h-8.5 w-7.5 sm:w-8.5 rounded-lg sm:rounded-xl bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 text-white inline-flex items-center justify-center transition-all shadow-2xs active:scale-95 cursor-pointer shrink-0"
             title="Add Lead"
             aria-label="Add Lead"
           >
-            <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
-            <span><span className="hidden sm:inline">+ Add </span>Lead</span>
+            <UserPlus className="w-3.5 h-3.5 sm:w-4 sm:h-4 stroke-[2.3] shrink-0" />
           </button>
           <button
             type="button"
             onClick={onAddDeal}
-            className="h-7.5 sm:h-8.5 px-2 sm:px-3 rounded-lg sm:rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-bold text-[11px] sm:text-xs inline-flex items-center justify-center gap-1 transition-all shadow-2xs active:scale-95 cursor-pointer shrink-0 whitespace-nowrap"
+            className="h-7.5 sm:h-8.5 w-7.5 sm:w-8.5 rounded-lg sm:rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white inline-flex items-center justify-center transition-all shadow-2xs active:scale-95 cursor-pointer shrink-0"
             title="Add Deal"
             aria-label="Add Deal"
           >
-            <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
-            <span><span className="hidden sm:inline">+ Add </span>Deal</span>
+            <Briefcase className="w-3.5 h-3.5 sm:w-4 sm:h-4 stroke-[2.3] shrink-0" />
           </button>
           <button
             type="button"
             onClick={onMetaImport}
-            className="hidden md:inline-flex h-8.5 px-3 rounded-xl border border-blue-200 dark:border-blue-900/60 bg-white dark:bg-slate-900 hover:bg-blue-50/70 dark:hover:bg-blue-950/40 text-blue-700 dark:text-blue-300 text-xs font-bold items-center justify-center gap-1.5 transition-all shadow-2xs active:scale-95 cursor-pointer whitespace-nowrap"
-            title="Sync Meta/Instagram Inquiries"
+            className="h-7.5 sm:h-8.5 w-7.5 sm:w-8.5 rounded-lg sm:rounded-xl border border-blue-200 dark:border-blue-900/60 bg-white dark:bg-slate-900 hover:bg-blue-50/70 dark:hover:bg-blue-950/40 text-blue-700 dark:text-blue-300 inline-flex items-center justify-center transition-all shadow-2xs active:scale-95 cursor-pointer shrink-0"
+            title="Sync Meta/Instagram Leads"
+            aria-label="Sync Meta Leads"
           >
-            <Layers className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-blue-500" />
-            <span>Meta Leads</span>
+            <Layers className="w-3.5 h-3.5 sm:w-4 sm:h-4 stroke-[2.2] shrink-0" />
           </button>
         </>
       )}
 
+      {/* Pipeline View Actions */}
       {viewMode === "pipeline" && (
         <>
           <button
             type="button"
             onClick={onAddDeal}
-            className="h-7.5 sm:h-8.5 px-2 sm:px-3 rounded-lg sm:rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-bold text-[11px] sm:text-xs inline-flex items-center justify-center gap-1 transition-all shadow-2xs active:scale-95 cursor-pointer shrink-0 whitespace-nowrap"
+            className="h-7.5 sm:h-8.5 w-7.5 sm:w-8.5 rounded-lg sm:rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white inline-flex items-center justify-center transition-all shadow-2xs active:scale-95 cursor-pointer shrink-0"
             title="Add Deal"
             aria-label="Add Deal"
           >
-            <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
-            <span><span className="hidden sm:inline">+ Add </span>Deal</span>
+            <Briefcase className="w-3.5 h-3.5 sm:w-4 sm:h-4 stroke-[2.3] shrink-0" />
           </button>
           <button
             type="button"
             onClick={onAddLead}
-            className="h-7.5 sm:h-8.5 px-2 sm:px-3 rounded-lg sm:rounded-xl border border-rose-200 dark:border-rose-900/60 bg-white dark:bg-slate-900 hover:bg-rose-50/70 dark:hover:bg-rose-950/40 text-rose-700 dark:text-rose-300 text-[11px] sm:text-xs font-bold inline-flex items-center justify-center gap-1 transition-all shadow-2xs active:scale-95 cursor-pointer shrink-0 whitespace-nowrap"
+            className="h-7.5 sm:h-8.5 w-7.5 sm:w-8.5 rounded-lg sm:rounded-xl border border-rose-200 dark:border-rose-900/60 bg-white dark:bg-slate-900 hover:bg-rose-50/70 dark:hover:bg-rose-950/40 text-rose-700 dark:text-rose-300 inline-flex items-center justify-center transition-all shadow-2xs active:scale-95 cursor-pointer shrink-0"
             title="Add Lead"
             aria-label="Add Lead"
           >
-            <Plus className="w-3.5 h-3.5 text-rose-500 stroke-[2.5]" />
-            <span><span className="hidden sm:inline">+ Add </span>Lead</span>
+            <UserPlus className="w-3.5 h-3.5 sm:w-4 sm:h-4 stroke-[2.3] shrink-0" />
           </button>
         </>
       )}
 
+      {/* Follow-ups View Actions */}
       {viewMode === "followups" && (
         <button
           type="button"
           onClick={onFollowUp}
-          className="h-7.5 sm:h-8.5 px-2.5 sm:px-3 rounded-lg sm:rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold text-[11px] sm:text-xs inline-flex items-center justify-center gap-1 transition-all shadow-2xs active:scale-95 cursor-pointer shrink-0 whitespace-nowrap"
+          className="h-7.5 sm:h-8.5 w-7.5 sm:w-8.5 rounded-lg sm:rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white inline-flex items-center justify-center transition-all shadow-2xs active:scale-95 cursor-pointer shrink-0"
           title="Schedule Follow-up"
           aria-label="Schedule Follow-up"
         >
-          <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
-          <span>Follow-up</span>
+          <Clock className="w-3.5 h-3.5 sm:w-4 sm:h-4 stroke-[2.3] shrink-0" />
         </button>
       )}
 
+      {/* Sales Meetings View Actions */}
       {viewMode === "sales_meetings" && (
         <>
           <button
             type="button"
             onClick={onMeeting}
-            className="h-7.5 sm:h-8.5 px-2.5 sm:px-3 rounded-lg sm:rounded-xl bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-700 hover:to-blue-700 text-white font-bold text-[11px] sm:text-xs inline-flex items-center justify-center gap-1 transition-all shadow-2xs active:scale-95 cursor-pointer shrink-0 whitespace-nowrap"
+            className="h-7.5 sm:h-8.5 w-7.5 sm:w-8.5 rounded-lg sm:rounded-xl bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-700 hover:to-blue-700 text-white inline-flex items-center justify-center transition-all shadow-2xs active:scale-95 cursor-pointer shrink-0"
             title="Schedule Meeting"
             aria-label="Schedule Meeting"
           >
-            <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
-            <span>Meeting</span>
+            <Video className="w-3.5 h-3.5 sm:w-4 sm:h-4 stroke-[2.3] shrink-0" />
           </button>
           <button
             type="button"
             onClick={onMeetingSettings}
-            className="hidden md:flex h-8.5 w-8.5 rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 hover:bg-gray-50 dark:hover:bg-slate-800 text-gray-600 dark:text-slate-300 transition-all shadow-2xs active:scale-95 cursor-pointer items-center justify-center"
+            className="h-7.5 sm:h-8.5 w-7.5 sm:w-8.5 rounded-lg sm:rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 hover:bg-gray-50 dark:hover:bg-slate-800 text-gray-600 dark:text-slate-300 inline-flex items-center justify-center transition-all shadow-2xs active:scale-95 cursor-pointer shrink-0"
             title="Meeting Link Settings"
+            aria-label="Meeting Link Settings"
           >
-            <Settings className="w-4 h-4" />
+            <Settings className="w-3.5 h-3.5 sm:w-4 sm:h-4 stroke-[2.2] shrink-0" />
           </button>
         </>
       )}
 
+      {/* Commercials View Actions */}
       {viewMode === "commercials" && (
         <button
           type="button"
           onClick={onCommercial}
-          className={`h-7.5 sm:h-8.5 px-2.5 sm:px-3 rounded-lg sm:rounded-xl font-bold text-[11px] sm:text-xs text-white inline-flex items-center justify-center gap-1 transition-all shadow-2xs active:scale-95 cursor-pointer shrink-0 whitespace-nowrap ${
+          className={`h-7.5 sm:h-8.5 w-7.5 sm:w-8.5 rounded-lg sm:rounded-xl text-white inline-flex items-center justify-center transition-all shadow-2xs active:scale-95 cursor-pointer shrink-0 ${
             commercialScope === "agreement"
               ? "bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700"
               : "bg-gradient-to-r from-orange-600 to-amber-600 hover:from-orange-700 hover:to-amber-700"
@@ -126,72 +155,70 @@ export default function CrmActionButtons({
           title={commercialScope === "agreement" ? "New Agreement" : "New Quotation"}
           aria-label={commercialScope === "agreement" ? "New Agreement" : "New Quotation"}
         >
-          <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
-          <span>{commercialScope === "agreement" ? "Agreement" : "Quote"}</span>
+          <FileText className="w-3.5 h-3.5 sm:w-4 sm:h-4 stroke-[2.3] shrink-0" />
         </button>
       )}
 
+      {/* Invoices View Actions */}
       {viewMode === "invoices" && (
         <button
           type="button"
           onClick={onInvoice}
-          className="h-7.5 sm:h-8.5 px-2.5 sm:px-3 rounded-lg sm:rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-bold text-[11px] sm:text-xs inline-flex items-center justify-center gap-1 transition-all shadow-2xs active:scale-95 cursor-pointer shrink-0 whitespace-nowrap"
+          className="h-7.5 sm:h-8.5 w-7.5 sm:w-8.5 rounded-lg sm:rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white inline-flex items-center justify-center transition-all shadow-2xs active:scale-95 cursor-pointer shrink-0"
           title="Create Invoice"
           aria-label="Create Invoice"
         >
-          <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
-          <span>Invoice</span>
+          <Receipt className="w-3.5 h-3.5 sm:w-4 sm:h-4 stroke-[2.3] shrink-0" />
         </button>
       )}
 
+      {/* Clients View Actions */}
       {viewMode === "clients" && (
         <button
           type="button"
           onClick={onAddDeal}
-          className="h-7.5 sm:h-8.5 px-2.5 sm:px-3 rounded-lg sm:rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold text-[11px] sm:text-xs inline-flex items-center justify-center gap-1 transition-all shadow-2xs active:scale-95 cursor-pointer shrink-0 whitespace-nowrap"
+          className="h-7.5 sm:h-8.5 w-7.5 sm:w-8.5 rounded-lg sm:rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white inline-flex items-center justify-center transition-all shadow-2xs active:scale-95 cursor-pointer shrink-0"
           title="Add Deal"
           aria-label="Add Deal"
         >
-          <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
-          <span>Deal</span>
+          <Briefcase className="w-3.5 h-3.5 sm:w-4 sm:h-4 stroke-[2.3] shrink-0" />
         </button>
       )}
 
+      {/* Dashboard View Actions */}
       {viewMode === "dashboard" && (
         <>
           <button
             type="button"
             onClick={onAddLead}
-            className="h-7.5 sm:h-8.5 px-2 sm:px-3 rounded-lg sm:rounded-xl bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 text-white font-bold text-[11px] sm:text-xs inline-flex items-center justify-center gap-1 transition-all shadow-2xs active:scale-95 cursor-pointer shrink-0 whitespace-nowrap"
+            className="h-7.5 sm:h-8.5 w-7.5 sm:w-8.5 rounded-lg sm:rounded-xl bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 text-white inline-flex items-center justify-center transition-all shadow-2xs active:scale-95 cursor-pointer shrink-0"
             title="Add Lead"
             aria-label="Add Lead"
           >
-            <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
-            <span><span className="hidden sm:inline">+ Add </span>Lead</span>
+            <UserPlus className="w-3.5 h-3.5 sm:w-4 sm:h-4 stroke-[2.3] shrink-0" />
           </button>
           <button
             type="button"
             onClick={onAddDeal}
-            className="h-7.5 sm:h-8.5 px-2 sm:px-3 rounded-lg sm:rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-bold text-[11px] sm:text-xs inline-flex items-center justify-center gap-1 transition-all shadow-2xs active:scale-95 cursor-pointer shrink-0 whitespace-nowrap"
+            className="h-7.5 sm:h-8.5 w-7.5 sm:w-8.5 rounded-lg sm:rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white inline-flex items-center justify-center transition-all shadow-2xs active:scale-95 cursor-pointer shrink-0"
             title="Add Deal"
             aria-label="Add Deal"
           >
-            <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
-            <span><span className="hidden sm:inline">+ Add </span>Deal</span>
+            <Briefcase className="w-3.5 h-3.5 sm:w-4 sm:h-4 stroke-[2.3] shrink-0" />
           </button>
         </>
       )}
 
+      {/* Refresh Action Button (Hidden on mobile; mobile uses pull-to-refresh) */}
       <button
         type="button"
         disabled={isRefreshing}
         onClick={onRefresh}
-        className="hidden md:inline-flex h-9 px-3 rounded-xl border border-gray-200/90 dark:border-slate-800 bg-white dark:bg-slate-900 hover:bg-gray-100 dark:hover:bg-slate-800 text-gray-700 dark:text-neutral-200 transition-all shadow-2xs active:scale-95 cursor-pointer disabled:opacity-70 items-center justify-center gap-1.5 whitespace-nowrap"
+        className="h-7.5 sm:h-8.5 w-7.5 sm:w-8.5 rounded-lg sm:rounded-xl border border-gray-200/90 dark:border-slate-800 bg-white dark:bg-slate-900 hover:bg-gray-100 dark:hover:bg-slate-800 text-gray-700 dark:text-neutral-200 transition-all shadow-2xs active:scale-95 cursor-pointer disabled:opacity-70 hidden md:inline-flex items-center justify-center shrink-0"
         title={refreshStatus || "Refresh Data"}
         aria-label={refreshStatus || "Refresh Data"}
       >
         <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? "animate-spin text-red-600" : ""}`} />
-        <span className="hidden xl:inline text-xs font-bold whitespace-nowrap">{refreshStatus || "Refresh"}</span>
       </button>
     </div>
   );

@@ -292,6 +292,32 @@ export default function RootLayout({ children }) {
             `,
           }}
         />
+        <Script
+          id="texweb-pointer-safety"
+          strategy="beforeInteractive"
+          dangerouslySetInnerHTML={{
+            __html: `
+              if (typeof window !== 'undefined') {
+                if (typeof Element !== 'undefined' && Element.prototype && Element.prototype.releasePointerCapture) {
+                  var origRelease = Element.prototype.releasePointerCapture;
+                  Element.prototype.releasePointerCapture = function(pointerId) {
+                    try {
+                      if (!this.hasPointerCapture || this.hasPointerCapture(pointerId)) {
+                        return origRelease.call(this, pointerId);
+                      }
+                    } catch (err) {}
+                  };
+                }
+                window.addEventListener('error', function(e) {
+                  if (e && e.message && e.message.indexOf('releasePointerCapture') !== -1) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                  }
+                });
+              }
+            `,
+          }}
+        />
       </head>
       <body className="min-h-full flex flex-col bg-white text-gray-900 font-sans no-scrollbar" suppressHydrationWarning>
         {/* Global Scroll To Top Controller */}

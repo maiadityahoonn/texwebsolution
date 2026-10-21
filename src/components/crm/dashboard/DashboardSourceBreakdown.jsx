@@ -13,7 +13,7 @@ export default function DashboardSourceBreakdown({
   const totalLeads = Math.max(filteredLeads.length, 1);
 
   return (
-    <div className="rounded-2xl bg-white dark:bg-[#18150f] border border-gray-100 dark:border-[#3a3020] p-4 sm:p-5 shadow-2xs">
+    <div className="rounded-2xl bg-white dark:bg-[#18150f] border border-gray-100 dark:border-[#3a3020] p-3.5 sm:p-5 shadow-2xs">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
         <div>
           <div className="flex items-center gap-2 text-sm sm:text-base font-bold text-gray-900 dark:text-white">
@@ -46,20 +46,20 @@ export default function DashboardSourceBreakdown({
           </p>
         </div>
       ) : (
-        <div className="space-y-3">
+        <div className="space-y-2.5 sm:space-y-3">
           {sourceRows.map((row) => {
             const percentage = Math.round((row.leads / totalLeads) * 100);
 
             return (
               <div
                 key={row.source}
-                className="p-3 rounded-xl bg-gray-50/60 dark:bg-[#1f1a12] border border-gray-100 dark:border-[#32291a]"
+                className="p-2.5 sm:p-3 rounded-xl bg-gray-50/60 dark:bg-[#1f1a12] border border-gray-100 dark:border-[#32291a]"
               >
-                <div className="flex items-center justify-between text-xs mb-1.5">
-                  <div className="font-bold text-gray-900 dark:text-white truncate max-w-[180px]">
+                <div className="flex flex-col min-[380px]:flex-row min-[380px]:items-center justify-between text-[11px] sm:text-xs mb-1.5 gap-1 min-[380px]:gap-2">
+                  <div className="font-bold text-gray-900 dark:text-white truncate">
                     {row.source}
                   </div>
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-2 sm:gap-3 shrink-0">
                     <span className="text-gray-500 font-semibold">{row.leads} leads</span>
                     <span className="text-emerald-600 dark:text-emerald-400 font-bold">
                       {row.won} won
@@ -70,7 +70,7 @@ export default function DashboardSourceBreakdown({
                   </div>
                 </div>
 
-                <div className="w-full bg-gray-200 dark:bg-gray-800 h-2 rounded-full overflow-hidden">
+                <div className="w-full bg-gray-200 dark:bg-gray-800 h-1.5 sm:h-2 rounded-full overflow-hidden">
                   <div
                     className="h-full bg-gradient-to-r from-emerald-500 to-teal-500 rounded-full transition-all duration-500"
                     style={{ width: `${Math.max(percentage, 5)}%` }}

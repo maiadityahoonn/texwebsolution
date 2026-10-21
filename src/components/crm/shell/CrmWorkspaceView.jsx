@@ -18,6 +18,7 @@ import CrmActionButtons from "./CrmActionButtons";
 import CrmStatusCards from "./CrmStatusCards";
 import CrmDateFilterBar from "./CrmDateFilterBar";
 import CrmWorkspaceViewSwitch from "./CrmWorkspaceViewSwitch";
+import CrmPullToRefresh from "./CrmPullToRefresh";
 
 import { useCrmCalculations } from "../hooks/useCrmCalculations";
 import { useCrmWorkspaceModals } from "../hooks/useCrmWorkspaceModals";
@@ -316,11 +317,18 @@ export default function CrmWorkspaceView({
         modals.setInvoiceDeal(null);
         modals.setShowInvoiceModal(true);
       }}
+      dateFilter={dateFilter}
+      setDateFilter={setDateFilter}
+      selectedDate={selectedDate}
+      setSelectedDate={setSelectedDate}
+      customDateRange={customDateRange}
+      setCustomDateRange={setCustomDateRange}
     />
   );
 
   return (
-    <div className="space-y-4">
+    <CrmPullToRefresh onRefresh={handleRefreshClick} isRefreshing={isRefreshing}>
+      <div className="space-y-4">
       {/* Header Portal directly to top header line */}
       {headerActionsTarget
         ? createPortal(
@@ -635,5 +643,6 @@ export default function CrmWorkspaceView({
         onDeleteLead={onDeleteLead || modals.handleDelete}
       />
     </div>
+    </CrmPullToRefresh>
   );
 }

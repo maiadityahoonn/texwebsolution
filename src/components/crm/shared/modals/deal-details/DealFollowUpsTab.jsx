@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { Check, Clock, History, Plus } from "lucide-react";
 import { formatStatusLabel, parseNotesHistory } from "../../meetingUtils";
@@ -13,23 +13,23 @@ export default function DealFollowUpsTab({
 }) {
   return (
     <div className="space-y-3">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-2">
         <span className="font-bold text-xs uppercase tracking-wider text-gray-900 dark:text-white flex items-center gap-1.5">
-          <Clock className="w-4 h-4 text-amber-500" />
+          <Clock className="w-4 h-4 text-amber-500 shrink-0" />
           <span>All Follow-ups ({dealFollowUps.length})</span>
         </span>
         <button
           type="button"
           onClick={() => openDealFollowUpModal(selectedDeal, lead)}
-          className="px-2.5 py-1 rounded-xl text-xs font-bold bg-amber-600 hover:bg-amber-700 text-white transition flex items-center gap-1 shadow-2xs cursor-pointer"
+          className="px-2.5 py-1 rounded-xl text-xs font-bold bg-amber-600 hover:bg-amber-700 text-white transition flex items-center gap-1 shadow-2xs cursor-pointer whitespace-nowrap shrink-0 min-w-0"
         >
-          <Plus className="w-3.5 h-3.5" />
-          <span>Add Follow-up</span>
+          <Plus className="w-3.5 h-3.5 shrink-0" />
+          <span className="truncate">Add Follow-up</span>
         </button>
       </div>
 
       {sortedDealFollowUps.length === 0 ? (
-        <div className="p-8 rounded-2xl border border-dashed border-gray-200 dark:border-slate-800 text-center space-y-3">
+        <div className="p-6 min-[360px]:p-8 rounded-2xl border border-dashed border-gray-200 dark:border-slate-800 text-center space-y-3">
           <Clock className="w-8 h-8 text-amber-300 dark:text-amber-900/60 mx-auto" />
           <div>
             <h4 className="font-bold text-sm text-gray-800 dark:text-white">No Follow-ups Recorded</h4>
@@ -40,14 +40,14 @@ export default function DealFollowUpsTab({
           <button
             type="button"
             onClick={() => openDealFollowUpModal(selectedDeal, lead)}
-            className="px-3 py-1.5 rounded-xl text-xs font-bold bg-amber-600 text-white hover:bg-amber-700 cursor-pointer shadow-xs inline-flex items-center gap-1"
+            className="px-3 py-1.5 rounded-xl text-xs font-bold bg-amber-600 text-white hover:bg-amber-700 cursor-pointer shadow-xs inline-flex items-center gap-1 whitespace-nowrap shrink-0 min-w-0"
           >
-            <Plus className="w-3.5 h-3.5" />
-            <span>Add First Follow-up</span>
+            <Plus className="w-3.5 h-3.5 shrink-0" />
+            <span className="truncate">Add First Follow-up</span>
           </button>
         </div>
       ) : (
-        <div className="space-y-3">
+        <div className="space-y-2.5 min-[360px]:space-y-3">
           {sortedDealFollowUps.map((followUp) => {
             const followUpHistory = parseNotesHistory(followUp.notes);
             const isFollowUpPending = followUp.status === "pending";
@@ -56,7 +56,7 @@ export default function DealFollowUpsTab({
             return (
               <div
                 key={followUp.id}
-                className={`p-3.5 rounded-2xl border transition-all space-y-3 ${
+                className={`p-2.5 min-[360px]:p-3.5 rounded-xl min-[360px]:rounded-2xl border transition-all space-y-2.5 min-[360px]:space-y-3 ${
                   isFollowUpPending
                     ? "bg-amber-50/40 dark:bg-amber-950/20 border-amber-200/80 dark:border-amber-900/40"
                     : isFollowUpDone
@@ -64,12 +64,12 @@ export default function DealFollowUpsTab({
                     : "bg-gray-50/60 dark:bg-slate-800/40 border-gray-200 dark:border-slate-700/60"
                 }`}
               >
-                <div className="flex items-start justify-between gap-2">
-                  <div className="space-y-0.5">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="font-bold text-sm text-gray-900 dark:text-white">{followUp.title}</span>
+                <div className="flex flex-col min-[480px]:flex-row min-[480px]:items-start justify-between gap-2">
+                  <div className="space-y-0.5 min-w-0">
+                    <div className="flex items-center gap-1.5 min-[360px]:gap-2 flex-wrap">
+                      <span className="font-bold text-xs min-[360px]:text-sm text-gray-900 dark:text-white truncate">{followUp.title}</span>
                       <span
-                        className={`px-2 py-0.5 rounded-full text-[9px] font-extrabold uppercase ${
+                        className={`px-2 py-0.5 rounded-full text-[9px] font-extrabold uppercase shrink-0 ${
                           isFollowUpPending
                             ? "bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-300"
                             : isFollowUpDone
@@ -80,7 +80,7 @@ export default function DealFollowUpsTab({
                         {formatStatusLabel(followUp.status)}
                       </span>
                     </div>
-                    <div className="flex items-center gap-2 text-[11px] text-gray-500 dark:text-neutral-400">
+                    <div className="flex items-center gap-1.5 text-[10px] min-[360px]:text-[11px] text-gray-500 dark:text-neutral-400 flex-wrap">
                       <span className="font-semibold text-gray-700 dark:text-neutral-300">
                         Due:{" "}
                         {followUp.due_at
@@ -107,25 +107,25 @@ export default function DealFollowUpsTab({
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-1.5 shrink-0">
+                  <div className="flex items-center gap-1.5 flex-wrap shrink-0">
                     {isFollowUpPending && (
                       <button
                         type="button"
                         onClick={() => openStageModal(followUp, "followup", "done")}
-                        className="px-2 py-1 rounded-lg text-[11px] font-bold bg-emerald-600 hover:bg-emerald-700 text-white flex items-center gap-1 shadow-2xs cursor-pointer"
+                        className="px-2 py-1 rounded-lg text-[11px] font-bold bg-emerald-600 hover:bg-emerald-700 text-white flex items-center gap-1 shadow-2xs cursor-pointer whitespace-nowrap shrink-0 min-w-0"
                       >
-                        <Check className="w-3 h-3" />
-                        <span>Mark Done</span>
+                        <Check className="w-3 h-3 shrink-0" />
+                        <span className="truncate">Mark Done</span>
                       </button>
                     )}
                     <button
                       type="button"
                       onClick={() => openStageModal(followUp, "followup")}
-                      className="px-2 py-1 rounded-lg text-[11px] font-bold bg-white dark:bg-slate-800 text-gray-700 dark:text-neutral-200 border border-gray-200 dark:border-slate-700 hover:text-orange-600 flex items-center gap-1 cursor-pointer"
+                      className="px-2 py-1 rounded-lg text-[11px] font-bold bg-white dark:bg-slate-800 text-gray-700 dark:text-neutral-200 border border-gray-200 dark:border-slate-700 hover:text-orange-600 flex items-center gap-1 cursor-pointer whitespace-nowrap shrink-0 min-w-0"
                       title="Update Status & Add Notes History"
                     >
-                      <History className="w-3 h-3 text-orange-500" />
-                      <span>Stage & Notes</span>
+                      <History className="w-3 h-3 text-orange-500 shrink-0" />
+                      <span className="truncate">Stage & Notes</span>
                     </button>
                   </div>
                 </div>

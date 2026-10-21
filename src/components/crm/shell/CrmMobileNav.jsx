@@ -49,7 +49,7 @@ export const PRIMARY_BOTTOM_NAV = [
     key: "pipeline",
     href: "/crm/pipeline",
     section: "pipeline",
-    label: "Sales Pipeline",
+    label: "Pipeline",
     icon: TrendingUp,
   },
   {
@@ -299,7 +299,7 @@ export default function CrmMobileNav({
                 title={item.label}
               >
                 <div
-                  className={`relative px-3 py-1 rounded-full transition-all duration-200 flex items-center justify-center ${
+                  className={`relative px-2 min-[360px]:px-3 py-1 rounded-full transition-all duration-200 flex items-center justify-center ${
                     isActive
                       ? isDark
                         ? "bg-red-500/15 text-red-400 scale-105"
@@ -341,7 +341,7 @@ export default function CrmMobileNav({
             title="More Modules"
           >
             <div
-              className={`relative px-3 py-1 rounded-full transition-all duration-200 flex items-center justify-center ${
+              className={`relative px-2 min-[360px]:px-3 py-1 rounded-full transition-all duration-200 flex items-center justify-center ${
                 isMoreActive
                   ? isDark
                     ? "bg-red-500/15 text-red-400 scale-105"

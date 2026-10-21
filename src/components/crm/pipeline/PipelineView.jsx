@@ -59,7 +59,7 @@ export default function PipelineView({
   return (
     <>
       <div
-        className={`flex overflow-x-auto pb-4 sm:pb-0 sm:overflow-x-visible gap-3 snap-x snap-mandatory ${
+        className={`flex overflow-x-auto pb-4 sm:pb-0 sm:overflow-x-visible gap-2.5 min-[360px]:gap-3 snap-x snap-mandatory touch-pan-x no-scrollbar overscroll-x-contain ${
           statusFilter === "lost"
             ? "sm:grid sm:grid-cols-2 lg:grid-cols-3"
             : "sm:grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5"

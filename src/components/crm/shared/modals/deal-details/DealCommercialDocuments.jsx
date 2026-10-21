@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { FileText } from "lucide-react";
 
@@ -14,32 +14,32 @@ export default function DealCommercialDocuments({
 
   return (
     <div className="space-y-2">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col min-[420px]:flex-row min-[420px]:items-center justify-between gap-1.5">
         <span className="font-bold text-gray-900 dark:text-white uppercase text-[11px] tracking-wide flex items-center gap-1.5">
-          <FileText className="w-3.5 h-3.5 text-blue-500" />
+          <FileText className="w-3.5 h-3.5 text-blue-500 shrink-0" />
           <span>Commercial Documents ({totalDocuments})</span>
         </span>
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-1 flex-wrap min-w-0">
           <button
             type="button"
             onClick={() => openCommercialModal("proposal", selectedDeal)}
-            className="px-2 py-0.5 rounded text-[10px] font-bold text-orange-600 bg-orange-50 dark:bg-orange-950/40 hover:bg-orange-100 transition cursor-pointer"
+            className="px-2 py-0.5 rounded text-[10px] font-bold text-orange-600 bg-orange-50 dark:bg-orange-950/40 hover:bg-orange-100 transition cursor-pointer whitespace-nowrap shrink-0 min-w-0"
           >
-            + Quotation
+            <span className="truncate">+ Quotation</span>
           </button>
           <button
             type="button"
             onClick={() => openCommercialModal("agreement", selectedDeal)}
-            className="px-2 py-0.5 rounded text-[10px] font-bold text-indigo-600 bg-indigo-50 dark:bg-indigo-950/40 hover:bg-indigo-100 transition cursor-pointer"
+            className="px-2 py-0.5 rounded text-[10px] font-bold text-indigo-600 bg-indigo-50 dark:bg-indigo-950/40 hover:bg-indigo-100 transition cursor-pointer whitespace-nowrap shrink-0 min-w-0"
           >
-            + Agreement
+            <span className="truncate">+ Agreement</span>
           </button>
           <button
             type="button"
             onClick={() => openInvoiceModal(selectedDeal)}
-            className="px-2 py-0.5 rounded text-[10px] font-bold text-purple-600 bg-purple-50 dark:bg-purple-950/40 hover:bg-purple-100 transition cursor-pointer"
+            className="px-2 py-0.5 rounded text-[10px] font-bold text-purple-600 bg-purple-50 dark:bg-purple-950/40 hover:bg-purple-100 transition cursor-pointer whitespace-nowrap shrink-0 min-w-0"
           >
-            + Invoice
+            <span className="truncate">+ Invoice</span>
           </button>
         </div>
       </div>

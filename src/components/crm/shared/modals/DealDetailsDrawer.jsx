@@ -275,22 +275,22 @@ export default function DealDetailsDrawer({
       onClick={(e) => {
         if (e.target === e.currentTarget) setSelectedDeal(null);
       }}
-      className="fixed inset-0 z-[60] flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-xs overscroll-contain animate-in fade-in duration-200"
+      className="fixed inset-0 z-[60] flex items-center justify-center p-1.5 min-[360px]:p-3 sm:p-4 bg-black/60 backdrop-blur-xs overscroll-contain animate-in fade-in duration-200"
     >
-      <div className="w-full max-w-3xl max-h-[82vh] rounded-2xl bg-white dark:bg-[#18150f] border border-gray-200 dark:border-[#3a3020] shadow-2xl flex flex-col overflow-hidden">
+      <div className="w-full max-w-3xl h-[88vh] max-h-[88vh] min-[360px]:h-[85vh] min-[360px]:max-h-[85vh] rounded-2xl min-[360px]:rounded-3xl bg-white dark:bg-[#18150f] border border-gray-200 dark:border-[#3a3020] shadow-2xl flex flex-col overflow-hidden">
         {/* Header */}
-        <div className="flex items-center justify-between border-b border-gray-100 dark:border-[#3a3020] p-4 sm:p-5 pb-3.5 shrink-0 bg-gray-50/50 dark:bg-[#1f1a13]/50">
-          <div className="flex items-center gap-3 min-w-0">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-orange-500 to-amber-500 text-white font-black text-sm flex items-center justify-center shrink-0 shadow-sm">
+        <div className="flex items-center justify-between border-b border-gray-100 dark:border-[#3a3020] p-2.5 min-[360px]:p-4 sm:p-5 pb-2.5 min-[360px]:pb-3.5 shrink-0 bg-gray-50/50 dark:bg-[#1f1a13]/50 gap-2">
+          <div className="flex items-center gap-2 min-[360px]:gap-3 min-w-0 flex-1">
+            <div className="w-8 h-8 min-[360px]:w-10 min-[360px]:h-10 rounded-xl bg-gradient-to-br from-orange-500 to-amber-500 text-white font-black text-xs min-[360px]:text-sm flex items-center justify-center shrink-0 shadow-sm">
               {contactName.slice(0, 2).toUpperCase()}
             </div>
-            <div className="min-w-0">
-              <div className="flex items-center gap-2 flex-wrap">
-                <h3 className="font-bold text-base sm:text-lg text-gray-900 dark:text-white truncate">
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-1.5 min-[360px]:gap-2 flex-wrap">
+                <h3 className="font-bold text-xs min-[360px]:text-sm sm:text-base text-gray-900 dark:text-white truncate max-w-[130px] min-[360px]:max-w-[200px] sm:max-w-none" title={selectedDeal.title}>
                   {selectedDeal.title}
                 </h3>
                 <span
-                  className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider ${
+                  className={`px-1.5 min-[360px]:px-2 py-0.5 rounded-full text-[9px] min-[360px]:text-[10px] font-extrabold uppercase tracking-wider shrink-0 ${
                     isWon
                       ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800"
                       : isLost
@@ -301,8 +301,8 @@ export default function DealDetailsDrawer({
                   {dealStage.replace("_", " ")}
                 </span>
               </div>
-              <p className="text-xs text-gray-500 dark:text-neutral-400 mt-0.5">
-                Pipeline Deal Details · Created{" "}
+              <p className="text-[10px] min-[360px]:text-[11px] sm:text-xs text-gray-500 dark:text-neutral-400 mt-0.5 truncate">
+                Pipeline Deal · Created{" "}
                 {new Date(selectedDeal.created_at || Date.now()).toLocaleDateString("en-IN", {
                   day: "numeric",
                   month: "short",
@@ -311,11 +311,11 @@ export default function DealDetailsDrawer({
               </p>
             </div>
           </div>
-          <div className="flex items-center gap-1.5 shrink-0">
+          <div className="flex items-center gap-1 min-[360px]:gap-1.5 shrink-0">
             <button
               type="button"
               onClick={() => handleOpenEditDeal(selectedDeal)}
-              className="p-1.5 rounded-lg text-gray-600 dark:text-neutral-300 hover:text-orange-600 hover:bg-orange-50 dark:hover:bg-slate-800 transition flex items-center gap-1 text-xs font-semibold cursor-pointer border border-gray-200/80 dark:border-slate-700"
+              className="p-1.5 rounded-lg text-gray-600 dark:text-neutral-300 hover:text-orange-600 hover:bg-orange-50 dark:hover:bg-slate-800 transition flex items-center gap-1 text-xs font-semibold cursor-pointer border border-gray-200/80 dark:border-slate-700 shrink-0"
               title="Edit Deal"
             >
               <Pencil className="w-3.5 h-3.5" />
@@ -324,9 +324,11 @@ export default function DealDetailsDrawer({
             <button
               type="button"
               onClick={() => setSelectedDeal(null)}
-              className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 dark:hover:text-neutral-200 hover:bg-gray-100 dark:hover:bg-slate-800 transition cursor-pointer"
+              className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 dark:hover:text-neutral-200 hover:bg-gray-100 dark:hover:bg-slate-800 transition cursor-pointer shrink-0"
+              title="Close"
+              aria-label="Close"
             >
-              <X className="w-5 h-5" />
+              <X className="w-4 h-4 min-[360px]:w-5 min-[360px]:h-5" />
             </button>
           </div>
         </div>
@@ -344,7 +346,7 @@ export default function DealDetailsDrawer({
         />
 
         {/* Scrollable Tab Body */}
-        <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-4 text-xs no-scrollbar">
+        <div className="flex-1 overflow-y-auto p-2.5 min-[360px]:p-4 sm:p-5 space-y-3 min-[360px]:space-y-4 text-xs no-scrollbar">
           {/* TAB 1: OVERVIEW */}
           {dealModalTab === "overview" && (
             <DealOverviewTab
@@ -411,31 +413,31 @@ export default function DealDetailsDrawer({
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-between gap-2 p-3.5 sm:p-4 border-t border-gray-100 dark:border-[#3a3020] bg-white dark:bg-[#18150f] shrink-0">
+        <div className="flex items-center justify-between gap-1.5 min-[360px]:gap-2 p-2.5 min-[360px]:p-3.5 sm:p-4 border-t border-gray-100 dark:border-[#3a3020] bg-white dark:bg-[#18150f] shrink-0 flex-wrap sm:flex-nowrap min-w-0">
           <button
             type="button"
             onClick={() => handleOpenEditDeal(selectedDeal)}
-            className="px-4 py-2 rounded-xl text-xs font-bold bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white transition shadow-sm flex items-center gap-1.5 cursor-pointer"
+            className="px-2.5 min-[360px]:px-4 py-1.5 min-[360px]:py-2 rounded-xl text-xs font-bold bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white transition shadow-sm flex items-center gap-1.5 cursor-pointer shrink-0 min-w-0 whitespace-nowrap"
           >
-            <Pencil className="w-3.5 h-3.5" />
-            <span>Edit Deal Details</span>
+            <Pencil className="w-3.5 h-3.5 shrink-0" />
+            <span className="truncate">Edit Deal</span>
           </button>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5 min-[360px]:gap-2 shrink-0 ml-auto min-w-0">
             {dealModalTab !== "overview" && (
               <button
                 type="button"
                 onClick={() => setDealModalTab("overview")}
-                className="px-3 py-2 rounded-xl text-xs font-semibold text-gray-600 dark:text-neutral-300 hover:bg-gray-100 dark:hover:bg-slate-800 transition cursor-pointer"
+                className="px-2 min-[360px]:px-3 py-1.5 min-[360px]:py-2 rounded-xl text-xs font-semibold text-gray-600 dark:text-neutral-300 hover:bg-gray-100 dark:hover:bg-slate-800 transition cursor-pointer shrink-0 min-w-0 whitespace-nowrap"
               >
-                ← Back to Overview
+                <span className="truncate">← Overview</span>
               </button>
             )}
             <button
               type="button"
               onClick={() => setSelectedDeal(null)}
-              className="px-4 py-2 rounded-xl text-xs font-semibold text-gray-700 dark:text-neutral-300 hover:bg-gray-100 dark:hover:bg-slate-800 transition cursor-pointer"
+              className="px-2.5 min-[360px]:px-4 py-1.5 min-[360px]:py-2 rounded-xl text-xs font-semibold text-gray-700 dark:text-neutral-300 hover:bg-gray-100 dark:hover:bg-slate-800 transition cursor-pointer shrink-0 min-w-0 whitespace-nowrap"
             >
-              Close
+              <span className="truncate">Close</span>
             </button>
           </div>
         </div>

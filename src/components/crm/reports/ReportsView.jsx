@@ -58,57 +58,57 @@ export default function ReportsView({
   return (
     <div className="space-y-4">
       {/* 4 Summary Stat Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-        <div className="p-4 rounded-2xl bg-white dark:bg-[#18150f] border border-gray-100 dark:border-[#3a3020] shadow-2xs">
-          <div className="flex items-center justify-between text-gray-500 dark:text-neutral-400 text-xs">
-            <span>Total Captured Leads</span>
-            <Users className="w-4 h-4 text-blue-500" />
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4">
+        <div className="p-2.5 min-[360px]:p-3.5 sm:p-4 rounded-xl sm:rounded-2xl bg-white dark:bg-[#18150f] border border-gray-100 dark:border-[#3a3020] shadow-2xs">
+          <div className="flex items-center justify-between text-gray-500 dark:text-neutral-400 text-[11px] sm:text-xs">
+            <span className="truncate">Captured Leads</span>
+            <Users className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-blue-500 shrink-0" />
           </div>
-          <div className="text-xl sm:text-2xl font-bold mt-2">{stats.total}</div>
-          <div className="text-[11px] text-blue-600 dark:text-blue-400 mt-1 font-medium">
+          <div className="text-base min-[360px]:text-lg sm:text-2xl font-bold mt-1.5 sm:mt-2 truncate">{stats.total}</div>
+          <div className="text-[10px] sm:text-[11px] text-blue-600 dark:text-blue-400 mt-0.5 sm:mt-1 font-medium truncate">
             {stats.newCount} New awaiting action
           </div>
         </div>
 
-        <div className="p-4 rounded-2xl bg-white dark:bg-[#18150f] border border-gray-100 dark:border-[#3a3020] shadow-2xs">
-          <div className="flex items-center justify-between text-gray-500 dark:text-neutral-400 text-xs">
-            <span>Conversion Rate</span>
-            <TrendingUp className="w-4 h-4 text-emerald-500" />
+        <div className="p-2.5 min-[360px]:p-3.5 sm:p-4 rounded-xl sm:rounded-2xl bg-white dark:bg-[#18150f] border border-gray-100 dark:border-[#3a3020] shadow-2xs">
+          <div className="flex items-center justify-between text-gray-500 dark:text-neutral-400 text-[11px] sm:text-xs">
+            <span className="truncate">Conversion Rate</span>
+            <TrendingUp className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-emerald-500 shrink-0" />
           </div>
-          <div className="text-xl sm:text-2xl font-bold mt-2">{stats.rate}%</div>
-          <div className="text-[11px] text-emerald-600 dark:text-emerald-400 mt-1 font-medium">
-            {stats.convertedCount} Converted to clients
+          <div className="text-base min-[360px]:text-lg sm:text-2xl font-bold mt-1.5 sm:mt-2 truncate">{stats.rate}%</div>
+          <div className="text-[10px] sm:text-[11px] text-emerald-600 dark:text-emerald-400 mt-0.5 sm:mt-1 font-medium truncate">
+            {stats.convertedCount} Converted clients
           </div>
         </div>
 
-        <div className="p-4 rounded-2xl bg-white dark:bg-[#18150f] border border-gray-100 dark:border-[#3a3020] shadow-2xs">
-          <div className="flex items-center justify-between text-gray-500 dark:text-neutral-400 text-xs">
-            <span>Active Pipeline Value</span>
-            <DollarSign className="w-4 h-4 text-amber-500" />
+        <div className="p-2.5 min-[360px]:p-3.5 sm:p-4 rounded-xl sm:rounded-2xl bg-white dark:bg-[#18150f] border border-gray-100 dark:border-[#3a3020] shadow-2xs">
+          <div className="flex items-center justify-between text-gray-500 dark:text-neutral-400 text-[11px] sm:text-xs">
+            <span className="truncate">Pipeline Value</span>
+            <DollarSign className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-amber-500 shrink-0" />
           </div>
-          <div className="text-xl sm:text-2xl font-bold mt-2">
+          <div className="text-base min-[360px]:text-lg sm:text-2xl font-bold mt-1.5 sm:mt-2 truncate">
             ₹{stats.totalPipelineValue.toLocaleString("en-IN")}
           </div>
-          <div className="text-[11px] text-gray-400 mt-1">Across open proposals</div>
+          <div className="text-[10px] sm:text-[11px] text-gray-400 mt-0.5 sm:mt-1 truncate">Across open proposals</div>
         </div>
 
-        <div className="p-4 rounded-2xl bg-white dark:bg-[#18150f] border border-gray-100 dark:border-[#3a3020] shadow-2xs">
-          <div className="flex items-center justify-between text-gray-500 dark:text-neutral-400 text-xs">
-            <span>Closed Won Revenue</span>
-            <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+        <div className="p-2.5 min-[360px]:p-3.5 sm:p-4 rounded-xl sm:rounded-2xl bg-white dark:bg-[#18150f] border border-gray-100 dark:border-[#3a3020] shadow-2xs">
+          <div className="flex items-center justify-between text-gray-500 dark:text-neutral-400 text-[11px] sm:text-xs">
+            <span className="truncate">Won Revenue</span>
+            <CheckCircle2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-emerald-500 shrink-0" />
           </div>
-          <div className="text-xl sm:text-2xl font-bold mt-2">
+          <div className="text-base min-[360px]:text-lg sm:text-2xl font-bold mt-1.5 sm:mt-2 truncate">
             ₹{stats.wonValue.toLocaleString("en-IN")}
           </div>
-          <div className="text-[11px] text-emerald-600 dark:text-emerald-400 mt-1 font-medium">
-            Transferred to project execution
+          <div className="text-[10px] sm:text-[11px] text-emerald-600 dark:text-emerald-400 mt-0.5 sm:mt-1 font-medium truncate">
+            In project execution
           </div>
         </div>
       </div>
 
       {/* Sales Report + Lead Source ROI */}
-      <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-        <div className="rounded-2xl bg-white dark:bg-[#18150f] border border-gray-100 dark:border-[#3a3020] p-4 shadow-2xs">
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-3 sm:gap-4">
+        <div className="rounded-2xl bg-white dark:bg-[#18150f] border border-gray-100 dark:border-[#3a3020] p-3 sm:p-4 shadow-2xs">
           <div className="flex items-center justify-between gap-3 mb-3">
             <div>
               <div className="text-sm font-bold text-gray-900 dark:text-white">Sales Report</div>
@@ -129,16 +129,16 @@ export default function ReportsView({
             ].map(([label, value, tone]) => (
               <div
                 key={label}
-                className="rounded-xl bg-gray-50 dark:bg-[#211d14] border border-gray-100 dark:border-[#3a3020] p-3"
+                className="rounded-xl bg-gray-50 dark:bg-[#211d14] border border-gray-100 dark:border-[#3a3020] p-2.5 sm:p-3"
               >
-                <div className={`text-lg font-black ${tone}`}>{value}</div>
-                <div className="text-[11px] text-gray-500 dark:text-neutral-400 font-semibold">{label}</div>
+                <div className={`text-base sm:text-lg font-black ${tone}`}>{value}</div>
+                <div className="text-[10.5px] sm:text-[11px] text-gray-500 dark:text-neutral-400 font-semibold">{label}</div>
               </div>
             ))}
           </div>
         </div>
 
-        <div className="rounded-2xl bg-white dark:bg-[#18150f] border border-gray-100 dark:border-[#3a3020] p-4 shadow-2xs">
+        <div className="rounded-2xl bg-white dark:bg-[#18150f] border border-gray-100 dark:border-[#3a3020] p-3 sm:p-4 shadow-2xs">
           <div className="flex items-center justify-between gap-3 mb-3">
             <div>
               <div className="text-sm font-bold text-gray-900 dark:text-white">Lead Source ROI</div>
@@ -155,7 +155,7 @@ export default function ReportsView({
               salesReport.sourceRows.map((row) => (
                 <div
                   key={row.source}
-                  className="grid grid-cols-[1fr_auto_auto_auto] gap-2 items-center text-xs rounded-xl bg-gray-50 dark:bg-[#211d14] border border-gray-100 dark:border-[#3a3020] px-3 py-2"
+                  className="grid grid-cols-[1fr_auto_auto_auto] gap-1.5 sm:gap-2 items-center text-[11px] sm:text-xs rounded-xl bg-gray-50 dark:bg-[#211d14] border border-gray-100 dark:border-[#3a3020] px-2.5 sm:px-3 py-1.5 sm:py-2"
                 >
                   <div className="font-bold text-gray-900 dark:text-white truncate">{row.source}</div>
                   <div className="text-gray-500">{row.leads} leads</div>

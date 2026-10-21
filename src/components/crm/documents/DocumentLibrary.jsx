@@ -71,16 +71,16 @@ export default function DocumentLibrary({
     <div className="space-y-5">
       <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4">
         <div className="flex items-start gap-3">
-          <div className="h-12 w-12 rounded-2xl bg-orange-50 text-orange-600 flex items-center justify-center shrink-0">
+          <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-2xl bg-orange-50 text-orange-600 flex items-center justify-center shrink-0">
             <FilePlus2 className="w-5 h-5" />
           </div>
           <div>
-            <h2 className="text-3xl font-black text-gray-950 dark:text-white">Documents</h2>
-            <p className="text-sm text-gray-500 dark:text-neutral-400">Quotations, agreements, and handoffs your clients accept or sign.</p>
+            <h2 className="text-xl sm:text-3xl font-black text-gray-950 dark:text-white">Documents</h2>
+            <p className="text-xs sm:text-sm text-gray-500 dark:text-neutral-400">Quotations, agreements, and handoffs your clients accept or sign.</p>
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2 w-full xl:w-auto">
           <button
             type="button"
             onClick={() =>
@@ -94,11 +94,11 @@ export default function DocumentLibrary({
                 created_at: new Date().toISOString(),
               })
             }
-            className="px-4 py-3 rounded-2xl bg-orange-600 hover:bg-orange-700 text-white text-sm font-black flex items-center gap-2 cursor-pointer shadow-md shadow-orange-500/25 transition active:scale-95"
+            className="w-full min-[480px]:w-auto px-3 min-[360px]:px-3.5 py-2 min-[360px]:py-2.5 sm:px-4 sm:py-3 rounded-xl sm:rounded-2xl bg-orange-600 hover:bg-orange-700 text-white text-xs sm:text-sm font-black flex items-center justify-center gap-1.5 min-[360px]:gap-2 cursor-pointer shadow-md shadow-orange-500/25 transition active:scale-95 whitespace-nowrap min-w-0"
             title="Create new quotation with official TexWeb Letterhead"
           >
-            <FilePlus2 className="w-4 h-4 text-white" />
-            New Letterhead Quotation
+            <FilePlus2 className="w-4 h-4 text-white shrink-0" />
+            <span className="truncate">New Letterhead Quotation</span>
           </button>
           <button
             type="button"
@@ -113,50 +113,50 @@ export default function DocumentLibrary({
                 created_at: new Date().toISOString(),
               })
             }
-            className="px-3.5 py-3 rounded-2xl border border-gray-200 dark:border-[#3a3020] bg-white dark:bg-[#18150f] text-sm font-bold flex items-center gap-2 cursor-pointer hover:border-orange-500 transition text-gray-700 dark:text-neutral-200"
+            className="w-full min-[480px]:w-auto px-3 min-[360px]:px-3.5 py-2 min-[360px]:py-2.5 sm:px-3.5 sm:py-3 rounded-xl sm:rounded-2xl border border-gray-200 dark:border-[#3a3020] bg-white dark:bg-[#18150f] text-xs sm:text-sm font-bold flex items-center justify-center gap-1.5 min-[360px]:gap-2 cursor-pointer hover:border-orange-500 transition text-gray-700 dark:text-neutral-200 whitespace-nowrap min-w-0"
             title="Create blank document with MS Word style canvas"
           >
-            <FilePlus2 className="w-4 h-4 text-gray-500" />
-            Blank Canvas
+            <FilePlus2 className="w-4 h-4 text-gray-500 shrink-0" />
+            <span className="truncate">Blank Canvas</span>
           </button>
           <button
             type="button"
             onClick={() => openCommercialModal("proposal")}
-            className="px-4 py-3 rounded-2xl border border-gray-200 dark:border-[#3a3020] bg-white dark:bg-[#18150f] text-sm font-bold flex items-center gap-2 cursor-pointer hover:border-orange-500 transition"
+            className="w-full min-[480px]:w-auto px-3 min-[360px]:px-3.5 py-2 min-[360px]:py-2.5 sm:px-4 sm:py-3 rounded-xl sm:rounded-2xl border border-gray-200 dark:border-[#3a3020] bg-white dark:bg-[#18150f] text-xs sm:text-sm font-bold flex items-center justify-center gap-1.5 min-[360px]:gap-2 cursor-pointer hover:border-orange-500 transition whitespace-nowrap min-w-0"
           >
-            <Plus className="w-4 h-4" />
-            New Quotation
+            <Plus className="w-4 h-4 shrink-0" />
+            <span className="truncate">New Quotation</span>
           </button>
           <button
             type="button"
             onClick={() => openCommercialModal("agreement")}
-            className="px-4 py-3 rounded-2xl bg-orange-600 hover:bg-orange-700 text-white text-sm font-black flex items-center gap-2 cursor-pointer shadow-md shadow-orange-500/25 transition active:scale-95"
+            className="w-full min-[480px]:w-auto px-3 min-[360px]:px-3.5 py-2 min-[360px]:py-2.5 sm:px-4 sm:py-3 rounded-xl sm:rounded-2xl bg-orange-600 hover:bg-orange-700 text-white text-xs sm:text-sm font-black flex items-center justify-center gap-1.5 min-[360px]:gap-2 cursor-pointer shadow-md shadow-orange-500/25 transition active:scale-95 whitespace-nowrap min-w-0"
           >
-            <Plus className="w-4 h-4" />
-            New Agreement
+            <Plus className="w-4 h-4 shrink-0" />
+            <span className="truncate">New Agreement</span>
           </button>
         </div>
       </div>
 
-      <div className="flex items-center gap-2 overflow-x-auto pb-1">
+      <div className="flex items-center gap-1.5 sm:gap-2 overflow-x-auto pb-1 no-scrollbar">
         {visibleTabs.map((tab) => (
           <button
             key={tab.id}
             type="button"
             onClick={() => setActiveTab(tab.id)}
-            className={`px-4 py-2.5 rounded-2xl text-sm font-black whitespace-nowrap transition cursor-pointer ${
+            className={`px-2.5 min-[360px]:px-3 py-1.5 min-[360px]:py-2 sm:px-4 sm:py-2.5 rounded-xl sm:rounded-2xl text-xs sm:text-sm font-black whitespace-nowrap shrink-0 min-w-0 transition cursor-pointer ${
               activeTab === tab.id
                 ? "bg-orange-600 text-white shadow-md shadow-orange-500/25"
                 : "bg-white dark:bg-[#18150f] border border-gray-200 dark:border-[#3a3020] text-gray-700 dark:text-neutral-200"
             }`}
           >
-            {tab.label} {counts[tab.id] || 0}
+            <span className="truncate">{tab.label} {counts[tab.id] || 0}</span>
           </button>
         ))}
       </div>
 
       {visibleDocs.length === 0 ? (
-        <div className="rounded-2xl border border-dashed border-gray-200 dark:border-[#3a3020] bg-white/70 dark:bg-[#18150f]/70 p-10 text-center">
+        <div className="rounded-2xl border border-dashed border-gray-200 dark:border-[#3a3020] bg-white/70 dark:bg-[#18150f]/70 p-6 sm:p-10 text-center">
           <div className="mx-auto h-12 w-12 rounded-2xl bg-orange-50 text-orange-600 flex items-center justify-center">
             <FilePlus2 className="w-5 h-5" />
           </div>
@@ -164,7 +164,7 @@ export default function DocumentLibrary({
           <div className="mt-1 text-sm text-gray-500">Create a quotation or agreement from a pipeline deal.</div>
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-5">
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-5">
           {visibleDocs.map((doc) => (
             <DocumentCard
               key={`${getDocumentKind(doc)}-${doc.id}`}

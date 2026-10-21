@@ -25,7 +25,7 @@ export default function DealDetailsTabs({ tabs = [], activeTab, onChange }) {
       </button>
       <div
         ref={scrollerRef}
-        className="flex min-w-0 max-w-full touch-pan-x snap-x items-center gap-1.5 overflow-x-scroll overflow-y-hidden scroll-smooth overscroll-x-contain px-4 py-2 pb-3 [scrollbar-width:thin] [scrollbar-color:#fb923c_transparent] dark:[scrollbar-color:#7c2d12_transparent] sm:px-9"
+        className="flex min-w-0 max-w-full touch-pan-x snap-x items-center gap-1 min-[360px]:gap-1.5 overflow-x-scroll overflow-y-hidden scroll-smooth overscroll-x-contain px-1.5 min-[360px]:px-4 py-1.5 min-[360px]:py-2 pb-2.5 [scrollbar-width:thin] [scrollbar-color:#fb923c_transparent] dark:[scrollbar-color:#7c2d12_transparent] sm:px-9"
         onWheel={(event) => {
           if (Math.abs(event.deltaY) > Math.abs(event.deltaX)) {
             event.currentTarget.scrollLeft += event.deltaY;
@@ -41,17 +41,17 @@ export default function DealDetailsTabs({ tabs = [], activeTab, onChange }) {
               key={tab.id}
               type="button"
               onClick={() => onChange(tab.id)}
-              className={`snap-start px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shrink-0 cursor-pointer whitespace-nowrap ${
+              className={`snap-start px-2.5 min-[360px]:px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1 min-[360px]:gap-1.5 shrink-0 cursor-pointer whitespace-nowrap ${
                 isActive
                   ? "bg-white dark:bg-[#252017] text-orange-600 dark:text-orange-400 shadow-xs border border-orange-200/70 dark:border-orange-900/50"
                   : "text-gray-600 dark:text-neutral-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-slate-800"
               }`}
             >
-              <TabIcon className={`w-3.5 h-3.5 ${isActive ? "text-orange-500" : "text-gray-400"}`} />
-              <span>{tab.label}</span>
+              <TabIcon className={`w-3.5 h-3.5 shrink-0 ${isActive ? "text-orange-500" : "text-gray-400"}`} />
+              <span className="truncate">{tab.label}</span>
               {tab.count !== undefined && tab.count !== null && (
                 <span
-                  className={`px-1.5 py-0.2 rounded-full text-[10px] font-extrabold ${
+                  className={`px-1.5 py-0.2 rounded-full text-[9px] min-[360px]:text-[10px] font-extrabold ${
                     isActive
                       ? "bg-orange-100 dark:bg-orange-950/60 text-orange-700 dark:text-orange-300"
                       : "bg-gray-200/80 dark:bg-slate-800 text-gray-600 dark:text-neutral-400"

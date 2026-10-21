@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { History, Plus, Video } from "lucide-react";
 import { formatStatusLabel, getMeetingFullNotes, parseNotesHistory } from "../../meetingUtils";
@@ -13,23 +13,23 @@ export default function DealMeetingsTab({
 }) {
   return (
     <div className="space-y-3">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-2">
         <span className="font-bold text-xs uppercase tracking-wider text-gray-900 dark:text-white flex items-center gap-1.5">
-          <Video className="w-4 h-4 text-blue-500" />
+          <Video className="w-4 h-4 text-blue-500 shrink-0" />
           <span>All Sales Meetings ({dealMeetings.length})</span>
         </span>
         <button
           type="button"
           onClick={() => openDealMeetingModal(selectedDeal, lead)}
-          className="px-2.5 py-1 rounded-xl text-xs font-bold bg-blue-600 hover:bg-blue-700 text-white transition flex items-center gap-1 shadow-2xs cursor-pointer"
+          className="px-2.5 py-1 rounded-xl text-xs font-bold bg-blue-600 hover:bg-blue-700 text-white transition flex items-center gap-1 shadow-2xs cursor-pointer whitespace-nowrap shrink-0 min-w-0"
         >
-          <Plus className="w-3.5 h-3.5" />
-          <span>Schedule Meeting</span>
+          <Plus className="w-3.5 h-3.5 shrink-0" />
+          <span className="truncate">Schedule Meeting</span>
         </button>
       </div>
 
       {sortedDealMeetings.length === 0 ? (
-        <div className="p-8 rounded-2xl border border-dashed border-gray-200 dark:border-slate-800 text-center space-y-3">
+        <div className="p-6 min-[360px]:p-8 rounded-2xl border border-dashed border-gray-200 dark:border-slate-800 text-center space-y-3">
           <Video className="w-8 h-8 text-blue-300 dark:text-blue-900/60 mx-auto" />
           <div>
             <h4 className="font-bold text-sm text-gray-800 dark:text-white">No Meetings Scheduled</h4>
@@ -40,14 +40,14 @@ export default function DealMeetingsTab({
           <button
             type="button"
             onClick={() => openDealMeetingModal(selectedDeal, lead)}
-            className="px-3 py-1.5 rounded-xl text-xs font-bold bg-blue-600 text-white hover:bg-blue-700 cursor-pointer shadow-xs inline-flex items-center gap-1"
+            className="px-3 py-1.5 rounded-xl text-xs font-bold bg-blue-600 text-white hover:bg-blue-700 cursor-pointer shadow-xs inline-flex items-center gap-1 whitespace-nowrap shrink-0 min-w-0"
           >
-            <Plus className="w-3.5 h-3.5" />
-            <span>Schedule First Meeting</span>
+            <Plus className="w-3.5 h-3.5 shrink-0" />
+            <span className="truncate">Schedule First Meeting</span>
           </button>
         </div>
       ) : (
-        <div className="space-y-3">
+        <div className="space-y-2.5 min-[360px]:space-y-3">
           {sortedDealMeetings.map((meeting) => {
             const meetingHistory = parseNotesHistory(getMeetingFullNotes(meeting));
             const isMeetingScheduled = meeting.status === "scheduled";
@@ -56,7 +56,7 @@ export default function DealMeetingsTab({
             return (
               <div
                 key={meeting.id}
-                className={`p-3.5 rounded-2xl border transition-all space-y-3 ${
+                className={`p-2.5 min-[360px]:p-3.5 rounded-xl min-[360px]:rounded-2xl border transition-all space-y-2.5 min-[360px]:space-y-3 ${
                   isMeetingScheduled
                     ? "bg-blue-50/40 dark:bg-blue-950/20 border-blue-200/80 dark:border-blue-900/40"
                     : isMeetingDone
@@ -64,12 +64,12 @@ export default function DealMeetingsTab({
                     : "bg-gray-50/60 dark:bg-slate-800/40 border-gray-200 dark:border-slate-700/60"
                 }`}
               >
-                <div className="flex items-start justify-between gap-2">
-                  <div className="space-y-0.5">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="font-bold text-sm text-gray-900 dark:text-white">{meeting.title}</span>
+                <div className="flex flex-col min-[480px]:flex-row min-[480px]:items-start justify-between gap-2">
+                  <div className="space-y-0.5 min-w-0">
+                    <div className="flex items-center gap-1.5 min-[360px]:gap-2 flex-wrap">
+                      <span className="font-bold text-xs min-[360px]:text-sm text-gray-900 dark:text-white truncate">{meeting.title}</span>
                       <span
-                        className={`px-2 py-0.5 rounded-full text-[9px] font-extrabold uppercase ${
+                        className={`px-2 py-0.5 rounded-full text-[9px] font-extrabold uppercase shrink-0 ${
                           isMeetingScheduled
                             ? "bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300"
                             : isMeetingDone
@@ -80,7 +80,7 @@ export default function DealMeetingsTab({
                         {formatStatusLabel(meeting.status)}
                       </span>
                     </div>
-                    <div className="flex items-center gap-2 text-[11px] text-gray-500 dark:text-neutral-400">
+                    <div className="flex items-center gap-1.5 text-[10px] min-[360px]:text-[11px] text-gray-500 dark:text-neutral-400 flex-wrap">
                       <span className="font-semibold text-gray-700 dark:text-neutral-300">
                         {new Date(meeting.scheduled_at).toLocaleString("en-IN", {
                           day: "numeric",
@@ -96,7 +96,7 @@ export default function DealMeetingsTab({
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-1.5 shrink-0">
+                  <div className="flex items-center gap-1.5 flex-wrap shrink-0">
                     {meeting.meeting_link && (
                       <a
                         href={
@@ -106,20 +106,20 @@ export default function DealMeetingsTab({
                         }
                         target="_blank"
                         rel="noreferrer"
-                        className="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-blue-600 hover:bg-blue-700 text-white flex items-center gap-1 shadow-2xs"
+                        className="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-blue-600 hover:bg-blue-700 text-white flex items-center gap-1 shadow-2xs whitespace-nowrap shrink-0 min-w-0"
                       >
-                        <Video className="w-3 h-3" />
-                        <span>Join Meet</span>
+                        <Video className="w-3 h-3 shrink-0" />
+                        <span className="truncate">Join Meet</span>
                       </a>
                     )}
                     <button
                       type="button"
                       onClick={() => openStageModal(meeting, "meeting")}
-                      className="px-2 py-1 rounded-lg text-[11px] font-bold bg-white dark:bg-slate-800 text-gray-700 dark:text-neutral-200 border border-gray-200 dark:border-slate-700 hover:text-orange-600 flex items-center gap-1 cursor-pointer"
+                      className="px-2 py-1 rounded-lg text-[11px] font-bold bg-white dark:bg-slate-800 text-gray-700 dark:text-neutral-200 border border-gray-200 dark:border-slate-700 hover:text-orange-600 flex items-center gap-1 cursor-pointer whitespace-nowrap shrink-0 min-w-0"
                       title="Update Status & Add Notes History"
                     >
-                      <History className="w-3 h-3 text-orange-500" />
-                      <span>Stage & Notes</span>
+                      <History className="w-3 h-3 text-orange-500 shrink-0" />
+                      <span className="truncate">Stage & Notes</span>
                     </button>
                   </div>
                 </div>

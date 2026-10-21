@@ -63,12 +63,12 @@ export default function DocumentCard({ doc, deals = [], clients = [], leads = []
           </div>
         </div>
       </div>
-      <div className="px-4 pb-4">
-        <div className="font-black text-gray-950 dark:text-white truncate group-hover:text-orange-600 transition">{title}</div>
-        <div className="text-sm text-gray-500 dark:text-neutral-400 truncate mt-1">{contact.name}</div>
-        <div className="flex items-center justify-between gap-3 mt-2">
-          <span className="text-xs text-gray-400">Created {formatShortDate(doc.created_at)}</span>
-          <span className="px-2 py-1 rounded-full bg-gray-50 dark:bg-slate-800 text-[10px] font-bold uppercase text-gray-500 dark:text-neutral-300">
+      <div className="px-3 pb-3 sm:px-4 sm:pb-4">
+        <div className="font-black text-xs sm:text-sm text-gray-950 dark:text-white truncate group-hover:text-orange-600 transition">{title}</div>
+        <div className="text-xs sm:text-sm text-gray-500 dark:text-neutral-400 truncate mt-0.5 sm:mt-1">{contact.name}</div>
+        <div className="flex items-center justify-between gap-1.5 sm:gap-3 mt-1.5 sm:mt-2">
+          <span className="text-[10.5px] sm:text-xs text-gray-400">Created {formatShortDate(doc.created_at)}</span>
+          <span className="px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-full bg-gray-50 dark:bg-slate-800 text-[9px] sm:text-[10px] font-bold uppercase text-gray-500 dark:text-neutral-300">
             {status}
           </span>
         </div>

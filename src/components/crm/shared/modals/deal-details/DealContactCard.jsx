@@ -15,14 +15,14 @@ export default function DealContactCard({
   sendDealDocWhatsApp,
 }) {
   return (
-    <div className="p-3.5 rounded-xl bg-gray-50 dark:bg-slate-800/50 border border-gray-100 dark:border-slate-700/60 space-y-2.5">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-1.5 font-bold text-gray-900 dark:text-white">
-          <Users className="w-4 h-4 text-orange-500" />
+    <div className="p-2.5 min-[360px]:p-3.5 rounded-xl bg-gray-50 dark:bg-slate-800/50 border border-gray-100 dark:border-slate-700/60 space-y-2 min-[360px]:space-y-2.5">
+      <div className="flex items-center justify-between flex-wrap gap-2">
+        <div className="flex items-center gap-1.5 font-bold text-xs min-[360px]:text-sm text-gray-900 dark:text-white">
+          <Users className="w-4 h-4 text-orange-500 shrink-0" />
           <span>Contact & Client Details</span>
         </div>
         {contactPhone && (
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-1 min-[360px]:gap-1.5 shrink-0">
             <button
               type="button"
               onClick={() => {

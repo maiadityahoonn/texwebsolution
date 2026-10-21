@@ -31,16 +31,16 @@ export default function DealLeadHistoryTab({ lead, selectedDeal, setSelectedLead
   const lossReason = getLeadLossReason(lead, selectedDeal);
 
   return (
-    <div className="space-y-4">
-      <div className="p-3.5 rounded-xl bg-blue-50/70 dark:bg-blue-950/25 border border-blue-100 dark:border-blue-900/40 flex items-center justify-between">
-        <div className="space-y-0.5">
-          <div className="flex items-center gap-2">
-            <span className="font-bold text-sm text-gray-900 dark:text-white">{lead.name}</span>
-            <span className="px-2 py-0.5 rounded-full text-[9px] font-bold uppercase bg-blue-100 dark:bg-blue-900/60 text-blue-700 dark:text-blue-300">
+    <div className="space-y-3 min-[360px]:space-y-4">
+      <div className="p-2.5 min-[360px]:p-3.5 rounded-xl bg-blue-50/70 dark:bg-blue-950/25 border border-blue-100 dark:border-blue-900/40 flex items-center justify-between flex-wrap gap-2">
+        <div className="space-y-0.5 min-w-0">
+          <div className="flex items-center gap-1.5 min-[360px]:gap-2 flex-wrap">
+            <span className="font-bold text-xs min-[360px]:text-sm text-gray-900 dark:text-white truncate">{lead.name}</span>
+            <span className="px-2 py-0.5 rounded-full text-[9px] font-bold uppercase bg-blue-100 dark:bg-blue-900/60 text-blue-700 dark:text-blue-300 shrink-0">
               {formatStatusLabel(lead.status)}
             </span>
           </div>
-          <p className="text-[11px] text-gray-500 dark:text-neutral-400">
+          <p className="text-[10px] min-[360px]:text-[11px] text-gray-500 dark:text-neutral-400">
             Captured on{" "}
             {new Date(lead.created_at || Date.now()).toLocaleDateString("en-IN", {
               day: "numeric",
@@ -54,20 +54,20 @@ export default function DealLeadHistoryTab({ lead, selectedDeal, setSelectedLead
         <button
           type="button"
           onClick={() => setSelectedLead(lead)}
-          className="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-800 shadow-2xs hover:bg-blue-50 cursor-pointer"
+          className="px-2.5 py-1 rounded-lg text-[10px] min-[360px]:text-[11px] font-bold bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-800 shadow-2xs hover:bg-blue-50 cursor-pointer whitespace-nowrap shrink-0 min-w-0"
         >
-          Open Lead Modal
+          <span className="truncate">Open Lead Modal</span>
         </button>
       </div>
 
-      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
-        <div className="p-2.5 rounded-xl bg-gray-50 dark:bg-slate-800/60">
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 min-[360px]:gap-2.5">
+        <div className="p-2 min-[360px]:p-2.5 rounded-xl bg-gray-50 dark:bg-slate-800/60">
           <span className="text-gray-400 text-[10px] block font-semibold uppercase">Source</span>
-          <span className="font-bold text-gray-800 dark:text-white mt-0.5 block">{lead.source || "Website"}</span>
+          <span className="font-bold text-gray-800 dark:text-white mt-0.5 block truncate text-xs min-[360px]:text-sm">{lead.source || "Website"}</span>
         </div>
-        <div className="p-2.5 rounded-xl bg-gray-50 dark:bg-slate-800/60">
+        <div className="p-2 min-[360px]:p-2.5 rounded-xl bg-gray-50 dark:bg-slate-800/60">
           <span className="text-gray-400 text-[10px] block font-semibold uppercase">Phone</span>
-          <span className="font-bold text-gray-800 dark:text-white mt-0.5 block font-mono">
+          <span className="font-bold text-gray-800 dark:text-white mt-0.5 block font-mono truncate text-xs min-[360px]:text-sm">
             {lead.phone || "N/A"}
           </span>
         </div>

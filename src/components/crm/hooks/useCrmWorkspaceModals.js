@@ -244,10 +244,10 @@ export function useCrmWorkspaceModals({
       const overlay = target?.closest?.('[data-modal-overlay="true"]');
       if (!overlay) return null;
 
-      const directScrollable = target.closest?.(
+      const directScrollable = target?.closest?.(
         ".crm-modal-scroll, [data-modal-scroll='true'], [class*='overflow-y-auto'], [class*='overflow-auto']"
       );
-      if (directScrollable?.scrollHeight > directScrollable.clientHeight + 2) {
+      if (directScrollable && directScrollable.scrollHeight > directScrollable.clientHeight + 2) {
         return directScrollable;
       }
 
@@ -256,7 +256,7 @@ export function useCrmWorkspaceModals({
           ".crm-modal-scroll, [data-modal-scroll='true'], [class*='overflow-y-auto'], [class*='overflow-auto']"
         )
       );
-      return scrollables.find((node) => node.scrollHeight > node.clientHeight + 2) || null;
+      return scrollables.find((node) => node && node.scrollHeight > node.clientHeight + 2) || null;
     }
 
     function handleModalWheel(e) {

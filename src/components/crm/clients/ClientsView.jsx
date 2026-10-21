@@ -122,11 +122,11 @@ export default function ClientsView({
 
       {/* 3. Empty State (When no deals are Closed Won yet) */}
       {clients.length === 0 ? (
-        <div className="bg-white dark:bg-[#111113] rounded-3xl border border-gray-200/90 dark:border-neutral-800 p-8 sm:p-12 text-center shadow-2xs">
-          <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-3xl bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 flex items-center justify-center mx-auto mb-4 shadow-xs">
-            <Building2 className="w-8 h-8 sm:w-10 sm:h-10 stroke-[1.75]" />
+        <div className="bg-white dark:bg-[#111113] rounded-2xl sm:rounded-3xl border border-gray-200/90 dark:border-neutral-800 p-5 sm:p-12 text-center shadow-2xs">
+          <div className="w-14 h-14 sm:w-20 sm:h-20 rounded-2xl sm:rounded-3xl bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 flex items-center justify-center mx-auto mb-3 sm:mb-4 shadow-xs">
+            <Building2 className="w-7 h-7 sm:w-10 sm:h-10 stroke-[1.75]" />
           </div>
-          <h3 className="text-lg sm:text-xl font-black text-gray-900 dark:text-white font-[Matter]">
+          <h3 className="text-base sm:text-xl font-black text-gray-900 dark:text-white font-[Matter]">
             No Clients Converted Yet
           </h3>
           <p className="text-xs sm:text-sm text-gray-500 dark:text-neutral-400 max-w-md mx-auto mt-1.5 leading-relaxed">
@@ -134,17 +134,17 @@ export default function ClientsView({
             <span className="font-bold text-emerald-600 dark:text-emerald-400">“Closed Won”</span>. Currently, all inquiries are managed as active Leads.
           </p>
 
-          <div className="flex flex-wrap items-center justify-center gap-3 mt-6">
+          <div className="flex flex-col min-[360px]:flex-row items-center justify-center gap-2 sm:gap-3 mt-5 sm:mt-6 w-full">
             <Link
               href="/crm/pipeline"
-              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-gradient-to-r from-red-600 to-rose-600 text-white text-xs font-bold shadow-md hover:from-red-700 hover:to-rose-700 transition active:scale-95"
+              className="w-full min-[360px]:w-auto inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl bg-gradient-to-r from-red-600 to-rose-600 text-white text-xs font-bold shadow-md hover:from-red-700 hover:to-rose-700 transition active:scale-95"
             >
               <TrendingUp className="w-4 h-4" />
               <span>Go to Sales Pipeline</span>
             </Link>
             <Link
               href="/crm/leads"
-              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl border border-gray-200 dark:border-neutral-700 bg-gray-50 dark:bg-neutral-800 text-gray-700 dark:text-neutral-300 text-xs font-semibold hover:bg-gray-100 transition active:scale-95"
+              className="w-full min-[360px]:w-auto inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl border border-gray-200 dark:border-neutral-700 bg-gray-50 dark:bg-neutral-800 text-gray-700 dark:text-neutral-300 text-xs font-semibold hover:bg-gray-100 transition active:scale-95"
             >
               <Briefcase className="w-4 h-4" />
               <span>View Inbound Leads</span>
@@ -154,7 +154,7 @@ export default function ClientsView({
       ) : (
         /* 4. Client Records Table */
         <ResponsiveTableContainer>
-          <table className="w-full text-left text-xs border-collapse">
+          <table className="w-full text-left text-xs border-collapse min-w-[720px]">
             <thead>
               <tr className="border-b border-gray-200/90 dark:border-neutral-800 bg-gray-50/70 dark:bg-neutral-900/60 text-gray-500 dark:text-neutral-400 font-bold uppercase tracking-wider text-[10px]">
                 <th className="py-3 px-4">Client / Company</th>

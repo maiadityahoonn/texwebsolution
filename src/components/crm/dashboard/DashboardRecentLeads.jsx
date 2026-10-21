@@ -17,7 +17,7 @@ export default function DashboardRecentLeads({
   const displayLeads = filteredLeads.slice(0, 6);
 
   return (
-    <div className="rounded-2xl bg-white dark:bg-[#18150f] border border-gray-100 dark:border-[#3a3020] p-4 sm:p-5 shadow-2xs flex flex-col justify-between">
+    <div className="rounded-2xl bg-white dark:bg-[#18150f] border border-gray-100 dark:border-[#3a3020] p-3.5 sm:p-5 shadow-2xs flex flex-col justify-between">
       <div>
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
           <div>
@@ -155,14 +155,14 @@ export default function DashboardRecentLeads({
         )}
       </div>
 
-      <div className="mt-4 pt-3 border-t border-gray-100 dark:border-[#2a2215] flex items-center justify-between text-xs">
-        <span className="text-gray-500 dark:text-neutral-400 text-[11px]">
+      <div className="mt-3 sm:mt-4 pt-2.5 sm:pt-3 border-t border-gray-100 dark:border-[#2a2215] flex flex-col min-[440px]:flex-row items-start min-[440px]:items-center justify-between gap-1.5 text-xs">
+        <span className="text-gray-500 dark:text-neutral-400 text-[10.5px] sm:text-[11px]">
           Showing latest {displayLeads.length} leads
         </span>
         <button
           type="button"
           onClick={() => onNavigateSection("crm", { dateFilter })}
-          className="inline-flex items-center gap-1 font-bold text-orange-600 dark:text-orange-400 hover:text-orange-700 transition cursor-pointer"
+          className="inline-flex items-center gap-1 font-bold text-orange-600 dark:text-orange-400 hover:text-orange-700 transition cursor-pointer text-xs"
         >
           <span>Open Full Leads Table (Datewise)</span>
           <ArrowRight className="w-3.5 h-3.5" />

@@ -118,11 +118,11 @@ export default function LeadTableRow({
                 event.stopPropagation();
                 setViewMode("sales_meetings");
               }}
-              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9.5px] font-bold bg-blue-50 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300 border border-blue-200/60 shrink-0 cursor-pointer hover:bg-blue-100 transition"
+              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9.5px] font-bold bg-blue-50 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300 border border-blue-200/60 dark:border-blue-900/50 shrink-0 cursor-pointer hover:bg-blue-100 transition whitespace-nowrap min-w-0 max-w-[130px] min-[360px]:max-w-none"
               title={`Scheduled Meeting: ${nextLeadMeeting.title} (${new Date(nextLeadMeeting.scheduled_at).toLocaleString("en-IN")})`}
             >
-              <Video className="w-2.5 h-2.5 text-blue-500" />
-              <span>Meet: {new Date(nextLeadMeeting.scheduled_at).toLocaleDateString("en-IN", { day: "2-digit", month: "short" })}</span>
+              <Video className="w-2.5 h-2.5 text-blue-500 shrink-0" />
+              <span className="truncate">Meet: {new Date(nextLeadMeeting.scheduled_at).toLocaleDateString("en-IN", { day: "2-digit", month: "short" })}</span>
             </button>
           )}
           {nextLeadFollowUp && (
@@ -132,11 +132,15 @@ export default function LeadTableRow({
                 event.stopPropagation();
                 setViewMode("followups");
               }}
-              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9.5px] font-bold bg-amber-50 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-200/60 shrink-0 cursor-pointer hover:bg-amber-100 transition"
+              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9.5px] font-bold bg-amber-50 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-200/60 dark:border-amber-900/50 shrink-0 cursor-pointer hover:bg-amber-100 transition whitespace-nowrap min-w-0 max-w-[150px] min-[360px]:max-w-none"
               title={`Pending Follow-up: ${nextLeadFollowUp.title} (${new Date(nextLeadFollowUp.due_at).toLocaleString("en-IN")})`}
             >
-              <Clock className="w-2.5 h-2.5 text-amber-500" />
-              <span>Follow-up: {new Date(nextLeadFollowUp.due_at).toLocaleDateString("en-IN", { day: "2-digit", month: "short" })}</span>
+              <Clock className="w-2.5 h-2.5 text-amber-500 shrink-0" />
+              <span className="truncate">
+                <span className="hidden min-[360px]:inline">Follow-up: </span>
+                <span className="min-[360px]:hidden">Flw: </span>
+                {new Date(nextLeadFollowUp.due_at).toLocaleDateString("en-IN", { day: "2-digit", month: "short" })}
+              </span>
             </button>
           )}
           {lead.source?.toLowerCase().includes("meta") && (

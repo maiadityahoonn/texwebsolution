@@ -57,7 +57,7 @@ export default function MeetingsTable({
       {isMeetingsLoading && paginatedSalesMeetings.length === 0 ? (
         <TableSkeleton rows={6} columns={6} />
       ) : filteredSalesMeetings.length === 0 ? (
-        <div className="p-12 text-center space-y-3">
+        <div className="p-6 sm:p-12 text-center space-y-3">
           <div className="w-12 h-12 rounded-2xl bg-orange-50 dark:bg-orange-950/30 text-orange-600 dark:text-orange-400 flex items-center justify-center mx-auto">
             <Calendar className="w-6 h-6" />
           </div>
@@ -67,7 +67,7 @@ export default function MeetingsTable({
               ? "No meetings match the selected date range."
               : "There are currently no sales meetings scheduled."}
           </p>
-          <div className="flex items-center justify-center gap-2 pt-2">
+          <div className="flex flex-col min-[380px]:flex-row items-center justify-center gap-2 pt-2 w-full">
             {dateFilter !== "all" && (
               <button
                 type="button"
@@ -75,9 +75,9 @@ export default function MeetingsTable({
                   setDateFilter("all");
                   setMeetingPage(1);
                 }}
-                className="px-3.5 py-1.5 rounded-xl text-xs font-semibold bg-gray-100 dark:bg-slate-800 text-gray-700 dark:text-neutral-300 hover:bg-gray-200 transition cursor-pointer"
+                className="w-full min-[380px]:w-auto px-3 min-[360px]:px-3.5 py-1.5 rounded-xl text-xs font-semibold bg-gray-100 dark:bg-slate-800 text-gray-700 dark:text-neutral-300 hover:bg-gray-200 transition cursor-pointer whitespace-nowrap shrink-0 min-w-0"
               >
-                Clear Filters
+                <span className="truncate">Clear Filters</span>
               </button>
             )}
             <button
@@ -89,9 +89,9 @@ export default function MeetingsTable({
                 }));
                 setShowSalesMeetingModal(true);
               }}
-              className="px-3.5 py-1.5 rounded-xl text-xs font-semibold bg-orange-600 hover:bg-orange-700 text-white transition cursor-pointer"
+              className="w-full min-[380px]:w-auto px-3 min-[360px]:px-3.5 py-1.5 rounded-xl text-xs font-semibold bg-orange-600 hover:bg-orange-700 text-white transition cursor-pointer whitespace-nowrap shrink-0 min-w-0"
             >
-              Schedule Meeting
+              <span className="truncate">Schedule Meeting</span>
             </button>
           </div>
         </div>

@@ -78,7 +78,7 @@ export default function DashboardQuickNav({
   ];
 
   return (
-    <div className="rounded-2xl bg-white dark:bg-[#18150f] border border-gray-100 dark:border-[#3a3020] p-4 sm:p-5 shadow-2xs">
+    <div className="rounded-2xl bg-white dark:bg-[#18150f] border border-gray-100 dark:border-[#3a3020] p-3.5 sm:p-5 shadow-2xs">
       <div className="flex items-center justify-between mb-4">
         <div>
           <div className="text-sm sm:text-base font-bold text-gray-900 dark:text-white">
@@ -90,14 +90,14 @@ export default function DashboardQuickNav({
         </div>
       </div>
 
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 sm:gap-3">
         {modules.map((m) => {
           const Icon = m.icon;
           return (
             <div
               key={m.section}
               onClick={() => onNavigateSection(m.section, { dateFilter })}
-              className="group p-3 rounded-xl bg-gray-50/70 dark:bg-[#211d14] border border-gray-100 dark:border-[#3a3020] hover:border-orange-300 dark:hover:border-orange-800/40 hover:shadow-xs transition cursor-pointer flex flex-col justify-between"
+              className="group p-2.5 sm:p-3 rounded-xl bg-gray-50/70 dark:bg-[#211d14] border border-gray-100 dark:border-[#3a3020] hover:border-orange-300 dark:hover:border-orange-800/40 hover:shadow-xs transition cursor-pointer flex flex-col justify-between"
             >
               <div>
                 <div className="flex items-center justify-between mb-2">
@@ -108,7 +108,7 @@ export default function DashboardQuickNav({
                     {m.badge}
                   </span>
                 </div>
-                <div className="font-bold text-xs text-gray-900 dark:text-white group-hover:text-orange-600 transition truncate">
+                <div className="font-bold text-[11px] sm:text-xs text-gray-900 dark:text-white group-hover:text-orange-600 transition truncate">
                   {m.title}
                 </div>
                 <div className="text-[10px] text-gray-400 truncate mt-0.5">{m.sub}</div>

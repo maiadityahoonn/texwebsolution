@@ -36,10 +36,10 @@ export default function SettingsView({
   handleSignOut,
 }) {
   return (
-    <div className="space-y-6 animate-fadeIn">
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <div className="space-y-4 sm:space-y-6 animate-fadeIn">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
         {/* Column 1: Identity & Avatar Card */}
-        <div className="rounded-2xl border border-gray-200/80 dark:border-slate-800/80 p-6 bg-transparent dark:bg-transparent flex flex-col items-center text-center shadow-none">
+        <div className="rounded-2xl border border-gray-200/80 dark:border-slate-800/80 p-3.5 min-[360px]:p-4 sm:p-6 bg-transparent dark:bg-transparent flex flex-col items-center text-center shadow-none">
           <div className="relative group mb-4">
             <div className="w-24 h-24 rounded-2xl bg-gray-900 text-white font-bold text-3xl flex items-center justify-center overflow-hidden shadow-md border-2 border-white dark:border-slate-800">
               {profileEditForm.avatar_url ? (
@@ -121,9 +121,9 @@ export default function SettingsView({
         </div>
 
         {/* Columns 2 & 3: Personal Information & Password Updates */}
-        <div className="lg:col-span-2 space-y-6">
+        <div className="lg:col-span-2 space-y-4 sm:space-y-6">
           {/* Card 1: Personal Details */}
-          <div className="rounded-2xl border border-gray-200/80 dark:border-slate-800/80 p-6 bg-transparent dark:bg-transparent shadow-none">
+          <div className="rounded-2xl border border-gray-200/80 dark:border-slate-800/80 p-3.5 min-[360px]:p-4 sm:p-6 bg-transparent dark:bg-transparent shadow-none">
             <div className="flex items-center gap-2.5 pb-4 mb-4 border-b border-gray-100 dark:border-slate-800">
               <User className="w-5 h-5 text-red-600" />
               <div>
@@ -208,9 +208,9 @@ export default function SettingsView({
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
+                  <div className="flex items-center gap-2 shrink-0 self-stretch sm:self-center justify-end">
                     <label
-                      className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold text-white transition shadow-xs cursor-pointer ${
+                      className={`inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold text-white transition shadow-xs cursor-pointer ${
                         avatarUploading
                           ? "bg-gray-400 cursor-not-allowed"
                           : "bg-red-600 hover:bg-red-700"
@@ -231,7 +231,7 @@ export default function SettingsView({
                         type="button"
                         onClick={handleRemoveAvatar}
                         disabled={avatarUploading}
-                        className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium text-red-600 hover:bg-red-50 dark:hover:bg-red-500/10 transition border border-red-200 dark:border-red-500/20 cursor-pointer"
+                        className="inline-flex items-center justify-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium text-red-600 hover:bg-red-50 dark:hover:bg-red-500/10 transition border border-red-200 dark:border-red-500/20 cursor-pointer"
                         title="Remove profile photo"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
@@ -246,7 +246,7 @@ export default function SettingsView({
                 <button
                   type="submit"
                   disabled={savingProfile}
-                  className="px-5 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-xl font-bold transition shadow-xs cursor-pointer text-xs flex items-center gap-2"
+                  className="w-full sm:w-auto px-5 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-xl font-bold transition shadow-xs cursor-pointer text-xs flex items-center justify-center gap-2"
                 >
                   {savingProfile ? "Saving..." : "Save Profile Details"}
                 </button>
@@ -255,7 +255,7 @@ export default function SettingsView({
           </div>
 
           {/* Card 2: Change Password */}
-          <div className="rounded-2xl border border-gray-200/80 dark:border-slate-800/80 p-6 bg-transparent dark:bg-transparent shadow-none">
+          <div className="rounded-2xl border border-gray-200/80 dark:border-slate-800/80 p-3.5 min-[360px]:p-4 sm:p-6 bg-transparent dark:bg-transparent shadow-none">
             <div className="flex items-center gap-2.5 pb-4 mb-4 border-b border-gray-100 dark:border-slate-800">
               <Lock className="w-5 h-5 text-red-600" />
               <div>
@@ -305,7 +305,7 @@ export default function SettingsView({
                 <button
                   type="submit"
                   disabled={updatingPassword}
-                  className="px-5 py-2.5 bg-gray-900 dark:bg-white text-white dark:text-gray-900 hover:bg-black dark:hover:bg-slate-200 rounded-xl font-bold transition shadow-xs cursor-pointer text-xs flex items-center gap-2"
+                  className="w-full sm:w-auto px-5 py-2.5 bg-gray-900 dark:bg-white text-white dark:text-gray-900 hover:bg-black dark:hover:bg-slate-200 rounded-xl font-bold transition shadow-xs cursor-pointer text-xs flex items-center justify-center gap-2"
                 >
                   {updatingPassword ? "Updating..." : "Update Password"}
                 </button>
@@ -314,7 +314,7 @@ export default function SettingsView({
           </div>
 
           {/* Card 3: Account Actions */}
-          <div className="rounded-2xl border border-red-100 dark:border-red-500/20 p-6 bg-transparent dark:bg-transparent shadow-none">
+          <div className="rounded-2xl border border-red-100 dark:border-red-500/20 p-3.5 min-[360px]:p-4 sm:p-6 bg-transparent dark:bg-transparent shadow-none">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div className="flex items-center gap-2.5">
                 <LogOut className="w-5 h-5 text-red-600" />
@@ -326,7 +326,7 @@ export default function SettingsView({
               <button
                 type="button"
                 onClick={handleSignOut}
-                className="px-5 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-xl font-bold transition shadow-xs cursor-pointer text-xs flex items-center justify-center gap-2"
+                className="w-full sm:w-auto px-5 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-xl font-bold transition shadow-xs cursor-pointer text-xs flex items-center justify-center gap-2"
               >
                 <LogOut className="w-4 h-4" />
                 <span>Logout</span>

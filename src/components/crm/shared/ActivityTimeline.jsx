@@ -57,20 +57,20 @@ export default function ActivityTimeline({ events = [], isDark = false }) {
           </div>
           <div className="min-w-0">
             <div className="flex items-center justify-between gap-2">
-              <span className={`text-xs font-semibold ${isDark ? "text-neutral-200" : "text-gray-900"}`}>
+              <span className={`text-xs font-semibold ${isDark ? "text-neutral-200" : "text-gray-900 dark:text-neutral-200"}`}>
                 {evt.title}
               </span>
-              <span className="text-[10px] text-gray-400 dark:text-neutral-500 shrink-0">
+              <span className="text-[10px] text-gray-400 dark:text-neutral-400 shrink-0">
                 {evt.time || "Recently"}
               </span>
             </div>
             {evt.description && (
-              <p className={`text-xs mt-0.5 ${isDark ? "text-neutral-400" : "text-gray-600"}`}>
+              <p className={`text-xs mt-0.5 ${isDark ? "text-neutral-400" : "text-gray-600 dark:text-neutral-300"}`}>
                 {evt.description}
               </p>
             )}
             {evt.actor && (
-              <span className="inline-block mt-1 text-[10px] text-gray-400 dark:text-neutral-500">
+              <span className="inline-block mt-1 text-[10px] text-gray-400 dark:text-neutral-400">
                 By: {evt.actor}
               </span>
             )}

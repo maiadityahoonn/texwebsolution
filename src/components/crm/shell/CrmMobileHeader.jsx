@@ -29,7 +29,7 @@ export default function CrmMobileHeader({
         paddingTop: "max(env(safe-area-inset-top, 0px), 1.5rem)",
       }}
     >
-      <div className="w-full h-14 px-3 flex items-center justify-between">
+      <div className="w-full h-14 px-2.5 min-[360px]:px-3 flex items-center justify-between">
       {/* Left: Official TexWeb Solution Brand Logo */}
       <div className="flex items-center shrink-0">
         <Link
@@ -42,7 +42,7 @@ export default function CrmMobileHeader({
           <img
             src="https://qfbsszbgmipbercujiak.supabase.co/storage/v1/object/public/site-assets/texweb-brand-logo.png"
             alt="TexWeb Solution"
-            className="h-8 w-auto max-w-[155px] sm:max-w-[175px] object-contain group-hover:scale-105 transition-transform dark:bg-white dark:px-2 dark:py-1 dark:rounded-xl shadow-2xs"
+            className="h-7.5 min-[360px]:h-8 w-auto max-w-[130px] min-[360px]:max-w-[155px] sm:max-w-[175px] object-contain group-hover:scale-105 transition-transform dark:bg-white dark:px-2 dark:py-1 dark:rounded-xl shadow-2xs"
           />
         </Link>
       </div>

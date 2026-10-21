@@ -108,7 +108,7 @@ export default function DashboardStatsCards({
   ];
 
   return (
-    <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3 sm:gap-4">
+    <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-2 sm:gap-4">
       {cards.map((card) => {
         const Icon = card.icon;
         return (
@@ -123,31 +123,31 @@ export default function DashboardStatsCards({
                 card.action();
               }
             }}
-            className={`group p-3.5 sm:p-4 rounded-2xl bg-white dark:bg-[#18150f] border border-gray-100 dark:border-[#3a3020] shadow-2xs hover:shadow-md transition-all duration-200 flex flex-col justify-between cursor-pointer ${card.accentBorder}`}
+            className={`group p-2.5 min-[360px]:p-3.5 sm:p-4 rounded-xl sm:rounded-2xl bg-white dark:bg-[#18150f] border border-gray-100 dark:border-[#3a3020] shadow-2xs hover:shadow-md transition-all duration-200 flex flex-col justify-between cursor-pointer ${card.accentBorder}`}
           >
             <div>
-              <div className="flex items-center justify-between gap-1.5 mb-2">
-                <span className="text-[11px] sm:text-xs font-semibold text-gray-500 dark:text-neutral-400 truncate">
+              <div className="flex items-center justify-between gap-1 sm:gap-1.5 mb-1.5 sm:mb-2">
+                <span className="text-[10px] min-[360px]:text-[11px] sm:text-xs font-semibold text-gray-500 dark:text-neutral-400 truncate">
                   {card.label}
                 </span>
-                <div className={`p-1.5 sm:p-2 rounded-xl border shrink-0 ${card.bgTone}`}>
+                <div className={`p-1.5 sm:p-2 rounded-lg sm:rounded-xl border shrink-0 ${card.bgTone}`}>
                   <Icon className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                 </div>
               </div>
 
-              <div className="text-lg sm:text-2xl font-black text-gray-900 dark:text-white tracking-tight truncate">
+              <div className="text-base min-[360px]:text-lg sm:text-2xl font-black text-gray-900 dark:text-white tracking-tight truncate">
                 {card.value}
               </div>
 
-              <p className="text-[10px] sm:text-[11px] text-gray-500 dark:text-neutral-400 font-medium mt-1 truncate">
+              <p className="text-[9px] min-[360px]:text-[10px] sm:text-[11px] text-gray-500 dark:text-neutral-400 font-medium mt-0.5 sm:mt-1 truncate">
                 {card.sub}
               </p>
             </div>
 
-            <div className="mt-3 pt-2.5 border-t border-gray-100 dark:border-[#2a2215] flex items-center justify-between gap-1.5 min-w-0 flex-nowrap whitespace-nowrap overflow-hidden text-[11px]">
+            <div className="mt-2 pt-2 min-[360px]:mt-3 min-[360px]:pt-2.5 border-t border-gray-100 dark:border-[#2a2215] flex items-center justify-between gap-1 sm:gap-1.5 min-w-0 flex-nowrap whitespace-nowrap overflow-hidden text-[10px] sm:text-[11px]">
               <span
                 title={card.badge}
-                className={`px-1.5 py-0.5 rounded-md text-[10px] font-bold whitespace-nowrap truncate min-w-0 max-w-[45%] shrink ${
+                className={`px-1.5 py-0.5 rounded-md text-[9px] sm:text-[10px] font-bold whitespace-nowrap truncate min-w-0 max-w-[45%] shrink ${
                   card.badgeTone || "bg-gray-100 dark:bg-[#252018] text-gray-600 dark:text-neutral-300"
                 }`}
               >
@@ -156,7 +156,7 @@ export default function DashboardStatsCards({
 
               <div className="flex items-center gap-0.5 font-bold text-gray-500 group-hover:text-orange-600 dark:text-neutral-400 dark:group-hover:text-orange-400 transition-colors whitespace-nowrap truncate shrink min-w-0">
                 <span className="truncate whitespace-nowrap">{card.linkText}</span>
-                <ArrowUpRight className="w-3.5 h-3.5 shrink-0 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
+                <ArrowUpRight className="w-3 h-3 sm:w-3.5 sm:h-3.5 shrink-0 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
               </div>
             </div>
           </div>

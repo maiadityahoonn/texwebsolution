@@ -35,29 +35,30 @@ export default function PipelineColumn({
     <div
       onDragOver={(e) => e.preventDefault()}
       onDrop={() => handleDealDrop(col.id)}
-      className={`w-[84vw] sm:w-auto shrink-0 sm:shrink snap-center flex flex-col rounded-2xl bg-white dark:bg-[#18150f] border border-gray-100 dark:border-[#3a3020] p-3 shadow-2xs min-h-[350px] transition ${
+      className={`w-[86vw] min-[360px]:w-[85vw] max-w-[280px] sm:w-auto shrink-0 sm:shrink snap-center flex flex-col rounded-2xl bg-white dark:bg-[#18150f] border border-gray-100 dark:border-[#3a3020] p-2 min-[360px]:p-3 shadow-2xs min-h-[350px] transition ${
         draggedDealId ? "ring-1 ring-orange-400/40" : ""
       }`}
     >
       <div className="flex items-center justify-between pb-2 border-b border-gray-100 dark:border-[#3a3020]">
-        <div className="flex items-center gap-2">
-          <span className={`w-2 h-2 rounded-full ${col.color}`} />
-          <span className="font-semibold text-xs text-gray-800 dark:text-neutral-200">
+        <div className="flex items-center gap-1.5 min-[360px]:gap-2 min-w-0">
+          <span className={`w-2 h-2 rounded-full shrink-0 ${col.color}`} />
+          <span className="font-semibold text-xs text-gray-800 dark:text-neutral-200 truncate">
             {col.label}
           </span>
         </div>
-        <div className="flex items-center gap-1">
-          <span className="text-[11px] font-bold text-gray-400 bg-gray-100 dark:bg-slate-800 px-1.5 py-0.5 rounded-full">
+        <div className="flex items-center gap-1 shrink-0">
+          <span className="text-[10px] min-[360px]:text-[11px] font-bold text-gray-400 bg-gray-100 dark:bg-slate-800 px-1.5 py-0.5 rounded-full">
             {colDeals.length}
           </span>
           {col.id !== "closed_lost" && (
             <button
               type="button"
               onClick={() => openAddDealModal(col.id)}
-              className="p-0.5 rounded-md text-gray-400 hover:text-emerald-600 hover:bg-gray-100 dark:hover:bg-slate-800 transition cursor-pointer"
+              className="p-1 rounded-md text-gray-400 hover:text-emerald-600 hover:bg-gray-100 dark:hover:bg-slate-800 transition cursor-pointer"
               title={`Add Deal in ${col.label}`}
+              aria-label={`Add Deal in ${col.label}`}
             >
-              <Plus className="w-3 h-3" />
+              <Plus className="w-3.5 h-3.5" />
             </button>
           )}
         </div>

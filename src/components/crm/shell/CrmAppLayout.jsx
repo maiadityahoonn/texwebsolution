@@ -405,10 +405,10 @@ export default function CrmAppLayout({ children }) {
                 </div>
               </div>
             </header>
-            <div className="p-3 sm:p-4 md:p-6">
+            <div className="p-2 min-[360px]:p-3 sm:p-4 md:p-6">
               {/* Mobile Page Sub-Header (Directly below top header) */}
               {activeSection !== "chat" && (
-                <div className="flex md:hidden items-center justify-between gap-2 mb-3 px-3 py-2 bg-white/95 dark:bg-[#111113]/95 backdrop-blur-md rounded-2xl border border-gray-200/90 dark:border-neutral-800/90 shadow-2xs">
+                <div className="relative z-20 flex md:hidden items-center justify-between gap-1.5 min-[360px]:gap-2 mb-2.5 min-[360px]:mb-3 px-2.5 py-1.5 min-[360px]:px-3 min-[360px]:py-2 bg-white/95 dark:bg-[#111113]/95 backdrop-blur-md rounded-2xl border border-gray-200/90 dark:border-neutral-800/90 shadow-2xs">
                   {/* Left: Page Icon & Page Name */}
                   <div className="flex items-center gap-2 min-w-0 flex-1">
                     {(() => {

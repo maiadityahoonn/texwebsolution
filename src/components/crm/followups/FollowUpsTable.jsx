@@ -53,7 +53,7 @@ export default function FollowUpsTable({
       {isFollowUpsLoading && paginatedFollowUps.length === 0 ? (
         <TableSkeleton rows={6} columns={6} />
       ) : filteredFollowUps.length === 0 ? (
-        <div className="p-8 text-center text-sm text-gray-500 dark:text-neutral-400">No sales follow-up found.</div>
+        <div className="p-5 sm:p-8 text-center text-xs sm:text-sm text-gray-500 dark:text-neutral-400">No sales follow-up found.</div>
       ) : (
         <>
           <ResponsiveTableContainer>

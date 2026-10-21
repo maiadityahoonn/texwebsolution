@@ -106,39 +106,39 @@ export default function MetaLeadsImportModal({ isOpen, onClose, onImport, onImpo
         </div>
 
         {/* Navigation Tabs */}
-        <div className="flex border-b border-gray-100 dark:border-slate-800 px-6 bg-gray-50/50 dark:bg-slate-900/50">
+        <div className="flex border-b border-gray-100 dark:border-slate-800 px-3 min-[360px]:px-6 bg-gray-50/50 dark:bg-slate-900/50 overflow-x-auto no-scrollbar">
           <button
             onClick={() => setTab("paste")}
-            className={`py-3 px-4 font-bold text-xs border-b-2 transition flex items-center gap-2 cursor-pointer ${
+            className={`py-2.5 min-[360px]:py-3 px-2.5 min-[360px]:px-4 font-bold text-xs border-b-2 transition flex items-center gap-1.5 cursor-pointer whitespace-nowrap shrink-0 min-w-0 ${
               tab === "paste"
                 ? "border-pink-600 text-pink-600 dark:text-pink-400"
                 : "border-transparent text-gray-500 hover:text-gray-900 dark:text-slate-400"
             }`}
           >
-            <FileSpreadsheet className="w-4 h-4" />
-            <span>Paste Excel / Sheet Rows</span>
+            <FileSpreadsheet className="w-4 h-4 shrink-0" />
+            <span className="truncate">Paste Excel / Sheet Rows</span>
           </button>
           <button
             onClick={() => setTab("upload")}
-            className={`py-3 px-4 font-bold text-xs border-b-2 transition flex items-center gap-2 cursor-pointer ${
+            className={`py-2.5 min-[360px]:py-3 px-2.5 min-[360px]:px-4 font-bold text-xs border-b-2 transition flex items-center gap-1.5 cursor-pointer whitespace-nowrap shrink-0 min-w-0 ${
               tab === "upload"
                 ? "border-pink-600 text-pink-600 dark:text-pink-400"
                 : "border-transparent text-gray-500 hover:text-gray-900 dark:text-slate-400"
             }`}
           >
-            <Upload className="w-4 h-4" />
-            <span>Upload CSV / TSV File</span>
+            <Upload className="w-4 h-4 shrink-0" />
+            <span className="truncate">Upload CSV / TSV File</span>
           </button>
           <button
             onClick={() => setTab("webhook")}
-            className={`py-3 px-4 font-bold text-xs border-b-2 transition flex items-center gap-2 cursor-pointer ${
+            className={`py-2.5 min-[360px]:py-3 px-2.5 min-[360px]:px-4 font-bold text-xs border-b-2 transition flex items-center gap-1.5 cursor-pointer whitespace-nowrap shrink-0 min-w-0 ${
               tab === "webhook"
                 ? "border-pink-600 text-pink-600 dark:text-pink-400"
                 : "border-transparent text-gray-500 hover:text-gray-900 dark:text-slate-400"
             }`}
           >
-            <Sparkles className="w-4 h-4 text-amber-500" />
-            <span>Automated Live Webhook (Zero Manual Work)</span>
+            <Sparkles className="w-4 h-4 text-amber-500 shrink-0" />
+            <span className="truncate">Automated Live Webhook</span>
           </button>
         </div>
 
@@ -215,27 +215,27 @@ export default function MetaLeadsImportModal({ isOpen, onClose, onImport, onImpo
         </div>
 
         {/* Footer */}
-        <div className="px-6 py-4 border-t border-gray-100 dark:border-slate-800 bg-gray-50/50 dark:bg-slate-900/50 flex items-center justify-between shrink-0">
-          <div className="text-xs text-gray-500 dark:text-slate-400">
+        <div className="px-3.5 min-[360px]:px-6 py-3 min-[360px]:py-4 border-t border-gray-100 dark:border-slate-800 bg-gray-50/50 dark:bg-slate-900/50 flex flex-wrap items-center justify-between gap-2 shrink-0 min-w-0">
+          <div className="text-xs text-gray-500 dark:text-slate-400 truncate">
             {parsedLeads.length > 0 && `${parsedLeads.length} leads extracted`}
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap min-w-0">
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 rounded-xl border border-gray-200 dark:border-slate-700 hover:bg-gray-100 dark:hover:bg-slate-800 text-xs font-bold text-gray-700 dark:text-slate-300 transition cursor-pointer"
+              className="px-3 min-[360px]:px-4 py-2 rounded-xl border border-gray-200 dark:border-slate-700 hover:bg-gray-100 dark:hover:bg-slate-800 text-xs font-bold text-gray-700 dark:text-slate-300 transition cursor-pointer whitespace-nowrap min-w-0"
             >
-              Cancel
+              <span className="truncate">Cancel</span>
             </button>
             {parsedLeads.length > 0 && (
               <button
                 type="button"
                 disabled={isImporting}
                 onClick={handleConfirmImport}
-                className="px-5 py-2 rounded-xl bg-gradient-to-r from-pink-600 via-rose-600 to-orange-600 hover:opacity-90 text-white text-xs font-bold shadow-md shadow-pink-500/20 transition active:scale-95 cursor-pointer disabled:opacity-50"
+                className="px-3.5 min-[360px]:px-5 py-2 rounded-xl bg-gradient-to-r from-pink-600 via-rose-600 to-orange-600 hover:opacity-90 text-white text-xs font-bold shadow-md shadow-pink-500/20 transition active:scale-95 cursor-pointer disabled:opacity-50 whitespace-nowrap min-w-0 shrink-0"
               >
-                {isImporting ? "Importing..." : `Import ${parsedLeads.length} Leads`}
+                <span className="truncate">{isImporting ? "Importing..." : `Import ${parsedLeads.length} Leads`}</span>
               </button>
             )}
           </div>

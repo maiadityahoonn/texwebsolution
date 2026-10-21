@@ -127,10 +127,10 @@ export default function PipelineDealCard({
         setSelectedDeal(deal);
         setDealModalTab("overview");
       }}
-      className="group relative p-2.5 rounded-xl bg-white dark:bg-[#1a1711] border border-gray-200/90 dark:border-[#382f20] hover:border-orange-500/80 hover:shadow-md transition-all duration-150 space-y-2 cursor-pointer select-none"
+      className="group relative p-2 min-[360px]:p-2.5 rounded-xl bg-white dark:bg-[#1a1711] border border-gray-200/90 dark:border-[#382f20] hover:border-orange-500/80 hover:shadow-md transition-all duration-150 space-y-1.5 min-[360px]:space-y-2 cursor-pointer select-none"
     >
       {/* 1. Header: Avatar + Client Name + Value + Edit button */}
-      <div className="flex items-center justify-between gap-2">
+      <div className="flex items-center justify-between gap-1.5 min-[360px]:gap-2">
         <div className="flex items-center gap-1.5 min-w-0">
           <span className="w-5 h-5 rounded-md bg-gradient-to-br from-orange-500 to-amber-500 text-white text-[9px] font-black flex items-center justify-center shrink-0 uppercase tracking-tighter shadow-2xs">
             {dealInitials}
@@ -147,7 +147,7 @@ export default function PipelineDealCard({
         </div>
         <div className="flex items-center gap-1 shrink-0">
           <span
-            className={`px-1.5 py-0.5 rounded-md text-[11px] font-black tracking-tight ${
+            className={`px-1.5 py-0.5 rounded-md text-[10px] min-[360px]:text-[11px] font-black tracking-tight shrink-0 ${
               col.id === "closed_won"
                 ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-400 border border-emerald-200/50 dark:border-emerald-800/40"
                 : "bg-orange-50 text-orange-600 dark:bg-orange-950/50 dark:text-orange-400 border border-orange-200/50 dark:border-orange-800/40"
@@ -161,7 +161,7 @@ export default function PipelineDealCard({
               e.stopPropagation();
               handleOpenEditDeal(deal);
             }}
-            className="p-1 rounded-md text-gray-400 hover:text-orange-600 hover:bg-orange-50 dark:hover:bg-slate-800 transition cursor-pointer"
+            className="p-1 rounded-md text-gray-400 hover:text-orange-600 hover:bg-orange-50 dark:hover:bg-slate-800 transition cursor-pointer shrink-0"
             title="Edit Deal Details"
             aria-label="Edit Deal Details"
           >
@@ -172,18 +172,18 @@ export default function PipelineDealCard({
 
       {/* 2. Service & Badges */}
       <div className="flex items-center gap-1 flex-wrap">
-        <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-neutral-300 truncate max-w-[140px]">
+        <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-neutral-300 truncate max-w-[110px] min-[360px]:max-w-[140px]">
           {serviceName}
         </span>
         {isMetaLead && (
-          <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-pink-50 text-pink-600 dark:bg-pink-950/40 dark:text-pink-400 border border-pink-200/50">
+          <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-pink-50 text-pink-600 dark:bg-pink-950/40 dark:text-pink-400 border border-pink-200/50 shrink-0">
             {isInstagram ? "IG" : "Meta"}
           </span>
         )}
         {docBadges.map((badge) => (
           <span
             key={badge.label}
-            className={`px-1.5 py-0.5 rounded text-[9px] font-bold capitalize ${badge.tone}`}
+            className={`px-1.5 py-0.5 rounded text-[9px] font-bold capitalize shrink-0 ${badge.tone}`}
           >
             {badge.label}
           </span>
@@ -207,31 +207,52 @@ export default function PipelineDealCard({
       ) : (
         <div className="space-y-1">
           {meetingDateStr && (
-            <div className="flex items-center justify-between gap-1 text-[10px] font-medium text-blue-700 dark:text-blue-300 bg-blue-50/80 dark:bg-blue-950/30 px-2 py-1 rounded-lg border border-blue-200/40">
-              <div className="flex items-center gap-1.5 truncate">
+            <div
+              onClick={(e) => {
+                e.stopPropagation();
+                setSelectedDeal(deal);
+                setDealModalTab("meetings");
+              }}
+              title={`Meeting: ${nextMeeting?.title || "Sales Meeting"} (${meetingDateStr})`}
+              className="flex items-center justify-between gap-1 text-[9.5px] min-[360px]:text-[10px] font-medium text-blue-700 dark:text-blue-300 bg-blue-50/80 dark:bg-blue-950/40 px-1.5 min-[360px]:px-2 py-1 rounded-lg border border-blue-200/50 dark:border-blue-900/40 min-w-0 hover:bg-blue-100/70 dark:hover:bg-blue-900/40 transition cursor-pointer"
+            >
+              <div className="flex items-center gap-1.5 truncate min-w-0 flex-1">
                 <Video className="w-3 h-3 text-blue-500 shrink-0" />
-                <span className="truncate font-semibold">Meet: {meetingDateStr}</span>
+                <span className="font-bold shrink-0">Meet:</span>
+                <span className="truncate font-semibold">{meetingDateStr}</span>
               </div>
               {nextMeeting?.scheduled_at &&
                 new Date(nextMeeting.scheduled_at).toDateString() === new Date().toDateString() && (
-                  <span className="px-1 py-0.2 rounded text-[8px] font-black uppercase bg-blue-200 dark:bg-blue-800 text-blue-800 dark:text-blue-100 shrink-0">
+                  <span className="px-1.5 py-0.5 rounded text-[8px] min-[360px]:text-[8.5px] font-black uppercase tracking-wider bg-blue-100 text-blue-800 dark:bg-blue-900/60 dark:text-blue-200 border border-blue-200/60 dark:border-blue-800/40 shrink-0">
                     Today
                   </span>
                 )}
             </div>
           )}
           {followUpDateStr && (
-            <div className="flex items-center justify-between gap-1 text-[10px] font-medium text-amber-700 dark:text-amber-300 bg-amber-50/80 dark:bg-amber-950/30 px-2 py-1 rounded-lg border border-amber-200/40">
-              <div className="flex items-center gap-1.5 truncate">
+            <div
+              onClick={(e) => {
+                e.stopPropagation();
+                setSelectedDeal(deal);
+                setDealModalTab("followups");
+              }}
+              title={`Follow-up: ${nextFollowUp?.title || "Follow-up"} (${followUpDateStr})`}
+              className="flex items-center justify-between gap-1 text-[9.5px] min-[360px]:text-[10px] font-medium text-amber-800 dark:text-amber-300 bg-amber-50/80 dark:bg-amber-950/40 px-1.5 min-[360px]:px-2 py-1 rounded-lg border border-amber-200/50 dark:border-amber-900/40 min-w-0 hover:bg-amber-100/70 dark:hover:bg-amber-900/40 transition cursor-pointer"
+            >
+              <div className="flex items-center gap-1.5 truncate min-w-0 flex-1">
                 <Clock className="w-3 h-3 text-amber-500 shrink-0" />
-                <span className="truncate font-semibold">Follow-up: {followUpDateStr}</span>
+                <span className="font-bold shrink-0">
+                  <span className="hidden min-[340px]:inline">Follow-up:</span>
+                  <span className="min-[340px]:hidden">Flw:</span>
+                </span>
+                <span className="truncate font-semibold">{followUpDateStr}</span>
               </div>
               {new Date(nextFollowUp.due_at).getTime() < Date.now() ? (
-                <span className="px-1 py-0.2 rounded text-[8px] font-black uppercase bg-red-100 text-red-600 shrink-0">
+                <span className="px-1.5 py-0.5 rounded text-[8px] min-[360px]:text-[8.5px] font-black uppercase tracking-wider bg-rose-100 text-rose-700 dark:bg-rose-950/70 dark:text-rose-300 border border-rose-200/60 dark:border-rose-900/50 shrink-0">
                   Overdue
                 </span>
               ) : new Date(nextFollowUp.due_at).toDateString() === new Date().toDateString() ? (
-                <span className="px-1 py-0.2 rounded text-[8px] font-black uppercase bg-amber-200 dark:bg-amber-800 text-amber-800 dark:text-amber-100 shrink-0">
+                <span className="px-1.5 py-0.5 rounded text-[8px] min-[360px]:text-[8.5px] font-black uppercase tracking-wider bg-amber-100 text-amber-800 dark:bg-amber-900/60 dark:text-amber-200 border border-amber-200/60 dark:border-amber-800/40 shrink-0">
                   Today
                 </span>
               ) : null}
@@ -257,7 +278,7 @@ export default function PipelineDealCard({
                   e.stopPropagation();
                   handleDealStageChange(deal, e.target.value, col.id);
                 }}
-                className="text-[9.5px] font-semibold bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-md px-1 py-0.5 text-gray-700 dark:text-neutral-300 focus:outline-hidden cursor-pointer max-w-[76px] shrink truncate"
+                className="text-[9px] min-[360px]:text-[9.5px] font-semibold bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-md px-1 py-0.5 text-gray-700 dark:text-neutral-300 focus:outline-hidden cursor-pointer max-w-[70px] min-[360px]:max-w-[76px] shrink truncate"
               >
                 <option value="contacted">Contacted</option>
                 <option value="qualified">Meeting</option>
@@ -373,16 +394,16 @@ export default function PipelineDealCard({
                 e.stopPropagation();
                 onNavigateSection?.("projects");
               }}
-              className="text-[9.5px] font-bold text-gray-500 hover:text-emerald-600 dark:text-neutral-400 flex items-center gap-0.5 transition cursor-pointer"
+              className="text-[9.5px] font-bold text-gray-500 hover:text-emerald-600 dark:text-neutral-400 flex items-center gap-0.5 transition cursor-pointer whitespace-nowrap shrink-0 min-w-0"
             >
-              <span>View Project</span>
-              <ExternalLink className="w-2.5 h-2.5" />
+              <span className="truncate">View Project</span>
+              <ExternalLink className="w-2.5 h-2.5 shrink-0" />
             </button>
           </div>
         ) : (
           <div className="w-full flex items-center justify-between text-[10px]">
             <span className="text-rose-600 dark:text-rose-400 font-bold flex items-center gap-1">
-              <XCircle className="w-3 h-3" />
+              <XCircle className="w-3 h-3 shrink-0" />
               <span>Closed Lost</span>
             </span>
             <button
@@ -391,9 +412,9 @@ export default function PipelineDealCard({
                 e.stopPropagation();
                 handleDealStageChange(deal, "contacted", col.id);
               }}
-              className="text-[9.5px] font-bold text-blue-600 hover:underline transition cursor-pointer"
+              className="text-[9.5px] font-bold text-blue-600 hover:underline transition cursor-pointer whitespace-nowrap shrink-0 min-w-0"
             >
-              Re-open
+              <span className="truncate">Re-open</span>
             </button>
           </div>
         )}

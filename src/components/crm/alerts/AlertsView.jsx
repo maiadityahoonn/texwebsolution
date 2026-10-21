@@ -56,13 +56,13 @@ export default function AlertsView({
   return (
     <div className="space-y-4 animate-fadeIn">
       {/* Filter & Action Toolbar */}
-      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 p-3 rounded-2xl bg-transparent dark:bg-transparent border border-gray-200/80 dark:border-slate-800/80 shadow-none">
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5 sm:gap-3 p-2.5 min-[360px]:p-3 rounded-2xl bg-transparent dark:bg-transparent border border-gray-200/80 dark:border-slate-800/80 shadow-none">
         {/* Left: Filter Tabs */}
-        <div className="flex items-center gap-1.5 p-1 rounded-xl bg-gray-100/80 dark:bg-slate-800/80">
+        <div className="flex items-center gap-1 p-1 rounded-xl bg-gray-100/80 dark:bg-slate-800/80">
           <button
             type="button"
             onClick={() => updateAlertsFilter("all")}
-            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+            className={`flex-1 sm:flex-initial px-2.5 min-[360px]:px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
               activeAlertsFilter === "all"
                 ? "bg-transparent dark:bg-transparent text-red-600 dark:text-red-400 shadow-none"
                 : "text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white"
@@ -82,7 +82,7 @@ export default function AlertsView({
           <button
             type="button"
             onClick={() => updateAlertsFilter("unread")}
-            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+            className={`flex-1 sm:flex-initial px-2.5 min-[360px]:px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
               activeAlertsFilter === "unread"
                 ? "bg-transparent dark:bg-transparent text-red-600 dark:text-red-400 shadow-none"
                 : "text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white"
@@ -102,7 +102,7 @@ export default function AlertsView({
           type="button"
           onClick={handleMarkAllAsRead}
           disabled={unreadCount === 0}
-          className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer ${
+          className={`px-3 py-1.5 min-[360px]:px-3.5 min-[360px]:py-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer ${
             unreadCount > 0
               ? "bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 text-white shadow-xs hover:shadow-md hover:shadow-red-500/20 active:scale-95"
               : "bg-gray-100 dark:bg-slate-800 text-gray-400 dark:text-slate-600 cursor-not-allowed border border-gray-200 dark:border-slate-800"
@@ -116,7 +116,7 @@ export default function AlertsView({
       {/* Notification Cards List */}
       <div className="space-y-4">
         {totalRecords === 0 ? (
-          <div className="text-center py-16 px-4 border border-dashed border-gray-200 dark:border-slate-800 rounded-2xl bg-transparent dark:bg-transparent">
+          <div className="text-center py-12 sm:py-16 px-3 min-[360px]:px-4 border border-dashed border-gray-200 dark:border-slate-800 rounded-2xl bg-transparent dark:bg-transparent">
             <div className="w-12 h-12 rounded-2xl bg-gray-100 dark:bg-slate-800 flex items-center justify-center mx-auto mb-3 text-gray-400">
               {activeAlertsFilter === "unread" ? (
                 <CheckCircle2 className="w-6 h-6 text-emerald-500" />
@@ -206,17 +206,17 @@ export default function AlertsView({
               return (
                 <div
                   key={n.id}
-                  className={`p-4 sm:p-4.5 rounded-2xl border transition-all duration-200 flex flex-col sm:flex-row items-start justify-between gap-3 sm:gap-4 shadow-2xs group ${
+                  className={`p-3 min-[360px]:p-3.5 sm:p-4.5 rounded-2xl border transition-all duration-200 flex flex-col sm:flex-row items-start justify-between gap-2.5 sm:gap-4 shadow-2xs group ${
                     isUnread
                       ? "bg-transparent dark:bg-transparent border-red-300 dark:border-red-900/80 border-l-4 border-l-red-600 shadow-none"
                       : "bg-transparent dark:bg-transparent border-gray-200/80 dark:border-slate-800/80 text-gray-700 dark:text-slate-300 hover:border-gray-300 dark:hover:border-slate-700"
                   }`}
                 >
-                  <div className="flex items-start gap-3.5 min-w-0 flex-1">
+                  <div className="flex items-start gap-2.5 min-[360px]:gap-3.5 min-w-0 flex-1">
                     <div
-                      className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 border ${typeStyles.bg} ${typeStyles.color} shadow-2xs`}
+                      className={`w-9 h-9 min-[360px]:w-10 min-[360px]:h-10 rounded-xl flex items-center justify-center shrink-0 border ${typeStyles.bg} ${typeStyles.color} shadow-2xs`}
                     >
-                      <IconComp className="w-5 h-5 stroke-[1.8]" />
+                      <IconComp className="w-4 h-4 min-[360px]:w-5 min-[360px]:h-5 stroke-[1.8]" />
                     </div>
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2 flex-wrap mb-1">
@@ -276,7 +276,7 @@ export default function AlertsView({
                       <p className="text-xs text-gray-600 dark:text-slate-300 leading-relaxed break-words">
                         {n.message}
                       </p>
-                      <div className="flex items-center gap-4 mt-2.5 text-[11px] text-gray-400 dark:text-slate-500 font-mono">
+                      <div className="flex flex-wrap items-center gap-2.5 sm:gap-4 mt-2 text-[10px] min-[360px]:text-[11px] text-gray-400 dark:text-slate-500 font-mono">
                         <span className="flex items-center gap-1">
                           <Clock className="w-3.5 h-3.5 text-gray-400 shrink-0" />
                           <span>{localDate(n.created_at)}</span>
@@ -295,7 +295,7 @@ export default function AlertsView({
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-2 self-end sm:self-center shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-gray-100 dark:border-slate-800 w-full sm:w-auto justify-end">
+                  <div className="flex items-center gap-2 self-stretch sm:self-center shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-gray-100 dark:border-slate-800 w-full sm:w-auto justify-end">
                     {isUnread && (
                       <button
                         type="button"

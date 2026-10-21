@@ -38,21 +38,21 @@ export default function CommercialModal({
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
-      className="fixed inset-0 z-[90] flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-xs overscroll-contain animate-in fade-in duration-200"
+      className="fixed inset-0 z-[90] flex items-center justify-center p-2 min-[360px]:p-3 sm:p-4 bg-black/60 backdrop-blur-xs overscroll-contain animate-in fade-in duration-200"
     >
       <form
         onSubmit={onSubmit}
-        className="w-full max-w-6xl max-h-[82vh] rounded-3xl bg-white dark:bg-[#18150f] border border-gray-200/80 dark:border-[#3a3020] shadow-2xl flex flex-col overflow-hidden transition-all animate-in zoom-in-95 duration-200"
+        className="w-full max-w-6xl max-h-[85vh] rounded-3xl bg-white dark:bg-[#18150f] border border-gray-200/80 dark:border-[#3a3020] shadow-2xl flex flex-col overflow-hidden transition-all animate-in zoom-in-95 duration-200"
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-5 py-3.5 border-b border-gray-100 dark:border-[#3a3020] bg-linear-to-r from-orange-50/70 via-amber-50/25 to-transparent dark:from-orange-950/25 dark:via-transparent dark:to-transparent shrink-0">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-orange-500 text-white flex items-center justify-center shadow-md shadow-orange-500/25 shrink-0">
-              <FileText className="w-5 h-5" />
+        <div className="flex items-center justify-between px-3.5 min-[360px]:px-5 py-3.5 border-b border-gray-100 dark:border-[#3a3020] bg-linear-to-r from-orange-50/70 via-amber-50/25 to-transparent dark:from-orange-950/25 dark:via-transparent dark:to-transparent shrink-0">
+          <div className="flex items-center gap-2.5 min-[360px]:gap-3">
+            <div className="w-9 h-9 min-[360px]:w-10 min-[360px]:h-10 rounded-2xl bg-orange-500 text-white flex items-center justify-center shadow-md shadow-orange-500/25 shrink-0">
+              <FileText className="w-4 h-4 min-[360px]:w-5 min-[360px]:h-5" />
             </div>
             <div>
               <h3 className="font-bold text-base sm:text-lg text-gray-900 dark:text-white leading-tight">Sales Quotation / Agreement</h3>
-              <p className="text-xs text-gray-500 dark:text-neutral-400 mt-0.5">Quotation is the sales document; agreement is final signing before deal won</p>
+              <p className="text-[11px] sm:text-xs text-gray-500 dark:text-neutral-400 mt-0.5">Quotation is the sales document; agreement is final signing before deal won</p>
             </div>
           </div>
           <button
@@ -76,11 +76,11 @@ export default function CommercialModal({
                 key={id}
                 type="button"
                 onClick={() => setCommercialType(id)}
-                className={`flex-1 rounded-lg px-3 py-2 font-bold transition ${
+                className={`flex-1 rounded-lg px-2 min-[360px]:px-3 py-1.5 min-[360px]:py-2 font-bold transition whitespace-nowrap min-w-0 cursor-pointer ${
                   commercialType === id ? "bg-white dark:bg-slate-900 text-orange-600 shadow-2xs" : "text-gray-500"
                 }`}
               >
-                {label}
+                <span className="truncate">{label}</span>
               </button>
             ))}
           </div>
@@ -121,18 +121,18 @@ export default function CommercialModal({
                   <button
                     type="button"
                     onClick={startAiVoiceInput}
-                    className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 border transition cursor-pointer ${
+                    className={`px-2.5 min-[360px]:px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 border transition cursor-pointer whitespace-nowrap shrink-0 min-w-0 ${
                       aiDocListening
                         ? "bg-red-50 text-red-700 border-red-200"
                         : "bg-white dark:bg-slate-900 text-gray-700 dark:text-neutral-200 border-orange-100 dark:border-orange-900/40"
                     }`}
                   >
-                    <Mic className="w-3.5 h-3.5" />
-                    {aiDocListening ? "Listening..." : "Voice"}
+                    <Mic className="w-3.5 h-3.5 shrink-0" />
+                    <span className="truncate">{aiDocListening ? "Listening..." : "Voice"}</span>
                   </button>
-                  <label className="px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 bg-white dark:bg-slate-900 text-gray-700 dark:text-neutral-200 border border-orange-100 dark:border-orange-900/40 cursor-pointer">
-                    <Paperclip className="w-3.5 h-3.5" />
-                    Upload Doc/Image
+                  <label className="px-2.5 min-[360px]:px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 bg-white dark:bg-slate-900 text-gray-700 dark:text-neutral-200 border border-orange-100 dark:border-orange-900/40 cursor-pointer whitespace-nowrap shrink-0 min-w-0">
+                    <Paperclip className="w-3.5 h-3.5 shrink-0" />
+                    <span className="truncate">Upload Doc/Image</span>
                     <input
                       type="file"
                       multiple
@@ -145,10 +145,10 @@ export default function CommercialModal({
                     type="button"
                     onClick={handleGenerateAiDocumentDraft}
                     disabled={aiDocLoading || !commercialForm.deal_id}
-                    className="px-3 py-1.5 rounded-xl text-xs font-black bg-orange-600 hover:bg-orange-700 text-white disabled:opacity-50 disabled:cursor-not-allowed transition cursor-pointer flex items-center gap-1.5"
+                    className="px-2.5 min-[360px]:px-3 py-1.5 rounded-xl text-xs font-black bg-orange-600 hover:bg-orange-700 text-white disabled:opacity-50 disabled:cursor-not-allowed transition cursor-pointer flex items-center gap-1.5 whitespace-nowrap shrink-0 min-w-0"
                   >
-                    <Sparkles className="w-3.5 h-3.5" />
-                    {aiDocLoading ? "Generating..." : "Generate Draft"}
+                    <Sparkles className="w-3.5 h-3.5 shrink-0" />
+                    <span className="truncate">{aiDocLoading ? "Generating..." : "Generate Draft"}</span>
                   </button>
                 </div>
                 {aiDocAttachments?.length > 0 && (
@@ -346,36 +346,36 @@ export default function CommercialModal({
         </div>
 
         {/* Footer */}
-        <div className="flex flex-wrap items-center justify-end gap-2.5 px-5 py-3 border-t border-gray-100 dark:border-[#3a3020] bg-gray-50/60 dark:bg-[#1a1712] shrink-0">
+        <div className="flex flex-wrap items-center justify-end gap-2 sm:gap-2.5 px-3.5 min-[360px]:px-5 py-3 border-t border-gray-100 dark:border-[#3a3020] bg-gray-50/60 dark:bg-[#1a1712] shrink-0">
           <button
             type="button"
             onClick={onClose}
-            className="px-4 py-2.5 rounded-xl text-xs font-semibold text-gray-700 dark:text-neutral-300 hover:bg-gray-100 dark:hover:bg-slate-800 border border-gray-200 dark:border-slate-700 transition cursor-pointer"
+            className="px-3 min-[360px]:px-4 py-2 min-[360px]:py-2.5 rounded-xl text-xs font-semibold text-gray-700 dark:text-neutral-300 hover:bg-gray-100 dark:hover:bg-slate-800 border border-gray-200 dark:border-slate-700 transition cursor-pointer whitespace-nowrap min-w-0"
           >
-            Cancel
+            <span className="truncate">Cancel</span>
           </button>
           <button
             type="button"
             onClick={onPreviewPdf}
-            className="px-4 py-2.5 rounded-xl text-xs font-bold bg-slate-900 hover:bg-slate-800 text-white transition shadow-sm cursor-pointer shrink-0 flex items-center gap-1.5"
+            className="px-3 min-[360px]:px-4 py-2 min-[360px]:py-2.5 rounded-xl text-xs font-bold bg-slate-900 hover:bg-slate-800 text-white transition shadow-sm cursor-pointer shrink-0 min-w-0 flex items-center gap-1.5 whitespace-nowrap"
           >
             <Eye className="w-3.5 h-3.5 shrink-0" />
-            <span>Preview PDF</span>
+            <span className="truncate">Preview PDF</span>
           </button>
           <button
             type="submit"
-            className="px-5 py-2.5 rounded-xl text-xs font-bold bg-linear-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white shadow-md shadow-orange-500/25 hover:shadow-lg transition flex items-center gap-1.5 cursor-pointer shrink-0"
+            className="px-3 min-[360px]:px-5 py-2 min-[360px]:py-2.5 rounded-xl text-xs font-bold bg-linear-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white shadow-md shadow-orange-500/25 hover:shadow-lg transition flex items-center gap-1.5 cursor-pointer shrink-0 min-w-0 whitespace-nowrap"
           >
             <FileText className="w-3.5 h-3.5 shrink-0" />
-            <span>Save {commercialType === "agreement" ? "Agreement" : "Quotation"}</span>
+            <span className="truncate">Save {commercialType === "agreement" ? "Agreement" : "Quotation"}</span>
           </button>
           <button
             type="button"
             onClick={(e) => onSubmit(e, true)}
-            className="px-5 py-2.5 rounded-xl text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white shadow-md shadow-emerald-500/25 hover:shadow-lg transition flex items-center gap-1.5 cursor-pointer shrink-0"
+            className="px-3 min-[360px]:px-5 py-2 min-[360px]:py-2.5 rounded-xl text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white shadow-md shadow-emerald-500/25 hover:shadow-lg transition flex items-center gap-1.5 cursor-pointer shrink-0 min-w-0 whitespace-nowrap"
           >
             <WhatsAppIcon className="w-3.5 h-3.5 shrink-0" />
-            <span>Save & WhatsApp</span>
+            <span className="truncate">Save & WhatsApp</span>
           </button>
         </div>
       </form>
