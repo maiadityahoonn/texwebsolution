@@ -129,56 +129,80 @@ export function useCrmCalculations({
           const matchesCreated = matchesDateFilter(item, "created_at");
           if (!matchesDue && !matchesCreated) return false;
         }
-        const isOverdue = item.status === "pending" && item.due_at && new Date(item.due_at).getTime() < now;
-        const matchStatus =
-          statusFilter === "all" || !statusFilter
-            ? true
-            : statusFilter === "pending" || statusFilter === "active"
-            ? (item.status === "pending" || item.status === "scheduled") && !isOverdue
-            : statusFilter === "overdue"
-            ? isOverdue
-            : statusFilter === "done" || statusFilter === "completed"
-            ? item.status === "done"
-            : statusFilter === "missed"
-            ? item.status === "missed"
-            : true;
-        return matchStatus;
-      })
-      .sort((a, b) => {
-        const aPending = a.status === "pending" || a.status === "scheduled" ? 1 : 0;
-        const bPending = b.status === "pending" || b.status === "scheduled" ? 1 : 0;
-        if (aPending !== bPending) return bPending - aPending;
+        const isOverdue = (item.status === "pending" || item.status === "scheduled") && item.due_at && new Date(item.due_at).getTime() < now;
 
-        if (aPending && bPending) {
-          const aDue = new Date(a.due_at || 0).getTime();
-          const bDue = new Date(b.due_at || 0).getTime();
-          if (Math.abs(aDue - bDue) > 60000) return aDue - bDue;
-          return new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime();
+        if (statusFilter === "done" || statusFilter === "completed") {
+          return item.status === "done" || item.status === "completed";
+        }
+        if (statusFilter === "overdue") {
+          return isOverdue;
+        }
+        if (statusFilter === "missed") {
+          return item.status === "missed";
+        }
+        if (statusFilter === "pending" || statusFilter === "active") {
+          return (item.status === "pending" || item.status === "scheduled") && !isOverdue;
+        }
+        if (statusFilter === "all_with_completed") {
+          return true;
         }
 
-        return new Date(b.created_at || b.due_at || 0).getTime() - new Date(a.created_at || a.due_at || 0).getTime();
+        // Default 'all' or empty: Show actionable pending & overdue follow-ups, exclude completed/done
+        return item.status !== "done" && item.status !== "completed";
+      })
+      .sort((a, b) => {
+        const nowMs = Date.now();
+        const aOverdue = (a.status === "pending" || a.status === "scheduled") && a.due_at && new Date(a.due_at).getTime() < nowMs ? 1 : 0;
+        const bOverdue = (b.status === "pending" || b.status === "scheduled") && b.due_at && new Date(b.due_at).getTime() < nowMs ? 1 : 0;
+        if (aOverdue !== bOverdue) return bOverdue - aOverdue;
+
+        const aDue = new Date(a.due_at || 0).getTime();
+        const bDue = new Date(b.due_at || 0).getTime();
+        if (aDue && bDue && Math.abs(aDue - bDue) > 1000) {
+          return aDue - bDue;
+        }
+        return new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime();
       });
   }, [followUps, matchesDateFilter, statusFilter, dateFilter]);
 
   const filteredSalesMeetings = useMemo(() => {
     const todayStr = new Date().toDateString();
-    return salesMeetings.filter((item) => {
-      if (!matchesDateFilter(item, "scheduled_at")) return false;
-      const isToday = Boolean(item.scheduled_at && new Date(item.scheduled_at).toDateString() === todayStr);
-      const matchStatus =
-        statusFilter === "all" || !statusFilter
-          ? true
-          : statusFilter === "scheduled" || statusFilter === "pending" || statusFilter === "active"
-          ? item.status === "scheduled"
-          : statusFilter === "today"
-          ? isToday
-          : statusFilter === "completed" || statusFilter === "done"
-          ? item.status === "completed"
-          : statusFilter === "no_show" || statusFilter === "cancelled" || statusFilter === "missed"
-          ? ["no_show", "cancelled"].includes(item.status)
-          : true;
-      return matchStatus;
-    });
+    return salesMeetings
+      .filter((item) => {
+        if (!matchesDateFilter(item, "scheduled_at")) return false;
+        const isToday = Boolean(item.scheduled_at && new Date(item.scheduled_at).toDateString() === todayStr);
+
+        if (statusFilter === "completed" || statusFilter === "done") {
+          return item.status === "completed" || item.status === "done";
+        }
+        if (statusFilter === "no_show" || statusFilter === "cancelled" || statusFilter === "missed") {
+          return ["no_show", "cancelled"].includes(item.status);
+        }
+        if (statusFilter === "today") {
+          return isToday;
+        }
+        if (statusFilter === "scheduled" || statusFilter === "pending" || statusFilter === "active") {
+          return ["scheduled", "pending"].includes(item.status);
+        }
+        if (statusFilter === "all_with_completed") {
+          return true;
+        }
+
+        // Default 'all' or empty: Show upcoming scheduled meetings, exclude completed & cancelled
+        return !["completed", "done", "cancelled"].includes(item.status);
+      })
+      .sort((a, b) => {
+        const aSched = ["scheduled", "pending"].includes(a.status) ? 1 : 0;
+        const bSched = ["scheduled", "pending"].includes(b.status) ? 1 : 0;
+        if (aSched !== bSched) return bSched - aSched;
+
+        const aTime = new Date(a.scheduled_at || 0).getTime();
+        const bTime = new Date(b.scheduled_at || 0).getTime();
+        if (aTime && bTime && Math.abs(aTime - bTime) > 1000) {
+          return aTime - bTime;
+        }
+        return new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime();
+      });
   }, [matchesDateFilter, salesMeetings, statusFilter]);
 
   const allPipelineDeals = useMemo(() => {

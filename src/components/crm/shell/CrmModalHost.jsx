@@ -148,6 +148,10 @@ export default function CrmModalHost({
         deals={deals}
         followUps={followUps}
         salesMeetings={salesMeetings}
+        proposals={proposals}
+        quotations={quotations}
+        agreements={agreements}
+        invoices={invoices}
         isDark={isDark}
         onOpenEdit={handleOpenEdit}
         onWhatsAppClick={handleWhatsAppClick}

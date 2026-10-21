@@ -3,6 +3,7 @@
 import { useMemo } from "react";
 import { X, Phone, Mail, AlertCircle, Video, Clock, Pencil, RotateCcw, Sparkles, Trash2 } from "lucide-react";
 import ActivityTimeline from "@/components/crm/shared/ActivityTimeline";
+import LeadAtoZTimeline from "./lead-details/LeadAtoZTimeline";
 import WhatsAppIcon from "../WhatsAppIcon";
 import {
   getLeadBudget,
@@ -21,6 +22,10 @@ export default function LeadDetailsDrawer({
   deals = [],
   salesMeetings = [],
   followUps = [],
+  proposals = [],
+  quotations = [],
+  agreements = [],
+  invoices = [],
   isDark = false,
   onOpenEdit,
   onWhatsAppClick,
@@ -34,7 +39,15 @@ export default function LeadDetailsDrawer({
 }) {
   const selectedLeadDeal = useMemo(() => {
     if (!selectedLead) return null;
-    return deals.find((d) => d.lead_id === selectedLead.id) || null;
+    const leadIdStr = String(selectedLead.id || "");
+    const directDealId = selectedLead.deal_id ? String(selectedLead.deal_id) : null;
+    return (
+      deals.find(
+        (d) =>
+          (d.lead_id != null && String(d.lead_id) === leadIdStr) ||
+          (directDealId && String(d.id) === directDealId)
+      ) || null
+    );
   }, [selectedLead, deals]);
 
   const selectedLeadIsLost = useMemo(() => {
@@ -54,10 +67,20 @@ export default function LeadDetailsDrawer({
 
   const selectedLeadActivity = useMemo(() => {
     if (!selectedLead) return { meetings: [], followUps: [] };
-    const meetings = salesMeetings.filter((m) => m.lead_id === selectedLead.id);
-    const flw = followUps.filter((f) => f.lead_id === selectedLead.id);
+    const leadIdStr = String(selectedLead.id || "");
+    const dealIdStr = selectedLeadDeal?.id != null ? String(selectedLeadDeal.id) : null;
+    const meetings = salesMeetings.filter(
+      (m) =>
+        (m.lead_id != null && String(m.lead_id) === leadIdStr) ||
+        (dealIdStr && m.deal_id != null && String(m.deal_id) === dealIdStr)
+    );
+    const flw = followUps.filter(
+      (f) =>
+        (f.lead_id != null && String(f.lead_id) === leadIdStr) ||
+        (dealIdStr && f.deal_id != null && String(f.deal_id) === dealIdStr)
+    );
     return { meetings, followUps: flw };
-  }, [selectedLead, salesMeetings, followUps]);
+  }, [selectedLead, selectedLeadDeal, salesMeetings, followUps]);
 
   if (!selectedLead) return null;
 
@@ -308,34 +331,17 @@ export default function LeadDetailsDrawer({
             </div>
           )}
 
-          <div>
-            <h4 className="text-xs font-bold text-gray-900 dark:text-white mb-2 uppercase tracking-wider">
-              Activity History
-            </h4>
-            <ActivityTimeline
-              isDark={isDark}
-              events={[
-                {
-                  type: "lead_created",
-                  title: "Lead Captured",
-                  description: `Captured via ${selectedLead.source || "Website"} inquiry form.`,
-                  time: new Date(selectedLead.created_at || Date.now()).toLocaleDateString(),
-                },
-                ...selectedLeadActivity.meetings.map((item) => ({
-                  type: "meeting",
-                  title: `Meeting: ${item.title}`,
-                  description: `${item.status || "scheduled"} - ${item.outcome || item.agenda || "Sales meeting"}`,
-                  time: new Date(item.scheduled_at || item.created_at || Date.now()).toLocaleString("en-IN"),
-                })),
-                ...selectedLeadActivity.followUps.map((item) => ({
-                  type: "followup",
-                  title: `Follow-up: ${item.title}`,
-                  description: `${item.status || "pending"} - ${item.notes || item.channel || "Sales follow-up"}`,
-                  time: new Date(item.completed_at || item.due_at || item.created_at || Date.now()).toLocaleString("en-IN"),
-                })),
-              ]}
-            />
-          </div>
+          <LeadAtoZTimeline
+            lead={selectedLead}
+            deal={selectedLeadDeal}
+            meetings={selectedLeadActivity.meetings}
+            followUps={selectedLeadActivity.followUps}
+            proposals={proposals}
+            quotations={quotations}
+            agreements={agreements}
+            invoices={invoices}
+            isDark={isDark}
+          />
         </div>
 
         {/* Footer */}

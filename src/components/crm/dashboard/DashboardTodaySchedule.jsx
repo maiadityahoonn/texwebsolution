@@ -46,8 +46,9 @@ export default function DashboardTodaySchedule({
       return [...currentAndUpcoming, ...pastDue].slice(0, 6);
     }
 
-    // Specific date filter: chronological order
+    // Specific date filter: chronological order of ACTIVE items only (completed are saved in DB archive)
     return list
+      .filter((item) => item.status !== "done" && item.status !== "completed")
       .sort((a, b) => new Date(a.due_at || 0).getTime() - new Date(b.due_at || 0).getTime())
       .slice(0, 6);
   }, [filteredFollowUps, dateFilter]);
@@ -68,7 +69,7 @@ export default function DashboardTodaySchedule({
         .filter((item) => new Date(item.scheduled_at || 0).getTime() >= todayStartTime)
         .sort((a, b) => new Date(a.scheduled_at || 0).getTime() - new Date(b.scheduled_at || 0).getTime());
 
-      const past = list
+      const past = scheduledList
         .filter((item) => new Date(item.scheduled_at || 0).getTime() < todayStartTime)
         .sort((a, b) => new Date(b.scheduled_at || 0).getTime() - new Date(a.scheduled_at || 0).getTime());
 
@@ -76,6 +77,7 @@ export default function DashboardTodaySchedule({
     }
 
     return list
+      .filter((item) => !["completed", "done", "cancelled"].includes(item.status))
       .sort((a, b) => new Date(a.scheduled_at || 0).getTime() - new Date(b.scheduled_at || 0).getTime())
       .slice(0, 6);
   }, [filteredMeetings, dateFilter]);

@@ -79,27 +79,125 @@ export function buildPageStatusCards({
   if (viewMode === "followups") {
     const now = Date.now();
     const allFollowUps = dateFilteredFollowUpsForStats;
-    const allPending = allFollowUps.filter((item) => item.status === "pending");
-    const overdueCount = allPending.filter((item) => item.due_at && new Date(item.due_at).getTime() < now).length;
+    const allActive = allFollowUps.filter((item) => item.status === "pending" || item.status === "scheduled");
+    const overdueCount = allActive.filter((item) => item.due_at && new Date(item.due_at).getTime() < now).length;
+    const pendingUpcoming = Math.max(0, allActive.length - overdueCount);
+    const completedCount = allFollowUps.filter((item) => item.status === "done" || item.status === "completed").length;
+    const missedCount = allFollowUps.filter((item) => item.status === "missed").length;
+
     return [
-      { id: "total_followups", label: "Total Follow-ups", value: allFollowUps.length, sub: "All scheduled follow-ups", icon: Calendar, tone: "text-blue-600 bg-blue-50 dark:bg-blue-950/30", filterKey: "all", helpText: "All follow-up activities recorded for leads and clients." },
-      { id: "pending_followups", label: "Pending", value: allPending.length - overdueCount, sub: "Upcoming actions required", badge: "Open", icon: Phone, tone: "text-amber-600 bg-amber-50 dark:bg-amber-950/30", filterKey: "pending", helpText: "Open follow-ups scheduled for today or future dates." },
-      { id: "overdue_followups", label: "Overdue", value: overdueCount, sub: "Past due action required", badge: overdueCount > 0 ? "Urgent" : null, icon: AlertCircle, tone: "text-red-600 bg-red-50 dark:bg-red-950/30", filterKey: "overdue", helpText: "Pending follow-ups whose due date has passed." },
-      { id: "completed_followups", label: "Completed", value: allFollowUps.filter((item) => item.status === "done").length, sub: "Marked done successfully", icon: CheckCircle2, tone: "text-emerald-600 bg-emerald-50 dark:bg-emerald-950/30", filterKey: "done", helpText: "Follow-ups that were successfully completed." },
-      { id: "missed_followups", label: "Missed", value: allFollowUps.filter((item) => item.status === "missed").length, sub: "Needs reschedule", icon: XCircle, tone: "text-rose-600 bg-rose-50 dark:bg-rose-950/30", filterKey: "missed", helpText: "Follow-ups marked as missed or requiring rescheduling." },
+      {
+        id: "active_followups",
+        label: "Active Follow-ups",
+        value: allActive.length,
+        sub: overdueCount > 0 ? `${overdueCount} overdue · ${pendingUpcoming} upcoming` : "All open scheduled tasks",
+        badge: overdueCount > 0 ? "Urgent" : "Active",
+        icon: Phone,
+        tone: "text-amber-600 bg-amber-50 dark:bg-amber-950/30",
+        filterKey: "all",
+        helpText: "Active follow-ups shown in the list (completed are archived in database & timeline).",
+      },
+      {
+        id: "pending_followups",
+        label: "Upcoming Pending",
+        value: pendingUpcoming,
+        sub: "Upcoming actions required",
+        badge: "Open",
+        icon: Calendar,
+        tone: "text-blue-600 bg-blue-50 dark:bg-blue-950/30",
+        filterKey: "pending",
+        helpText: "Open follow-ups scheduled for today or future dates.",
+      },
+      {
+        id: "overdue_followups",
+        label: "Overdue",
+        value: overdueCount,
+        sub: "Past due action required",
+        badge: overdueCount > 0 ? "Urgent" : null,
+        icon: AlertCircle,
+        tone: "text-red-600 bg-red-50 dark:bg-red-950/30",
+        filterKey: "overdue",
+        helpText: "Pending follow-ups whose due date has passed.",
+      },
+      {
+        id: "completed_followups",
+        label: "Completed (Saved)",
+        value: completedCount,
+        sub: "Stored safely in DB timeline",
+        badge: "DB Archive",
+        icon: CheckCircle2,
+        tone: "text-emerald-600 bg-emerald-50 dark:bg-emerald-950/30",
+        filterKey: "done",
+        helpText: "Follow-ups marked done. Safely preserved in database and lead A-Z timelines.",
+      },
+      {
+        id: "missed_followups",
+        label: "Missed",
+        value: missedCount,
+        sub: "Needs reschedule",
+        icon: XCircle,
+        tone: "text-rose-600 bg-rose-50 dark:bg-rose-950/30",
+        filterKey: "missed",
+        helpText: "Follow-ups marked as missed or requiring rescheduling.",
+      },
     ];
   }
 
   if (viewMode === "sales_meetings") {
     const allMeetings = dateFilteredMeetingsForStats;
-    const scheduledCount = allMeetings.filter((item) => item.status === "scheduled").length;
-    const completedCount = allMeetings.filter((item) => item.status === "completed").length;
+    const activeScheduled = allMeetings.filter((item) => ["scheduled", "rescheduled"].includes(item.status));
+    const todayStr = new Date().toDateString();
+    const todayCount = activeScheduled.filter(
+      (item) => item.scheduled_at && new Date(item.scheduled_at).toDateString() === todayStr
+    ).length;
+    const completedCount = allMeetings.filter((item) => ["completed", "done"].includes(item.status)).length;
     const noShowCount = allMeetings.filter((item) => ["no_show", "cancelled"].includes(item.status)).length;
+
     return [
-      { id: "total_meetings", label: "Total Meetings", value: allMeetings.length, sub: "All pipeline meetings", icon: Calendar, tone: "text-blue-600 bg-blue-50 dark:bg-blue-950/30", filterKey: "all", helpText: "All client discovery, demo, quotation, and negotiation meetings." },
-      { id: "scheduled_meetings", label: "Scheduled", value: scheduledCount, sub: "Upcoming pipeline calls", badge: "Upcoming", icon: Video, tone: "text-indigo-600 bg-indigo-50 dark:bg-indigo-950/30", filterKey: "scheduled", helpText: "Scheduled meetings waiting to be conducted." },
-      { id: "completed_meetings", label: "Completed", value: completedCount, sub: "Successfully conducted", badge: "Conducted", icon: CheckCircle2, tone: "text-emerald-600 bg-emerald-50 dark:bg-emerald-950/30", filterKey: "completed", helpText: "Successfully held discovery or closing meetings." },
-      { id: "no_show_meetings", label: "No Show / Missed", value: noShowCount, sub: "Client missed or cancelled", badge: noShowCount > 0 ? "Reschedule" : null, icon: XCircle, tone: "text-rose-600 bg-rose-50 dark:bg-rose-950/30", filterKey: "no_show", helpText: "Meetings where client did not attend or cancelled; follow up to reschedule." },
+      {
+        id: "active_meetings",
+        label: "Upcoming Meetings",
+        value: activeScheduled.length,
+        sub: todayCount > 0 ? `${todayCount} scheduled today` : "Active pipeline calls",
+        badge: todayCount > 0 ? `${todayCount} Today` : "Upcoming",
+        icon: Video,
+        tone: "text-indigo-600 bg-indigo-50 dark:bg-indigo-950/30",
+        filterKey: "all",
+        helpText: "Active client discovery, demo, and quotation meetings scheduled.",
+      },
+      {
+        id: "scheduled_meetings",
+        label: "Scheduled Today",
+        value: todayCount,
+        sub: "Meetings scheduled for today",
+        badge: "Today",
+        icon: Calendar,
+        tone: "text-blue-600 bg-blue-50 dark:bg-blue-950/30",
+        filterKey: "today",
+        helpText: "Meetings scheduled to be conducted today.",
+      },
+      {
+        id: "completed_meetings",
+        label: "Completed (Saved)",
+        value: completedCount,
+        sub: "Stored safely in DB timeline",
+        badge: "DB Archive",
+        icon: CheckCircle2,
+        tone: "text-emerald-600 bg-emerald-50 dark:bg-emerald-950/30",
+        filterKey: "completed",
+        helpText: "Conducted meetings safely saved in database and client timelines.",
+      },
+      {
+        id: "no_show_meetings",
+        label: "No Show / Missed",
+        value: noShowCount,
+        sub: "Client missed or cancelled",
+        badge: noShowCount > 0 ? "Reschedule" : null,
+        icon: XCircle,
+        tone: "text-rose-600 bg-rose-50 dark:bg-rose-950/30",
+        filterKey: "no_show",
+        helpText: "Meetings where client did not attend or cancelled; follow up to reschedule.",
+      },
     ];
   }
 

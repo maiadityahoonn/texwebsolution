@@ -146,7 +146,14 @@ export default function MeetingsTable({
                     >
                       <td className="py-3.5 px-4 max-w-[280px]">
                         <div className="flex items-center gap-2">
-                          <div className="font-bold text-gray-900 dark:text-white truncate" title={item.title}>{item.title}</div>
+                          <button
+                            type="button"
+                            onClick={() => openStageModal(item, "meeting")}
+                            className="font-bold text-gray-900 dark:text-white truncate hover:text-blue-600 dark:hover:text-blue-400 transition text-left cursor-pointer"
+                            title={`Click to view meeting timeline & notes: ${item.title}`}
+                          >
+                            {item.title}
+                          </button>
                           {isOverdue && (
                             <span className="px-2 py-0.5 rounded-full bg-red-100 dark:bg-red-950/40 text-red-600 dark:text-red-400 text-[10px] font-black uppercase shrink-0">
                               Passed
@@ -158,17 +165,19 @@ export default function MeetingsTable({
                             </span>
                           )}
                         </div>
-                        <div
+                        <button
+                          type="button"
+                          onClick={() => openStageModal(item, "meeting")}
                           title={`Stage: ${item.status === "no_show" ? "No Show" : formatStatusLabel(item.status)}${getLatestMeetingSnippet(item) ? ` - ${getLatestMeetingSnippet(item)}` : ""}`}
-                          className="text-[11px] text-gray-500 dark:text-neutral-400 truncate mt-0.5 flex items-center gap-1.5"
+                          className="text-[11px] text-gray-500 dark:text-neutral-400 truncate mt-0.5 flex items-center gap-1.5 hover:text-gray-700 dark:hover:text-neutral-200 transition text-left cursor-pointer w-full"
                         >
                           <span className="font-semibold text-gray-700 dark:text-neutral-300 shrink-0">
                             [{item.status === "no_show" ? "No Show" : formatStatusLabel(item.status)}]:
                           </span>
                           <span className="truncate">
-                            {getLatestMeetingSnippet(item) || "Sales meeting"}
+                            {getLatestMeetingSnippet(item) || "Sales meeting (Click to view timeline)"}
                           </span>
-                        </div>
+                        </button>
                       </td>
                       <td className="py-3.5 px-4">
                         {lead ? (
@@ -193,7 +202,11 @@ export default function MeetingsTable({
                         <div className="text-[11px] text-gray-400">{item.duration_minutes || 30} mins</div>
                       </td>
                       <td className="py-3.5 px-4 whitespace-nowrap min-w-[120px]">
-                        <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase ${
+                        <button
+                          type="button"
+                          onClick={() => openStageModal(item, "meeting")}
+                          title="Click to view meeting timeline & change status"
+                          className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase cursor-pointer hover:opacity-85 transition ${
                           item.status === "completed"
                             ? "bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-300"
                             : item.status === "cancelled" || item.status === "no_show"
@@ -203,7 +216,7 @@ export default function MeetingsTable({
                             : "bg-blue-50 text-blue-600 dark:bg-blue-950/40 dark:text-blue-300"
                         }`}>
                           {item.status === "no_show" ? "No Show" : formatStatusLabel(item.status)}
-                        </span>
+                        </button>
                       </td>
                       <td className="py-3.5 px-4 text-right whitespace-nowrap min-w-[260px]">
                         <div className="flex items-center justify-end gap-1.5 shrink-0">

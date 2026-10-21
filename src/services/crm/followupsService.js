@@ -41,6 +41,7 @@ export async function getSalesFollowUps(options = null) {
     let query = supabase
       .from('sales_followups')
       .select('*', withCount ? { count: 'exact' } : undefined)
+      .order('status', { ascending: false })
       .order('due_at', { ascending: true });
 
     if (options?.status && options.status !== 'all') query = query.eq('status', options.status);

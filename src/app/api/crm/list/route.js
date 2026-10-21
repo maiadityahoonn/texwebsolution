@@ -195,8 +195,15 @@ export async function GET(request) {
 
   let query = admin
     .from(config.table)
-    .select("*", { count: "exact" })
-    .order(config.order, { ascending: config.ascending });
+    .select("*", { count: "exact" });
+
+  if (resource === "sales_followups") {
+    query = query
+      .order("status", { ascending: false })
+      .order("due_at", { ascending: true });
+  } else {
+    query = query.order(config.order, { ascending: config.ascending });
+  }
 
   const status = searchParams.get("status") || "";
   if (resource === "leads" && status === "active") {

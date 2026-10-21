@@ -113,10 +113,10 @@ export function useCrmData({ sessionUserId = "", pushLiveSalesNotification } = {
 
       if (shouldLoad(["crm", "leads", "overview", "sales_reports", "pipeline", "sales_followups"])) {
         addJob("followups", async () => {
-          const followUpsRes = await getSalesFollowUps({ page: 1, pageSize: 100, withCount: true });
+          const followUpsRes = await getSalesFollowUps({ page: 1, pageSize: 500, withCount: true });
           setSalesFollowUps(followUpsRes?.data || followUpsRes || []);
           if (followUpsRes?.data) {
-            setFollowUpPagination({ count: followUpsRes.count || 0, page: followUpsRes.page || 1, pageSize: followUpsRes.pageSize || 100, loading: false });
+            setFollowUpPagination({ count: followUpsRes.count || 0, page: followUpsRes.page || 1, pageSize: followUpsRes.pageSize || 500, loading: false });
           }
           loadedScopesRef.current.add("followups");
         });
@@ -202,7 +202,7 @@ export function useCrmData({ sessionUserId = "", pushLiveSalesNotification } = {
     setFollowUpPagination((prev) => ({ ...prev, loading: true }));
     const result = await getSalesFollowUps({
       page: params.page || 1,
-      pageSize: params.pageSize || 50,
+      pageSize: params.pageSize || 200,
       search: params.search || "",
       status: params.status || "",
       dateFrom: params.dateFrom || "",
@@ -213,7 +213,7 @@ export function useCrmData({ sessionUserId = "", pushLiveSalesNotification } = {
     setFollowUpPagination({
       count: result?.count || 0,
       page: result?.page || params.page || 1,
-      pageSize: result?.pageSize || params.pageSize || 50,
+      pageSize: result?.pageSize || params.pageSize || 200,
       loading: false,
     });
   }, []);

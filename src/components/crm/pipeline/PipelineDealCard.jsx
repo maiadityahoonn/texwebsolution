@@ -37,22 +37,53 @@ export default function PipelineDealCard({
   openInvoiceModal = () => {},
   onNavigateSection = () => {},
 }) {
-  const dealFollowUps = followUps
-    .filter(
-      (item) =>
-        (item.deal_id === deal.id || (deal.lead_id && item.lead_id === deal.lead_id)) &&
-        item.status === "pending"
-    )
+  const lead = leads.find((item) => item.id === deal.lead_id);
+  const dealLeadName = lead?.name?.toLowerCase().trim();
+  const dealTitlePrefix = deal.title?.split(" - ")[0]?.toLowerCase().trim();
+
+  const allDealFollowUps = followUps.filter((item) => {
+    const matchId =
+      String(item.deal_id || "") === String(deal.id) ||
+      (deal.lead_id && String(item.lead_id || "") === String(deal.lead_id));
+    const matchName =
+      (dealLeadName && dealLeadName.length > 2 && item.title?.toLowerCase().includes(dealLeadName)) ||
+      (dealTitlePrefix && dealTitlePrefix.length > 2 && item.title?.toLowerCase().includes(dealTitlePrefix));
+    return matchId || matchName;
+  });
+
+  const dealFollowUps = allDealFollowUps
+    .filter((item) => item.status === "pending" || item.status === "scheduled")
     .sort((a, b) => new Date(a.due_at || 0).getTime() - new Date(b.due_at || 0).getTime());
   const nextFollowUp = dealFollowUps[0];
-  const nextMeeting = salesMeetings
-    .filter(
-      (item) =>
-        (item.deal_id === deal.id || (deal.lead_id && item.lead_id === deal.lead_id)) &&
-        !["cancelled", "completed", "no_show"].includes(item.status)
-    )
+
+  const lastCompletedFollowUp = allDealFollowUps
+    .filter((item) => item.status === "done" || item.status === "completed")
+    .sort(
+      (a, b) =>
+        new Date(b.updated_at || b.due_at || 0).getTime() -
+        new Date(a.updated_at || a.due_at || 0).getTime()
+    )[0];
+
+  const allDealMeetings = salesMeetings.filter((item) => {
+    const matchId =
+      String(item.deal_id || "") === String(deal.id) ||
+      (deal.lead_id && String(item.lead_id || "") === String(deal.lead_id));
+    const matchName =
+      (dealLeadName && dealLeadName.length > 2 && item.title?.toLowerCase().includes(dealLeadName)) ||
+      (dealTitlePrefix && dealTitlePrefix.length > 2 && item.title?.toLowerCase().includes(dealTitlePrefix));
+    return matchId || matchName;
+  });
+
+  const nextMeeting = allDealMeetings
+    .filter((item) => !["cancelled", "completed", "no_show"].includes(item.status))
     .sort(
       (a, b) => new Date(a.scheduled_at || 0).getTime() - new Date(b.scheduled_at || 0).getTime()
+    )[0];
+
+  const lastCompletedMeeting = allDealMeetings
+    .filter((item) => item.status === "completed")
+    .sort(
+      (a, b) => new Date(b.scheduled_at || 0).getTime() - new Date(a.scheduled_at || 0).getTime()
     )[0];
   const latestQuotation = getLatestLinkedDoc([...proposals, ...quotations], deal);
   const latestAgreement = getLatestLinkedDoc(agreements, deal);
@@ -62,8 +93,6 @@ export default function PipelineDealCard({
     getDocStatusBadge("Agreement", latestAgreement),
     getDocStatusBadge("Invoice", latestInvoice),
   ].filter(Boolean);
-
-  const lead = leads.find((item) => item.id === deal.lead_id);
   const clientName = lead?.name || deal.title?.split(" - ")[0] || deal.title || "Deal";
   const serviceName =
     deal.service || lead?.service || deal.title?.split(" - ")[1] || "Tech Development";
@@ -258,10 +287,50 @@ export default function PipelineDealCard({
               ) : null}
             </div>
           )}
-          {!meetingDateStr && !followUpDateStr && customNotes && (
-            <div className="text-[10px] text-gray-500 dark:text-neutral-400 px-1 italic whitespace-pre-line break-words">
-              {customNotes}
-            </div>
+          {!meetingDateStr && !followUpDateStr && (
+            lastCompletedFollowUp ? (
+              <div
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setSelectedDeal(deal);
+                  setDealModalTab("followups");
+                }}
+                title={`Last follow-up completed: ${lastCompletedFollowUp.title} · Click to view history or schedule next`}
+                className="flex items-center justify-between gap-1 text-[9px] min-[360px]:text-[9.5px] font-medium text-emerald-800 dark:text-emerald-300 bg-emerald-50/70 dark:bg-emerald-950/30 px-1.5 min-[360px]:px-2 py-0.5 rounded-lg border border-emerald-200/50 dark:border-emerald-900/30 min-w-0 hover:bg-emerald-100/60 transition cursor-pointer"
+              >
+                <div className="flex items-center gap-1 truncate min-w-0 flex-1">
+                  <CheckCircle2 className="w-2.5 h-2.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                  <span className="font-bold shrink-0">Done:</span>
+                  <span className="truncate text-gray-600 dark:text-neutral-400 font-normal">{lastCompletedFollowUp.title}</span>
+                </div>
+                <span className="text-[8px] font-bold text-emerald-700 dark:text-emerald-400 shrink-0">
+                  + Next
+                </span>
+              </div>
+            ) : lastCompletedMeeting ? (
+              <div
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setSelectedDeal(deal);
+                  setDealModalTab("meetings");
+                }}
+                title={`Last meeting conducted: ${lastCompletedMeeting.title} · Click to view notes`}
+                className="flex items-center justify-between gap-1 text-[9px] min-[360px]:text-[9.5px] font-medium text-blue-800 dark:text-blue-300 bg-blue-50/70 dark:bg-blue-950/30 px-1.5 min-[360px]:px-2 py-0.5 rounded-lg border border-blue-200/50 dark:border-blue-900/30 min-w-0 hover:bg-blue-100/60 transition cursor-pointer"
+              >
+                <div className="flex items-center gap-1 truncate min-w-0 flex-1">
+                  <CheckCircle2 className="w-2.5 h-2.5 text-blue-600 dark:text-blue-400 shrink-0" />
+                  <span className="font-bold shrink-0">Met:</span>
+                  <span className="truncate text-gray-600 dark:text-neutral-400 font-normal">{lastCompletedMeeting.title}</span>
+                </div>
+                <span className="text-[8px] font-bold text-blue-700 dark:text-blue-400 shrink-0">
+                  Notes
+                </span>
+              </div>
+            ) : customNotes ? (
+              <div className="text-[10px] text-gray-500 dark:text-neutral-400 px-1 italic whitespace-pre-line break-words">
+                {customNotes}
+              </div>
+            ) : null
           )}
         </div>
       )}

@@ -163,25 +163,65 @@ export default function StageChangeModal({
             </div>
           </div>
 
-          {/* History Timeline */}
+          {/* Lifecycle Timeline & History Notes */}
           <div className="space-y-2.5 min-[360px]:space-y-3">
             <div className="flex items-center justify-between gap-2 flex-wrap">
               <div className="flex items-center gap-1.5 min-[360px]:gap-2 min-w-0">
                 <Clock className="w-3.5 h-3.5 min-[360px]:w-4 min-[360px]:h-4 text-orange-600 shrink-0" />
                 <span className="font-bold text-gray-900 dark:text-white text-xs min-[360px]:text-sm truncate">
-                  Previous Notes & History
+                  Lifecycle Timeline & Discussion Notes
                 </span>
               </div>
-              {hist.length > 0 && (
-                <span className="px-2 py-0.5 rounded-full bg-gray-100 dark:bg-slate-800 text-[10px] font-bold text-gray-600 dark:text-neutral-400 shrink-0">
-                  {hist.length} updates
-                </span>
+              <span className="px-2 py-0.5 rounded-full bg-orange-100 dark:bg-orange-950/40 text-orange-700 dark:text-orange-300 text-[10px] font-bold shrink-0">
+                {hist.length + 1} events
+              </span>
+            </div>
+
+            {/* Lifecycle Milestones */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px]">
+              <div className="p-2.5 rounded-xl bg-blue-50/60 dark:bg-blue-950/30 border border-blue-200/60 dark:border-blue-900/40 space-y-0.5">
+                <div className="font-bold text-blue-900 dark:text-blue-200 flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-blue-500"></span>
+                  <span>{target.type === "meeting" ? "Meeting Scheduled" : "Follow-up Scheduled"}</span>
+                </div>
+                <div className="text-[10px] text-gray-600 dark:text-neutral-400">
+                  Target: {target.type === "meeting"
+                    ? (target.item.scheduled_at ? new Date(target.item.scheduled_at).toLocaleString("en-IN") : "-")
+                    : (target.item.due_at ? new Date(target.item.due_at).toLocaleString("en-IN") : "-")}
+                </div>
+                {target.item.created_at && (
+                  <div className="text-[9.5px] text-gray-400">
+                    Created: {new Date(target.item.created_at).toLocaleString("en-IN")}
+                  </div>
+                )}
+              </div>
+
+              {["done", "completed"].includes(target.item.status) || target.item.completed_at ? (
+                <div className="p-2.5 rounded-xl bg-emerald-50/60 dark:bg-emerald-950/30 border border-emerald-200/60 dark:border-emerald-900/40 space-y-0.5">
+                  <div className="font-bold text-emerald-900 dark:text-emerald-200 flex items-center gap-1.5">
+                    <Check className="w-3.5 h-3.5 text-emerald-600" />
+                    <span>Completed</span>
+                  </div>
+                  <div className="text-[10px] text-gray-600 dark:text-neutral-400">
+                    {target.item.completed_at ? new Date(target.item.completed_at).toLocaleString("en-IN") : "Successfully closed"}
+                  </div>
+                </div>
+              ) : (
+                <div className="p-2.5 rounded-xl bg-amber-50/60 dark:bg-amber-950/30 border border-amber-200/60 dark:border-amber-900/40 space-y-0.5">
+                  <div className="font-bold text-amber-900 dark:text-amber-200 flex items-center gap-1.5">
+                    <Clock className="w-3.5 h-3.5 text-amber-600" />
+                    <span>Status: {formatStatusLabel(target.item.status)}</span>
+                  </div>
+                  <div className="text-[10px] text-gray-600 dark:text-neutral-400">
+                    Active touchpoint in sales rhythm.
+                  </div>
+                </div>
               )}
             </div>
 
             {hist.length === 0 ? (
               <div className="p-4 min-[360px]:p-6 text-center rounded-xl min-[360px]:rounded-2xl bg-gray-50/60 dark:bg-slate-800/30 border border-dashed border-gray-200 dark:border-slate-700 text-gray-400 text-xs">
-                No previous stage history or notes found yet.
+                No previous notes or discussion logs found yet. Add notes above to record timeline.
               </div>
             ) : (
               <div className="space-y-2 min-[360px]:space-y-2.5 max-h-48 min-[360px]:max-h-60 overflow-y-auto pr-1">

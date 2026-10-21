@@ -24,7 +24,12 @@ export default function DashboardQuickNav({
     activePipelineValue,
     filteredFollowUps,
     filteredMeetings,
+    pendingFollowUps = [],
+    scheduledMeetings = [],
   } = metrics;
+
+  const activeFollowUpsCount = pendingFollowUps.length;
+  const activeMeetingsCount = scheduledMeetings.length;
 
   const modules = [
     {
@@ -46,17 +51,17 @@ export default function DashboardQuickNav({
     {
       section: "sales_followups",
       title: "Follow-ups & WhatsApp",
-      sub: `${filteredFollowUps.length} scheduled actions`,
+      sub: `${activeFollowUpsCount} active scheduled tasks`,
       icon: PhoneCall,
-      badge: `${filteredFollowUps.length} Scheduled`,
+      badge: `${activeFollowUpsCount} Active`,
       tone: "text-teal-600 bg-teal-50 dark:bg-teal-950/30",
     },
     {
       section: "sales_meetings",
       title: "Client Video Meetings",
-      sub: `${filteredMeetings.length} calls & demos`,
+      sub: `${activeMeetingsCount} upcoming calls & demos`,
       icon: Calendar,
-      badge: `${filteredMeetings.length} Calls`,
+      badge: `${activeMeetingsCount} Active`,
       tone: "text-indigo-600 bg-indigo-50 dark:bg-indigo-950/30",
     },
     {

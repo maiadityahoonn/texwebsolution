@@ -61,12 +61,12 @@ export default function DashboardStatsCards({
     },
     {
       id: "followups",
-      label: "Scheduled Follow-ups",
-      value: metrics.filteredFollowUps.length,
+      label: "Active Follow-ups",
+      value: metrics.pendingFollowUps.length,
       sub:
         metrics.overdueFollowUps.length > 0
-          ? `${metrics.overdueFollowUps.length} overdue urgency`
-          : `${metrics.todayFollowUps.length} scheduled today`,
+          ? `${metrics.overdueFollowUps.length} overdue · ${metrics.todayFollowUps.length} today`
+          : `${metrics.todayFollowUps.length} scheduled today · ${metrics.completedFollowUps.length} done in DB`,
       badge: metrics.overdueFollowUps.length > 0 ? "Urgent" : "Active",
       badgeTone:
         metrics.overdueFollowUps.length > 0
@@ -81,9 +81,9 @@ export default function DashboardStatsCards({
     },
     {
       id: "meetings",
-      label: "Client Meetings",
-      value: metrics.filteredMeetings.length,
-      sub: `${metrics.scheduledMeetings.length} calls scheduled`,
+      label: "Upcoming Meetings",
+      value: metrics.scheduledMeetings.length,
+      sub: `${metrics.todayMeetings.length} today · ${metrics.completedMeetings.length} completed in DB`,
       badge: metrics.todayMeetings.length > 0 ? `${metrics.todayMeetings.length} Today` : "Calls",
       icon: Calendar,
       tone: "text-indigo-600 dark:text-indigo-400",

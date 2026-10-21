@@ -99,22 +99,31 @@ export default function FollowUpsTable({
                     >
                       <td className="py-3.5 px-4 max-w-[280px]">
                         <div className="flex items-center gap-2">
-                          <div className="font-bold text-gray-900 dark:text-white truncate" title={item.title}>{item.title}</div>
+                          <button
+                            type="button"
+                            onClick={() => openStageModal(item, "followup")}
+                            className="font-bold text-gray-900 dark:text-white truncate hover:text-orange-600 dark:hover:text-orange-400 transition text-left cursor-pointer"
+                            title={`Click to view timeline & history: ${item.title}`}
+                          >
+                            {item.title}
+                          </button>
                           {isOverdue && (
                             <span className="px-2 py-0.5 rounded-full bg-red-100 text-red-600 text-[10px] font-black uppercase shrink-0">Overdue</span>
                           )}
                         </div>
-                        <div
+                        <button
+                          type="button"
+                          onClick={() => openStageModal(item, "followup")}
                           title={`Stage: ${formatStatusLabel(item.status)}${getLatestNoteSnippet(item.notes) ? ` - ${getLatestNoteSnippet(item.notes)}` : ""}`}
-                          className="text-[11px] text-gray-500 dark:text-neutral-400 truncate mt-0.5 flex items-center gap-1.5"
+                          className="text-[11px] text-gray-500 dark:text-neutral-400 truncate mt-0.5 flex items-center gap-1.5 hover:text-gray-700 dark:hover:text-neutral-200 transition text-left cursor-pointer w-full"
                         >
                           <span className="font-semibold text-gray-700 dark:text-neutral-300 shrink-0">
                             [{formatStatusLabel(item.status)}]:
                           </span>
                           <span className="truncate">
-                            {getLatestNoteSnippet(item.notes) || "No notes"}
+                            {getLatestNoteSnippet(item.notes) || "No notes (Click to view timeline)"}
                           </span>
-                        </div>
+                        </button>
                       </td>
                       <td className="py-3.5 px-4">
                         {lead ? (
@@ -149,9 +158,13 @@ export default function FollowUpsTable({
                       </td>
                       <td className="py-3.5 px-4 text-gray-500 text-xs whitespace-nowrap">{new Date(item.due_at).toLocaleString("en-IN")}</td>
                       <td className="py-3.5 px-4 whitespace-nowrap min-w-[110px]">
-                        <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase ${
+                        <button
+                          type="button"
+                          onClick={() => openStageModal(item, "followup")}
+                          title="Click to view timeline & notes history"
+                          className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase cursor-pointer hover:opacity-85 transition ${
                           item.status === "done" ? "bg-emerald-50 text-emerald-600" : item.status === "missed" || isOverdue ? "bg-red-50 text-red-600" : "bg-amber-50 text-amber-600"
-                        }`}>{item.status}</span>
+                        }`}>{item.status}</button>
                       </td>
                       <td className="py-3.5 px-4 text-right whitespace-nowrap min-w-[210px]">
                         <div className="flex items-center justify-end gap-1.5 shrink-0">

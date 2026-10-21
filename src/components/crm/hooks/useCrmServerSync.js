@@ -59,7 +59,7 @@ export function useCrmServerSync({
       const range = getServerDateRange();
       onFetchFollowUpsPage({
         page: 1,
-        pageSize: 100,
+        pageSize: 500,
         search: "",
         ...range,
       });
@@ -91,7 +91,7 @@ export function useCrmServerSync({
       const genericRange = getServerDateRange();
       onFetchLeadsPage?.({ page: 1, pageSize: 200, search: "", ...leadRange });
       onFetchDealsPage?.({ page: 1, pageSize: 100, search: "", stage: "", ...genericRange });
-      onFetchFollowUpsPage?.({ page: 1, pageSize: 100, search: "", ...genericRange });
+      onFetchFollowUpsPage?.({ page: 1, pageSize: 500, search: "", ...genericRange });
       onFetchMeetingsPage?.({ page: 1, pageSize: 100, search: "", status: "", ...genericRange });
       onRefreshLeadSummary?.(leadRange);
     }, 350);
@@ -148,7 +148,7 @@ export function useCrmServerSync({
         await Promise.all([
           onFetchLeadsPage?.({ page: 1, pageSize: 200, search: "", force: true, ...leadRange }),
           onFetchDealsPage?.({ page: 1, pageSize: 100, search: "", stage: "", force: true, ...genericRange }),
-          onFetchFollowUpsPage?.({ page: 1, pageSize: 100, search: "", force: true, ...genericRange }),
+          onFetchFollowUpsPage?.({ page: 1, pageSize: 500, search: "", force: true, ...genericRange }),
           onFetchMeetingsPage?.({ page: 1, pageSize: 100, search: "", status: "", force: true, ...genericRange }),
           onRefreshLeadSummary?.(leadRange),
         ]);
