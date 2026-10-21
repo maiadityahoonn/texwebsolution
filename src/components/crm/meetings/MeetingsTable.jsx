@@ -6,7 +6,7 @@ import { Calendar, Check, History, Phone, RotateCcw, Trash2, Video, X } from "lu
 import TablePagination from "../shared/TablePagination";
 import { TableSkeleton as DefaultTableSkeleton } from "../shared/CrmSkeletons";
 import DefaultResponsiveTableContainer from "../shared/ResponsiveTableContainer";
-import { resolveLinkedContact } from "../shared/meetingUtils";
+import { resolveLinkedContact, isMeetingActive, isMeetingNoShow } from "../shared/meetingUtils";
 
 function WhatsAppIcon({ className = "w-4 h-4" }) {
   return (
@@ -268,7 +268,7 @@ export default function MeetingsTable({
                           >
                             <History className="w-3.5 h-3.5" />
                           </button>
-                          {item.status === "scheduled" && (
+                          {isMeetingActive(item.status) && (
                             <>
                               <button
                                 type="button"
@@ -298,6 +298,17 @@ export default function MeetingsTable({
                                 <X className="w-3.5 h-3.5" />
                               </button>
                             </>
+                          )}
+                          {isMeetingNoShow(item.status) && (
+                            <button
+                              type="button"
+                              onClick={() => openSalesMeetingRescheduleModal(item)}
+                              className="p-1.5 rounded-lg text-amber-700 bg-amber-50 dark:bg-amber-950/40 hover:bg-amber-100 transition shrink-0 cursor-pointer"
+                              title="Reschedule No Show Meeting"
+                              aria-label="Reschedule Meeting"
+                            >
+                              <RotateCcw className="w-3.5 h-3.5" />
+                            </button>
                           )}
                           <button
                             type="button"

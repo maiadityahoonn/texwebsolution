@@ -73,8 +73,8 @@ export function useCrmServerSync({
     const timer = setTimeout(() => {
       const range = getServerDateRange();
       onFetchMeetingsPage({
-        page: meetingPage,
-        pageSize: meetingPageSize,
+        page: 1,
+        pageSize: 200,
         search: "",
         status: "",
         ...range,
@@ -82,7 +82,7 @@ export function useCrmServerSync({
     }, 350);
     return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [customDateRange?.from, customDateRange?.to, dateFilter, meetingPage, meetingPageSize, onFetchMeetingsPage, selectedDate, viewMode]);
+  }, [customDateRange?.from, customDateRange?.to, dateFilter, onFetchMeetingsPage, selectedDate, viewMode]);
 
   useEffect(() => {
     if (viewMode !== "dashboard") return;
@@ -135,8 +135,8 @@ export function useCrmServerSync({
         });
       } else if (viewMode === "sales_meetings") {
         await onFetchMeetingsPage?.({
-          page: meetingPage,
-          pageSize: meetingPageSize,
+          page: 1,
+          pageSize: 200,
           search: "",
           status: "",
           force: true,

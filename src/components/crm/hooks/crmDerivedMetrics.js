@@ -15,6 +15,16 @@ import {
   ShieldAlert,
 } from "lucide-react";
 import { CLOSED_PIPELINE_STAGES, getLeadNextAction } from "../shared/leadUtils";
+import {
+  isMeetingActive,
+  isMeetingCompleted,
+  isMeetingNoShow,
+  isFollowUpActive,
+  isFollowUpCompleted,
+  isFollowUpMissed,
+  isFollowUpOverdue,
+  isFollowUpUpcomingPending,
+} from "../shared/meetingUtils";
 
 export function buildPageStatusCards({
   viewMode,
@@ -79,17 +89,17 @@ export function buildPageStatusCards({
   if (viewMode === "followups") {
     const now = Date.now();
     const allFollowUps = dateFilteredFollowUpsForStats;
-    const allActive = allFollowUps.filter((item) => item.status === "pending" || item.status === "scheduled");
-    const overdueCount = allActive.filter((item) => item.due_at && new Date(item.due_at).getTime() < now).length;
-    const pendingUpcoming = Math.max(0, allActive.length - overdueCount);
-    const completedCount = allFollowUps.filter((item) => item.status === "done" || item.status === "completed").length;
-    const missedCount = allFollowUps.filter((item) => item.status === "missed").length;
+    const activeCount = allFollowUps.filter((item) => isFollowUpActive(item.status)).length;
+    const overdueCount = allFollowUps.filter((item) => isFollowUpOverdue(item, now)).length;
+    const pendingUpcoming = allFollowUps.filter((item) => isFollowUpUpcomingPending(item, now)).length;
+    const completedCount = allFollowUps.filter((item) => isFollowUpCompleted(item.status)).length;
+    const missedCount = allFollowUps.filter((item) => isFollowUpMissed(item.status)).length;
 
     return [
       {
         id: "active_followups",
         label: "Active Follow-ups",
-        value: allActive.length,
+        value: activeCount,
         sub: overdueCount > 0 ? `${overdueCount} overdue · ${pendingUpcoming} upcoming` : "All open scheduled tasks",
         badge: overdueCount > 0 ? "Urgent" : "Active",
         icon: Phone,
@@ -145,19 +155,19 @@ export function buildPageStatusCards({
 
   if (viewMode === "sales_meetings") {
     const allMeetings = dateFilteredMeetingsForStats;
-    const activeScheduled = allMeetings.filter((item) => ["scheduled", "rescheduled"].includes(item.status));
     const todayStr = new Date().toDateString();
-    const todayCount = activeScheduled.filter(
-      (item) => item.scheduled_at && new Date(item.scheduled_at).toDateString() === todayStr
+    const activeCount = allMeetings.filter((item) => isMeetingActive(item.status)).length;
+    const todayCount = allMeetings.filter(
+      (item) => isMeetingActive(item.status) && item.scheduled_at && new Date(item.scheduled_at).toDateString() === todayStr
     ).length;
-    const completedCount = allMeetings.filter((item) => ["completed", "done"].includes(item.status)).length;
-    const noShowCount = allMeetings.filter((item) => ["no_show", "cancelled"].includes(item.status)).length;
+    const completedCount = allMeetings.filter((item) => isMeetingCompleted(item.status)).length;
+    const noShowCount = allMeetings.filter((item) => isMeetingNoShow(item.status)).length;
 
     return [
       {
         id: "active_meetings",
         label: "Upcoming Meetings",
-        value: activeScheduled.length,
+        value: activeCount,
         sub: todayCount > 0 ? `${todayCount} scheduled today` : "Active pipeline calls",
         badge: todayCount > 0 ? `${todayCount} Today` : "Upcoming",
         icon: Video,

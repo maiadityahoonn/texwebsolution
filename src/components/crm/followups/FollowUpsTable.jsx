@@ -6,7 +6,7 @@ import { Check, History, RotateCcw, Trash2, X } from "lucide-react";
 import TablePagination from "../shared/TablePagination";
 import { TableSkeleton as DefaultTableSkeleton } from "../shared/CrmSkeletons";
 import DefaultResponsiveTableContainer from "../shared/ResponsiveTableContainer";
-import { resolveLinkedContact } from "../shared/meetingUtils";
+import { resolveLinkedContact, isFollowUpCompleted, isFollowUpMissed } from "../shared/meetingUtils";
 
 function WhatsAppIcon({ className = "w-4 h-4" }) {
   return (
@@ -163,7 +163,7 @@ export default function FollowUpsTable({
                           onClick={() => openStageModal(item, "followup")}
                           title="Click to view timeline & notes history"
                           className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase cursor-pointer hover:opacity-85 transition ${
-                          item.status === "done" ? "bg-emerald-50 text-emerald-600" : item.status === "missed" || isOverdue ? "bg-red-50 text-red-600" : "bg-amber-50 text-amber-600"
+                          isFollowUpCompleted(item.status) ? "bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-300" : isFollowUpMissed(item.status) || isOverdue ? "bg-red-50 text-red-600 dark:bg-red-950/40 dark:text-red-300" : "bg-amber-50 text-amber-600 dark:bg-amber-950/40 dark:text-amber-300"
                         }`}>{item.status}</button>
                       </td>
                       <td className="py-3.5 px-4 text-right whitespace-nowrap min-w-[210px]">
@@ -214,7 +214,7 @@ export default function FollowUpsTable({
                               </button>
                             </>
                           )}
-                          {["pending", "missed"].includes(item.status) && (
+                          {(item.status === "pending" || isFollowUpMissed(item.status)) && (
                             <button
                               onClick={() => openRescheduleModal(item)}
                               className="p-1.5 rounded-lg text-blue-600 bg-blue-50 dark:bg-blue-950/40 hover:bg-blue-100 transition shrink-0"

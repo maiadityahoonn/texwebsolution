@@ -6,6 +6,16 @@ import { buildAiInsights, buildPageStatusCards, buildSalesReport } from "./crmDe
 import { matchesDateFilter as matchesDateFilterUtil, getLeadServerDateRange as getLeadServerDateRangeUtil } from "./crmDateFilterUtils";
 import { dedupeLeads, calculateLeadLetterCounts, filterLeadsList } from "./crmLeadFilterHelpers";
 import { calculateAggregateStats, calculateLeadSummaryMetrics } from "./crmMetricsHelpers";
+import {
+  isMeetingActive,
+  isMeetingCompleted,
+  isMeetingNoShow,
+  isFollowUpActive,
+  isFollowUpCompleted,
+  isFollowUpMissed,
+  isFollowUpOverdue,
+  isFollowUpUpcomingPending,
+} from "../shared/meetingUtils";
 
 export function useCrmCalculations({
   leads = [],
@@ -129,31 +139,30 @@ export function useCrmCalculations({
           const matchesCreated = matchesDateFilter(item, "created_at");
           if (!matchesDue && !matchesCreated) return false;
         }
-        const isOverdue = (item.status === "pending" || item.status === "scheduled") && item.due_at && new Date(item.due_at).getTime() < now;
 
         if (statusFilter === "done" || statusFilter === "completed") {
-          return item.status === "done" || item.status === "completed";
+          return isFollowUpCompleted(item.status);
         }
         if (statusFilter === "overdue") {
-          return isOverdue;
+          return isFollowUpOverdue(item, now);
         }
         if (statusFilter === "missed") {
-          return item.status === "missed";
+          return isFollowUpMissed(item.status);
         }
         if (statusFilter === "pending" || statusFilter === "active") {
-          return (item.status === "pending" || item.status === "scheduled") && !isOverdue;
+          return isFollowUpUpcomingPending(item, now);
         }
         if (statusFilter === "all_with_completed") {
           return true;
         }
 
-        // Default 'all' or empty: Show actionable pending & overdue follow-ups, exclude completed/done
-        return item.status !== "done" && item.status !== "completed";
+        // Default 'all' or empty: Show actionable active follow-ups (pending & overdue), strictly exclude completed & missed
+        return isFollowUpActive(item.status);
       })
       .sort((a, b) => {
         const nowMs = Date.now();
-        const aOverdue = (a.status === "pending" || a.status === "scheduled") && a.due_at && new Date(a.due_at).getTime() < nowMs ? 1 : 0;
-        const bOverdue = (b.status === "pending" || b.status === "scheduled") && b.due_at && new Date(b.due_at).getTime() < nowMs ? 1 : 0;
+        const aOverdue = isFollowUpOverdue(a, nowMs) ? 1 : 0;
+        const bOverdue = isFollowUpOverdue(b, nowMs) ? 1 : 0;
         if (aOverdue !== bOverdue) return bOverdue - aOverdue;
 
         const aDue = new Date(a.due_at || 0).getTime();
@@ -170,30 +179,34 @@ export function useCrmCalculations({
     return salesMeetings
       .filter((item) => {
         if (!matchesDateFilter(item, "scheduled_at")) return false;
-        const isToday = Boolean(item.scheduled_at && new Date(item.scheduled_at).toDateString() === todayStr);
+        const isToday = Boolean(
+          isMeetingActive(item.status) &&
+          item.scheduled_at &&
+          new Date(item.scheduled_at).toDateString() === todayStr
+        );
 
         if (statusFilter === "completed" || statusFilter === "done") {
-          return item.status === "completed" || item.status === "done";
+          return isMeetingCompleted(item.status);
         }
         if (statusFilter === "no_show" || statusFilter === "cancelled" || statusFilter === "missed") {
-          return ["no_show", "cancelled"].includes(item.status);
+          return isMeetingNoShow(item.status);
         }
         if (statusFilter === "today") {
           return isToday;
         }
         if (statusFilter === "scheduled" || statusFilter === "pending" || statusFilter === "active") {
-          return ["scheduled", "pending"].includes(item.status);
+          return isMeetingActive(item.status);
         }
         if (statusFilter === "all_with_completed") {
           return true;
         }
 
-        // Default 'all' or empty: Show upcoming scheduled meetings, exclude completed & cancelled
-        return !["completed", "done", "cancelled"].includes(item.status);
+        // Default 'all' or empty: Show upcoming active meetings, strictly exclude completed and no_show
+        return isMeetingActive(item.status);
       })
       .sort((a, b) => {
-        const aSched = ["scheduled", "pending"].includes(a.status) ? 1 : 0;
-        const bSched = ["scheduled", "pending"].includes(b.status) ? 1 : 0;
+        const aSched = isMeetingActive(a.status) ? 1 : 0;
+        const bSched = isMeetingActive(b.status) ? 1 : 0;
         if (aSched !== bSched) return bSched - aSched;
 
         const aTime = new Date(a.scheduled_at || 0).getTime();
@@ -258,22 +271,13 @@ export function useCrmCalculations({
     return filteredFollowUps.slice(start, start + followUpPageSize);
   }, [filteredFollowUps, followUpPageSize, safeFollowUpPage]);
 
-  const meetingTotal = meetingPagination?.count ?? filteredSalesMeetings.length;
-  const meetingBasePageCount = Math.max(
-    1,
-    Math.ceil(Math.max(meetingTotal, filteredSalesMeetings.length) / meetingPageSize)
-  );
-  const safeMeetingPage = onFetchMeetingsPage ? Math.max(1, meetingPage) : Math.min(meetingPage, meetingBasePageCount);
-  const meetingPageCount = Math.max(
-    safeMeetingPage,
-    meetingBasePageCount,
-    onFetchMeetingsPage && filteredSalesMeetings.length >= meetingPageSize ? safeMeetingPage + 1 : 1
-  );
+  const meetingTotal = filteredSalesMeetings.length;
+  const meetingPageCount = Math.max(1, Math.ceil(meetingTotal / meetingPageSize));
+  const safeMeetingPage = Math.min(Math.max(1, meetingPage), meetingPageCount);
   const paginatedSalesMeetings = useMemo(() => {
-    if (onFetchMeetingsPage) return filteredSalesMeetings;
     const start = (safeMeetingPage - 1) * meetingPageSize;
     return filteredSalesMeetings.slice(start, start + meetingPageSize);
-  }, [filteredSalesMeetings, meetingPageSize, onFetchMeetingsPage, safeMeetingPage]);
+  }, [filteredSalesMeetings, meetingPageSize, safeMeetingPage]);
 
   const isLeadsLoading = Boolean(leadPagination?.loading || (isLoading && leads.length === 0));
   const isPipelineLoading = Boolean(dealPagination?.loading || (isLoading && deals.length === 0));

@@ -21,6 +21,48 @@ export const DEFAULT_MEETING_SETTINGS = {
   default_reminder_minutes: 10,
 };
 
+// ==========================================
+// MEETINGS STATUS CLASSIFIERS
+// ==========================================
+export function isMeetingCompleted(status) {
+  const s = String(status || "").toLowerCase().trim();
+  return s === "completed" || s === "done";
+}
+
+export function isMeetingNoShow(status) {
+  const s = String(status || "").toLowerCase().trim().replace(/[-\s]/g, "_");
+  return s === "no_show" || s === "noshow" || s === "cancelled" || s === "missed";
+}
+
+export function isMeetingActive(status) {
+  return !isMeetingCompleted(status) && !isMeetingNoShow(status);
+}
+
+// ==========================================
+// FOLLOW-UPS STATUS CLASSIFIERS
+// ==========================================
+export function isFollowUpCompleted(status) {
+  const s = String(status || "").toLowerCase().trim();
+  return s === "done" || s === "completed";
+}
+
+export function isFollowUpMissed(status) {
+  const s = String(status || "").toLowerCase().trim().replace(/[-\s]/g, "_");
+  return s === "missed" || s === "cancelled" || s === "no_show" || s === "noshow";
+}
+
+export function isFollowUpActive(status) {
+  return !isFollowUpCompleted(status) && !isFollowUpMissed(status);
+}
+
+export function isFollowUpOverdue(item, nowMs = Date.now()) {
+  return isFollowUpActive(item?.status) && item?.due_at && new Date(item.due_at).getTime() < nowMs;
+}
+
+export function isFollowUpUpcomingPending(item, nowMs = Date.now()) {
+  return isFollowUpActive(item?.status) && !isFollowUpOverdue(item, nowMs);
+}
+
 export function extractPhoneFromText(text) {
   if (!text || typeof text !== "string") return "";
   const match = text.match(/(?:\+?91[\s-]?)?[6-9]\d{9}/) || text.match(/\+?\d{10,13}/);
