@@ -10,8 +10,6 @@ export default function LeadFilters({
   leadAlphabetFilter,
   setLeadAlphabetFilter,
   setLeadPage,
-  totalLettersCount,
-  leadLetterCounts,
 }) {
   return (
     <div className="p-2.5 min-[360px]:p-3 sm:p-4 rounded-xl sm:rounded-2xl bg-white dark:bg-[#18150f] border border-gray-100 dark:border-[#3a3020] shadow-2xs space-y-2.5 sm:space-y-3">
@@ -87,8 +85,6 @@ export default function LeadFilters({
         </span>
         {["all", ..."ABCDEFGHIJKLMNOPQRSTUVWXYZ".split(""), "#"].map((char) => {
           const isSelected = leadAlphabetFilter === char;
-          const count = char === "all" ? totalLettersCount : leadLetterCounts[char] || 0;
-          const hasLeads = count > 0;
 
           return (
             <button
@@ -98,26 +94,18 @@ export default function LeadFilters({
                 setLeadAlphabetFilter(isSelected && char !== "all" ? "all" : char);
                 setLeadPage(1);
               }}
-              disabled={char !== "all" && !hasLeads}
               className={`min-w-[24px] sm:min-w-[26px] h-6.5 sm:h-7 px-1 sm:px-1.5 rounded-lg text-[10px] sm:text-[11px] font-bold shrink-0 transition flex items-center justify-center gap-0.5 select-none ${
                 isSelected
                   ? "bg-orange-600 text-white shadow-2xs scale-105 cursor-pointer"
-                  : hasLeads
-                  ? "bg-gray-100 dark:bg-slate-800 text-gray-700 dark:text-neutral-300 hover:bg-orange-50 hover:text-orange-600 dark:hover:bg-orange-950/40 cursor-pointer"
-                  : "text-gray-300 dark:text-neutral-600 cursor-not-allowed opacity-35"
+                  : "bg-gray-100 dark:bg-slate-800 text-gray-700 dark:text-neutral-300 hover:bg-orange-50 hover:text-orange-600 dark:hover:bg-orange-950/40 cursor-pointer"
               }`}
               title={
                 char === "all"
-                  ? `All leads (${totalLettersCount})`
-                  : hasLeads
-                  ? `${count} lead(s) starting with "${char}"`
-                  : `No leads starting with "${char}"`
+                  ? "Show all leads"
+                  : `Filter leads starting with "${char}"`
               }
             >
               <span>{char === "all" ? "All" : char}</span>
-              {isSelected && char !== "all" && (
-                <span className="text-[9px] opacity-90">({count})</span>
-              )}
             </button>
           );
         })}

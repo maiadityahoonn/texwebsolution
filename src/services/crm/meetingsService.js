@@ -56,6 +56,12 @@ export async function getSalesMeetings(options = null) {
         query = query.gte('scheduled_at', todayStart.toISOString()).lte('scheduled_at', todayEnd.toISOString());
       } else if (options.status === 'no_show') {
         query = query.in('status', ['no_show', 'cancelled']);
+      } else if (options.status === 'overdue') {
+        query = query.in('status', ['scheduled', 'confirmed']).lt('scheduled_at', new Date().toISOString());
+      } else if (options.status === 'completed') {
+        query = query.eq('status', 'completed');
+      } else if (options.status === 'scheduled' || options.status === 'active') {
+        query = query.in('status', ['scheduled', 'confirmed']);
       } else {
         query = query.eq('status', options.status);
       }

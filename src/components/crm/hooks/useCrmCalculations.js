@@ -101,6 +101,9 @@ export function useCrmCalculations({
   );
 
   const leadTotalForPagination = useMemo(() => {
+    if (viewMode === "leads" && typeof leadPagination?.count === "number") {
+      return leadPagination.count;
+    }
     if (dateFilter !== "all" || query || leadAlphabetFilter !== "all") {
       return filteredLeads.length;
     }
@@ -119,13 +122,14 @@ export function useCrmCalculations({
       return expectedServerCount;
     }
     return filteredLeads.length;
-  }, [dateFilter, query, leadAlphabetFilter, statusFilter, leadSummary, leadPagination?.count, filteredLeads.length]);
+  }, [dateFilter, query, leadAlphabetFilter, statusFilter, leadSummary, leadPagination?.count, filteredLeads.length, viewMode]);
   const leadPageCount = Math.max(1, Math.ceil(leadTotalForPagination / leadsPerPage));
   const safeLeadPage = Math.min(Math.max(1, leadPage), leadPageCount);
   const paginatedLeads = useMemo(() => {
+    if (viewMode === "leads") return filteredLeads;
     const start = (safeLeadPage - 1) * leadsPerPage;
     return filteredLeads.slice(start, start + leadsPerPage);
-  }, [filteredLeads, leadsPerPage, safeLeadPage]);
+  }, [filteredLeads, leadsPerPage, safeLeadPage, viewMode]);
 
   const commercialDocs = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -312,6 +316,9 @@ export function useCrmCalculations({
   }, [allPipelineDeals, dateFilter, dedupedLeads, matchesDateFilter, query, statusFilter]);
 
   const followUpTotal = useMemo(() => {
+    if (viewMode === "followups" && typeof followUpPagination?.count === "number") {
+      return followUpPagination.count;
+    }
     if (dateFilter !== "all" || query || (followUpScope && followUpScope !== "all")) {
       return filteredFollowUps.length;
     }
@@ -332,15 +339,19 @@ export function useCrmCalculations({
       return expected;
     }
     return filteredFollowUps.length;
-  }, [dateFilter, query, statusFilter, followUpSummary, followUpPagination?.count, filteredFollowUps.length, followUpScope]);
+  }, [dateFilter, query, statusFilter, followUpSummary, followUpPagination?.count, filteredFollowUps.length, followUpScope, viewMode]);
   const followUpPageCount = Math.max(1, Math.ceil(followUpTotal / followUpPageSize));
   const safeFollowUpPage = Math.min(Math.max(1, followUpPage), followUpPageCount);
   const paginatedFollowUps = useMemo(() => {
+    if (viewMode === "followups") return filteredFollowUps;
     const start = (safeFollowUpPage - 1) * followUpPageSize;
     return filteredFollowUps.slice(start, start + followUpPageSize);
-  }, [filteredFollowUps, followUpPageSize, safeFollowUpPage]);
+  }, [filteredFollowUps, followUpPageSize, safeFollowUpPage, viewMode]);
 
   const meetingTotal = useMemo(() => {
+    if (viewMode === "sales_meetings" && typeof meetingPagination?.count === "number") {
+      return meetingPagination.count;
+    }
     if (dateFilter !== "all" || query) {
       return filteredSalesMeetings.length;
     }
@@ -361,13 +372,14 @@ export function useCrmCalculations({
       return expected;
     }
     return filteredSalesMeetings.length;
-  }, [dateFilter, query, statusFilter, meetingSummary, meetingPagination?.count, filteredSalesMeetings.length]);
+  }, [dateFilter, query, statusFilter, meetingSummary, meetingPagination?.count, filteredSalesMeetings.length, viewMode]);
   const meetingPageCount = Math.max(1, Math.ceil(meetingTotal / meetingPageSize));
   const safeMeetingPage = Math.min(Math.max(1, meetingPage), meetingPageCount);
   const paginatedSalesMeetings = useMemo(() => {
+    if (viewMode === "sales_meetings") return filteredSalesMeetings;
     const start = (safeMeetingPage - 1) * meetingPageSize;
     return filteredSalesMeetings.slice(start, start + meetingPageSize);
-  }, [filteredSalesMeetings, meetingPageSize, safeMeetingPage]);
+  }, [filteredSalesMeetings, meetingPageSize, safeMeetingPage, viewMode]);
 
   const isLeadsLoading = Boolean(leadPagination?.loading || (isLoading && leads.length === 0));
   const isPipelineLoading = Boolean(dealPagination?.loading || (isLoading && deals.length === 0));

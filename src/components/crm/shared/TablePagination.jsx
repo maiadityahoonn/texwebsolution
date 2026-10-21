@@ -9,10 +9,7 @@ export default function TablePagination({
   total = 0,
   page = 1,
   pageCount = 1,
-  pageSize = 10,
   setPage,
-  setPageSize,
-  pageSizeLabel = "Rows per page:",
 }) {
   return (
     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 sm:gap-3 px-2.5 sm:px-4 py-2.5 sm:py-3 border-t border-gray-100 dark:border-[#3a3020] bg-gray-50/60 dark:bg-[#211d14]/60 text-[11px] sm:text-xs">
@@ -27,23 +24,9 @@ export default function TablePagination({
       </div>
 
       <div className="flex items-center gap-2 flex-wrap justify-between sm:justify-end">
-        <div className="flex items-center gap-1 text-[11px] sm:text-xs text-gray-500 dark:text-neutral-400">
-          <span className="hidden xs:inline">{pageSizeLabel}</span>
-          <select
-            value={pageSize}
-            onChange={(event) => {
-              setPageSize(Number(event.target.value));
-              setPage(1);
-            }}
-            className="px-2 py-1 sm:px-2.5 sm:py-1.5 rounded-lg sm:rounded-xl bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 font-semibold text-gray-700 dark:text-neutral-200 text-[11px] sm:text-xs focus:outline-hidden focus:ring-1 focus:ring-orange-500"
-            aria-label={`${label} per page`}
-          >
-            <option value={10}>10 / page</option>
-            <option value={20}>20 / page</option>
-            <option value={50}>50 / page</option>
-            <option value={100}>100 / page</option>
-          </select>
-        </div>
+        <span className="text-[11px] sm:text-xs font-semibold text-gray-500 dark:text-neutral-400 whitespace-nowrap">
+          Page {page} of {pageCount}
+        </span>
 
         <div className="flex items-center gap-0.5 sm:gap-1">
           <button

@@ -44,7 +44,22 @@ export async function getSalesFollowUps(options = null) {
       .order('status', { ascending: false })
       .order('due_at', { ascending: true });
 
-    if (options?.status && options.status !== 'all') query = query.eq('status', options.status);
+    if (options?.status === 'done' || options?.status === 'completed') {
+      query = query.eq('status', 'done');
+    } else if (options?.status === 'actionable') {
+      query = query.eq('status', 'pending');
+    } else if (options?.status === 'overdue') {
+      query = query.eq('status', 'pending').lt('due_at', new Date().toISOString());
+    } else if (options?.status === 'pending' || options?.status === 'active') {
+      query = query.eq('status', 'pending').gte('due_at', new Date().toISOString());
+    } else if (options?.status && options.status !== 'all') {
+      query = query.eq('status', options.status);
+    }
+    if (options?.scope === 'pipeline') {
+      query = query.not('deal_id', 'is', null);
+    } else if (options?.scope === 'leads') {
+      query = query.not('lead_id', 'is', null).is('deal_id', null);
+    }
     if (options?.dateFrom) query = query.gte('due_at', options.dateFrom);
     if (options?.dateTo) query = query.lte('due_at', options.dateTo);
     const search = String(options?.search || '').trim();

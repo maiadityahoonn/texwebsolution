@@ -38,6 +38,9 @@ export function useCrmData({ sessionUserId = "", pushLiveSalesNotification } = {
   const [crmLoading, setCrmLoading] = useState(false);
   const leadsRef = useRef([]);
   const loadedScopesRef = useRef(new Set());
+  const leadRequestRef = useRef(0);
+  const followUpRequestRef = useRef(0);
+  const meetingRequestRef = useRef(0);
 
   useEffect(() => {
     leadsRef.current = leads;
@@ -275,16 +278,20 @@ export function useCrmData({ sessionUserId = "", pushLiveSalesNotification } = {
   }, [sessionUserId, loadCrmData]);
 
   const handleFetchLeadsPage = useCallback(async function handleFetchLeadsPage(params = {}) {
+    const requestId = ++leadRequestRef.current;
     setLeadPagination((prev) => ({ ...prev, loading: true }));
     const result = await getCloudLeads({
       page: params.page || 1,
       pageSize: params.pageSize || 500,
       search: params.search || "",
       status: params.status || "",
+      alphabet: params.alphabet || "",
+      sort: params.sort || "",
       dateFrom: params.dateFrom || "",
       dateTo: params.dateTo || "",
       withCount: true,
     });
+    if (requestId !== leadRequestRef.current) return;
     setLeads(result?.data || []);
     setLeadPagination({
       count: result?.count || 0,
@@ -315,16 +322,19 @@ export function useCrmData({ sessionUserId = "", pushLiveSalesNotification } = {
   }, []);
 
   const handleFetchFollowUpsPage = useCallback(async function handleFetchFollowUpsPage(params = {}) {
+    const requestId = ++followUpRequestRef.current;
     setFollowUpPagination((prev) => ({ ...prev, loading: true }));
     const result = await getSalesFollowUps({
       page: params.page || 1,
       pageSize: params.pageSize || 200,
       search: params.search || "",
       status: params.status || "",
+      scope: params.scope || "",
       dateFrom: params.dateFrom || "",
       dateTo: params.dateTo || "",
       withCount: true,
     });
+    if (requestId !== followUpRequestRef.current) return;
     setSalesFollowUps(result?.data || []);
     setFollowUpPagination({
       count: result?.count || 0,
@@ -335,6 +345,7 @@ export function useCrmData({ sessionUserId = "", pushLiveSalesNotification } = {
   }, []);
 
   const handleFetchMeetingsPage = useCallback(async function handleFetchMeetingsPage(params = {}) {
+    const requestId = ++meetingRequestRef.current;
     setMeetingPagination((prev) => ({ ...prev, loading: true }));
     const result = await getSalesMeetings({
       page: params.page || 1,
@@ -345,6 +356,7 @@ export function useCrmData({ sessionUserId = "", pushLiveSalesNotification } = {
       dateTo: params.dateTo || "",
       withCount: true,
     });
+    if (requestId !== meetingRequestRef.current) return;
     setSalesMeetings(result?.data || []);
     setMeetingPagination({
       count: result?.count || 0,

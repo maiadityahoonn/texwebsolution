@@ -2,6 +2,7 @@ import { createClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
 import { cacheGetJson, cacheSetJson } from "@/lib/upstashCache";
 import { isPrimaryCrmUser } from "@/lib/crmAccess";
+import { applyLeadCategoryFilter, buildLeadDealScopes } from "@/services/crm/leadCategoryFilters";
 
 const CRM_READ_ROLES = new Set([
   "sales_head",
@@ -66,12 +67,12 @@ async function getRequester(admin, request) {
   return { user, profile };
 }
 
-async function getPipelineLeadIds(admin) {
+async function getLeadDealScopes(admin) {
   const { data } = await admin
     .from("deals")
-    .select("lead_id")
+    .select("lead_id, pipeline_stage")
     .not("lead_id", "is", null);
-  return [...new Set((data || []).map((deal) => deal.lead_id).filter(Boolean))];
+  return buildLeadDealScopes(data || []);
 }
 
 function applySearch(query, table, search) {
@@ -128,61 +129,33 @@ export async function GET(request) {
       return q;
     };
 
+    const scopes = await getLeadDealScopes(admin);
+    const countCategory = (category) => applyLeadDates(
+      applyLeadCategoryFilter(
+        admin.from("leads").select("*", { count: "exact", head: true }),
+        category,
+        scopes
+      )
+    );
     const [
       { count: totalCount },
+      { count: activeCount },
+      { count: pipelineCount },
       { count: convertedCount },
-      { count: directLostCount },
-      { count: pipelineStatusCount },
-      { data: dealsData },
+      { count: lostCount },
     ] = await Promise.all([
       applyLeadDates(admin.from("leads").select("*", { count: "exact", head: true })),
-      applyLeadDates(admin.from("leads").select("*", { count: "exact", head: true }).in("status", ["Converted", "Closed Won"])),
-      applyLeadDates(admin.from("leads").select("*", { count: "exact", head: true }).eq("status", "Lost")),
-      applyLeadDates(admin.from("leads").select("*", { count: "exact", head: true }).in("status", [
-        "Contacted", "Qualified", "Proposal Sent", "In Pipeline", "Negotiation", "In Progress"
-      ])),
-      admin.from("deals").select("lead_id, pipeline_stage").not("lead_id", "is", null),
+      countCategory("active"),
+      countCategory("pipeline"),
+      countCategory("converted"),
+      countCategory("lost"),
     ]);
 
-    const activeDealLeadIds = new Set(
-      (dealsData || []).filter((d) => !CLOSED_PIPELINE_STAGES.includes(d.pipeline_stage)).map((d) => d.lead_id).filter(Boolean)
-    );
-    const lostDealLeadIds = new Set(
-      (dealsData || []).filter((d) => d.pipeline_stage === "closed_lost").map((d) => d.lead_id).filter(Boolean)
-    );
-    const wonDealLeadIds = new Set(
-      (dealsData || []).filter((d) => d.pipeline_stage === "closed_won").map((d) => d.lead_id).filter(Boolean)
-    );
-
-    let extraLost = 0;
-    if (lostDealLeadIds.size > 0) {
-      const { count } = await applyLeadDates(
-        admin
-          .from("leads")
-          .select("*", { count: "exact", head: true })
-          .neq("status", "Lost")
-          .in("id", Array.from(lostDealLeadIds))
-      );
-      extraLost = count || 0;
-    }
-
-    let extraConverted = 0;
-    if (wonDealLeadIds.size > 0) {
-      const { count } = await applyLeadDates(
-        admin
-          .from("leads")
-          .select("*", { count: "exact", head: true })
-          .not("status", "in", toPostgrestInList(["Converted", "Closed Won"]))
-          .in("id", Array.from(wonDealLeadIds))
-      );
-      extraConverted = count || 0;
-    }
-
     const total = totalCount || 0;
-    const converted = (convertedCount || 0) + extraConverted;
-    const lost = (directLostCount || 0) + extraLost;
-    const pipeline = Math.max(pipelineStatusCount || 0, activeDealLeadIds.size);
-    const active = Math.max(0, total - pipeline - converted - lost);
+    const active = activeCount || 0;
+    const pipeline = pipelineCount || 0;
+    const converted = convertedCount || 0;
+    const lost = lostCount || 0;
 
     const summary = {
       total,
@@ -270,10 +243,11 @@ export async function GET(request) {
   if (resource === "followups_summary") {
     const dateFrom = searchParams.get("dateFrom") || "";
     const dateTo = searchParams.get("dateTo") || "";
+    const scope = searchParams.get("scope") || "all";
     const isFresh = searchParams.get("fresh") === "true" || searchParams.get("force") === "true";
     const cacheKey = dateFrom || dateTo
-      ? `crm:followups-summary:${dateFrom || "start"}:${dateTo || "end"}`
-      : "crm:followups-summary:all";
+      ? `crm:followups-summary:${scope}:${dateFrom || "start"}:${dateTo || "end"}`
+      : `crm:followups-summary:${scope}:all`;
     if (!isFresh) {
       const cached = await cacheGetJson(cacheKey);
       if (cached) return NextResponse.json(cached);
@@ -290,6 +264,12 @@ export async function GET(request) {
       }
       return q;
     };
+    const applyFollowupScope = (q) => {
+      if (scope === "pipeline") return q.not("deal_id", "is", null);
+      if (scope === "leads") return q.not("lead_id", "is", null).is("deal_id", null);
+      return q;
+    };
+    const applyFollowupFilters = (q) => applyFollowupScope(applyFollowupDates(q));
 
     const [
       { count: totalCount },
@@ -299,12 +279,12 @@ export async function GET(request) {
       { count: completedCount },
       { count: missedCount },
     ] = await Promise.all([
-      applyFollowupDates(admin.from("sales_followups").select("*", { count: "exact", head: true })),
-      applyFollowupDates(admin.from("sales_followups").select("*", { count: "exact", head: true }).eq("status", "pending")),
-      applyFollowupDates(admin.from("sales_followups").select("*", { count: "exact", head: true }).eq("status", "pending").lt("due_at", nowIso)),
-      applyFollowupDates(admin.from("sales_followups").select("*", { count: "exact", head: true }).eq("status", "pending").gte("due_at", nowIso)),
-      applyFollowupDates(admin.from("sales_followups").select("*", { count: "exact", head: true }).eq("status", "done")),
-      applyFollowupDates(admin.from("sales_followups").select("*", { count: "exact", head: true }).eq("status", "missed")),
+      applyFollowupFilters(admin.from("sales_followups").select("*", { count: "exact", head: true })),
+      applyFollowupFilters(admin.from("sales_followups").select("*", { count: "exact", head: true }).eq("status", "pending")),
+      applyFollowupFilters(admin.from("sales_followups").select("*", { count: "exact", head: true }).eq("status", "pending").lt("due_at", nowIso)),
+      applyFollowupFilters(admin.from("sales_followups").select("*", { count: "exact", head: true }).eq("status", "pending").gte("due_at", nowIso)),
+      applyFollowupFilters(admin.from("sales_followups").select("*", { count: "exact", head: true }).eq("status", "done")),
+      applyFollowupFilters(admin.from("sales_followups").select("*", { count: "exact", head: true }).eq("status", "missed")),
     ]);
 
     const summary = {
@@ -442,7 +422,14 @@ export async function GET(request) {
     .from(config.table)
     .select("*", { count: "exact" });
 
-  if (resource === "sales_followups") {
+  const sort = searchParams.get("sort") || "";
+  if (resource === "leads" && (sort === "a-z" || sort === "z-a")) {
+    query = query
+      .order("name", { ascending: sort === "a-z", nullsFirst: false })
+      .order("created_at", { ascending: false });
+  } else if (resource === "leads" && sort === "oldest") {
+    query = query.order("created_at", { ascending: true });
+  } else if (resource === "sales_followups") {
     query = query
       .order("status", { ascending: false })
       .order("due_at", { ascending: true });
@@ -452,27 +439,18 @@ export async function GET(request) {
 
   const status = searchParams.get("status") || "";
   if (resource === "leads" && status === "active") {
-    const pipelineLeadIds = await getPipelineLeadIds(admin);
-    query = query.not("status", "in", toPostgrestInList(ARCHIVED_LEAD_STATUSES));
-    if (pipelineLeadIds.length > 0) {
-      query = query.not("id", "in", toPostgrestInList(pipelineLeadIds));
-    }
+    query = applyLeadCategoryFilter(query, "active", await getLeadDealScopes(admin));
   } else if (resource === "leads" && status === "archived") {
-    const pipelineLeadIds = await getPipelineLeadIds(admin);
+    const pipelineLeadIds = (await getLeadDealScopes(admin)).all;
     const filters = [`status.in.${toPostgrestInList(ARCHIVED_LEAD_STATUSES)}`];
     if (pipelineLeadIds.length > 0) filters.push(`id.in.${toPostgrestInList(pipelineLeadIds)}`);
     query = query.or(filters.join(","));
   } else if (resource === "leads" && status === "converted") {
-    query = query.in("status", ["Converted", "Closed Won"]);
+    query = applyLeadCategoryFilter(query, "converted", await getLeadDealScopes(admin));
   } else if (resource === "leads" && status === "lost") {
-    query = query.eq("status", "Lost");
+    query = applyLeadCategoryFilter(query, "lost", await getLeadDealScopes(admin));
   } else if (resource === "leads" && status === "pipeline") {
-    const pipelineLeadIds = await getPipelineLeadIds(admin);
-    if (pipelineLeadIds.length > 0) {
-      query = query.in("id", pipelineLeadIds);
-    } else {
-      query = query.in("status", ["Contacted", "Qualified", "Proposal Sent", "In Pipeline", "Negotiation"]);
-    }
+    query = applyLeadCategoryFilter(query, "pipeline", await getLeadDealScopes(admin));
   } else if (resource === "leads" && (status === "all" || !status)) {
     // no status filter
   } else if (resource === "deals") {
@@ -482,6 +460,8 @@ export async function GET(request) {
     const nowIso = new Date().toISOString();
     if (status === "done" || status === "completed") {
       query = query.eq("status", "done");
+    } else if (status === "actionable") {
+      query = query.eq("status", "pending");
     } else if (status === "overdue") {
       query = query.eq("status", "pending").lt("due_at", nowIso);
     } else if (status === "pending" || status === "active") {
@@ -511,6 +491,22 @@ export async function GET(request) {
     }
   } else if (status && status !== "all") {
     query = query.eq("status", status);
+  }
+
+  const alphabet = (searchParams.get("alphabet") || "").trim();
+  if (resource === "leads" && /^[a-z]$/i.test(alphabet)) {
+    query = query.ilike("name", `${alphabet}%`);
+  } else if (resource === "leads" && alphabet === "#") {
+    for (const letter of "ABCDEFGHIJKLMNOPQRSTUVWXYZ") {
+      query = query.not("name", "ilike", `${letter}%`);
+    }
+  }
+
+  const scope = searchParams.get("scope") || "";
+  if (resource === "sales_followups" && scope === "pipeline") {
+    query = query.not("deal_id", "is", null);
+  } else if (resource === "sales_followups" && scope === "leads") {
+    query = query.not("lead_id", "is", null).is("deal_id", null);
   }
 
   const dateFrom = searchParams.get("dateFrom") || "";

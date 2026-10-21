@@ -87,15 +87,9 @@ export function calculateLeadSummaryMetrics({
     typeof leadSummary?.lost === "number" &&
     typeof leadSummary?.pipeline === "number";
 
-  const useServerSummary =
-    dateFilter === "all" &&
-    hasSummaryBreakdown &&
-    (serverTotal > dateFilteredLeadsForStats.length || dateFilteredLeadsForStats.length === 0);
+  const useServerSummary = hasSummaryBreakdown;
 
-  let totalLeads =
-    dateFilter === "all"
-      ? (useServerSummary ? serverTotal : (dateFilteredLeadsForStats.length || serverTotal))
-      : dateFilteredLeadsForStats.length;
+  let totalLeads = useServerSummary ? serverTotal : (dateFilteredLeadsForStats.length || serverTotal);
 
   let activeCount = 0;
   let pipelineCount = 0;

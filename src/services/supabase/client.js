@@ -68,6 +68,9 @@ export async function fetchCrmListFromApi(resource, options = {}) {
     if (options.search) params.set('search', options.search);
     if (options.status) params.set('status', options.status);
     if (options.stage) params.set('stage', options.stage);
+    if (options.alphabet) params.set('alphabet', options.alphabet);
+    if (options.sort) params.set('sort', options.sort);
+    if (options.scope) params.set('scope', options.scope);
     if (options.dateFrom) params.set('dateFrom', options.dateFrom);
     if (options.dateTo) params.set('dateTo', options.dateTo);
     if (options.fresh) params.set('fresh', 'true');

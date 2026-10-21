@@ -51,17 +51,19 @@ export function getLeadServerDateRange({
   tomorrowStart.setDate(tomorrowStart.getDate() + 1);
   const toIso = (date) => date.toISOString();
 
-  if (dateFilter === "today") return { dateFrom: toIso(todayStart), dateTo: toIso(tomorrowStart) };
+  if (dateFilter === "today") {
+    return { dateFrom: toIso(todayStart), dateTo: toIso(new Date(tomorrowStart.getTime() - 1)) };
+  }
   if (dateFilter === "yesterday") {
     const yesterdayStart = new Date(todayStart);
     yesterdayStart.setDate(yesterdayStart.getDate() - 1);
-    return { dateFrom: toIso(yesterdayStart), dateTo: toIso(todayStart) };
+    return { dateFrom: toIso(yesterdayStart), dateTo: toIso(new Date(todayStart.getTime() - 1)) };
   }
   if (dateFilter === "date" && selectedDate) {
     const selectedStart = new Date(`${selectedDate}T00:00:00`);
     const selectedEnd = new Date(selectedStart);
     selectedEnd.setDate(selectedEnd.getDate() + 1);
-    return { dateFrom: toIso(selectedStart), dateTo: toIso(selectedEnd) };
+    return { dateFrom: toIso(selectedStart), dateTo: toIso(new Date(selectedEnd.getTime() - 1)) };
   }
   if (dateFilter === "day") return { dateFrom: toIso(new Date(Date.now() - 86400000)), dateTo: "" };
   if (dateFilter === "week") return { dateFrom: toIso(new Date(Date.now() - 7 * 86400000)), dateTo: "" };
@@ -70,7 +72,7 @@ export function getLeadServerDateRange({
   if (dateFilter === "custom") {
     return {
       dateFrom: customDateRange?.from ? new Date(`${customDateRange.from}T00:00:00`).toISOString() : "",
-      dateTo: customDateRange?.to ? new Date(`${customDateRange.to}T23:59:59`).toISOString() : "",
+      dateTo: customDateRange?.to ? new Date(`${customDateRange.to}T23:59:59.999`).toISOString() : "",
     };
   }
   return { dateFrom: "", dateTo: "" };

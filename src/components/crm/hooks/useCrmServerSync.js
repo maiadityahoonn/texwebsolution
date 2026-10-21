@@ -2,12 +2,35 @@
 
 import { useState, useEffect, useCallback } from "react";
 
+function getFollowUpServerStatus(status) {
+  if (!status || status === "all") return "actionable";
+  if (status === "all_with_completed") return "";
+  return status;
+}
+
+function getMeetingServerStatus(status) {
+  if (!status || status === "all") return "active";
+  if (status === "all_with_completed") return "";
+  if (["pending", "scheduled"].includes(status)) return "active";
+  if (status === "done") return "completed";
+  if (["missed", "cancelled"].includes(status)) return "no_show";
+  return status;
+}
+
 export function useCrmServerSync({
   viewMode,
   dateFilter,
   selectedDate,
   customDateRange,
   statusFilter = "all",
+  query = "",
+  leadPage = 1,
+  leadsPerPage = 10,
+  leadAlphabetFilter = "all",
+  leadSortOrder = "default",
+  followUpPage = 1,
+  followUpPageSize = 10,
+  followUpScope = "all",
   meetingPage = 1,
   meetingPageSize = 50,
   getLeadServerDateRange,
@@ -32,15 +55,18 @@ export function useCrmServerSync({
     const timer = setTimeout(() => {
       const range = getLeadServerDateRange();
       onFetchLeadsPage({
-        page: 1,
-        pageSize: 500,
-        search: "",
+        page: leadPage,
+        pageSize: leadsPerPage,
+        search: query,
+        status: statusFilter,
+        alphabet: leadAlphabetFilter,
+        sort: leadSortOrder === "asc" ? "a-z" : leadSortOrder === "desc" ? "z-a" : leadSortOrder,
         ...range,
       });
     }, 350);
     return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [customDateRange?.from, customDateRange?.to, dateFilter, onFetchLeadsPage, selectedDate, viewMode]);
+  }, [customDateRange?.from, customDateRange?.to, dateFilter, leadAlphabetFilter, leadPage, leadSortOrder, leadsPerPage, onFetchLeadsPage, query, selectedDate, statusFilter, viewMode]);
 
   useEffect(() => {
     if (!onFetchDealsPage || viewMode !== "pipeline") return;
@@ -63,32 +89,49 @@ export function useCrmServerSync({
     const timer = setTimeout(() => {
       const range = getServerDateRange();
       onFetchFollowUpsPage({
-        page: 1,
-        pageSize: 500,
-        search: "",
-        status: statusFilter !== "all" ? statusFilter : "",
+        page: followUpPage,
+        pageSize: followUpPageSize,
+        search: query,
+        status: getFollowUpServerStatus(statusFilter),
+        scope: followUpScope,
         ...range,
       });
     }, 350);
     return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [customDateRange?.from, customDateRange?.to, dateFilter, onFetchFollowUpsPage, selectedDate, statusFilter, viewMode]);
+  }, [customDateRange?.from, customDateRange?.to, dateFilter, followUpPage, followUpPageSize, followUpScope, onFetchFollowUpsPage, query, selectedDate, statusFilter, viewMode]);
 
   useEffect(() => {
     if (!onFetchMeetingsPage || viewMode !== "sales_meetings") return;
     const timer = setTimeout(() => {
       const range = getServerDateRange();
       onFetchMeetingsPage({
-        page: 1,
-        pageSize: 200,
-        search: "",
-        status: statusFilter !== "all" ? statusFilter : "",
+        page: meetingPage,
+        pageSize: meetingPageSize,
+        search: query,
+        status: getMeetingServerStatus(statusFilter),
         ...range,
       });
     }, 350);
     return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [customDateRange?.from, customDateRange?.to, dateFilter, onFetchMeetingsPage, selectedDate, statusFilter, viewMode]);
+  }, [customDateRange?.from, customDateRange?.to, dateFilter, meetingPage, meetingPageSize, onFetchMeetingsPage, query, selectedDate, statusFilter, viewMode]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (viewMode === "leads") {
+        onRefreshLeadSummary?.(getLeadServerDateRange());
+      } else if (viewMode === "pipeline") {
+        onRefreshDealSummary?.(getServerDateRange());
+      } else if (viewMode === "followups") {
+        onRefreshFollowUpSummary?.({ ...getServerDateRange(), scope: followUpScope });
+      } else if (viewMode === "sales_meetings") {
+        onRefreshMeetingSummary?.(getServerDateRange());
+      }
+    }, 350);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [customDateRange?.from, customDateRange?.to, dateFilter, followUpScope, onRefreshDealSummary, onRefreshFollowUpSummary, onRefreshLeadSummary, onRefreshMeetingSummary, selectedDate, viewMode]);
 
   useEffect(() => {
     if (viewMode !== "dashboard") return;
@@ -118,9 +161,12 @@ export function useCrmServerSync({
       if (viewMode === "leads") {
         await Promise.all([
           onFetchLeadsPage?.({
-            page: 1,
-            pageSize: 500,
-            search: "",
+            page: leadPage,
+            pageSize: leadsPerPage,
+            search: query,
+            status: statusFilter,
+            alphabet: leadAlphabetFilter,
+            sort: leadSortOrder === "asc" ? "a-z" : leadSortOrder === "desc" ? "z-a" : leadSortOrder,
             force: true,
             ...range,
           }),
@@ -141,21 +187,23 @@ export function useCrmServerSync({
       } else if (viewMode === "followups") {
         await Promise.all([
           onFetchFollowUpsPage?.({
-            page: 1,
-            pageSize: 500,
-            search: "",
+            page: followUpPage,
+            pageSize: followUpPageSize,
+            search: query,
+            status: getFollowUpServerStatus(statusFilter),
+            scope: followUpScope,
             force: true,
             ...range,
           }),
-          onRefreshFollowUpSummary?.(range),
+          onRefreshFollowUpSummary?.({ ...range, scope: followUpScope }),
         ]);
       } else if (viewMode === "sales_meetings") {
         await Promise.all([
           onFetchMeetingsPage?.({
-            page: 1,
-            pageSize: 200,
-            search: "",
-            status: "",
+            page: meetingPage,
+            pageSize: meetingPageSize,
+            search: query,
+            status: getMeetingServerStatus(statusFilter),
             force: true,
             ...range,
           }),
@@ -196,7 +244,16 @@ export function useCrmServerSync({
   }, [
     getLeadServerDateRange,
     getServerDateRange,
+    followUpPage,
+    followUpPageSize,
+    followUpScope,
     isRefreshing,
+    leadAlphabetFilter,
+    leadPage,
+    leadSortOrder,
+    leadsPerPage,
+    meetingPage,
+    meetingPageSize,
     onFetchDealsPage,
     onFetchFollowUpsPage,
     onFetchLeadsPage,
@@ -207,6 +264,8 @@ export function useCrmServerSync({
     onRefreshFollowUpSummary,
     onRefreshLeadSummary,
     onRefreshMeetingSummary,
+    query,
+    statusFilter,
     viewMode,
   ]);
 

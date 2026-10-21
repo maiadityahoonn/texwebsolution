@@ -5,6 +5,7 @@ import {
   toPostgrestInList,
   fetchCrmListFromApi,
 } from '../supabase/client';
+import { applyLeadCategoryFilter, buildLeadDealScopes } from './leadCategoryFilters';
 
 // ==========================================
 // 1. LEADS & CRM MANAGEMENT
@@ -46,16 +47,24 @@ export function extractMetaLeadKey(lead) {
 
 export const ARCHIVED_LEAD_STATUSES = ['Converted', 'Lost', 'Archived', 'Closed Won'];
 
-export async function getPipelineLeadIds() {
+async function getLeadDealScopes() {
   const { data, error } = await supabase
     .from('deals')
-    .select('lead_id')
+    .select('lead_id, pipeline_stage')
     .not('lead_id', 'is', null);
   if (error) {
     console.warn('Pipeline lead filter skipped:', error.message);
-    return [];
+    return buildLeadDealScopes([]);
   }
-  return [...new Set((data || []).map((deal) => deal.lead_id).filter(Boolean))];
+  return buildLeadDealScopes(data || []);
+}
+
+export async function getPipelineLeadIds(scope = 'all') {
+  const scopes = await getLeadDealScopes();
+  if (scope === 'active') return scopes.active;
+  if (scope === 'lost') return scopes.lost;
+  if (scope === 'won') return scopes.won;
+  return scopes.all;
 }
 
 export async function getLeadsByIds(leadIds = []) {
@@ -116,33 +125,39 @@ export async function getCloudLeads(options = null) {
 
     let query = supabase
       .from('leads')
-      .select('*', withCount ? { count: 'exact' } : undefined)
-      .order('created_at', { ascending: false });
+      .select('*', withCount ? { count: 'exact' } : undefined);
+
+    if (options?.sort === 'a-z' || options?.sort === 'z-a') {
+      query = query
+        .order('name', { ascending: options.sort === 'a-z', nullsFirst: false })
+        .order('created_at', { ascending: false });
+    } else {
+      query = query.order('created_at', { ascending: options?.sort === 'oldest' });
+    }
 
     if (options?.status === 'active') {
-      const pipelineLeadIds = await getPipelineLeadIds();
-      query = query.not('status', 'in', toPostgrestInList(ARCHIVED_LEAD_STATUSES));
-      if (pipelineLeadIds.length > 0) {
-        query = query.not('id', 'in', toPostgrestInList(pipelineLeadIds));
-      }
+      query = applyLeadCategoryFilter(query, 'active', await getLeadDealScopes());
     } else if (options?.status === 'archived') {
       const pipelineLeadIds = await getPipelineLeadIds();
       const archivedStatusFilter = `status.in.${toPostgrestInList(ARCHIVED_LEAD_STATUSES)}`;
       const pipelineFilter = pipelineLeadIds.length > 0 ? `id.in.${toPostgrestInList(pipelineLeadIds)}` : "";
       query = query.or([archivedStatusFilter, pipelineFilter].filter(Boolean).join(','));
     } else if (options?.status === 'converted') {
-      query = query.in('status', ['Converted', 'Closed Won']);
+      query = applyLeadCategoryFilter(query, 'converted', await getLeadDealScopes());
     } else if (options?.status === 'lost') {
-      query = query.eq('status', 'Lost');
+      query = applyLeadCategoryFilter(query, 'lost', await getLeadDealScopes());
     } else if (options?.status === 'pipeline') {
-      const pipelineLeadIds = await getPipelineLeadIds();
-      if (pipelineLeadIds.length > 0) {
-        query = query.in('id', pipelineLeadIds);
-      } else {
-        query = query.in('status', ['Contacted', 'Qualified', 'Proposal Sent', 'In Pipeline', 'Negotiation']);
-      }
+      query = applyLeadCategoryFilter(query, 'pipeline', await getLeadDealScopes());
     } else if (options?.status && options.status !== 'all') {
       query = query.eq('status', options.status);
+    }
+
+    if (options?.alphabet && /^[a-z]$/i.test(options.alphabet)) {
+      query = query.ilike('name', `${options.alphabet}%`);
+    } else if (options?.alphabet === '#') {
+      for (const letter of 'ABCDEFGHIJKLMNOPQRSTUVWXYZ') {
+        query = query.not('name', 'ilike', `${letter}%`);
+      }
     }
 
     if (options?.source) {

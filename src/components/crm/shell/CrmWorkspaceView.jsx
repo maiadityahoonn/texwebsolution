@@ -148,6 +148,23 @@ export default function CrmWorkspaceView({
   }, [viewMode, urlDateFilter, urlStatus, urlDateFrom, urlDateTo, urlSelectedDate]);
 
   useEffect(() => {
+    setLeadPage(1);
+    setFollowUpPage(1);
+    setMeetingPage(1);
+  }, [
+    customDateRange.from,
+    customDateRange.to,
+    dateFilter,
+    followUpScope,
+    leadAlphabetFilter,
+    leadSortOrder,
+    query,
+    selectedDate,
+    statusFilter,
+    viewMode,
+  ]);
+
+  useEffect(() => {
     if (!headerActionsSlotId) {
       setHeaderActionsTarget(null);
       return;
@@ -245,12 +262,26 @@ export default function CrmWorkspaceView({
     salesReport,
   } = calculations;
 
+  useEffect(() => {
+    if (leadPage !== safeLeadPage) setLeadPage(safeLeadPage);
+    if (followUpPage !== safeFollowUpPage) setFollowUpPage(safeFollowUpPage);
+    if (meetingPage !== safeMeetingPage) setMeetingPage(safeMeetingPage);
+  }, [followUpPage, leadPage, meetingPage, safeFollowUpPage, safeLeadPage, safeMeetingPage]);
+
   // Server fetch sync
   const { isRefreshing, refreshStatus, handleRefreshClick } = useCrmServerSync({
     viewMode,
     dateFilter,
     selectedDate,
     customDateRange,
+    query,
+    leadPage,
+    leadsPerPage,
+    leadAlphabetFilter,
+    leadSortOrder,
+    followUpPage,
+    followUpPageSize,
+    followUpScope,
     meetingPage,
     meetingPageSize,
     getLeadServerDateRange,
