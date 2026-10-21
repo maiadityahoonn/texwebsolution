@@ -16,6 +16,7 @@ export function useCrmWorkspaceModals({
   agreements = [],
   invoices = [],
   salesMeetings = [],
+  followUps = [],
   onCreateLead,
   onAddLead,
   onUpdateLead,
@@ -63,6 +64,7 @@ export function useCrmWorkspaceModals({
   const meetingModals = useCrmMeetingFollowUpModals({
     leads,
     deals,
+    followUps,
     salesMeetings,
     onCreateFollowUp,
     onUpdateFollowUp,

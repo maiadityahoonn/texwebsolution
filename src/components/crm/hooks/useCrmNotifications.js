@@ -15,6 +15,7 @@ import {
 import { getSalesFollowUps } from "@/services/crm/followupsService";
 import { getSalesMeetings } from "@/services/crm/meetingsService";
 import { getAuthToken } from "@/services/supabase/client";
+import { isMeetingActive } from "../shared/meetingUtils";
 
 const REMINDER_WINDOW_MS = 10 * 60 * 1000;
 const REMINDER_SCAN_MS = 30_000;
@@ -331,6 +332,53 @@ export function useCrmNotifications({
     const timer = setInterval(checkOverdueFollowUps, 60_000);
     return () => clearInterval(timer);
   }, [effectiveUserId, salesFollowUps]);
+
+  useEffect(() => {
+    if (!effectiveUserId) return undefined;
+
+    const storageKey = `texweb_overdue_meeting_alerted_${effectiveUserId}`;
+    const checkOverdueMeetings = () => {
+      const now = Date.now();
+      const overdue = salesMeetings.filter((item) => (
+        isMeetingActive(item?.status)
+        && item.scheduled_at
+        && new Date(item.scheduled_at).getTime() < now
+      ));
+      if (!overdue.length) return;
+
+      let alerted = [];
+      try {
+        alerted = JSON.parse(localStorage.getItem(storageKey) || "[]");
+      } catch {
+        alerted = [];
+      }
+      const alertedSet = new Set(alerted);
+      const fresh = overdue.filter((item) => !alertedSet.has(`${item.id}:${item.scheduled_at}`));
+      if (!fresh.length) return;
+
+      const first = fresh[0];
+      const title = fresh.length === 1 ? "Passed / Overdue sales meeting" : `${fresh.length} passed sales meetings`;
+      const message = fresh.length === 1
+        ? `"${first.title}" was scheduled at ${new Date(first.scheduled_at).toLocaleString("en-IN")}. Please update meeting outcome.`
+        : `${fresh.length} sales meetings have passed. Open Sales Meetings to update outcome.`;
+      pushLiveSalesNotification(title, message, "alert", "/crm/meetings", {
+        reminder: true,
+        requires_ack: true,
+        source_type: "sales_meeting",
+        reminder_type: "overdue",
+        count: fresh.length,
+      });
+
+      const nextAlerted = Array.from(new Set([...alerted, ...fresh.map((item) => `${item.id}:${item.scheduled_at}`)])).slice(-300);
+      try {
+        localStorage.setItem(storageKey, JSON.stringify(nextAlerted));
+      } catch {}
+    };
+
+    checkOverdueMeetings();
+    const timer = setInterval(checkOverdueMeetings, 60_000);
+    return () => clearInterval(timer);
+  }, [effectiveUserId, salesMeetings]);
 
   useEffect(() => {
     if (!effectiveUserId) return undefined;

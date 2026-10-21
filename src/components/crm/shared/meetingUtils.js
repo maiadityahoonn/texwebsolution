@@ -38,6 +38,14 @@ export function isMeetingActive(status) {
   return !isMeetingCompleted(status) && !isMeetingNoShow(status);
 }
 
+export function isMeetingOverdue(item, nowMs = Date.now()) {
+  return Boolean(isMeetingActive(item?.status) && item?.scheduled_at && new Date(item.scheduled_at).getTime() < nowMs);
+}
+
+export function isMeetingUpcoming(item, nowMs = Date.now()) {
+  return Boolean(isMeetingActive(item?.status) && (!item?.scheduled_at || new Date(item.scheduled_at).getTime() >= nowMs));
+}
+
 // ==========================================
 // FOLLOW-UPS STATUS CLASSIFIERS
 // ==========================================

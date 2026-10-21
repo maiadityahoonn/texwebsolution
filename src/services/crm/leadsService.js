@@ -58,6 +58,25 @@ export async function getPipelineLeadIds() {
   return [...new Set((data || []).map((deal) => deal.lead_id).filter(Boolean))];
 }
 
+export async function getLeadsByIds(leadIds = []) {
+  const validIds = [...new Set((leadIds || []).filter(Boolean))];
+  if (validIds.length === 0) return [];
+  try {
+    const { data, error } = await supabase
+      .from('leads')
+      .select('*')
+      .in('id', validIds);
+    if (error) {
+      console.warn('Error fetching leads by IDs:', error.message);
+      return [];
+    }
+    return data || [];
+  } catch (err) {
+    console.warn('Error fetching leads by IDs:', err.message);
+    return [];
+  }
+}
+
 export async function sendDealStageMetaEvent(deal, stage) {
   if (!deal?.lead_id) return;
   try {

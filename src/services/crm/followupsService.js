@@ -82,6 +82,26 @@ export async function getSalesFollowUps(options = null) {
 
 export async function createSalesFollowUp(followUpData) {
   try {
+    if (followUpData.lead_id || followUpData.deal_id) {
+      let checkQuery = supabase
+        .from('sales_followups')
+        .select('id, title, due_at, status')
+        .not('status', 'in', '("done","completed","missed","cancelled")')
+        .limit(1);
+
+      if (followUpData.lead_id) {
+        checkQuery = checkQuery.eq('lead_id', followUpData.lead_id);
+      } else if (followUpData.deal_id) {
+        checkQuery = checkQuery.eq('deal_id', followUpData.deal_id);
+      }
+
+      const { data: existingActive } = await checkQuery;
+      if (existingActive && existingActive.length > 0) {
+        console.warn(`Prevented duplicate active follow-up for lead ${followUpData.lead_id || followUpData.deal_id}`);
+        return existingActive[0];
+      }
+    }
+
     const insertPayload = pickPayload(followUpData, SALES_FOLLOWUP_COLUMNS);
     const { data, error } = await supabase
       .from('sales_followups')
@@ -163,4 +183,14 @@ export async function markFollowUpMissed(followUpId, notes = '') {
   const updates = { status: 'missed' };
   if (notes) updates.notes = notes;
   return updateSalesFollowUp(followUpId, updates);
+}
+
+export async function getCloudFollowUpsSummary(options = {}) {
+  try {
+    const apiResult = await fetchCrmListFromApi('followups_summary', options);
+    if (apiResult && typeof apiResult.total === 'number') return apiResult;
+  } catch (err) {
+    console.warn('Followups summary API error:', err.message);
+  }
+  return null;
 }

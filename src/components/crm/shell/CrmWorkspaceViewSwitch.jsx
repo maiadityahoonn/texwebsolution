@@ -28,6 +28,7 @@ export default function CrmWorkspaceViewSwitch({
   setLeadPage,
   leadsPerPage,
   setLeadsPerPage,
+  leadTotal = 0,
   leads,
   deals,
   followUps,
@@ -106,6 +107,8 @@ export default function CrmWorkspaceViewSwitch({
   followUpPageSize,
   setFollowUpPage,
   setFollowUpPageSize,
+  followUpScope = "all",
+  setFollowUpScope = () => {},
   // Meetings View Props
   isMeetingsLoading,
   paginatedSalesMeetings,
@@ -158,9 +161,9 @@ export default function CrmWorkspaceViewSwitch({
           totalLeadPages={leadPageCount}
           pagination={{
             label: "leads",
-            start: (filteredLeads?.length || 0) === 0 ? 0 : (safeLeadPage - 1) * leadsPerPage + 1,
-            end: Math.min(filteredLeads?.length || 0, safeLeadPage * leadsPerPage),
-            total: filteredLeads?.length || 0,
+            start: (leadTotal || filteredLeads?.length || 0) === 0 ? 0 : (safeLeadPage - 1) * leadsPerPage + 1,
+            end: Math.min(leadTotal || filteredLeads?.length || 0, safeLeadPage * leadsPerPage),
+            total: leadTotal || filteredLeads?.length || 0,
             page: safeLeadPage,
             pageCount: leadPageCount,
             pageSize: leadsPerPage,
@@ -276,6 +279,8 @@ export default function CrmWorkspaceViewSwitch({
             setPage: setFollowUpPage,
             setPageSize: setFollowUpPageSize,
           }}
+          followUpScope={followUpScope}
+          setFollowUpScope={setFollowUpScope}
         />
       );
 

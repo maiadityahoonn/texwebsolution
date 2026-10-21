@@ -1,20 +1,23 @@
 "use client";
 
 import { CLOSED_PIPELINE_STAGES } from "../shared/leadUtils";
+import { getLeadComputedCategory } from "./crmLeadFilterHelpers";
 
 export function calculateAggregateStats({
   leads = [],
   deals = [],
   leadSummary = null,
+  leadPagination = null,
   dateFilter = "all",
   dateFilteredLeadsForStats = [],
   dateFilteredPipelineDealsForStats = [],
 }) {
-  const leadsForStats = dateFilter === "all" ? leads : dateFilteredLeadsForStats;
+  const serverTotal = leadSummary?.total ?? (leadPagination?.count || 0);
+  const leadsForStats = dateFilter === "all" ? (dateFilteredLeadsForStats.length > 0 ? dateFilteredLeadsForStats : leads) : dateFilteredLeadsForStats;
   const dealsForStats = dateFilter === "all" ? deals : dateFilteredPipelineDealsForStats;
   const total =
     dateFilter === "all"
-      ? (leadSummary?.total ?? leads.length)
+      ? (serverTotal > dateFilteredLeadsForStats.length ? serverTotal : (dateFilteredLeadsForStats.length || serverTotal || leads.length))
       : dateFilteredLeadsForStats.length;
   const newCount = leadsForStats.filter((l) => l.status === "New" && !dealsForStats.some((d) => d.lead_id === l.id)).length;
 
@@ -37,19 +40,24 @@ export function calculateAggregateStats({
       .filter(Boolean)
   );
 
-  const convertedCount =
+  let convertedCount =
     leadsForStats.filter((l) => {
       if (wonDealLeadIds.has(l.id)) return true;
       if (activePipelineLeadIds.has(l.id) || lostDealLeadIds.has(l.id)) return false;
       return l.status === "Converted" || l.status === "Closed Won";
     }).length + dealsForStats.filter((d) => (d.pipeline_stage || d.stage) === "closed_won" && !d.lead_id).length;
 
-  const lostCount =
+  let lostCount =
     leadsForStats.filter((l) => {
       if (lostDealLeadIds.has(l.id)) return true;
       if (activePipelineLeadIds.has(l.id) || wonDealLeadIds.has(l.id)) return false;
       return l.status === "Lost";
     }).length + dealsForStats.filter((d) => (d.pipeline_stage || d.stage) === "closed_lost" && !d.lead_id).length;
+
+  if (dateFilter === "all" && leadSummary?.total > dateFilteredLeadsForStats.length) {
+    if (typeof leadSummary.converted === "number") convertedCount = leadSummary.converted;
+    if (typeof leadSummary.lost === "number") lostCount = leadSummary.lost;
+  }
 
   const lostDealsCount = dealsForStats.filter((d) => (d.pipeline_stage || d.stage) === "closed_lost").length;
   const rate = total > 0 ? Math.round((convertedCount / total) * 100) : 0;
@@ -73,62 +81,41 @@ export function calculateLeadSummaryMetrics({
   leadPagination = null,
   leadSummary = null,
 }) {
-  const totalLeads =
-    dateFilter === "all"
-      ? (leadSummary?.total ?? (leadPagination?.count || dateFilteredLeadsForStats.length))
-      : dateFilteredLeadsForStats.length;
-
-  const wonDealLeadIds = new Set(
-    deals
-      .filter((d) => (d.pipeline_stage || d.stage) === "closed_won")
-      .map((d) => d.lead_id)
-      .filter(Boolean)
-  );
-  const activePipelineLeadIds = new Set(
-    deals
-      .filter((d) => !CLOSED_PIPELINE_STAGES.includes(d.pipeline_stage || d.stage))
-      .map((d) => d.lead_id)
-      .filter(Boolean)
-  );
-  const lostDealLeadIds = new Set(
-    deals
-      .filter((d) => (d.pipeline_stage || d.stage) === "closed_lost")
-      .map((d) => d.lead_id)
-      .filter(Boolean)
-  );
-
-  let convertedCount = dateFilteredLeadsForStats.filter((l) => {
-    if (wonDealLeadIds.has(l.id)) return true;
-    if (activePipelineLeadIds.has(l.id) || lostDealLeadIds.has(l.id)) return false;
-    return l.status === "Converted" || l.status === "Closed Won";
-  }).length;
-
-  let lostCount = dateFilteredLeadsForStats.filter((l) => {
-    if (lostDealLeadIds.has(l.id)) return true;
-    if (activePipelineLeadIds.has(l.id) || wonDealLeadIds.has(l.id)) return false;
-    return l.status === "Lost";
-  }).length;
-
-  let pipelineCount = dateFilteredLeadsForStats.filter((l) => {
-    if (activePipelineLeadIds.has(l.id)) return true;
-    if (wonDealLeadIds.has(l.id) || lostDealLeadIds.has(l.id)) return false;
-    return ["Contacted", "Qualified", "Proposal Sent", "In Pipeline", "Negotiation", "In Progress"].includes(
-      l.status
-    );
-  }).length;
-
-  let activeCount = Math.max(0, totalLeads - pipelineCount - convertedCount - lostCount);
-
+  const serverTotal = leadSummary?.total ?? (leadPagination?.count || 0);
   const hasSummaryBreakdown =
     typeof leadSummary?.active === "number" &&
     typeof leadSummary?.lost === "number" &&
     typeof leadSummary?.pipeline === "number";
 
-  if (dateFilter === "all" && hasSummaryBreakdown && dateFilteredLeadsForStats.length < totalLeads) {
-    convertedCount = leadSummary.converted ?? convertedCount;
-    lostCount = leadSummary.lost ?? lostCount;
-    pipelineCount = leadSummary.pipeline ?? pipelineCount;
+  const useServerSummary =
+    dateFilter === "all" &&
+    hasSummaryBreakdown &&
+    (serverTotal > dateFilteredLeadsForStats.length || dateFilteredLeadsForStats.length === 0);
+
+  let totalLeads =
+    dateFilter === "all"
+      ? (useServerSummary ? serverTotal : (dateFilteredLeadsForStats.length || serverTotal))
+      : dateFilteredLeadsForStats.length;
+
+  let activeCount = 0;
+  let pipelineCount = 0;
+  let convertedCount = 0;
+  let lostCount = 0;
+
+  if (useServerSummary) {
+    totalLeads = serverTotal;
+    convertedCount = leadSummary.converted || 0;
+    lostCount = leadSummary.lost || 0;
+    pipelineCount = leadSummary.pipeline || 0;
     activeCount = leadSummary.active ?? Math.max(0, totalLeads - pipelineCount - convertedCount - lostCount);
+  } else {
+    dateFilteredLeadsForStats.forEach((lead) => {
+      const cat = getLeadComputedCategory(lead, deals);
+      if (cat === "converted") convertedCount++;
+      else if (cat === "lost") lostCount++;
+      else if (cat === "pipeline") pipelineCount++;
+      else activeCount++;
+    });
   }
 
   const convRateNumber = totalLeads > 0 ? (convertedCount / totalLeads) * 100 : 0;

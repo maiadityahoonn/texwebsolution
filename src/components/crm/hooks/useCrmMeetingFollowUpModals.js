@@ -3,11 +3,12 @@
 import { useState, useEffect } from "react";
 import { toLocalDateTimeInput, DEFAULT_REMINDER_MINUTES } from "../shared/dateTimeUtils";
 import { PIPELINE_STAGES } from "../shared/leadUtils";
-import { formatStatusLabel } from "../shared/meetingUtils";
+import { formatStatusLabel, isFollowUpActive, isMeetingActive } from "../shared/meetingUtils";
 
 export function useCrmMeetingFollowUpModals({
   leads = [],
   deals = [],
+  followUps = [],
   salesMeetings = [],
   onCreateFollowUp,
   onUpdateFollowUp,
@@ -118,6 +119,21 @@ export function useCrmMeetingFollowUpModals({
   function handleCreateFollowUpSubmit(e) {
     e.preventDefault();
     if (!followUpForm.title || !followUpForm.due_at) return;
+
+    if (followUpForm.lead_id || followUpForm.deal_id) {
+      const existingActive = followUps.find((item) => (
+        isFollowUpActive(item.status) && (
+          (followUpForm.lead_id && item.lead_id === followUpForm.lead_id) ||
+          (followUpForm.deal_id && item.deal_id === followUpForm.deal_id)
+        )
+      ));
+      if (existingActive) {
+        setShowFollowUpModal(false);
+        openRescheduleModal(existingActive);
+        return;
+      }
+    }
+
     onCreateFollowUp?.({
       ...followUpForm,
       lead_id: followUpForm.lead_id || null,
@@ -131,6 +147,17 @@ export function useCrmMeetingFollowUpModals({
   }
 
   function openPipelineFollowUpModal(deal) {
+    const existingActive = followUps.find(
+      (item) => isFollowUpActive(item.status) && (
+        (deal?.id && item.deal_id === deal.id) ||
+        (deal?.lead_id && item.lead_id === deal.lead_id)
+      )
+    );
+    if (existingActive) {
+      openRescheduleModal(existingActive);
+      return;
+    }
+
     const l = leads.find((item) => item.id === deal?.lead_id);
     setFollowUpForm({
       title: `Follow up: ${deal.title}`,
@@ -147,6 +174,14 @@ export function useCrmMeetingFollowUpModals({
   }
 
   function openLeadFollowUpModal(lead) {
+    const existingActive = followUps.find(
+      (item) => isFollowUpActive(item.status) && item.lead_id === lead?.id
+    );
+    if (existingActive) {
+      openRescheduleModal(existingActive);
+      return;
+    }
+
     const linkedDeal = deals.find((item) => item.lead_id === lead?.id);
     setFollowUpForm({
       title: `Follow up: ${lead?.name || "Lead"}`,
@@ -163,6 +198,18 @@ export function useCrmMeetingFollowUpModals({
   }
 
   function openDealFollowUpModal(deal, lead = null) {
+    const existingActive = followUps.find(
+      (item) => isFollowUpActive(item.status) && (
+        (deal?.id && item.deal_id === deal.id) ||
+        (deal?.lead_id && item.lead_id === deal.lead_id) ||
+        (lead?.id && item.lead_id === lead.id)
+      )
+    );
+    if (existingActive) {
+      openRescheduleModal(existingActive);
+      return;
+    }
+
     const l = lead || leads.find((item) => item.id === deal?.lead_id);
     setFollowUpForm({
       title: `Follow up: ${deal?.title || l?.name || "Deal"}`,
@@ -179,6 +226,18 @@ export function useCrmMeetingFollowUpModals({
   }
 
   function openDealMeetingModal(deal, lead = null) {
+    const existingActive = salesMeetings.find(
+      (item) => isMeetingActive(item.status) && (
+        (deal?.id && item.deal_id === deal.id) ||
+        (deal?.lead_id && item.lead_id === deal.lead_id) ||
+        (lead?.id && item.lead_id === lead.id)
+      )
+    );
+    if (existingActive) {
+      openSalesMeetingRescheduleModal(existingActive);
+      return;
+    }
+
     const l = lead || leads.find((item) => item.id === deal?.lead_id);
     setSalesMeetingForm({
       lead_id: deal?.lead_id || l?.id || "",
@@ -195,6 +254,14 @@ export function useCrmMeetingFollowUpModals({
   }
 
   function openLeadMeetingModal(lead) {
+    const existingActive = salesMeetings.find(
+      (item) => isMeetingActive(item.status) && item.lead_id === lead?.id
+    );
+    if (existingActive) {
+      openSalesMeetingRescheduleModal(existingActive);
+      return;
+    }
+
     setSalesMeetingForm({
       lead_id: lead?.id || "",
       deal_id: "",
@@ -213,6 +280,21 @@ export function useCrmMeetingFollowUpModals({
   function handleCreateSalesMeetingSubmit(e) {
     e.preventDefault();
     if (!salesMeetingForm.title || !salesMeetingForm.scheduled_at) return;
+
+    if (salesMeetingForm.lead_id || salesMeetingForm.deal_id) {
+      const existingActive = salesMeetings.find((item) => (
+        isMeetingActive(item.status) && (
+          (salesMeetingForm.lead_id && item.lead_id === salesMeetingForm.lead_id) ||
+          (salesMeetingForm.deal_id && item.deal_id === salesMeetingForm.deal_id)
+        )
+      ));
+      if (existingActive) {
+        setShowSalesMeetingModal(false);
+        openSalesMeetingRescheduleModal(existingActive);
+        return;
+      }
+    }
+
     const finalMeetLink = salesMeetingForm.meeting_link?.trim() || defaultMeetLink || "https://meet.google.com/new";
     onCreateSalesMeeting?.({
       ...salesMeetingForm,

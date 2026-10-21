@@ -19,6 +19,7 @@ import {
   isMeetingActive,
   isMeetingCompleted,
   isMeetingNoShow,
+  isMeetingOverdue,
   isFollowUpActive,
   isFollowUpCompleted,
   isFollowUpMissed,
@@ -32,9 +33,15 @@ export function buildPageStatusCards({
   dateFilteredPipelineDealsForStats,
   dateFilteredFollowUpsForStats,
   dateFilteredMeetingsForStats,
-  proposals,
-  quotations,
-  agreements,
+  proposals = [],
+  quotations = [],
+  agreements = [],
+  dealSummary = null,
+  followUpSummary = null,
+  meetingSummary = null,
+  commercialSummary = null,
+  dateFilter = "all",
+  followUpScope = "all",
 }) {
   if (viewMode === "reports") return [];
   if (viewMode === "leads") {
@@ -49,35 +56,77 @@ export function buildPageStatusCards({
   }
 
   if (viewMode === "pipeline") {
-    const totalDealsCount = dateFilteredPipelineDealsForStats.length;
-    const openDeals = dateFilteredPipelineDealsForStats.filter((d) => !CLOSED_PIPELINE_STAGES.includes(d.pipeline_stage || d.stage));
-    const wonDeals = dateFilteredPipelineDealsForStats.filter((d) => (d.pipeline_stage || d.stage) === "closed_won");
-    const lostDeals = dateFilteredPipelineDealsForStats.filter((d) => (d.pipeline_stage || d.stage) === "closed_lost");
-    const openCount = openDeals.length;
-    const wonCount = wonDeals.length;
-    const lostCount = lostDeals.length;
-    const decidedCount = wonCount + lostCount;
-    const activeValue = openDeals.reduce((sum, d) => sum + (Number(d.deal_value || d.value) || 0), 0);
-    const wonValue = wonDeals.reduce((sum, d) => sum + (Number(d.deal_value || d.value) || 0), 0);
-    const lostValue = lostDeals.reduce((sum, d) => sum + (Number(d.deal_value || d.value) || 0), 0);
-    const totalValue = dateFilteredPipelineDealsForStats.reduce((sum, d) => sum + (Number(d.deal_value || d.value) || 0), 0);
-    const winRateNumber = decidedCount > 0 ? (wonCount / decidedCount) * 100 : 0;
-    const winRateDisplay = winRateNumber % 1 === 0 ? `${winRateNumber}%` : `${winRateNumber.toFixed(1)}%`;
+    const useServerSummary =
+      dateFilter === "all" &&
+      dealSummary &&
+      typeof dealSummary.total === "number" &&
+      (dealSummary.total > dateFilteredPipelineDealsForStats.length || dateFilteredPipelineDealsForStats.length === 0);
+
+    let totalDealsCount = dateFilteredPipelineDealsForStats.length;
+    let openCount = 0;
+    let wonCount = 0;
+    let lostCount = 0;
+    let totalValue = 0;
+    let activeValue = 0;
+    let wonValue = 0;
+    let lostValue = 0;
+    let winRateDisplay = "0%";
+
+    if (useServerSummary) {
+      totalDealsCount = dealSummary.total || 0;
+      openCount = dealSummary.active || 0;
+      wonCount = dealSummary.won || 0;
+      lostCount = dealSummary.lost || 0;
+      totalValue = dealSummary.totalValue || 0;
+      activeValue = dealSummary.activeValue || 0;
+      wonValue = dealSummary.wonValue || 0;
+      lostValue = dealSummary.lostValue || 0;
+      winRateDisplay = dealSummary.winRate || "0%";
+    } else {
+      const openDeals = dateFilteredPipelineDealsForStats.filter((d) => !CLOSED_PIPELINE_STAGES.includes(d.pipeline_stage || d.stage));
+      const wonDeals = dateFilteredPipelineDealsForStats.filter((d) => (d.pipeline_stage || d.stage) === "closed_won");
+      const lostDeals = dateFilteredPipelineDealsForStats.filter((d) => (d.pipeline_stage || d.stage) === "closed_lost");
+      openCount = openDeals.length;
+      wonCount = wonDeals.length;
+      lostCount = lostDeals.length;
+      const decidedCount = wonCount + lostCount;
+      activeValue = openDeals.reduce((sum, d) => sum + (Number(d.deal_value || d.value) || 0), 0);
+      wonValue = wonDeals.reduce((sum, d) => sum + (Number(d.deal_value || d.value) || 0), 0);
+      lostValue = lostDeals.reduce((sum, d) => sum + (Number(d.deal_value || d.value) || 0), 0);
+      totalValue = dateFilteredPipelineDealsForStats.reduce((sum, d) => sum + (Number(d.deal_value || d.value) || 0), 0);
+      const winRateNumber = decidedCount > 0 ? (wonCount / decidedCount) * 100 : 0;
+      winRateDisplay = winRateNumber % 1 === 0 ? `${winRateNumber}%` : `${winRateNumber.toFixed(1)}%`;
+    }
+
+    const decidedTotal = wonCount + lostCount;
 
     return [
       { id: "pipeline_value", label: "Total Pipeline Value", value: `₹${totalValue.toLocaleString("en-IN")}`, sub: `${totalDealsCount} total deals managed`, badge: `${openCount} in progress`, icon: DollarSign, tone: "text-indigo-600 bg-indigo-50 dark:bg-indigo-950/30", filterKey: "all", helpText: "Total monetary value across all deals in the sales pipeline." },
       { id: "active_deals", label: "Active Deals", value: openCount, sub: `₹${activeValue.toLocaleString("en-IN")} in active stages`, badge: "In Progress", icon: TrendingUp, tone: "text-amber-600 bg-amber-50 dark:bg-amber-950/30", filterKey: "active", helpText: "Open deals currently in Contacted, Meeting, Quotation, or Negotiation stages." },
       { id: "closed_won", label: "Closed Won", value: wonCount, sub: `₹${wonValue.toLocaleString("en-IN")} revenue booked`, badge: "Won Deals", icon: CheckCircle2, tone: "text-emerald-600 bg-emerald-50 dark:bg-emerald-950/30", filterKey: "won", helpText: "Deals successfully won and converted into paying clients." },
       { id: "closed_lost", label: "Closed Lost", value: lostCount, sub: `₹${lostValue.toLocaleString("en-IN")} dropped value`, badge: "Drop-offs", icon: XCircle, tone: "text-rose-600 bg-rose-50 dark:bg-rose-950/30", filterKey: "lost", helpText: "Deals marked lost with recorded drop-off reasons." },
-      { id: "deal_win_rate", label: "Deal Win Rate", value: winRateDisplay, sub: decidedCount > 0 ? `(${wonCount} Won · ${decidedCount} Decided)` : "No closed deals yet", badge: decidedCount > 0 ? `${wonCount}W / ${lostCount}L` : "0 Decided", icon: Target, tone: "text-purple-600 bg-purple-50 dark:bg-purple-950/30", filterKey: "won", helpText: "Win rate calculated as (Closed Won / (Closed Won + Closed Lost)) × 100." },
+      { id: "deal_win_rate", label: "Deal Win Rate", value: winRateDisplay, sub: decidedTotal > 0 ? `(${wonCount} Won · ${decidedTotal} Decided)` : "No closed deals yet", badge: decidedTotal > 0 ? `${wonCount}W / ${lostCount}L` : "0 Decided", icon: Target, tone: "text-purple-600 bg-purple-50 dark:bg-purple-950/30", filterKey: "won", helpText: "Win rate calculated as (Closed Won / (Closed Won + Closed Lost)) × 100." },
     ];
   }
 
   if (viewMode === "commercials") {
-    const quotationCount = proposals.length + quotations.length;
-    const agreementCount = agreements.length;
-    const sentCount = [...proposals, ...quotations, ...agreements].filter((item) => ["sent", "accepted", "signed"].includes(item.status)).length;
-    const approvedCount = [...proposals, ...quotations, ...agreements].filter((item) => ["accepted", "signed"].includes(item.status)).length;
+    const useServerSummary =
+      commercialSummary &&
+      typeof commercialSummary.quotations === "number" &&
+      ((commercialSummary.quotations + commercialSummary.agreements + commercialSummary.proposals) > (proposals.length + quotations.length + agreements.length));
+
+    let quotationCount = proposals.length + quotations.length;
+    let agreementCount = agreements.length;
+    let sentCount = [...proposals, ...quotations, ...agreements].filter((item) => ["sent", "accepted", "signed"].includes(item.status)).length;
+    let approvedCount = [...proposals, ...quotations, ...agreements].filter((item) => ["accepted", "signed"].includes(item.status)).length;
+
+    if (useServerSummary) {
+      quotationCount = (commercialSummary.quotations || 0) + (commercialSummary.proposals || 0);
+      agreementCount = commercialSummary.agreements || 0;
+      sentCount = (commercialSummary.paidInvoices || 0) + (commercialSummary.pendingInvoices || 0);
+      approvedCount = commercialSummary.paidInvoices || 0;
+    }
+
     return [
       { label: "Quotations", value: quotationCount, sub: "Proposal/quotation docs", icon: FileText, tone: "text-orange-600 bg-orange-50 dark:bg-orange-950/30" },
       { label: "Agreements", value: agreementCount, sub: "Client agreement docs", icon: CheckCircle2, tone: "text-indigo-600 bg-indigo-50 dark:bg-indigo-950/30" },
@@ -87,18 +136,47 @@ export function buildPageStatusCards({
   }
 
   if (viewMode === "followups") {
-    const now = Date.now();
-    const allFollowUps = dateFilteredFollowUpsForStats;
-    const activeCount = allFollowUps.filter((item) => isFollowUpActive(item.status)).length;
-    const overdueCount = allFollowUps.filter((item) => isFollowUpOverdue(item, now)).length;
-    const pendingUpcoming = allFollowUps.filter((item) => isFollowUpUpcomingPending(item, now)).length;
-    const completedCount = allFollowUps.filter((item) => isFollowUpCompleted(item.status)).length;
-    const missedCount = allFollowUps.filter((item) => isFollowUpMissed(item.status)).length;
+    const isScoped = followUpScope && followUpScope !== "all";
+    const useServerSummary =
+      !isScoped &&
+      dateFilter === "all" &&
+      followUpSummary &&
+      typeof followUpSummary.total === "number" &&
+      (followUpSummary.total > dateFilteredFollowUpsForStats.length || dateFilteredFollowUpsForStats.length === 0);
+
+    let activeCount = 0;
+    let overdueCount = 0;
+    let pendingUpcoming = 0;
+    let completedCount = 0;
+    let missedCount = 0;
+
+    if (useServerSummary) {
+      activeCount = followUpSummary.active || 0;
+      overdueCount = followUpSummary.overdue || 0;
+      pendingUpcoming = followUpSummary.pending || 0;
+      completedCount = followUpSummary.completed || 0;
+      missedCount = followUpSummary.missed || 0;
+    } else {
+      const now = Date.now();
+      const allFollowUps = dateFilteredFollowUpsForStats.filter((item) => {
+        if (followUpScope === "leads") return Boolean(item.lead_id && !item.deal_id);
+        if (followUpScope === "pipeline") return Boolean(item.deal_id);
+        return true;
+      });
+      activeCount = allFollowUps.filter((item) => isFollowUpActive(item.status)).length;
+      overdueCount = allFollowUps.filter((item) => isFollowUpOverdue(item, now)).length;
+      pendingUpcoming = allFollowUps.filter((item) => isFollowUpUpcomingPending(item, now)).length;
+      completedCount = allFollowUps.filter((item) => isFollowUpCompleted(item.status)).length;
+      missedCount = allFollowUps.filter((item) => isFollowUpMissed(item.status)).length;
+    }
+
+    const scopeLabel =
+      followUpScope === "leads" ? "Lead Follow-ups" : followUpScope === "pipeline" ? "Deal Follow-ups" : "Follow-ups";
 
     return [
       {
         id: "active_followups",
-        label: "Active Follow-ups",
+        label: `Active ${scopeLabel}`,
         value: activeCount,
         sub: overdueCount > 0 ? `${overdueCount} overdue · ${pendingUpcoming} upcoming` : "All open scheduled tasks",
         badge: overdueCount > 0 ? "Urgent" : "Active",
@@ -154,22 +232,44 @@ export function buildPageStatusCards({
   }
 
   if (viewMode === "sales_meetings") {
-    const allMeetings = dateFilteredMeetingsForStats;
-    const todayStr = new Date().toDateString();
-    const activeCount = allMeetings.filter((item) => isMeetingActive(item.status)).length;
-    const todayCount = allMeetings.filter(
-      (item) => isMeetingActive(item.status) && item.scheduled_at && new Date(item.scheduled_at).toDateString() === todayStr
-    ).length;
-    const completedCount = allMeetings.filter((item) => isMeetingCompleted(item.status)).length;
-    const noShowCount = allMeetings.filter((item) => isMeetingNoShow(item.status)).length;
+    const useServerSummary =
+      dateFilter === "all" &&
+      meetingSummary &&
+      typeof meetingSummary.total === "number" &&
+      (meetingSummary.total > dateFilteredMeetingsForStats.length || dateFilteredMeetingsForStats.length === 0);
+
+    let activeCount = 0;
+    let overdueCount = 0;
+    let todayCount = 0;
+    let completedCount = 0;
+    let noShowCount = 0;
+
+    if (useServerSummary) {
+      activeCount = meetingSummary.active || 0;
+      overdueCount = meetingSummary.overdue || 0;
+      todayCount = meetingSummary.today || 0;
+      completedCount = meetingSummary.completed || 0;
+      noShowCount = meetingSummary.no_show || 0;
+    } else {
+      const now = Date.now();
+      const allMeetings = dateFilteredMeetingsForStats;
+      const todayStr = new Date().toDateString();
+      activeCount = allMeetings.filter((item) => isMeetingActive(item.status)).length;
+      overdueCount = allMeetings.filter((item) => isMeetingOverdue(item, now)).length;
+      todayCount = allMeetings.filter(
+        (item) => isMeetingActive(item.status) && item.scheduled_at && new Date(item.scheduled_at).toDateString() === todayStr
+      ).length;
+      completedCount = allMeetings.filter((item) => isMeetingCompleted(item.status)).length;
+      noShowCount = allMeetings.filter((item) => isMeetingNoShow(item.status)).length;
+    }
 
     return [
       {
         id: "active_meetings",
         label: "Upcoming Meetings",
         value: activeCount,
-        sub: todayCount > 0 ? `${todayCount} scheduled today` : "Active pipeline calls",
-        badge: todayCount > 0 ? `${todayCount} Today` : "Upcoming",
+        sub: overdueCount > 0 ? `${overdueCount} passed · ${todayCount} today` : "Active pipeline calls",
+        badge: overdueCount > 0 ? "Urgent" : todayCount > 0 ? `${todayCount} Today` : "Upcoming",
         icon: Video,
         tone: "text-indigo-600 bg-indigo-50 dark:bg-indigo-950/30",
         filterKey: "all",
@@ -185,6 +285,17 @@ export function buildPageStatusCards({
         tone: "text-blue-600 bg-blue-50 dark:bg-blue-950/30",
         filterKey: "today",
         helpText: "Meetings scheduled to be conducted today.",
+      },
+      {
+        id: "overdue_meetings",
+        label: "Passed / Overdue",
+        value: overdueCount,
+        sub: "Scheduled time has passed",
+        badge: overdueCount > 0 ? "Urgent" : null,
+        icon: AlertCircle,
+        tone: "text-red-600 bg-red-50 dark:bg-red-950/30",
+        filterKey: "overdue",
+        helpText: "Active meetings whose scheduled time has passed without completion or no-show.",
       },
       {
         id: "completed_meetings",

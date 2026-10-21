@@ -214,3 +214,13 @@ export async function updateDeal(dealId, updates = {}) {
     return updatedDeal;
   }
 }
+
+export async function getCloudDealsSummary(options = {}) {
+  try {
+    const apiResult = await fetchCrmListFromApi('deals_summary', options);
+    if (apiResult && typeof apiResult.total === 'number') return apiResult;
+  } catch (err) {
+    console.warn('Deals summary API error:', err.message);
+  }
+  return null;
+}

@@ -6,7 +6,7 @@ import { Calendar, Check, History, Phone, RotateCcw, Trash2, Video, X } from "lu
 import TablePagination from "../shared/TablePagination";
 import { TableSkeleton as DefaultTableSkeleton } from "../shared/CrmSkeletons";
 import DefaultResponsiveTableContainer from "../shared/ResponsiveTableContainer";
-import { resolveLinkedContact, isMeetingActive, isMeetingNoShow } from "../shared/meetingUtils";
+import { resolveLinkedContact, isMeetingActive, isMeetingNoShow, isMeetingOverdue } from "../shared/meetingUtils";
 
 function WhatsAppIcon({ className = "w-4 h-4" }) {
   return (
@@ -118,7 +118,7 @@ export default function MeetingsTable({
                   const contactType = resolved.type;
                   const contactPhone = resolved.phone;
                   const scheduledTime = item.scheduled_at ? new Date(item.scheduled_at).getTime() : 0;
-                  const isOverdue = item.status === "scheduled" && scheduledTime > 0 && scheduledTime < Date.now();
+                  const isOverdue = isMeetingOverdue(item);
                   const isToday = item.scheduled_at && new Date(item.scheduled_at).toDateString() === new Date().toDateString();
                   const effectiveMeetLink = (item.meeting_link && item.meeting_link !== "https://meet.google.com/new")
                     ? item.meeting_link
@@ -212,10 +212,10 @@ export default function MeetingsTable({
                             : item.status === "cancelled" || item.status === "no_show"
                             ? "bg-red-50 text-red-600 dark:bg-red-950/40 dark:text-red-300"
                             : isOverdue
-                            ? "bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300"
+                            ? "bg-red-50 text-red-600 dark:bg-red-950/40 dark:text-red-300"
                             : "bg-blue-50 text-blue-600 dark:bg-blue-950/40 dark:text-blue-300"
                         }`}>
-                          {item.status === "no_show" ? "No Show" : formatStatusLabel(item.status)}
+                          {item.status === "no_show" ? "No Show" : isOverdue ? "Passed" : formatStatusLabel(item.status)}
                         </button>
                       </td>
                       <td className="py-3.5 px-4 text-right whitespace-nowrap min-w-[260px]">

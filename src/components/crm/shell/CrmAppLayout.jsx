@@ -335,10 +335,10 @@ export default function CrmAppLayout({ children }) {
         >
           <main className="min-h-screen pt-[calc(3.5rem+max(env(safe-area-inset-top,0px),1.5rem))] md:pt-0 pb-20 md:pb-6">
             {/* Desktop CRM Page Header (hidden on mobile to prevent double header) */}
-            <header className="hidden md:flex sticky top-0 z-30 h-16 bg-white/85 dark:bg-[#0b0b0c]/85 backdrop-blur-xl border-b border-gray-200/80 dark:border-slate-800/80 transition-colors duration-200">
-              <div className="h-full px-4 sm:px-6 flex items-center justify-between gap-3 sm:gap-4">
+            <header className="hidden md:flex sticky top-0 z-30 h-16 w-full bg-white/85 dark:bg-[#0b0b0c]/85 backdrop-blur-xl border-b border-gray-200/80 dark:border-slate-800/80 transition-colors duration-200">
+              <div className="w-full h-full px-4 sm:px-6 flex items-center justify-between gap-3 sm:gap-4">
                 {/* Left Side: Crisp Vibrant Icon & Title (No Glow Shadow) */}
-                <div className="flex items-center gap-3 min-w-0 flex-1">
+                <div className="flex items-center gap-3 min-w-0 shrink">
                   {(() => {
                     const HeaderIcon = meta.icon || Target;
                     const bgColor = meta.color || "#ea580c";
@@ -357,12 +357,12 @@ export default function CrmAppLayout({ children }) {
                     );
                   })()}
 
-                  <div className="min-w-0 flex-1">
+                  <div className="min-w-0">
                     <h1 className="text-lg sm:text-xl font-black tracking-tight text-gray-900 dark:text-white truncate font-[Matter] leading-normal py-0.5">
                       {meta.title}
                     </h1>
                     {meta.desc && (
-                      <p className="text-[11px] text-gray-500 dark:text-slate-400 max-w-xl truncate leading-tight mt-0.5 hidden sm:block">
+                      <p className="text-[11px] text-gray-500 dark:text-slate-400 max-w-sm lg:max-w-md xl:max-w-xl truncate leading-tight mt-0.5 hidden sm:block">
                         {meta.desc}
                       </p>
                     )}
@@ -370,9 +370,9 @@ export default function CrmAppLayout({ children }) {
                 </div>
 
                 {/* Right Side: Dynamic Action Portal Buttons & Controls (Uniform h-9 Height) */}
-                <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+                <div className="flex items-center justify-end gap-1.5 sm:gap-2 shrink-0 ml-auto">
                   {/* Dynamic Action Buttons Slot (Add Lead, Add Deal, Meta Leads, Refresh, etc.) */}
-                  <div id="crm-top-header-actions" className="flex items-center gap-1.5 sm:gap-2 shrink-0 flex-nowrap" />
+                  <div id="crm-top-header-actions" className="flex items-center justify-end gap-1.5 sm:gap-2 shrink-0 flex-nowrap" />
 
                   {/* Theme Mode Toggle Button */}
                   <button

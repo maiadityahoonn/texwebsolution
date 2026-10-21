@@ -1,5 +1,7 @@
 import {
   supabase,
+  clampPageSize,
+  fetchCrmListFromApi,
   readLocalCache,
   writeLocalCache,
   mergeCloudAndLocal,
@@ -18,13 +20,23 @@ export const INVOICE_COLUMNS = ['invoice_number', 'deal_id', 'project_id', 'titl
 // ==========================================
 // PROPOSALS
 // ==========================================
-export async function getProposals() {
+export async function getProposals(options = null) {
   try {
+    const useOptions = options && typeof options === 'object';
+    const pageSize = clampPageSize(options?.pageSize, useOptions ? 50 : 200);
+    const page = Math.max(Number.parseInt(options?.page || 1, 10) || 1, 1);
+    const withCount = Boolean(options?.withCount);
+
+    if (useOptions) {
+      const apiResult = await fetchCrmListFromApi('proposals', { ...options, page, pageSize });
+      if (apiResult?.data) return withCount ? apiResult : apiResult.data;
+    }
+
     const { data, error } = await supabase
       .from('proposals')
       .select('*')
       .order('created_at', { ascending: false })
-      .limit(100);
+      .limit(pageSize);
 
     if (error) throw error;
     const merged = mergeCloudAndLocal(data || [], readLocalCache(LOCAL_PROPOSALS_KEY, []));
@@ -89,13 +101,23 @@ export async function updateProposal(proposalId, updates) {
 // ==========================================
 // QUOTATIONS
 // ==========================================
-export async function getQuotations() {
+export async function getQuotations(options = null) {
   try {
+    const useOptions = options && typeof options === 'object';
+    const pageSize = clampPageSize(options?.pageSize, useOptions ? 50 : 200);
+    const page = Math.max(Number.parseInt(options?.page || 1, 10) || 1, 1);
+    const withCount = Boolean(options?.withCount);
+
+    if (useOptions) {
+      const apiResult = await fetchCrmListFromApi('quotations', { ...options, page, pageSize });
+      if (apiResult?.data) return withCount ? apiResult : apiResult.data;
+    }
+
     const { data, error } = await supabase
       .from('quotations')
       .select('*')
       .order('created_at', { ascending: false })
-      .limit(100);
+      .limit(pageSize);
 
     if (error) throw error;
     const merged = mergeCloudAndLocal(data || [], readLocalCache(LOCAL_QUOTATIONS_KEY, []));
@@ -175,13 +197,23 @@ export async function updateQuotation(quotationId, updates) {
 // ==========================================
 // AGREEMENTS
 // ==========================================
-export async function getAgreements() {
+export async function getAgreements(options = null) {
   try {
+    const useOptions = options && typeof options === 'object';
+    const pageSize = clampPageSize(options?.pageSize, useOptions ? 50 : 200);
+    const page = Math.max(Number.parseInt(options?.page || 1, 10) || 1, 1);
+    const withCount = Boolean(options?.withCount);
+
+    if (useOptions) {
+      const apiResult = await fetchCrmListFromApi('agreements', { ...options, page, pageSize });
+      if (apiResult?.data) return withCount ? apiResult : apiResult.data;
+    }
+
     const { data, error } = await supabase
       .from('agreements')
       .select('*')
       .order('created_at', { ascending: false })
-      .limit(100);
+      .limit(pageSize);
 
     if (error) throw error;
     const merged = mergeCloudAndLocal(data || [], readLocalCache(LOCAL_AGREEMENTS_KEY, []));
@@ -246,13 +278,23 @@ export async function updateAgreement(agreementId, updates) {
 // ==========================================
 // INVOICES & PAYMENTS
 // ==========================================
-export async function getInvoices() {
+export async function getInvoices(options = null) {
   try {
+    const useOptions = options && typeof options === 'object';
+    const pageSize = clampPageSize(options?.pageSize, useOptions ? 50 : 200);
+    const page = Math.max(Number.parseInt(options?.page || 1, 10) || 1, 1);
+    const withCount = Boolean(options?.withCount);
+
+    if (useOptions) {
+      const apiResult = await fetchCrmListFromApi('invoices', { ...options, page, pageSize });
+      if (apiResult?.data) return withCount ? apiResult : apiResult.data;
+    }
+
     const { data, error } = await supabase
       .from('invoices')
       .select('*')
       .order('created_at', { ascending: false })
-      .limit(150);
+      .limit(pageSize);
 
     if (error) throw error;
     const merged = mergeCloudAndLocal(data || [], readLocalCache(LOCAL_INVOICES_KEY, []));
@@ -372,3 +414,14 @@ export async function recordInvoicePayment(invoiceId, paidAmount, notes = '') {
     notes: notes || `Payment recorded: Rs. ${paidAmount}`,
   });
 }
+
+export async function getCloudCommercialsSummary(options = {}) {
+  try {
+    const apiResult = await fetchCrmListFromApi('commercials_summary', options);
+    if (apiResult && typeof apiResult.quotations === 'number') return apiResult;
+  } catch (err) {
+    console.warn('Commercials summary API error:', err.message);
+  }
+  return null;
+}
+

@@ -42,6 +42,38 @@ export function dedupeLeads(leads = []) {
   });
 }
 
+export function getLeadComputedCategory(lead, deals = []) {
+  const linkedDeal = deals.find((deal) => deal.lead_id === lead.id);
+  const isInPipeline = Boolean(
+    linkedDeal && !CLOSED_PIPELINE_STAGES.includes(linkedDeal.pipeline_stage || linkedDeal.stage)
+  );
+  const hasWonDeal = Boolean(linkedDeal && (linkedDeal.pipeline_stage || linkedDeal.stage) === "closed_won");
+  const hasLostDeal = Boolean(linkedDeal && (linkedDeal.pipeline_stage || linkedDeal.stage) === "closed_lost");
+
+  const isConverted = hasWonDeal || (!linkedDeal && (lead.status === "Converted" || lead.status === "Closed Won"));
+  if (isConverted) return "converted";
+
+  const isLost = hasLostDeal || (!linkedDeal && lead.status === "Lost");
+  if (isLost) return "lost";
+
+  const isPipelineLead =
+    isInPipeline ||
+    (!linkedDeal &&
+      ["Contacted", "Qualified", "Proposal Sent", "In Pipeline", "Negotiation", "In Progress"].includes(lead.status));
+  if (isPipelineLead) return "pipeline";
+
+  return "active";
+}
+
+export function matchesLeadStatusFilter(category, statusFilter) {
+  if (statusFilter === "all" || !statusFilter) return true;
+  if (statusFilter === "active") return category === "active";
+  if (statusFilter === "pipeline") return category === "pipeline";
+  if (statusFilter === "converted" || statusFilter === "won") return category === "converted";
+  if (statusFilter === "lost") return category === "lost";
+  return true;
+}
+
 export function calculateLeadLetterCounts({
   dedupedLeads = [],
   deals = [],
@@ -50,39 +82,10 @@ export function calculateLeadLetterCounts({
 }) {
   const counts = {};
   dedupedLeads.forEach((lead) => {
-    const linkedDeal = deals.find((deal) => deal.lead_id === lead.id);
-    const isInPipeline = Boolean(
-      linkedDeal && !CLOSED_PIPELINE_STAGES.includes(linkedDeal.pipeline_stage || linkedDeal.stage)
-    );
-    const hasWonDeal = Boolean(linkedDeal && (linkedDeal.pipeline_stage || linkedDeal.stage) === "closed_won");
-    const hasLostDeal = Boolean(linkedDeal && (linkedDeal.pipeline_stage || linkedDeal.stage) === "closed_lost");
-
-    const isConverted = hasWonDeal || (!linkedDeal && (lead.status === "Converted" || lead.status === "Closed Won"));
-    const isLost = !isConverted && (hasLostDeal || (!linkedDeal && lead.status === "Lost"));
-    const isPipelineLead =
-      !isConverted &&
-      !isLost &&
-      (isInPipeline ||
-        (!linkedDeal &&
-          ["Contacted", "Qualified", "Proposal Sent", "In Pipeline", "Negotiation", "In Progress"].includes(
-            lead.status
-          )));
-    const isActiveInquiry = !isConverted && !isLost && !isPipelineLead;
-
-    const matchStatus =
-      statusFilter === "all" || !statusFilter
-        ? true
-        : statusFilter === "active"
-        ? isActiveInquiry
-        : statusFilter === "pipeline"
-        ? isPipelineLead
-        : statusFilter === "converted" || statusFilter === "won"
-        ? isConverted
-        : statusFilter === "lost"
-        ? isLost
-        : true;
-
+    const category = getLeadComputedCategory(lead, deals);
+    const matchStatus = matchesLeadStatusFilter(category, statusFilter);
     const matchDate = matchesDateFilterFn(lead);
+
     if (matchStatus && matchDate) {
       const first = (lead.name || "").trim().toUpperCase().charAt(0);
       if (/[A-Z]/.test(first)) {
@@ -106,37 +109,8 @@ export function filterLeadsList({
 }) {
   const q = query.trim().toLowerCase();
   const result = dedupedLeads.filter((lead) => {
-    const linkedDeal = deals.find((deal) => deal.lead_id === lead.id);
-    const isInPipeline = Boolean(
-      linkedDeal && !CLOSED_PIPELINE_STAGES.includes(linkedDeal.pipeline_stage || linkedDeal.stage)
-    );
-    const hasWonDeal = Boolean(linkedDeal && (linkedDeal.pipeline_stage || linkedDeal.stage) === "closed_won");
-    const hasLostDeal = Boolean(linkedDeal && (linkedDeal.pipeline_stage || linkedDeal.stage) === "closed_lost");
-
-    const isConverted = hasWonDeal || (!linkedDeal && (lead.status === "Converted" || lead.status === "Closed Won"));
-    const isLost = !isConverted && (hasLostDeal || (!linkedDeal && lead.status === "Lost"));
-    const isPipelineLead =
-      !isConverted &&
-      !isLost &&
-      (isInPipeline ||
-        (!linkedDeal &&
-          ["Contacted", "Qualified", "Proposal Sent", "In Pipeline", "Negotiation", "In Progress"].includes(
-            lead.status
-          )));
-    const isActiveInquiry = !isConverted && !isLost && !isPipelineLead;
-
-    const matchStatus =
-      statusFilter === "all" || !statusFilter
-        ? true
-        : statusFilter === "active"
-        ? isActiveInquiry
-        : statusFilter === "pipeline"
-        ? isPipelineLead
-        : statusFilter === "converted" || statusFilter === "won"
-        ? isConverted
-        : statusFilter === "lost"
-        ? isLost
-        : true;
+    const category = getLeadComputedCategory(lead, deals);
+    const matchStatus = matchesLeadStatusFilter(category, statusFilter);
 
     const matchDate = matchesDateFilterFn(lead);
     const matchQuery =

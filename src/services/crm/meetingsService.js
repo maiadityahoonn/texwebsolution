@@ -100,6 +100,26 @@ export async function getSalesMeetings(options = null) {
 
 export async function createSalesMeeting(meetingData) {
   try {
+    if (meetingData.lead_id || meetingData.deal_id) {
+      let checkQuery = supabase
+        .from('sales_meetings')
+        .select('id, title, scheduled_at, status')
+        .not('status', 'in', '("completed","done","no_show","noshow","cancelled","missed")')
+        .limit(1);
+
+      if (meetingData.lead_id) {
+        checkQuery = checkQuery.eq('lead_id', meetingData.lead_id);
+      } else if (meetingData.deal_id) {
+        checkQuery = checkQuery.eq('deal_id', meetingData.deal_id);
+      }
+
+      const { data: existingActive } = await checkQuery;
+      if (existingActive && existingActive.length > 0) {
+        console.warn(`Prevented duplicate active meeting for lead ${meetingData.lead_id || meetingData.deal_id}`);
+        return existingActive[0];
+      }
+    }
+
     const insertPayload = pickPayload(meetingData, SALES_MEETING_COLUMNS);
     const { data, error } = await supabase
       .from('sales_meetings')
@@ -170,4 +190,14 @@ export async function updateSalesMeetingStatus(meetingId, status, outcome = '') 
   const updates = { status };
   if (outcome) updates.outcome = outcome;
   return updateSalesMeeting(meetingId, updates);
+}
+
+export async function getCloudMeetingsSummary(options = {}) {
+  try {
+    const apiResult = await fetchCrmListFromApi('meetings_summary', options);
+    if (apiResult && typeof apiResult.total === 'number') return apiResult;
+  } catch (err) {
+    console.warn('Meetings summary API error:', err.message);
+  }
+  return null;
 }

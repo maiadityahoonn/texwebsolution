@@ -41,6 +41,14 @@ export default function CrmWorkspaceView({
   leadPagination = null,
   leadSummary = null,
   onRefreshLeadSummary = null,
+  dealSummary = null,
+  onRefreshDealSummary = null,
+  followUpSummary = null,
+  onRefreshFollowUpSummary = null,
+  meetingSummary = null,
+  onRefreshMeetingSummary = null,
+  commercialSummary = null,
+  onRefreshCommercialSummary = null,
   commercialScope = "all",
   isDark = false,
   onUpdateLeadStatus,
@@ -96,6 +104,7 @@ export default function CrmWorkspaceView({
   const [pipelinePageSize, setPipelinePageSize] = useState(20);
   const [followUpPage, setFollowUpPage] = useState(1);
   const [followUpPageSize, setFollowUpPageSize] = useState(10);
+  const [followUpScope, setFollowUpScope] = useState("all");
   const [meetingPage, setMeetingPage] = useState(1);
   const [meetingPageSize, setMeetingPageSize] = useState(50);
   const searchParams = useSearchParams();
@@ -176,11 +185,16 @@ export default function CrmWorkspaceView({
     leadSummary,
     leadPagination,
     dealPagination,
+    dealSummary,
     followUpPagination,
+    followUpSummary,
     meetingPagination,
+    meetingSummary,
+    commercialSummary,
     isLoading,
     viewMode,
     commercialScope,
+    followUpScope,
     query,
     statusFilter,
     leadAlphabetFilter,
@@ -209,6 +223,7 @@ export default function CrmWorkspaceView({
     filteredLeads,
     safeLeadPage,
     leadPageCount,
+    leadTotalForPagination,
     paginatedLeads,
     stats,
     commercialDocs,
@@ -254,6 +269,11 @@ export default function CrmWorkspaceView({
     onFetchMeetingsPage,
     onRefresh,
     onRefreshLeadSummary,
+    onRefreshDealSummary,
+    onRefreshFollowUpSummary,
+    onRefreshMeetingSummary,
+    onRefreshCommercialSummary,
+    statusFilter,
   });
 
   // Modal handlers and state
@@ -266,6 +286,7 @@ export default function CrmWorkspaceView({
     agreements,
     invoices,
     salesMeetings,
+    followUps,
     onCreateLead,
     onAddLead,
     onUpdateLead,
@@ -332,7 +353,7 @@ export default function CrmWorkspaceView({
       {/* Header Portal directly to top header line */}
       {headerActionsTarget
         ? createPortal(
-            <div className="flex items-center justify-end gap-1.5 sm:gap-2 shrink-0 flex-nowrap whitespace-nowrap">
+            <div className="flex items-center justify-end gap-1.5 sm:gap-2 shrink-0 flex-nowrap whitespace-nowrap ml-auto">
               {crmActionButtons}
             </div>,
             headerActionsTarget
@@ -415,6 +436,7 @@ export default function CrmWorkspaceView({
         setLeadPage={setLeadPage}
         leadsPerPage={leadsPerPage}
         setLeadsPerPage={setLeadsPerPage}
+        leadTotal={leadTotalForPagination}
         leads={leads}
         deals={deals}
         followUps={followUps}
@@ -493,6 +515,11 @@ export default function CrmWorkspaceView({
         followUpPageCount={followUpPageCount}
         setFollowUpPage={setFollowUpPage}
         setFollowUpPageSize={setFollowUpPageSize}
+        followUpScope={followUpScope}
+        setFollowUpScope={(scope) => {
+          setFollowUpScope(scope);
+          setFollowUpPage(1);
+        }}
         // Meetings
         isMeetingsLoading={isMeetingsLoading}
         paginatedSalesMeetings={paginatedSalesMeetings}

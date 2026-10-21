@@ -33,6 +33,7 @@ export default function FollowUpsTable({
   openRescheduleModal,
   onDeleteFollowUp,
   pagination,
+  followUpScope = "all",
 }) {
   const searchParams = useSearchParams();
   const highlightParam = searchParams?.get("highlight") || "";
@@ -48,12 +49,19 @@ export default function FollowUpsTable({
     return () => clearTimeout(timer);
   }, [highlightParam, paginatedFollowUps]);
 
+  const emptyMessage =
+    followUpScope === "leads"
+      ? "No lead inquiry follow-ups found."
+      : followUpScope === "pipeline"
+      ? "No pipeline deal follow-ups found."
+      : "No sales follow-up found.";
+
   return (
     <div className="rounded-2xl bg-white dark:bg-[#18150f] border border-gray-100 dark:border-[#3a3020] overflow-hidden shadow-2xs">
       {isFollowUpsLoading && paginatedFollowUps.length === 0 ? (
         <TableSkeleton rows={6} columns={6} />
       ) : filteredFollowUps.length === 0 ? (
-        <div className="p-5 sm:p-8 text-center text-xs sm:text-sm text-gray-500 dark:text-neutral-400">No sales follow-up found.</div>
+        <div className="p-5 sm:p-8 text-center text-xs sm:text-sm text-gray-500 dark:text-neutral-400">{emptyMessage}</div>
       ) : (
         <>
           <ResponsiveTableContainer>

@@ -33,6 +33,7 @@ import {
   updateSalesMeeting,
 } from "@/services/crm/meetingsService";
 import { CRM_NAV } from "./CrmShellConfig";
+import { isFollowUpActive, isMeetingActive } from "../shared/meetingUtils";
 
 export function useCrmLayoutActions({
   crmData,
@@ -53,18 +54,26 @@ export function useCrmLayoutActions({
     deals,
     setDeals,
     dealPagination,
+    dealSummary,
+    refreshDealSummary,
     proposals,
     setProposals,
     quotations,
     setQuotations,
     agreements,
     setAgreements,
+    commercialSummary,
+    refreshCommercialSummary,
     salesFollowUps,
     setSalesFollowUps,
     followUpPagination,
+    followUpSummary,
+    refreshFollowUpSummary,
     salesMeetings,
     setSalesMeetings,
     meetingPagination,
+    meetingSummary,
+    refreshMeetingSummary,
     invoicesList,
     setInvoicesList,
     crmLoading,
@@ -95,15 +104,23 @@ export function useCrmLayoutActions({
     onRefreshLeadSummary: refreshLeadSummary,
     deals,
     dealPagination,
+    dealSummary,
+    onRefreshDealSummary: refreshDealSummary,
     clients,
     proposals,
     quotations,
     agreements,
+    commercialSummary,
+    onRefreshCommercialSummary: refreshCommercialSummary,
     invoices: invoicesList,
     followUps: salesFollowUps,
     followUpPagination,
+    followUpSummary,
+    onRefreshFollowUpSummary: refreshFollowUpSummary,
     salesMeetings,
     meetingPagination,
+    meetingSummary,
+    onRefreshMeetingSummary: refreshMeetingSummary,
     isLoading: crmLoading,
     currentUser: sessionUser,
     currentProfile: userProfile,
@@ -251,6 +268,20 @@ export function useCrmLayoutActions({
       return res;
     },
     onCreateFollowUp: async (followUp) => {
+      const targetLeadId = followUp.lead_id;
+      const targetDealId = followUp.deal_id;
+      if (targetLeadId || targetDealId) {
+        const existingActive = salesFollowUps.find((item) => (
+          isFollowUpActive(item.status) && (
+            (targetLeadId && item.lead_id === targetLeadId) ||
+            (targetDealId && item.deal_id === targetDealId)
+          )
+        ));
+        if (existingActive) {
+          setToast?.(`Active follow-up already scheduled for this lead (${new Date(existingActive.due_at).toLocaleDateString("en-IN")}). Please complete or reschedule it.`);
+          return existingActive;
+        }
+      }
       const res = await createSalesFollowUp({ ...followUp, created_by: sessionUser?.id || null, assigned_to: sessionUser?.id || null });
       if (res) setSalesFollowUps((prev) => [res, ...prev.filter((item) => item.id !== res.id)]);
       setToast("Sales follow-up scheduled.");
@@ -268,6 +299,20 @@ export function useCrmLayoutActions({
       setToast("Follow-up deleted.");
     },
     onCreateSalesMeeting: async (meeting) => {
+      const targetLeadId = meeting.lead_id;
+      const targetDealId = meeting.deal_id;
+      if (targetLeadId || targetDealId) {
+        const existingActive = salesMeetings.find((item) => (
+          isMeetingActive(item.status) && (
+            (targetLeadId && item.lead_id === targetLeadId) ||
+            (targetDealId && item.deal_id === targetDealId)
+          )
+        ));
+        if (existingActive) {
+          setToast?.(`Active meeting already scheduled for this lead (${new Date(existingActive.scheduled_at).toLocaleDateString("en-IN")}). Please complete or reschedule it.`);
+          return existingActive;
+        }
+      }
       const res = await createSalesMeeting({ ...meeting, created_by: sessionUser?.id || null, host_id: sessionUser?.id || null });
       if (res) setSalesMeetings((prev) => [res, ...prev.filter((item) => item.id !== res.id)]);
       setToast("Sales meeting scheduled.");

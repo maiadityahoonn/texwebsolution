@@ -7,8 +7,9 @@ export function useCrmServerSync({
   dateFilter,
   selectedDate,
   customDateRange,
-  meetingPage,
-  meetingPageSize,
+  statusFilter = "all",
+  meetingPage = 1,
+  meetingPageSize = 50,
   getLeadServerDateRange,
   getServerDateRange,
   onFetchLeadsPage,
@@ -17,6 +18,10 @@ export function useCrmServerSync({
   onFetchMeetingsPage,
   onRefresh,
   onRefreshLeadSummary,
+  onRefreshDealSummary,
+  onRefreshFollowUpSummary,
+  onRefreshMeetingSummary,
+  onRefreshCommercialSummary,
 }) {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [refreshStatus, setRefreshStatus] = useState("");
@@ -28,7 +33,7 @@ export function useCrmServerSync({
       const range = getLeadServerDateRange();
       onFetchLeadsPage({
         page: 1,
-        pageSize: 200,
+        pageSize: 500,
         search: "",
         ...range,
       });
@@ -43,15 +48,15 @@ export function useCrmServerSync({
       const range = getServerDateRange();
       onFetchDealsPage({
         page: 1,
-        pageSize: 200,
+        pageSize: 500,
         search: "",
-        stage: "",
+        stage: statusFilter !== "all" ? statusFilter : "",
         ...range,
       });
     }, 350);
     return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [customDateRange?.from, customDateRange?.to, dateFilter, onFetchDealsPage, selectedDate, viewMode]);
+  }, [customDateRange?.from, customDateRange?.to, dateFilter, onFetchDealsPage, selectedDate, statusFilter, viewMode]);
 
   useEffect(() => {
     if (!onFetchFollowUpsPage || viewMode !== "followups") return;
@@ -61,12 +66,13 @@ export function useCrmServerSync({
         page: 1,
         pageSize: 500,
         search: "",
+        status: statusFilter !== "all" ? statusFilter : "",
         ...range,
       });
     }, 350);
     return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [customDateRange?.from, customDateRange?.to, dateFilter, onFetchFollowUpsPage, selectedDate, viewMode]);
+  }, [customDateRange?.from, customDateRange?.to, dateFilter, onFetchFollowUpsPage, selectedDate, statusFilter, viewMode]);
 
   useEffect(() => {
     if (!onFetchMeetingsPage || viewMode !== "sales_meetings") return;
@@ -76,28 +82,32 @@ export function useCrmServerSync({
         page: 1,
         pageSize: 200,
         search: "",
-        status: "",
+        status: statusFilter !== "all" ? statusFilter : "",
         ...range,
       });
     }, 350);
     return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [customDateRange?.from, customDateRange?.to, dateFilter, onFetchMeetingsPage, selectedDate, viewMode]);
+  }, [customDateRange?.from, customDateRange?.to, dateFilter, onFetchMeetingsPage, selectedDate, statusFilter, viewMode]);
 
   useEffect(() => {
     if (viewMode !== "dashboard") return;
     const timer = setTimeout(() => {
       const leadRange = getLeadServerDateRange();
       const genericRange = getServerDateRange();
-      onFetchLeadsPage?.({ page: 1, pageSize: 200, search: "", ...leadRange });
-      onFetchDealsPage?.({ page: 1, pageSize: 100, search: "", stage: "", ...genericRange });
+      onFetchLeadsPage?.({ page: 1, pageSize: 500, search: "", ...leadRange });
+      onFetchDealsPage?.({ page: 1, pageSize: 500, search: "", stage: "", ...genericRange });
       onFetchFollowUpsPage?.({ page: 1, pageSize: 500, search: "", ...genericRange });
       onFetchMeetingsPage?.({ page: 1, pageSize: 100, search: "", status: "", ...genericRange });
       onRefreshLeadSummary?.(leadRange);
+      onRefreshDealSummary?.(genericRange);
+      onRefreshFollowUpSummary?.(genericRange);
+      onRefreshMeetingSummary?.(genericRange);
+      onRefreshCommercialSummary?.();
     }, 350);
     return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [customDateRange?.from, customDateRange?.to, dateFilter, onFetchDealsPage, onFetchFollowUpsPage, onFetchLeadsPage, onFetchMeetingsPage, onRefreshLeadSummary, selectedDate, viewMode]);
+  }, [customDateRange?.from, customDateRange?.to, dateFilter, onFetchDealsPage, onFetchFollowUpsPage, onFetchLeadsPage, onFetchMeetingsPage, onRefreshCommercialSummary, onRefreshDealSummary, onRefreshFollowUpSummary, onRefreshLeadSummary, onRefreshMeetingSummary, selectedDate, viewMode]);
 
   const handleRefreshClick = useCallback(async () => {
     if (isRefreshing) return;
@@ -109,7 +119,7 @@ export function useCrmServerSync({
         await Promise.all([
           onFetchLeadsPage?.({
             page: 1,
-            pageSize: 200,
+            pageSize: 500,
             search: "",
             force: true,
             ...range,
@@ -117,40 +127,58 @@ export function useCrmServerSync({
           onRefreshLeadSummary?.(range),
         ]);
       } else if (viewMode === "pipeline") {
-        await onFetchDealsPage?.({
-          page: 1,
-          pageSize: 200,
-          search: "",
-          stage: "",
-          force: true,
-          ...range,
-        });
+        await Promise.all([
+          onFetchDealsPage?.({
+            page: 1,
+            pageSize: 500,
+            search: "",
+            stage: "",
+            force: true,
+            ...range,
+          }),
+          onRefreshDealSummary?.(range),
+        ]);
       } else if (viewMode === "followups") {
-        await onFetchFollowUpsPage?.({
-          page: 1,
-          pageSize: 100,
-          search: "",
-          force: true,
-          ...range,
-        });
+        await Promise.all([
+          onFetchFollowUpsPage?.({
+            page: 1,
+            pageSize: 500,
+            search: "",
+            force: true,
+            ...range,
+          }),
+          onRefreshFollowUpSummary?.(range),
+        ]);
       } else if (viewMode === "sales_meetings") {
-        await onFetchMeetingsPage?.({
-          page: 1,
-          pageSize: 200,
-          search: "",
-          status: "",
-          force: true,
-          ...range,
-        });
+        await Promise.all([
+          onFetchMeetingsPage?.({
+            page: 1,
+            pageSize: 200,
+            search: "",
+            status: "",
+            force: true,
+            ...range,
+          }),
+          onRefreshMeetingSummary?.(range),
+        ]);
+      } else if (viewMode === "commercials") {
+        await Promise.all([
+          onRefresh?.("commercials", { force: true, ...range }),
+          onRefreshCommercialSummary?.(),
+        ]);
       } else if (viewMode === "dashboard") {
         const leadRange = getLeadServerDateRange();
         const genericRange = getServerDateRange();
         await Promise.all([
-          onFetchLeadsPage?.({ page: 1, pageSize: 200, search: "", force: true, ...leadRange }),
-          onFetchDealsPage?.({ page: 1, pageSize: 100, search: "", stage: "", force: true, ...genericRange }),
+          onFetchLeadsPage?.({ page: 1, pageSize: 500, search: "", force: true, ...leadRange }),
+          onFetchDealsPage?.({ page: 1, pageSize: 500, search: "", stage: "", force: true, ...genericRange }),
           onFetchFollowUpsPage?.({ page: 1, pageSize: 500, search: "", force: true, ...genericRange }),
           onFetchMeetingsPage?.({ page: 1, pageSize: 100, search: "", status: "", force: true, ...genericRange }),
           onRefreshLeadSummary?.(leadRange),
+          onRefreshDealSummary?.(genericRange),
+          onRefreshFollowUpSummary?.(genericRange),
+          onRefreshMeetingSummary?.(genericRange),
+          onRefreshCommercialSummary?.(),
         ]);
       } else {
         await onRefresh?.(viewMode, { force: true, ...range });
@@ -169,14 +197,16 @@ export function useCrmServerSync({
     getLeadServerDateRange,
     getServerDateRange,
     isRefreshing,
-    meetingPage,
-    meetingPageSize,
     onFetchDealsPage,
     onFetchFollowUpsPage,
     onFetchLeadsPage,
     onFetchMeetingsPage,
     onRefresh,
+    onRefreshCommercialSummary,
+    onRefreshDealSummary,
+    onRefreshFollowUpSummary,
     onRefreshLeadSummary,
+    onRefreshMeetingSummary,
     viewMode,
   ]);
 

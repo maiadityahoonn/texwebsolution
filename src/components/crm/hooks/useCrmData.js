@@ -2,17 +2,19 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { patchRealtimeList } from "@/components/crm/shared/realtimeListUtils";
-import { getCloudLeads, getCloudLeadsSummary } from "@/services/crm/leadsService";
-import { getDeals } from "@/services/crm/dealsService";
+import { getCloudLeads, getCloudLeadsSummary, getLeadsByIds } from "@/services/crm/leadsService";
+import { CLOSED_PIPELINE_STAGES } from "@/components/crm/shared/leadUtils";
+import { getDeals, getCloudDealsSummary } from "@/services/crm/dealsService";
 import { getClients } from "@/services/crm/clientsService";
 import {
   getAgreements,
   getInvoices,
   getProposals,
   getQuotations,
+  getCloudCommercialsSummary,
 } from "@/services/crm/documentsService";
-import { getSalesFollowUps } from "@/services/crm/followupsService";
-import { getSalesMeetings } from "@/services/crm/meetingsService";
+import { getSalesFollowUps, getCloudFollowUpsSummary } from "@/services/crm/followupsService";
+import { getSalesMeetings, getCloudMeetingsSummary } from "@/services/crm/meetingsService";
 
 export function useCrmData({ sessionUserId = "", pushLiveSalesNotification } = {}) {
   const [leads, setLeads] = useState([]);
@@ -21,13 +23,17 @@ export function useCrmData({ sessionUserId = "", pushLiveSalesNotification } = {
   const [clients, setClients] = useState([]);
   const [deals, setDeals] = useState([]);
   const [dealPagination, setDealPagination] = useState({ count: 0, page: 1, pageSize: 100, loading: false });
+  const [dealSummary, setDealSummary] = useState({ total: 0, active: 0, won: 0, lost: 0, totalValue: 0, wonValue: 0, activeValue: 0 });
   const [proposals, setProposals] = useState([]);
   const [quotations, setQuotations] = useState([]);
   const [agreements, setAgreements] = useState([]);
+  const [commercialSummary, setCommercialSummary] = useState({ quotations: 0, proposals: 0, agreements: 0, invoices: 0 });
   const [salesFollowUps, setSalesFollowUps] = useState([]);
   const [followUpPagination, setFollowUpPagination] = useState({ count: 0, page: 1, pageSize: 50, loading: false });
+  const [followUpSummary, setFollowUpSummary] = useState({ total: 0, active: 0, pending: 0, overdue: 0, completed: 0, missed: 0 });
   const [salesMeetings, setSalesMeetings] = useState([]);
   const [meetingPagination, setMeetingPagination] = useState({ count: 0, page: 1, pageSize: 50, loading: false });
+  const [meetingSummary, setMeetingSummary] = useState({ total: 0, active: 0, today: 0, overdue: 0, completed: 0, no_show: 0 });
   const [invoicesList, setInvoicesList] = useState([]);
   const [crmLoading, setCrmLoading] = useState(false);
   const leadsRef = useRef([]);
@@ -46,6 +52,38 @@ export function useCrmData({ sessionUserId = "", pushLiveSalesNotification } = {
     return summary;
   }, []);
 
+  const refreshDealSummary = useCallback(async function refreshDealSummary(params = {}) {
+    const summary = await getCloudDealsSummary(params);
+    if (summary && typeof summary.total === "number") {
+      setDealSummary(summary);
+    }
+    return summary;
+  }, []);
+
+  const refreshFollowUpSummary = useCallback(async function refreshFollowUpSummary(params = {}) {
+    const summary = await getCloudFollowUpsSummary(params);
+    if (summary && typeof summary.total === "number") {
+      setFollowUpSummary(summary);
+    }
+    return summary;
+  }, []);
+
+  const refreshMeetingSummary = useCallback(async function refreshMeetingSummary(params = {}) {
+    const summary = await getCloudMeetingsSummary(params);
+    if (summary && typeof summary.total === "number") {
+      setMeetingSummary(summary);
+    }
+    return summary;
+  }, []);
+
+  const refreshCommercialSummary = useCallback(async function refreshCommercialSummary(params = {}) {
+    const summary = await getCloudCommercialsSummary(params);
+    if (summary && typeof summary.quotations === "number") {
+      setCommercialSummary(summary);
+    }
+    return summary;
+  }, []);
+
   const loadCrmData = useCallback(async function loadCrmData(scope = "crm", options = {}) {
     const requestedScope = scope || "crm";
     const force = Boolean(options?.force);
@@ -60,29 +98,63 @@ export function useCrmData({ sessionUserId = "", pushLiveSalesNotification } = {
         if (force || !loadedScopesRef.current.has(key)) jobs.push(task());
       };
 
+      let fetchedLeadsBatch = [];
+      let fetchedDealsBatch = [];
+
       if (shouldLoad(["crm", "leads", "overview", "sales_reports", "pipeline", "sales_followups", "sales_meetings"])) {
         addJob("leads", async () => {
           const [leadsRes, summaryRes] = await Promise.all([
-            getCloudLeads({ page: 1, pageSize: 200, withCount: true }),
+            getCloudLeads({ page: 1, pageSize: 500, withCount: true }),
             getCloudLeadsSummary(),
           ]);
-          setLeads(leadsRes?.data || leadsRes || []);
+          fetchedLeadsBatch = leadsRes?.data || leadsRes || [];
+          setLeads(fetchedLeadsBatch);
           if (leadsRes?.data) {
-            setLeadPagination({ count: leadsRes.count || 0, page: leadsRes.page || 1, pageSize: leadsRes.pageSize || 200, loading: false });
+            setLeadPagination({ count: leadsRes.count || 0, page: leadsRes.page || 1, pageSize: leadsRes.pageSize || 500, loading: false });
           }
           if (summaryRes && typeof summaryRes.total === "number") {
             setLeadSummary(summaryRes);
           }
           loadedScopesRef.current.add("leads");
+
+          // Safe background sync for next page buffer (capped at 2 pages / 1,000 records to prevent memory exhaustion at 50,000 scale)
+          if (leadsRes?.count && leadsRes.count > (leadsRes.pageSize || 500)) {
+            const pageSize = leadsRes.pageSize || 500;
+            const totalPages = Math.ceil(leadsRes.count / pageSize);
+            const maxBufferPages = Math.min(totalPages, 2);
+            const remainingJobs = [];
+            for (let p = 2; p <= maxBufferPages; p++) {
+              remainingJobs.push(getCloudLeads({ page: p, pageSize, withCount: false }));
+            }
+            Promise.all(remainingJobs)
+              .then((results) => {
+                const extraLeads = results.flatMap((r) => r?.data || r || []);
+                if (extraLeads.length > 0) {
+                  setLeads((prev) => {
+                    const seen = new Set(prev.map((l) => l.id));
+                    const toAdd = extraLeads.filter((l) => !seen.has(l.id));
+                    return toAdd.length > 0 ? [...prev, ...toAdd] : prev;
+                  });
+                }
+              })
+              .catch((err) => console.warn("Background leads sync skipped:", err?.message));
+          }
         });
       }
 
       if (shouldLoad(["crm", "leads", "overview", "sales_reports", "pipeline", "sales_commercials", "agreements", "invoices", "payments", "sales_followups", "sales_meetings", "clients"])) {
         addJob("deals", async () => {
-          const dealsRes = await getDeals({ page: 1, pageSize: 100, withCount: true });
-          setDeals(dealsRes?.data || dealsRes || []);
+          const [dealsRes, summaryRes] = await Promise.all([
+            getDeals({ page: 1, pageSize: 500, withCount: true }),
+            getCloudDealsSummary(),
+          ]);
+          fetchedDealsBatch = dealsRes?.data || dealsRes || [];
+          setDeals(fetchedDealsBatch);
           if (dealsRes?.data) {
-            setDealPagination({ count: dealsRes.count || 0, page: dealsRes.page || 1, pageSize: dealsRes.pageSize || 100, loading: false });
+            setDealPagination({ count: dealsRes.count || 0, page: dealsRes.page || 1, pageSize: dealsRes.pageSize || 500, loading: false });
+          }
+          if (summaryRes && typeof summaryRes.total === "number") {
+            setDealSummary(summaryRes);
           }
           loadedScopesRef.current.add("deals");
         });
@@ -97,26 +169,36 @@ export function useCrmData({ sessionUserId = "", pushLiveSalesNotification } = {
 
       if (shouldLoad(["pipeline", "sales_commercials", "agreements", "invoices", "payments", "sales_reports"])) {
         addJob("commercials", async () => {
-          const [proposalsRes, quotationsRes, agreementsRes, invoicesRes] = await Promise.all([
+          const [proposalsRes, quotationsRes, agreementsRes, invoicesRes, summaryRes] = await Promise.all([
             getProposals(),
             getQuotations(),
             getAgreements(),
             getInvoices(),
+            getCloudCommercialsSummary(),
           ]);
           setProposals(proposalsRes || []);
           setQuotations(quotationsRes || []);
           setAgreements(agreementsRes || []);
           setInvoicesList(invoicesRes || []);
+          if (summaryRes && typeof summaryRes.quotations === "number") {
+            setCommercialSummary(summaryRes);
+          }
           loadedScopesRef.current.add("commercials");
         });
       }
 
       if (shouldLoad(["crm", "leads", "overview", "sales_reports", "pipeline", "sales_followups"])) {
         addJob("followups", async () => {
-          const followUpsRes = await getSalesFollowUps({ page: 1, pageSize: 500, withCount: true });
+          const [followUpsRes, summaryRes] = await Promise.all([
+            getSalesFollowUps({ page: 1, pageSize: 500, withCount: true }),
+            getCloudFollowUpsSummary(),
+          ]);
           setSalesFollowUps(followUpsRes?.data || followUpsRes || []);
           if (followUpsRes?.data) {
             setFollowUpPagination({ count: followUpsRes.count || 0, page: followUpsRes.page || 1, pageSize: followUpsRes.pageSize || 500, loading: false });
+          }
+          if (summaryRes && typeof summaryRes.total === "number") {
+            setFollowUpSummary(summaryRes);
           }
           loadedScopesRef.current.add("followups");
         });
@@ -124,16 +206,50 @@ export function useCrmData({ sessionUserId = "", pushLiveSalesNotification } = {
 
       if (shouldLoad(["crm", "leads", "overview", "sales_reports", "pipeline", "sales_meetings"])) {
         addJob("meetings", async () => {
-          const meetingsRes = await getSalesMeetings({ page: 1, pageSize: 100, withCount: true });
+          const [meetingsRes, summaryRes] = await Promise.all([
+            getSalesMeetings({ page: 1, pageSize: 100, withCount: true }),
+            getCloudMeetingsSummary(),
+          ]);
           setSalesMeetings(meetingsRes?.data || meetingsRes || []);
           if (meetingsRes?.data) {
             setMeetingPagination({ count: meetingsRes.count || 0, page: meetingsRes.page || 1, pageSize: meetingsRes.pageSize || 100, loading: false });
+          }
+          if (summaryRes && typeof summaryRes.total === "number") {
+            setMeetingSummary(summaryRes);
           }
           loadedScopesRef.current.add("meetings");
         });
       }
 
       await Promise.all(jobs);
+
+      // Guaranteed Pipeline Lead Hydration: Ensure every lead linked to an active deal is in memory
+      const dealsToInspect = fetchedDealsBatch.length > 0 ? fetchedDealsBatch : deals;
+      const activeDealLeadIds = dealsToInspect
+        .filter((d) => !CLOSED_PIPELINE_STAGES.includes(d.pipeline_stage || d.stage))
+        .map((d) => d.lead_id)
+        .filter(Boolean);
+
+      if (activeDealLeadIds.length > 0) {
+        const loadedLeadIds = new Set((fetchedLeadsBatch.length > 0 ? fetchedLeadsBatch : leads).map((l) => l.id));
+        const missingDealLeadIds = activeDealLeadIds.filter((id) => !loadedLeadIds.has(id));
+
+        if (missingDealLeadIds.length > 0) {
+          try {
+            const hydratedLeads = await getLeadsByIds(missingDealLeadIds);
+            if (hydratedLeads.length > 0) {
+              setLeads((prev) => {
+                const seen = new Set(prev.map((l) => l.id));
+                const toAdd = hydratedLeads.filter((l) => !seen.has(l.id));
+                return toAdd.length > 0 ? [...prev, ...toAdd] : prev;
+              });
+            }
+          } catch (hydErr) {
+            console.warn("Active pipeline deal lead hydration skipped:", hydErr?.message);
+          }
+        }
+      }
+
       loadedScopesRef.current.add(requestedScope);
     } finally {
       setCrmLoading(false);
@@ -162,7 +278,7 @@ export function useCrmData({ sessionUserId = "", pushLiveSalesNotification } = {
     setLeadPagination((prev) => ({ ...prev, loading: true }));
     const result = await getCloudLeads({
       page: params.page || 1,
-      pageSize: params.pageSize || 200,
+      pageSize: params.pageSize || 500,
       search: params.search || "",
       status: params.status || "",
       dateFrom: params.dateFrom || "",
@@ -173,7 +289,7 @@ export function useCrmData({ sessionUserId = "", pushLiveSalesNotification } = {
     setLeadPagination({
       count: result?.count || 0,
       page: result?.page || params.page || 1,
-      pageSize: result?.pageSize || params.pageSize || 200,
+      pageSize: result?.pageSize || params.pageSize || 500,
       loading: false,
     });
   }, []);
@@ -333,18 +449,30 @@ export function useCrmData({ sessionUserId = "", pushLiveSalesNotification } = {
     deals,
     setDeals,
     dealPagination,
+    dealSummary,
+    setDealSummary,
+    refreshDealSummary,
     proposals,
     setProposals,
     quotations,
     setQuotations,
     agreements,
     setAgreements,
+    commercialSummary,
+    setCommercialSummary,
+    refreshCommercialSummary,
     salesFollowUps,
     setSalesFollowUps,
     followUpPagination,
+    followUpSummary,
+    setFollowUpSummary,
+    refreshFollowUpSummary,
     salesMeetings,
     setSalesMeetings,
     meetingPagination,
+    meetingSummary,
+    setMeetingSummary,
+    refreshMeetingSummary,
     invoicesList,
     setInvoicesList,
     crmLoading,
