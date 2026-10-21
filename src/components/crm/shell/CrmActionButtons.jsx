@@ -3,6 +3,7 @@
 import {
   Layers,
   Plus,
+  UserPlus,
   Video,
   Settings,
   RefreshCw,
@@ -56,7 +57,7 @@ export default function CrmActionButtons({
             title="Add Lead"
             aria-label="Add Lead"
           >
-            <Plus className="w-3.5 h-3.5 sm:w-4 sm:h-4 stroke-[2.5] shrink-0" />
+            <UserPlus className="w-3.5 h-3.5 sm:w-4 sm:h-4 stroke-[2.5] shrink-0" />
             <span className="hidden md:inline">Add Lead</span>
           </button>
           <button
@@ -102,7 +103,7 @@ export default function CrmActionButtons({
             title="Add Lead"
             aria-label="Add Lead"
           >
-            <Plus className="w-3.5 h-3.5 sm:w-4 sm:h-4 stroke-[2.5] text-rose-500 shrink-0" />
+            <UserPlus className="w-3.5 h-3.5 sm:w-4 sm:h-4 stroke-[2.5] text-rose-500 shrink-0" />
             <span className="hidden md:inline">Add Lead</span>
           </button>
         </>
@@ -204,7 +205,7 @@ export default function CrmActionButtons({
             title="Add Lead"
             aria-label="Add Lead"
           >
-            <Plus className="w-3.5 h-3.5 sm:w-4 sm:h-4 stroke-[2.5] shrink-0" />
+            <UserPlus className="w-3.5 h-3.5 sm:w-4 sm:h-4 stroke-[2.5] shrink-0" />
             <span className="hidden md:inline">Add Lead</span>
           </button>
           <button

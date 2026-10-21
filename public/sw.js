@@ -1,5 +1,5 @@
 // TexWeb Solution PWA Service Worker
-const CACHE_NAME = 'texweb-cache-v3';
+const CACHE_NAME = 'texweb-cache-v4';
 const OFFLINE_URL = '/';
 
 const PRECACHE_ASSETS = [
@@ -15,6 +15,9 @@ const CACHEABLE_PATHS = new Set(PRECACHE_ASSETS);
 function isCacheableRequest(request) {
   if (request.method !== 'GET') return false;
   const url = new URL(request.url);
+  if (url.pathname.startsWith('/_next/') || url.pathname.startsWith('/api/') || url.pathname.startsWith('/crm')) {
+    return false;
+  }
   return url.origin === self.location.origin && CACHEABLE_PATHS.has(url.pathname);
 }
 

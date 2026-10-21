@@ -283,13 +283,29 @@ export default function RootLayout({ children }) {
           id="texweb-service-worker"
           strategy="afterInteractive"
           dangerouslySetInnerHTML={{
-            __html: `
-              if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
-                window.addEventListener('load', function() {
-                  navigator.serviceWorker.register('/sw.js').catch(function() {});
-                });
-              }
-            `,
+            __html:
+              process.env.NODE_ENV === "production"
+                ? `
+                  if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
+                    window.addEventListener('load', function() {
+                      navigator.serviceWorker.register('/sw.js').catch(function() {});
+                    });
+                  }
+                `
+                : `
+                  if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
+                    window.addEventListener('load', function() {
+                      navigator.serviceWorker.getRegistrations().then(function(regs) {
+                        regs.forEach(function(r) { r.unregister(); });
+                      }).catch(function() {});
+                      if ('caches' in window) {
+                        caches.keys().then(function(keys) {
+                          keys.forEach(function(k) { caches.delete(k); });
+                        }).catch(function() {});
+                      }
+                    });
+                  }
+                `,
           }}
         />
         <Script
