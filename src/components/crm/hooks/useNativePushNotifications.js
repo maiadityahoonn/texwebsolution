@@ -36,6 +36,20 @@ export function useNativePushNotifications({ userId, onNavigate, setToast } = {}
     let latestToken = getStoredNativePushToken();
     let registrationInProgress = false;
 
+    const keepListener = (handle) => {
+      if (handle) listenerHandles.push(handle);
+      return handle;
+    };
+
+    const safeListener = async (label, subscribe) => {
+      try {
+        return keepListener(await subscribe());
+      } catch (error) {
+        console.warn(`Native push ${label} listener unavailable:`, error?.message || error);
+        return null;
+      }
+    };
+
     const syncToken = async (token, attempt = 0) => {
       if (cancelled || !token) return false;
       const result = await registerNativePushToken(
@@ -85,19 +99,22 @@ export function useNativePushNotifications({ userId, onNavigate, setToast } = {}
 
     const setup = async () => {
       try {
-        listenerHandles.push(await PushNotifications.addListener("registration", async ({ value }) => {
+        const registrationListener = await safeListener("registration", () => PushNotifications.addListener("registration", async ({ value }) => {
           if (cancelled || !value) return;
           latestToken = value;
           await syncToken(value);
         }));
-        listenerHandles.push(await PushNotifications.addListener("registrationError", (error) => {
+        if (!registrationListener) {
+          throw new Error("push_registration_listener_unavailable");
+        }
+        await safeListener("registration-error", () => PushNotifications.addListener("registrationError", (error) => {
           console.warn("Native push registration failed:", error?.error || "unknown_error");
           if (!cancelled) toastRef.current?.("Firebase notification registration failed on this phone.");
         }));
-        listenerHandles.push(await PushNotifications.addListener("pushNotificationReceived", (notification) => {
+        await safeListener("foreground", () => PushNotifications.addListener("pushNotificationReceived", (notification) => {
           if (!cancelled) toastRef.current?.(notification?.title || "New CRM notification");
         }));
-        listenerHandles.push(await PushNotifications.addListener("pushNotificationActionPerformed", ({ notification }) => {
+        await safeListener("action", () => PushNotifications.addListener("pushNotificationActionPerformed", ({ notification }) => {
           const target = notificationLink(notification);
           if (onNavigate) onNavigate(target, notification);
           else if (typeof window !== "undefined") window.location.assign(target);
@@ -114,12 +131,15 @@ export function useNativePushNotifications({ userId, onNavigate, setToast } = {}
           lightColor: "#FF6B00",
           sound: "default",
         }).catch(() => {});
-        listenerHandles.push(await App.addListener("resume", requestRegistration));
+        await safeListener("resume", () => App.addListener("resume", requestRegistration));
         window.addEventListener("online", requestRegistration);
         await requestRegistration();
       } catch (error) {
         console.warn("Native push setup skipped:", error?.message || error);
-        if (!cancelled) toastRef.current?.("Notification setup could not start.");
+        if (!cancelled) {
+          const reason = String(error?.message || error || "unknown_error").slice(0, 100);
+          toastRef.current?.(`Notification setup failed: ${reason}`);
+        }
       }
     };
 
