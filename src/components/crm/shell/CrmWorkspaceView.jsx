@@ -34,6 +34,7 @@ export default function CrmWorkspaceView({
   agreements = [],
   invoices = [],
   followUps = [],
+  engagementFollowUps = followUps,
   followUpPagination = null,
   salesMeetings = [],
   meetingPagination = null,
@@ -105,6 +106,7 @@ export default function CrmWorkspaceView({
   const [followUpScope, setFollowUpScope] = useState("all");
   const [meetingPage, setMeetingPage] = useState(1);
   const [meetingPageSize, setMeetingPageSize] = useState(50);
+  const contextualFollowUps = viewMode === "followups" ? followUps : engagementFollowUps;
   const searchParams = useSearchParams();
   const urlDateFilter = searchParams?.get("dateFilter") || searchParams?.get("date") || "";
   const urlStatus = searchParams?.get("status") || "";
@@ -195,7 +197,7 @@ export default function CrmWorkspaceView({
     quotations,
     agreements,
     invoices,
-    followUps,
+    followUps: contextualFollowUps,
     salesMeetings,
     leadSummary,
     leadPagination,
@@ -309,7 +311,7 @@ export default function CrmWorkspaceView({
     agreements,
     invoices,
     salesMeetings,
-    followUps,
+    followUps: engagementFollowUps,
     onCreateLead,
     onAddLead,
     onUpdateLead,
@@ -461,7 +463,7 @@ export default function CrmWorkspaceView({
         leadTotal={leadTotalForPagination}
         leads={leads}
         deals={deals}
-        followUps={followUps}
+        followUps={contextualFollowUps}
         salesMeetings={salesMeetings}
         safeLeadPage={safeLeadPage}
         leadPageCount={leadPageCount}
@@ -574,7 +576,7 @@ export default function CrmWorkspaceView({
         quotations={quotations}
         agreements={agreements}
         invoices={invoices}
-        followUps={followUps}
+        followUps={engagementFollowUps}
         salesMeetings={salesMeetings}
         isDark={isDark}
         currentUser={currentUser}

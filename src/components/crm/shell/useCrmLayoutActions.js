@@ -68,6 +68,8 @@ export function useCrmLayoutActions({
     refreshCommercialSummary,
     salesFollowUps,
     setSalesFollowUps,
+    engagementFollowUps,
+    setEngagementFollowUps,
     followUpPagination,
     followUpSummary,
     refreshFollowUpSummary,
@@ -116,6 +118,11 @@ export function useCrmLayoutActions({
         ? { ...item, status: "done", completed_at: completedAt, updated_at: completedAt }
         : item
     )));
+    setEngagementFollowUps((prev) => prev.map((item) => (
+      isLinked(item) && isFollowUpActive(item.status)
+        ? { ...item, status: "done", completed_at: completedAt, updated_at: completedAt }
+        : item
+    )));
     setSalesMeetings((prev) => prev.map((item) => (
       isLinked(item) && isMeetingActive(item.status)
         ? { ...item, status: "completed", updated_at: completedAt }
@@ -158,6 +165,7 @@ export function useCrmLayoutActions({
     onRefreshCommercialSummary: refreshCommercialSummary,
     invoices: invoicesList,
     followUps: salesFollowUps,
+    engagementFollowUps,
     followUpPagination,
     followUpSummary,
     onRefreshFollowUpSummary: refreshFollowUpSummary,
@@ -326,7 +334,7 @@ export function useCrmLayoutActions({
       const targetLeadId = followUp.lead_id;
       const targetDealId = followUp.deal_id;
       if (targetLeadId || targetDealId) {
-        const existingActive = salesFollowUps.find((item) => (
+        const existingActive = engagementFollowUps.find((item) => (
           isFollowUpActive(item.status) && (
             (targetLeadId && item.lead_id === targetLeadId) ||
             (targetDealId && item.deal_id === targetDealId)
@@ -338,19 +346,28 @@ export function useCrmLayoutActions({
         }
       }
       const res = await createSalesFollowUp({ ...followUp, created_by: sessionUser?.id || null, assigned_to: sessionUser?.id || null });
-      if (res) setSalesFollowUps((prev) => [res, ...prev.filter((item) => item.id !== res.id)]);
+      if (res) {
+        setSalesFollowUps((prev) => [res, ...prev.filter((item) => item.id !== res.id)]);
+        setEngagementFollowUps((prev) => [res, ...prev.filter((item) => item.id !== res.id)].slice(0, 500));
+      }
       setToast("Sales follow-up scheduled.");
       return res;
     },
     onUpdateFollowUp: async (id, updates) => {
       const res = await updateSalesFollowUp(id, updates);
-      if (res) setSalesFollowUps((prev) => prev.map((item) => (item.id === id ? { ...item, ...updates, ...res } : item)));
+      if (res) {
+        setSalesFollowUps((prev) => prev.map((item) => (item.id === id ? { ...item, ...updates, ...res } : item)));
+        setEngagementFollowUps((prev) => prev.map((item) => (item.id === id ? { ...item, ...updates, ...res } : item)));
+      }
       setToast("Follow-up updated.");
       return res;
     },
     onDeleteFollowUp: async (id) => {
       const ok = await deleteSalesFollowUp(id);
-      if (ok) setSalesFollowUps((prev) => prev.filter((item) => item.id !== id));
+      if (ok) {
+        setSalesFollowUps((prev) => prev.filter((item) => item.id !== id));
+        setEngagementFollowUps((prev) => prev.filter((item) => item.id !== id));
+      }
       setToast("Follow-up deleted.");
     },
     onCreateSalesMeeting: async (meeting) => {

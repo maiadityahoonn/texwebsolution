@@ -180,6 +180,7 @@ export default function CrmWorkspaceViewSwitch({
           handleDelete={handleDelete}
           openAddDealModal={openAddDealModal}
           openLeadFollowUpModal={openLeadFollowUpModal}
+          openRescheduleModal={openRescheduleModal}
           openLostModal={openLostModal}
           handleReopenLead={handleReopenLead}
           setSelectedLead={setSelectedLead}
@@ -418,6 +419,7 @@ export default function CrmWorkspaceViewSwitch({
           handleDelete={handleDelete}
           openAddDealModal={openAddDealModal}
           openLeadFollowUpModal={openLeadFollowUpModal}
+          openRescheduleModal={openRescheduleModal}
           openLostModal={openLostModal}
           handleReopenLead={handleReopenLead}
           setSelectedLead={setSelectedLead}

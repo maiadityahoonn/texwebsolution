@@ -29,6 +29,7 @@ export function useCrmData({ sessionUserId = "", pushLiveSalesNotification } = {
   const [agreements, setAgreements] = useState([]);
   const [commercialSummary, setCommercialSummary] = useState({ quotations: 0, proposals: 0, agreements: 0, invoices: 0 });
   const [salesFollowUps, setSalesFollowUps] = useState([]);
+  const [engagementFollowUps, setEngagementFollowUps] = useState([]);
   const [followUpPagination, setFollowUpPagination] = useState({ count: 0, page: 1, pageSize: 50, loading: false });
   const [followUpSummary, setFollowUpSummary] = useState({ total: 0, active: 0, pending: 0, overdue: 0, completed: 0, missed: 0 });
   const [salesMeetings, setSalesMeetings] = useState([]);
@@ -197,6 +198,7 @@ export function useCrmData({ sessionUserId = "", pushLiveSalesNotification } = {
             getCloudFollowUpsSummary(),
           ]);
           setSalesFollowUps(followUpsRes?.data || followUpsRes || []);
+          setEngagementFollowUps(followUpsRes?.data || followUpsRes || []);
           if (followUpsRes?.data) {
             setFollowUpPagination({ count: followUpsRes.count || 0, page: followUpsRes.page || 1, pageSize: followUpsRes.pageSize || 500, loading: false });
           }
@@ -419,6 +421,7 @@ export function useCrmData({ sessionUserId = "", pushLiveSalesNotification } = {
         }
       },
     });
+    patchRealtimeList(setEngagementFollowUps, payload, { limit: 500 });
   }, [followUpPagination.pageSize, pushLiveSalesNotification, salesFollowUps, sessionUserId]);
 
   const handleRealtimeSalesMeeting = useCallback(function handleRealtimeSalesMeeting(payload, { notify = false } = {}) {
@@ -475,6 +478,8 @@ export function useCrmData({ sessionUserId = "", pushLiveSalesNotification } = {
     refreshCommercialSummary,
     salesFollowUps,
     setSalesFollowUps,
+    engagementFollowUps,
+    setEngagementFollowUps,
     followUpPagination,
     followUpSummary,
     setFollowUpSummary,

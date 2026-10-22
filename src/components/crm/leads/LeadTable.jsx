@@ -34,6 +34,7 @@ export default function LeadTable({
   handleReopenLead,
   openAddDealModal,
   openLeadFollowUpModal,
+  openRescheduleModal,
   openLostModal,
   handleOpenEdit,
   handleDelete,
@@ -100,6 +101,7 @@ export default function LeadTable({
                     handleReopenLead={handleReopenLead}
                     openAddDealModal={openAddDealModal}
                     openLeadFollowUpModal={openLeadFollowUpModal}
+                    openRescheduleModal={openRescheduleModal}
                     openLostModal={openLostModal}
                     handleOpenEdit={handleOpenEdit}
                     handleDelete={handleDelete}

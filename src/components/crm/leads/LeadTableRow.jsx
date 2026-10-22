@@ -43,6 +43,7 @@ export default function LeadTableRow({
   handleReopenLead = () => {},
   openAddDealModal = () => {},
   openLeadFollowUpModal = () => {},
+  openRescheduleModal = () => {},
   openLostModal = () => {},
   handleOpenEdit = () => {},
   handleDelete = () => {},
@@ -130,8 +131,7 @@ export default function LeadTableRow({
               type="button"
               onClick={(event) => {
                 event.stopPropagation();
-                setStatusFilter("all");
-                setViewMode("followups");
+                openRescheduleModal(nextLeadFollowUp);
               }}
               className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9.5px] font-bold bg-amber-50 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-200/60 dark:border-amber-900/50 shrink-0 cursor-pointer hover:bg-amber-100 transition whitespace-nowrap min-w-0 max-w-[150px] min-[360px]:max-w-none"
               title={`Pending Follow-up: ${nextLeadFollowUp.title} (${new Date(nextLeadFollowUp.due_at).toLocaleString("en-IN")})`}
@@ -276,12 +276,18 @@ export default function LeadTableRow({
           )}
 
           <button
-            onClick={() => openLeadFollowUpModal(lead)}
+            onClick={() => (
+              nextLeadFollowUp
+                ? openRescheduleModal(nextLeadFollowUp)
+                : openLeadFollowUpModal(lead)
+            )}
             className="p-1.5 rounded-lg text-blue-600 bg-blue-50 dark:bg-blue-950/40 hover:bg-blue-100 transition shrink-0 cursor-pointer"
-            title={isLost ? "Schedule Re-nurture Follow-up" : "Schedule Follow-up"}
-            aria-label={isLost ? "Schedule Re-nurture Follow-up" : "Schedule Follow-up"}
+            title={nextLeadFollowUp ? "Reschedule Follow-up" : isLost ? "Schedule Re-nurture Follow-up" : "Assign Follow-up"}
+            aria-label={nextLeadFollowUp ? "Reschedule Follow-up" : isLost ? "Schedule Re-nurture Follow-up" : "Assign Follow-up"}
           >
-            <Calendar className="w-3.5 h-3.5" />
+            {nextLeadFollowUp
+              ? <Clock className="w-3.5 h-3.5" />
+              : <Calendar className="w-3.5 h-3.5" />}
           </button>
 
           {!isLost && !isConverted && (

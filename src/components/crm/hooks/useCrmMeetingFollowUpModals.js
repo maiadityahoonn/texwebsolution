@@ -391,10 +391,10 @@ export function useCrmMeetingFollowUpModals({
     setShowRescheduleModal(true);
   }
 
-  function handleRescheduleSubmit(e) {
+  async function handleRescheduleSubmit(e) {
     e.preventDefault();
     if (salesMeetingRescheduleTarget) {
-      onUpdateSalesMeeting?.(salesMeetingRescheduleTarget.id, {
+      await onUpdateSalesMeeting?.(salesMeetingRescheduleTarget.id, {
         status: "scheduled",
         scheduled_at: new Date(rescheduleForm.due_at).toISOString(),
         reminder_before_minutes: Number(rescheduleForm.reminder_before_minutes) || DEFAULT_REMINDER_MINUTES,
@@ -410,7 +410,7 @@ export function useCrmMeetingFollowUpModals({
       return;
     }
     if (!rescheduleTarget || !rescheduleForm.due_at) return;
-    onUpdateFollowUp?.(rescheduleTarget.id, {
+    await onUpdateFollowUp?.(rescheduleTarget.id, {
       status: "pending",
       due_at: new Date(rescheduleForm.due_at).toISOString(),
       reminder_before_minutes: Number(rescheduleForm.reminder_before_minutes) || DEFAULT_REMINDER_MINUTES,

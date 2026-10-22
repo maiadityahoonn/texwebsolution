@@ -46,6 +46,7 @@ export default function LeadsView({
   handleDelete = () => {},
   openAddDealModal = () => {},
   openLeadFollowUpModal = () => {},
+  openRescheduleModal = () => {},
   openLostModal = () => {},
   handleReopenLead = () => {},
   setSelectedLead = () => {},
@@ -99,6 +100,7 @@ export default function LeadsView({
         handleDelete={handleDelete}
         openAddDealModal={openAddDealModal}
         openLeadFollowUpModal={openLeadFollowUpModal}
+        openRescheduleModal={openRescheduleModal}
         openLostModal={openLostModal}
         handleReopenLead={handleReopenLead}
         setSelectedLead={setSelectedLead}
