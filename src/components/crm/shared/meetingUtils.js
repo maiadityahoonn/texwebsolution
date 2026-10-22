@@ -88,7 +88,7 @@ export function extractCandidateNameFromTitle(title) {
 
 export function resolveLinkedContact(item, { leads = [], clients = [], deals = [] } = {}) {
   if (!item) {
-    return { name: "Unlinked", type: "General", phone: "", lead: null, client: null, deal: null };
+    return { name: "Unlinked", type: "General", phone: "", email: "", lead: null, client: null, deal: null };
   }
 
   const safeLeads = Array.isArray(leads) ? leads : [];
@@ -156,7 +156,8 @@ export function resolveLinkedContact(item, { leads = [], clients = [], deals = [
       "";
   }
 
-  return { name, type, phone, lead, client, deal };
+  const email = client?.email || lead?.email || deal?.email || "";
+  return { name, type, phone, email, lead, client, deal };
 }
 
 export function getFollowUpWhatsappMessage(item, lead, client) {

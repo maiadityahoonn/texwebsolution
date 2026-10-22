@@ -17,6 +17,7 @@ import {
   Trash2,
 } from "lucide-react";
 import { getLeadFullBudget } from "../shared/leadUtils";
+import { buildCommunicationTemplate, getEmailHref, openWhatsAppMessage } from "../shared/communicationTemplates";
 
 function WhatsAppIcon({ className = "w-4 h-4" }) {
   return (
@@ -67,6 +68,14 @@ export default function LeadTableRow({
   const nextLeadFollowUp = followUps
     .filter((followUp) => (followUp.lead_id === lead.id || (linkedDeal && followUp.deal_id === linkedDeal.id)) && followUp.status === "pending")
     .sort((a, b) => new Date(a.due_at || 0).getTime() - new Date(b.due_at || 0).getTime())[0];
+  const communicationTemplate = buildCommunicationTemplate({
+    stage: linkedDeal?.pipeline_stage || lead.status,
+    name: lead.name,
+    service: lead.service || linkedDeal?.service,
+    purpose: nextLeadFollowUp ? "followup" : "stage",
+    followUp: nextLeadFollowUp,
+  });
+  const emailHref = getEmailHref(lead.email, communicationTemplate.subject, communicationTemplate.body);
 
   const isHighlighted = highlightParam && (
     String(lead.id) === String(highlightParam) ||
@@ -184,7 +193,7 @@ export default function LeadTableRow({
         )}
         {lead.email && (
           <a
-            href={`mailto:${lead.email}`}
+            href={emailHref || `mailto:${lead.email}`}
             className="group/email flex items-center gap-1.5 text-[11px] text-gray-500 dark:text-neutral-400 mt-0.5 whitespace-nowrap hover:text-blue-600 dark:hover:text-blue-400 transition cursor-pointer"
             title={`Click to email ${lead.email}`}
           >
@@ -220,9 +229,9 @@ export default function LeadTableRow({
         <div className="flex items-center justify-end gap-1.5 shrink-0 whitespace-nowrap">
           {lead.phone && (
             <button
-              onClick={() => handleWhatsAppClick(lead)}
+              onClick={() => openWhatsAppMessage(lead.phone, communicationTemplate.body)}
               className="p-1.5 rounded-lg text-emerald-600 bg-emerald-50 dark:bg-emerald-950/40 hover:bg-emerald-100 transition shrink-0 cursor-pointer"
-              title="Chat on WhatsApp"
+              title={`Send ${communicationTemplate.stageLabel} WhatsApp template`}
               aria-label="Chat on WhatsApp"
             >
               <WhatsAppIcon className="w-3.5 h-3.5" />

@@ -4,7 +4,7 @@ import React from "react";
 import FollowUpsTable from "./FollowUpsTable";
 import ResponsiveTableContainer from "../shared/ResponsiveTableContainer";
 import { TablePageSkeleton, TableSkeleton } from "../shared/CrmSkeletons";
-import { formatStatusLabel, getLatestNoteSnippet, getFollowUpWhatsappMessage } from "../shared/meetingUtils";
+import { formatStatusLabel, getLatestNoteSnippet } from "../shared/meetingUtils";
 
 const SCOPE_TABS = [
   { id: "all", label: "All Follow-ups", shortLabel: "All" },
@@ -69,7 +69,6 @@ export default function FollowUpsView({
         TableSkeleton={TableSkeleton}
         formatStatusLabel={formatStatusLabel}
         getLatestNoteSnippet={getLatestNoteSnippet}
-        getFollowUpWhatsappMessage={getFollowUpWhatsappMessage}
         openStageModal={openStageModal}
         openRescheduleModal={openRescheduleModal}
         onDeleteFollowUp={onDeleteFollowUp}

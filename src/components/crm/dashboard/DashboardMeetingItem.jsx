@@ -15,6 +15,7 @@ import {
   resolveLinkedContact,
   formatStatusLabel,
 } from "../shared/meetingUtils";
+import { buildCommunicationTemplate, openWhatsAppMessage } from "../shared/communicationTemplates";
 
 export default function DashboardMeetingItem({
   item,
@@ -30,6 +31,13 @@ export default function DashboardMeetingItem({
   const contactName = resolved.name || item.lead_name || "Client Contact";
   const contactPhone = resolved.phone || "";
   const effectiveMeetLink = item.meeting_link || item.meet_link || "";
+  const communicationTemplate = buildCommunicationTemplate({
+    stage: resolved.deal?.pipeline_stage || resolved.deal?.stage || lead?.status,
+    name: contactName,
+    service: resolved.deal?.service || lead?.service,
+    purpose: "meeting",
+    meeting: { ...item, meeting_link: effectiveMeetLink },
+  });
 
   const isOverdue =
     (item.status === "scheduled" || item.status === "rescheduled") &&
@@ -66,15 +74,7 @@ export default function DashboardMeetingItem({
           {contactPhone && (
             <button
               type="button"
-              onClick={() => {
-                const cleanPhone = contactPhone.replace(/[^0-9]/g, "");
-                const name = contactName || "there";
-                const linkNote = effectiveMeetLink ? ` Meeting link: ${effectiveMeetLink}` : "";
-                const text = encodeURIComponent(
-                  `Hi ${name}, quick check regarding our sales meeting "${item.title}".${linkNote} Please let me know if you need any info before our discussion.`
-                );
-                window.open(`https://wa.me/${cleanPhone}?text=${text}`, "_blank", "noopener,noreferrer");
-              }}
+              onClick={() => openWhatsAppMessage(contactPhone, communicationTemplate.body)}
               className="p-1.5 rounded-lg text-emerald-600 bg-emerald-50 dark:bg-emerald-950/40 hover:bg-emerald-100 transition shrink-0 cursor-pointer"
               title={`Chat on WhatsApp (${contactPhone})`}
               aria-label="Chat on WhatsApp"

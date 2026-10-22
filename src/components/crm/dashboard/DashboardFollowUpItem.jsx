@@ -13,8 +13,8 @@ import WhatsAppIcon from "../shared/WhatsAppIcon";
 import {
   resolveLinkedContact,
   formatStatusLabel,
-  getFollowUpWhatsappMessage,
 } from "../shared/meetingUtils";
+import { buildCommunicationTemplate, openWhatsAppMessage } from "../shared/communicationTemplates";
 
 export default function DashboardFollowUpItem({
   item,
@@ -27,9 +27,15 @@ export default function DashboardFollowUpItem({
 }) {
   const resolved = resolveLinkedContact(item, { leads, clients, deals });
   const lead = resolved.lead;
-  const client = resolved.client;
   const contactName = resolved.name || "Lead Contact";
   const contactPhone = resolved.phone || "";
+  const communicationTemplate = buildCommunicationTemplate({
+    stage: resolved.deal?.pipeline_stage || resolved.deal?.stage || lead?.status,
+    name: contactName,
+    service: resolved.deal?.service || lead?.service,
+    purpose: "followup",
+    followUp: item,
+  });
 
   const isOverdue =
     item.status === "pending" &&
@@ -65,11 +71,7 @@ export default function DashboardFollowUpItem({
           {contactPhone && (
             <button
               type="button"
-              onClick={() => {
-                const cleanPhone = contactPhone.replace(/[^0-9]/g, "");
-                const text = encodeURIComponent(getFollowUpWhatsappMessage(item, lead, client));
-                window.open(`https://wa.me/${cleanPhone}?text=${text}`, "_blank", "noopener,noreferrer");
-              }}
+              onClick={() => openWhatsAppMessage(contactPhone, communicationTemplate.body)}
               className="p-1.5 rounded-lg text-emerald-600 bg-emerald-50 dark:bg-emerald-950/40 hover:bg-emerald-100 transition shrink-0 cursor-pointer"
               title={`Chat on WhatsApp (${contactPhone})`}
               aria-label="Chat on WhatsApp"

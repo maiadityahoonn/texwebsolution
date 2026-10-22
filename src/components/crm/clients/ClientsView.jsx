@@ -247,7 +247,11 @@ export default function ClientsView({
                       {client.phone && (
                         <button
                           type="button"
-                          onClick={() => onOpenDirectWhatsapp(client.phone, `Hello ${client.name || ""}`)}
+                          onClick={() => onOpenDirectWhatsapp(
+                            client.phone,
+                            client.name,
+                            `Hi ${client.name || "there"}, this is TexWeb Solution. Please let us know how we can assist you with your active project or service.`
+                          )}
                           className="p-1.5 rounded-lg bg-emerald-50 dark:bg-emerald-950/30 text-emerald-600 hover:bg-emerald-100 transition cursor-pointer"
                           title="WhatsApp Client"
                         >

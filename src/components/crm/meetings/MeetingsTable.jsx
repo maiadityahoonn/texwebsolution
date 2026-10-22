@@ -2,11 +2,12 @@
 
 import React, { useEffect } from "react";
 import { useSearchParams } from "next/navigation";
-import { Calendar, Check, History, Phone, RotateCcw, Trash2, Video, X } from "lucide-react";
+import { Calendar, Check, History, Mail, Phone, RotateCcw, Trash2, Video, X } from "lucide-react";
 import TablePagination from "../shared/TablePagination";
 import { TableSkeleton as DefaultTableSkeleton } from "../shared/CrmSkeletons";
 import DefaultResponsiveTableContainer from "../shared/ResponsiveTableContainer";
 import { resolveLinkedContact, isMeetingActive, isMeetingNoShow, isMeetingOverdue } from "../shared/meetingUtils";
+import { buildCommunicationTemplate, getEmailHref, openWhatsAppMessage } from "../shared/communicationTemplates";
 
 function WhatsAppIcon({ className = "w-4 h-4" }) {
   return (
@@ -117,12 +118,21 @@ export default function MeetingsTable({
                   const contactName = resolved.name;
                   const contactType = resolved.type;
                   const contactPhone = resolved.phone;
+                  const contactEmail = resolved.email;
                   const scheduledTime = item.scheduled_at ? new Date(item.scheduled_at).getTime() : 0;
                   const isOverdue = isMeetingOverdue(item);
                   const isToday = item.scheduled_at && new Date(item.scheduled_at).toDateString() === new Date().toDateString();
                   const effectiveMeetLink = (item.meeting_link && item.meeting_link !== "https://meet.google.com/new")
                     ? item.meeting_link
                     : (defaultMeetLink || item.meeting_link || "https://meet.google.com/new");
+                  const communicationTemplate = buildCommunicationTemplate({
+                    stage: resolved.deal?.pipeline_stage || lead?.status,
+                    name: contactName,
+                    service: resolved.deal?.service || lead?.service,
+                    purpose: "meeting",
+                    meeting: { ...item, meeting_link: effectiveMeetLink },
+                  });
+                  const emailHref = getEmailHref(contactEmail, communicationTemplate.subject, communicationTemplate.body);
 
                   const isHighlighted = highlightParam && (
                     String(item.id) === String(highlightParam) ||
@@ -195,6 +205,11 @@ export default function MeetingsTable({
                           </div>
                         )}
                         <div className="text-[11px] text-gray-500 mt-0.5">{contactType}</div>
+                        {contactEmail && (
+                          <a href={emailHref || `mailto:${contactEmail}`} className="text-[10px] text-sky-600 dark:text-sky-400 truncate max-w-[180px] block" title={contactEmail}>
+                            {contactEmail}
+                          </a>
+                        )}
                       </td>
                       <td className="py-3.5 px-4 capitalize font-semibold text-gray-700 dark:text-neutral-200">{item.meeting_type}</td>
                       <td className="py-3.5 px-4 text-gray-500 text-xs whitespace-nowrap">
@@ -225,11 +240,7 @@ export default function MeetingsTable({
                               <button
                                 type="button"
                                 onClick={() => {
-                                  const cleanPhone = contactPhone.replace(/[^0-9]/g, "");
-                                  const name = contactName || "there";
-                                  const linkNote = effectiveMeetLink ? ` Meeting link: ${effectiveMeetLink}` : "";
-                                  const text = encodeURIComponent(`Hi ${name}, quick check regarding our sales meeting "${item.title}".${linkNote} Please let me know if you need any info before our discussion.`);
-                                  window.open(`https://wa.me/${cleanPhone}?text=${text}`, "_blank", "noopener,noreferrer");
+                                  openWhatsAppMessage(contactPhone, communicationTemplate.body);
                                 }}
                                 className="p-1.5 rounded-lg text-emerald-600 bg-emerald-50 dark:bg-emerald-950/40 hover:bg-emerald-100 transition shrink-0 cursor-pointer"
                                 title={`Chat on WhatsApp (${contactPhone})`}
@@ -246,6 +257,11 @@ export default function MeetingsTable({
                                 <Phone className="w-3.5 h-3.5" />
                               </a>
                             </>
+                          )}
+                          {emailHref && (
+                            <a href={emailHref} className="p-1.5 rounded-lg text-sky-600 bg-sky-50 dark:bg-sky-950/40 inline-flex items-center justify-center" title={`Email meeting template to ${contactEmail}`} aria-label="Email meeting details">
+                              <Mail className="w-3.5 h-3.5" />
+                            </a>
                           )}
                           {effectiveMeetLink && item.status !== "completed" && item.status !== "no_show" && item.status !== "cancelled" && (
                             <a

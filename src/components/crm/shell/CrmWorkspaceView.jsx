@@ -505,7 +505,7 @@ export default function CrmWorkspaceView({
         handleOpenEditDeal={modals.handleOpenEditDeal}
         handleDealStageChange={modals.handleDealStageChange}
         openPipelineFollowUpModal={modals.openPipelineFollowUpModal}
-        openMeetingWhatsApp={modals.openMeetingWhatsApp}
+        openDealMeetingModal={modals.openDealMeetingModal}
         openCommercialModal={modals.openCommercialModal}
         sendDealDocWhatsApp={modals.sendDealDocWhatsApp}
         openInvoiceModal={modals.openInvoiceModal}

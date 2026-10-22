@@ -73,7 +73,7 @@ export default function CrmWorkspaceViewSwitch({
   handleOpenEditDeal,
   handleDealStageChange,
   openPipelineFollowUpModal,
-  openMeetingWhatsApp,
+  openDealMeetingModal,
   openCommercialModal,
   sendDealDocWhatsApp,
   openInvoiceModal,
@@ -206,12 +206,13 @@ export default function CrmWorkspaceViewSwitch({
           agreements={agreements}
           invoices={invoices}
           leads={leads}
+          clients={clients}
           setSelectedDeal={setSelectedDeal}
           setDealModalTab={() => {}}
           handleOpenEditDeal={handleOpenEditDeal}
           handleDealStageChange={handleDealStageChange}
           openPipelineFollowUpModal={openPipelineFollowUpModal}
-          openMeetingWhatsApp={openMeetingWhatsApp}
+          openDealMeetingModal={openDealMeetingModal}
           openCommercialModal={openCommercialModal}
           sendDealDocWhatsApp={sendDealDocWhatsApp}
           openInvoiceModal={openInvoiceModal}

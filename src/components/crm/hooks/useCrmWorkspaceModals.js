@@ -6,6 +6,7 @@ import { toLocalDateTimeInput, DEFAULT_REMINDER_MINUTES } from "../shared/dateTi
 import { STAGE_LOSS_REASONS } from "../shared/leadUtils";
 import { useCrmCommercialModals } from "./useCrmCommercialModals";
 import { useCrmMeetingFollowUpModals } from "./useCrmMeetingFollowUpModals";
+import { buildCommunicationTemplate, openWhatsAppMessage } from "../shared/communicationTemplates";
 
 export function useCrmWorkspaceModals({
   leads = [],
@@ -367,11 +368,13 @@ export function useCrmWorkspaceModals({
 
   function handleWhatsAppClick(lead) {
     if (!lead?.phone) return;
-    const cleanPhone = lead.phone.replace(/[^0-9]/g, "");
-    const text = encodeURIComponent(
-      `Hello ${lead.name}, greetings from TexWeb Solution! We received your inquiry regarding ${lead.service || "our software development services"}. How may we assist your project?`
-    );
-    window.open(`https://wa.me/${cleanPhone}?text=${text}`, "_blank", "noopener,noreferrer");
+    const linkedDeal = deals.find((deal) => deal.lead_id === lead.id);
+    const template = buildCommunicationTemplate({
+      stage: linkedDeal?.pipeline_stage || lead.status,
+      name: lead.name,
+      service: linkedDeal?.service || lead.service,
+    });
+    openWhatsAppMessage(lead.phone, template.body);
   }
 
   function openLostModal(target) {

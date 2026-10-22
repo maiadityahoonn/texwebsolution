@@ -37,10 +37,12 @@ export function buildActiveEngagementScopes(leads = [], deals = []) {
 
   deals.forEach((deal) => {
     if (deal?.lead_id) allDealLeadIds.add(deal.lead_id);
+    const stage = deal?.pipeline_stage || deal?.stage || "";
+    const isWonClientEngagement = stage === "closed_won";
     if (
       !deal?.id ||
-      terminalLeadIds.has(deal.lead_id) ||
-      !isActiveDealStage(deal.pipeline_stage || deal.stage || "")
+      (terminalLeadIds.has(deal.lead_id) && !isWonClientEngagement) ||
+      (!isActiveDealStage(stage) && !isWonClientEngagement)
     ) return;
     activeDealIds.add(deal.id);
     if (deal?.lead_id) activeDealLeadIds.add(deal.lead_id);

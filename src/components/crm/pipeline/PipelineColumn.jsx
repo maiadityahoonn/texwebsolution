@@ -11,6 +11,7 @@ export default function PipelineColumn({
   handleDealDrop = () => {},
   openAddDealModal = () => {},
   leads = [],
+  clients = [],
   followUps = [],
   salesMeetings = [],
   proposals = [],
@@ -23,7 +24,7 @@ export default function PipelineColumn({
   handleOpenEditDeal = () => {},
   handleDealStageChange = () => {},
   openPipelineFollowUpModal = () => {},
-  openMeetingWhatsApp = () => {},
+  openDealMeetingModal = () => {},
   openCommercialModal = () => {},
   sendDealDocWhatsApp = () => {},
   openInvoiceModal = () => {},
@@ -80,6 +81,7 @@ export default function PipelineColumn({
             deal={deal}
             col={col}
             leads={leads}
+            clients={clients}
             followUps={followUps}
             salesMeetings={salesMeetings}
             proposals={proposals}
@@ -92,7 +94,7 @@ export default function PipelineColumn({
             handleOpenEditDeal={handleOpenEditDeal}
             handleDealStageChange={handleDealStageChange}
             openPipelineFollowUpModal={openPipelineFollowUpModal}
-            openMeetingWhatsApp={openMeetingWhatsApp}
+            openDealMeetingModal={openDealMeetingModal}
             openCommercialModal={openCommercialModal}
             sendDealDocWhatsApp={sendDealDocWhatsApp}
             openInvoiceModal={openInvoiceModal}

@@ -5,20 +5,17 @@ import {
   Pencil,
   Clock,
   Video,
-  FileText,
-  DollarSign,
-  Briefcase,
-  ExternalLink,
   CheckCircle2,
   XCircle,
 } from "lucide-react";
-import WhatsAppIcon from "../shared/WhatsAppIcon";
 import { getLatestLinkedDoc, getDocStatusBadge } from "./pipelineHelpers";
+import PipelineDealActions from "./PipelineDealActions";
 
 export default function PipelineDealCard({
   deal,
   col,
   leads = [],
+  clients = [],
   followUps = [],
   salesMeetings = [],
   proposals = [],
@@ -31,13 +28,15 @@ export default function PipelineDealCard({
   handleOpenEditDeal = () => {},
   handleDealStageChange = () => {},
   openPipelineFollowUpModal = () => {},
-  openMeetingWhatsApp = () => {},
+  openDealMeetingModal = () => {},
   openCommercialModal = () => {},
   sendDealDocWhatsApp = () => {},
   openInvoiceModal = () => {},
   onNavigateSection = () => {},
 }) {
   const lead = leads.find((item) => item.id === deal.lead_id);
+  const client = clients.find((item) => item.id === deal.client_id);
+  const contact = lead || client;
   const dealLeadName = lead?.name?.toLowerCase().trim();
   const dealTitlePrefix = deal.title?.split(" - ")[0]?.toLowerCase().trim();
 
@@ -93,7 +92,7 @@ export default function PipelineDealCard({
     getDocStatusBadge("Agreement", latestAgreement),
     getDocStatusBadge("Invoice", latestInvoice),
   ].filter(Boolean);
-  const clientName = lead?.name || deal.title?.split(" - ")[0] || deal.title || "Deal";
+  const clientName = contact?.name || deal.title?.split(" - ")[0] || deal.title || "Deal";
   const serviceName =
     deal.service || lead?.service || deal.title?.split(" - ")[1] || "Tech Development";
   const dealInitials =
@@ -335,159 +334,21 @@ export default function PipelineDealCard({
         </div>
       )}
 
-      {/* 4. Action Toolbar */}
-      <div className="pt-1.5 border-t border-gray-100 dark:border-[#2e2619] space-y-1.5">
-        {col.id !== "closed_won" && col.id !== "closed_lost" ? (
-          <>
-            <div className="flex items-center justify-between gap-1 min-w-0">
-              <select
-                value={deal.pipeline_stage || "contacted"}
-                onClick={(e) => e.stopPropagation()}
-                onChange={(e) => {
-                  e.stopPropagation();
-                  handleDealStageChange(deal, e.target.value, col.id);
-                }}
-                className="text-[9px] min-[360px]:text-[9.5px] font-semibold bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-md px-1 py-0.5 text-gray-700 dark:text-neutral-300 focus:outline-hidden cursor-pointer max-w-[70px] min-[360px]:max-w-[76px] shrink truncate"
-              >
-                <option value="contacted">Contacted</option>
-                <option value="qualified">Meeting</option>
-                <option value="proposal">Quotation</option>
-                <option value="negotiation">Negotiation</option>
-                <option value="closed_won">Won</option>
-                <option value="closed_lost">Lost</option>
-              </select>
-
-              <div className="flex items-center gap-0.5 shrink-0">
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    openPipelineFollowUpModal(deal);
-                  }}
-                  className="p-1 rounded-md text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/40 hover:bg-blue-100 border border-blue-200/40 shrink-0 transition cursor-pointer"
-                  title="Add Follow-up"
-                >
-                  <Clock className="w-3 h-3 shrink-0" />
-                </button>
-
-                {col.id === "contacted" && (
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      openMeetingWhatsApp(deal);
-                    }}
-                    className="p-1 rounded-md text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 hover:bg-emerald-100 border border-emerald-200/40 shrink-0 transition cursor-pointer"
-                    title="Send WhatsApp confirmation"
-                  >
-                    <WhatsAppIcon className="w-3 h-3 shrink-0" />
-                  </button>
-                )}
-
-                {col.id === "proposal" && (
-                  <>
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        openCommercialModal("proposal", deal);
-                      }}
-                      className="p-1 rounded-md text-orange-600 dark:text-orange-400 bg-orange-50 dark:bg-orange-950/40 hover:bg-orange-100 border border-orange-200/40 shrink-0 transition cursor-pointer"
-                      title="Open Quotation"
-                    >
-                      <FileText className="w-3 h-3 shrink-0" />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        sendDealDocWhatsApp(deal);
-                      }}
-                      className="p-1 rounded-md text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 hover:bg-emerald-100 border border-emerald-200/40 shrink-0 transition cursor-pointer"
-                      title="Share Quotation on WhatsApp"
-                    >
-                      <WhatsAppIcon className="w-3 h-3 shrink-0" />
-                    </button>
-                  </>
-                )}
-
-                {col.id === "negotiation" && (
-                  <>
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        openCommercialModal("agreement", deal);
-                      }}
-                      className="p-1 rounded-md text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/40 hover:bg-indigo-100 border border-indigo-200/40 shrink-0 transition cursor-pointer"
-                      title="Create / Open Agreement"
-                    >
-                      <FileText className="w-3 h-3 shrink-0" />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        openInvoiceModal(deal);
-                      }}
-                      className="p-1 rounded-md text-purple-600 dark:text-purple-400 bg-purple-50 dark:bg-purple-950/40 hover:bg-purple-100 border border-purple-200/40 shrink-0 transition cursor-pointer"
-                      title="Generate / Open Invoice"
-                    >
-                      <DollarSign className="w-3 h-3 shrink-0" />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        sendDealDocWhatsApp(deal);
-                      }}
-                      className="p-1 rounded-md text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 hover:bg-emerald-100 border border-emerald-200/40 shrink-0 transition cursor-pointer"
-                      title="Share Agreement / Invoice on WhatsApp"
-                    >
-                      <WhatsAppIcon className="w-3 h-3 shrink-0" />
-                    </button>
-                  </>
-                )}
-              </div>
-            </div>
-          </>
-        ) : col.id === "closed_won" ? (
-          <div className="w-full flex items-center justify-between text-[10px]">
-            <span className="text-emerald-600 dark:text-emerald-400 font-bold flex items-center gap-1">
-              <Briefcase className="w-3 h-3" />
-              <span>Client Active</span>
-            </span>
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                onNavigateSection?.("projects");
-              }}
-              className="text-[9.5px] font-bold text-gray-500 hover:text-emerald-600 dark:text-neutral-400 flex items-center gap-0.5 transition cursor-pointer whitespace-nowrap shrink-0 min-w-0"
-            >
-              <span className="truncate">View Project</span>
-              <ExternalLink className="w-2.5 h-2.5 shrink-0" />
-            </button>
-          </div>
-        ) : (
-          <div className="w-full flex items-center justify-between text-[10px]">
-            <span className="text-rose-600 dark:text-rose-400 font-bold flex items-center gap-1">
-              <XCircle className="w-3 h-3 shrink-0" />
-              <span>Closed Lost</span>
-            </span>
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                handleDealStageChange(deal, "contacted", col.id);
-              }}
-              className="text-[9.5px] font-bold text-blue-600 hover:underline transition cursor-pointer whitespace-nowrap shrink-0 min-w-0"
-            >
-              <span className="truncate">Re-open</span>
-            </button>
-          </div>
-        )}
-      </div>
+      <PipelineDealActions
+        deal={deal}
+        col={col}
+        lead={contact}
+        serviceName={serviceName}
+        nextFollowUp={nextFollowUp}
+        nextMeeting={nextMeeting}
+        handleDealStageChange={handleDealStageChange}
+        openPipelineFollowUpModal={openPipelineFollowUpModal}
+        openDealMeetingModal={openDealMeetingModal}
+        openCommercialModal={openCommercialModal}
+        sendDealDocWhatsApp={sendDealDocWhatsApp}
+        openInvoiceModal={openInvoiceModal}
+        onNavigateSection={onNavigateSection}
+      />
     </div>
   );
 }

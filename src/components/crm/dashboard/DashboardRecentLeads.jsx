@@ -3,6 +3,7 @@
 import React from "react";
 import { Users, ArrowRight, Layers, Globe } from "lucide-react";
 import WhatsAppIcon from "../shared/WhatsAppIcon";
+import { buildCommunicationTemplate } from "../shared/communicationTemplates";
 import { formatINR } from "./dashboardUtils";
 
 export default function DashboardRecentLeads({
@@ -127,7 +128,11 @@ export default function DashboardRecentLeads({
                           onOpenDirectWhatsapp(
                             lead.phone,
                             lead.name,
-                            `Hi ${lead.name}, thank you for contacting TexWeb Solution regarding ${lead.service || "our services"}.`
+                            buildCommunicationTemplate({
+                              stage: lead.status,
+                              name: lead.name,
+                              service: lead.service,
+                            }).body
                           )
                         }
                         className="p-1.5 rounded-lg text-emerald-600 bg-emerald-50 dark:bg-emerald-950/40 hover:bg-emerald-100 transition shrink-0 cursor-pointer shadow-2xs"

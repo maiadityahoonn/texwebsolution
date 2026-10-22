@@ -22,12 +22,13 @@ export default function PipelineView({
   agreements = [],
   invoices = [],
   leads = [],
+  clients = [],
   setSelectedDeal = () => {},
   setDealModalTab = () => {},
   handleOpenEditDeal = () => {},
   handleDealStageChange = () => {},
   openPipelineFollowUpModal = () => {},
-  openMeetingWhatsApp = () => {},
+  openDealMeetingModal = () => {},
   openCommercialModal = () => {},
   sendDealDocWhatsApp = () => {},
   openInvoiceModal = () => {},
@@ -71,6 +72,7 @@ export default function PipelineView({
             handleDealDrop={handleDealDrop}
             openAddDealModal={openAddDealModal}
             leads={leads}
+            clients={clients}
             followUps={followUps}
             salesMeetings={salesMeetings}
             proposals={proposals}
@@ -83,7 +85,7 @@ export default function PipelineView({
             handleOpenEditDeal={handleOpenEditDeal}
             handleDealStageChange={handleDealStageChange}
             openPipelineFollowUpModal={openPipelineFollowUpModal}
-            openMeetingWhatsApp={openMeetingWhatsApp}
+            openDealMeetingModal={openDealMeetingModal}
             openCommercialModal={openCommercialModal}
             sendDealDocWhatsApp={sendDealDocWhatsApp}
             openInvoiceModal={openInvoiceModal}

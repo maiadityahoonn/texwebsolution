@@ -5,6 +5,7 @@ import { toLocalDateTimeInput, DEFAULT_REMINDER_MINUTES } from "../shared/dateTi
 import { PIPELINE_STAGES } from "../shared/leadUtils";
 import { formatStatusLabel, isFollowUpActive, isMeetingActive } from "../shared/meetingUtils";
 import { isActiveDealStage } from "@/services/crm/leadCategoryFilters";
+import { buildCommunicationTemplate, openWhatsAppMessage } from "../shared/communicationTemplates";
 
 export function useCrmMeetingFollowUpModals({
   leads = [],
@@ -113,14 +114,19 @@ export function useCrmMeetingFollowUpModals({
   function openMeetingWhatsApp(deal) {
     const lead = getDealLead(deal);
     const contactName = lead?.name || deal.title || "there";
-    const message = `Hi ${contactName}, thanks for your interest in ${deal.service || lead?.service || "TexWeb Solution services"}. I have scheduled a quick discovery meeting to understand your requirement, budget, and timeline. Please confirm your available time.`;
+    const meeting = salesMeetings.find((item) => item.deal_id === deal?.id && isMeetingActive(item.status));
+    const message = buildCommunicationTemplate({
+      stage: deal?.pipeline_stage || deal?.stage,
+      name: contactName,
+      service: deal?.service || lead?.service,
+      purpose: "meeting",
+      meeting,
+    }).body;
     if (onOpenDirectWhatsapp) {
       onOpenDirectWhatsapp(lead?.phone || deal.phone, contactName, message);
       return;
     }
-    if (!lead?.phone) return;
-    const cleanPhone = lead.phone.replace(/[^0-9]/g, "");
-    window.open(`https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`, "_blank", "noopener,noreferrer");
+    openWhatsAppMessage(lead?.phone || deal?.phone, message);
   }
 
   function handleCreateFollowUpSubmit(e) {
