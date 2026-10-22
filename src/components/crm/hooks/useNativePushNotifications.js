@@ -150,7 +150,9 @@ export function useNativePushNotifications({ userId, onNavigate, setToast } = {}
         console.warn("Native push setup skipped:", error?.message || error);
         if (!cancelled) {
           const reason = String(error?.message || error || "unknown_error").slice(0, 100);
-          toastRef.current?.(`Notification setup failed: ${reason}`);
+          const appInfo = await App.getInfo().catch(() => null);
+          const appVersion = appInfo ? `;app=${appInfo.version}(${appInfo.build})` : ";app=unknown";
+          toastRef.current?.(`Notification setup failed: ${reason}${appVersion}`);
         }
       }
     };
