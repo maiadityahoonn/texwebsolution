@@ -4,6 +4,7 @@ import { NextResponse } from "next/server";
 import { getBearerToken } from "@/lib/apiSecurity";
 import { safeInternalPath } from "@/lib/safeUrl";
 import { sendNativePushToUser } from "@/lib/firebaseAdminMessaging";
+import { verifyGitHubActionsOidc } from "@/lib/githubActionsOidc";
 
 export const dynamic = "force-dynamic";
 
@@ -79,6 +80,9 @@ async function verifyCaller(admin, request) {
 
   const token = getBearerToken(request);
   if (!token) return { ok: false, status: 401, error: "Missing authorization token or cron secret." };
+  if (await verifyGitHubActionsOidc(token)) {
+    return { ok: true, actor: null, cron: true };
+  }
   const { data, error } = await admin.auth.getUser(token);
   if (error || !data?.user) return { ok: false, status: 401, error: "Invalid authorization token." };
   const { data: profile } = await admin
