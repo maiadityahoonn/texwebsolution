@@ -5,7 +5,7 @@
   "bundledWebRuntime": false,
   "appendUserAgent": "Capacitor TW-CRM",
   "server": {
-    "url": "https://texwebsolution.in/crm/dashboard",
+    "url": "https://www.texwebsolution.in/crm/dashboard",
     "cleartext": true,
     "allowNavigation": [
       "texwebsolution.in",
