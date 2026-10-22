@@ -11,6 +11,7 @@ import {
 } from "@/services/crm/nativePushService";
 
 const RETRY_DELAYS_MS = [4_000, 15_000, 45_000];
+const LISTENER_RETRY_DELAYS_MS = [500, 1_500];
 
 export function isNativePushPlatform() {
   return typeof window !== "undefined" && Capacitor.isNativePlatform();
@@ -47,6 +48,20 @@ export function useNativePushNotifications({ userId, onNavigate, setToast } = {}
       } catch (error) {
         console.warn(`Native push ${label} listener unavailable:`, error?.message || error);
         return null;
+      }
+    };
+
+    const addRegistrationListener = async (listener, attempt = 0) => {
+      try {
+        return keepListener(await PushNotifications.addListener("registration", listener));
+      } catch (error) {
+        if (attempt < LISTENER_RETRY_DELAYS_MS.length) {
+          await new Promise((resolve) => window.setTimeout(resolve, LISTENER_RETRY_DELAYS_MS[attempt]));
+          if (!cancelled) return addRegistrationListener(listener, attempt + 1);
+        }
+        const detail = String(error?.message || error || "unknown_error").slice(0, 70);
+        const available = Capacitor.isPluginAvailable("PushNotifications");
+        throw new Error(`push_listener:${detail};available=${available};platform=${Capacitor.getPlatform()}`);
       }
     };
 
@@ -99,14 +114,11 @@ export function useNativePushNotifications({ userId, onNavigate, setToast } = {}
 
     const setup = async () => {
       try {
-        const registrationListener = await safeListener("registration", () => PushNotifications.addListener("registration", async ({ value }) => {
+        await addRegistrationListener(async ({ value }) => {
           if (cancelled || !value) return;
           latestToken = value;
           await syncToken(value);
-        }));
-        if (!registrationListener) {
-          throw new Error("push_registration_listener_unavailable");
-        }
+        });
         await safeListener("registration-error", () => PushNotifications.addListener("registrationError", (error) => {
           console.warn("Native push registration failed:", error?.error || "unknown_error");
           if (!cancelled) toastRef.current?.("Firebase notification registration failed on this phone.");
