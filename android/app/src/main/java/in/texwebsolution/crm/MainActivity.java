@@ -6,6 +6,7 @@ import android.os.Build;
 import android.os.Bundle;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
+import com.capacitorjs.plugins.pushnotifications.PushNotificationsPlugin;
 import com.getcapacitor.BridgeActivity;
 import java.util.ArrayList;
 import java.util.List;
@@ -15,6 +16,7 @@ public class MainActivity extends BridgeActivity {
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+        registerPlugin(PushNotificationsPlugin.class);
         super.onCreate(savedInstanceState);
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
             getWindow().getDecorView().setSystemUiVisibility(
