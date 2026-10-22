@@ -1,10 +1,16 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { Capacitor } from "@capacitor/core";
+import { App } from "@capacitor/app";
 import { PushNotifications } from "@capacitor/push-notifications";
 import { safeInternalPath } from "@/lib/safeUrl";
-import { registerNativePushToken } from "@/services/crm/nativePushService";
+import {
+  getStoredNativePushToken,
+  registerNativePushToken,
+} from "@/services/crm/nativePushService";
+
+const RETRY_DELAYS_MS = [4_000, 15_000, 45_000];
 
 export function isNativePushPlatform() {
   return typeof window !== "undefined" && Capacitor.isNativePlatform();
@@ -19,23 +25,77 @@ function notificationLink(notification) {
 }
 
 export function useNativePushNotifications({ userId, onNavigate, setToast } = {}) {
+  const toastRef = useRef(setToast);
+  toastRef.current = setToast;
+
   useEffect(() => {
     if (!userId || !isNativePushPlatform()) return undefined;
     let cancelled = false;
     const listenerHandles = [];
+    const retryTimers = [];
+    let latestToken = getStoredNativePushToken();
+    let registrationInProgress = false;
+
+    const syncToken = async (token, attempt = 0) => {
+      if (cancelled || !token) return false;
+      const result = await registerNativePushToken(
+        token,
+        Capacitor.getPlatform() === "ios" ? "ios" : "android",
+      );
+      if (cancelled) return false;
+      if (result.ok) {
+        if (attempt === 0) toastRef.current?.("Mobile notifications enabled.");
+        return true;
+      }
+      if (attempt < RETRY_DELAYS_MS.length) {
+        const timer = window.setTimeout(
+          () => syncToken(token, attempt + 1),
+          RETRY_DELAYS_MS[attempt],
+        );
+        retryTimers.push(timer);
+      } else {
+        console.warn("Native push token could not be saved:", result.error || result.status);
+        toastRef.current?.("Notification setup failed. Keep internet on and reopen the app.");
+      }
+      return false;
+    };
+
+    const requestRegistration = async () => {
+      if (cancelled || registrationInProgress) return;
+      registrationInProgress = true;
+      try {
+        let permission = await PushNotifications.checkPermissions();
+        if (permission.receive === "prompt" || permission.receive === "prompt-with-rationale") {
+          permission = await PushNotifications.requestPermissions();
+        }
+        if (cancelled) return;
+        if (permission.receive !== "granted") {
+          toastRef.current?.("Notification permission is disabled in phone settings.");
+          return;
+        }
+        if (latestToken) await syncToken(latestToken);
+        await PushNotifications.register();
+      } catch (error) {
+        console.warn("Native push registration failed:", error?.message || error);
+        toastRef.current?.("Notification registration failed. Reopen the app and try again.");
+      } finally {
+        registrationInProgress = false;
+      }
+    };
 
     const setup = async () => {
       try {
         listenerHandles.push(await PushNotifications.addListener("registration", async ({ value }) => {
           if (cancelled || !value) return;
-          const saved = await registerNativePushToken(value, Capacitor.getPlatform() === "ios" ? "ios" : "android");
-          if (!cancelled && saved) setToast?.("Mobile notifications enabled.");
+          latestToken = value;
+          await syncToken(value);
         }));
         listenerHandles.push(await PushNotifications.addListener("registrationError", (error) => {
           console.warn("Native push registration failed:", error?.error || "unknown_error");
+          if (!cancelled) toastRef.current?.("Firebase notification registration failed on this phone.");
         }));
         listenerHandles.push(await PushNotifications.addListener("pushNotificationReceived", (notification) => {
-          if (!cancelled) setToast?.(notification?.title || "New CRM notification");
+          if (!cancelled) toastRef.current?.(notification?.title || "New CRM notification");
         }));
         listenerHandles.push(await PushNotifications.addListener("pushNotificationActionPerformed", ({ notification }) => {
           const target = notificationLink(notification);
@@ -54,25 +114,21 @@ export function useNativePushNotifications({ userId, onNavigate, setToast } = {}
           lightColor: "#FF6B00",
           sound: "default",
         }).catch(() => {});
-
-        let permission = await PushNotifications.checkPermissions();
-        if (permission.receive === "prompt" || permission.receive === "prompt-with-rationale") {
-          permission = await PushNotifications.requestPermissions();
-        }
-        if (cancelled || permission.receive !== "granted") {
-          if (!cancelled) setToast?.("Notification permission is disabled in phone settings.");
-          return;
-        }
-        await PushNotifications.register();
+        listenerHandles.push(await App.addListener("resume", requestRegistration));
+        window.addEventListener("online", requestRegistration);
+        await requestRegistration();
       } catch (error) {
         console.warn("Native push setup skipped:", error?.message || error);
+        if (!cancelled) toastRef.current?.("Notification setup could not start.");
       }
     };
 
     setup();
     return () => {
       cancelled = true;
+      window.removeEventListener("online", requestRegistration);
+      retryTimers.forEach((timer) => window.clearTimeout(timer));
       listenerHandles.forEach((handle) => handle?.remove?.().catch(() => {}));
     };
-  }, [onNavigate, setToast, userId]);
+  }, [onNavigate, userId]);
 }
