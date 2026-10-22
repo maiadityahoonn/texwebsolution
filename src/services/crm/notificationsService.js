@@ -26,7 +26,7 @@ export async function createNotification(notificationData) {
     const { data: sessionData } = await supabase.auth.getSession();
     const token = sessionData?.session?.access_token;
     if (!token) throw new Error('Missing auth session for notification');
-    const channels = (notificationData.channels || ['email', 'whatsapp']).filter((channel) => ['email', 'whatsapp'].includes(channel));
+    const channels = (notificationData.channels || ['push']).filter((channel) => ['email', 'whatsapp', 'push'].includes(channel));
     const response = await fetch('/api/notifications/dispatch', {
       method: 'POST',
       headers: {

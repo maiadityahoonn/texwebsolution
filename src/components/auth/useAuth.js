@@ -7,6 +7,7 @@ import { processImageToWebp } from "@/lib/imageProcessor";
 import { uploadAvatarImage } from "@/services/internal/tasksService";
 import { updateUserProfile } from "@/services/supabaseService";
 import { enforcePrimaryCrmProfile, isPrimaryCrmUser, PRIMARY_CRM_USER } from "@/lib/crmAccess";
+import { deactivateStoredNativePushToken } from "@/services/crm/nativePushService";
 
 export function useAuth({ setToast, onAuthSuccess, setProfiles } = {}) {
   const router = useRouter();
@@ -426,6 +427,7 @@ export function useAuth({ setToast, onAuthSuccess, setProfiles } = {}) {
 
   async function handleSignOut() {
     try {
+      await deactivateStoredNativePushToken().catch(() => false);
       if (sessionUser?.id && typeof window !== "undefined") {
         try {
           localStorage.removeItem("texweb_profile_" + sessionUser.id);

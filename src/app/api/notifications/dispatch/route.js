@@ -3,8 +3,9 @@ import { NextResponse } from "next/server";
 import { checkApiRateLimit, rateLimitResponse } from "@/lib/rateLimit";
 import { safeExternalUrl, safeInternalPath } from "@/lib/safeUrl";
 import { getBearerToken, getClientIp, isBodyTooLarge, isJsonRequest } from "@/lib/apiSecurity";
+import { sendNativePushToUser } from "@/lib/firebaseAdminMessaging";
 
-const ALLOWED_CHANNELS = new Set(["email", "whatsapp"]);
+const ALLOWED_CHANNELS = new Set(["email", "whatsapp", "push"]);
 const ALLOWED_TYPES = new Set([
   "task",
   "meeting",
@@ -231,7 +232,7 @@ export async function POST(request) {
   const { data: notification } = body.notification_id
     ? await admin
         .from("notifications")
-        .select("id, user_id, title, message, type, link_url, created_by")
+        .select("id, user_id, title, message, type, link_url, created_by, metadata, delivery_status")
         .eq("id", body.notification_id)
         .single()
     : { data: null };
@@ -275,7 +276,7 @@ export async function POST(request) {
         delivery_channels: ["in_app", ...channels],
         metadata: body.metadata && typeof body.metadata === "object" ? body.metadata : {},
       }])
-      .select("id, user_id, title, message, type, link_url, created_by, metadata")
+      .select("id, user_id, title, message, type, link_url, created_by, metadata, delivery_status")
       .single();
 
     if (createError) {
@@ -308,8 +309,15 @@ export async function POST(request) {
   const results = [];
   if (channels.includes("email")) results.push(await sendEmail(payload));
   if (channels.includes("whatsapp")) results.push(await sendWhatsapp(payload));
+  if (channels.includes("push")) {
+    results.push(...await sendNativePushToUser(admin, targetUserId, savedNotification));
+  }
 
-  const failedResults = results.filter((result) => result.status !== "sent" && result.status !== "skipped");
+  const failedResults = results.filter((result) => (
+    ["email", "whatsapp"].includes(result.channel)
+    && result.status !== "sent"
+    && result.status !== "skipped"
+  ));
   if (failedResults.length) {
     await admin.from("notification_queue").insert(failedResults.map((result) => ({
       notification_id: savedNotification?.id || null,

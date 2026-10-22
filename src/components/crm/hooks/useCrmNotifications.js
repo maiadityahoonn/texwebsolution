@@ -16,6 +16,7 @@ import { getSalesFollowUps } from "@/services/crm/followupsService";
 import { getSalesMeetings } from "@/services/crm/meetingsService";
 import { getAuthToken } from "@/services/supabase/client";
 import { isMeetingActive } from "../shared/meetingUtils";
+import { isNativePushPlatform, useNativePushNotifications } from "./useNativePushNotifications";
 
 const REMINDER_WINDOW_MS = 10 * 60 * 1000;
 const REMINDER_SCAN_MS = 30_000;
@@ -112,6 +113,12 @@ export function useCrmNotifications({
   const [notifications, setNotifications] = useState([]);
   const unreadCount = notifications.filter((item) => !item.is_read).length;
   const effectiveUserId = userProfile?.id || sessionUser?.id || "";
+
+  useNativePushNotifications({
+    userId: effectiveUserId,
+    onNavigate: onNavigateNotification,
+    setToast,
+  });
 
   function pushLiveSalesNotification(title, message, type = "lead", linkUrl = "/crm/followups", metadata = {}) {
     const notification = {
@@ -237,6 +244,7 @@ export function useCrmNotifications({
 
   useEffect(() => {
     if (!effectiveUserId || typeof window === "undefined") return undefined;
+    if (isNativePushPlatform()) return undefined;
     if (!("Notification" in window) || !("serviceWorker" in navigator) || !("PushManager" in window)) return undefined;
 
     let cancelled = false;

@@ -3,6 +3,7 @@ import { createPrivateKey, sign as cryptoSign } from "crypto";
 import { NextResponse } from "next/server";
 import { getBearerToken } from "@/lib/apiSecurity";
 import { safeInternalPath } from "@/lib/safeUrl";
+import { sendNativePushToUser } from "@/lib/firebaseAdminMessaging";
 
 export const dynamic = "force-dynamic";
 
@@ -123,8 +124,9 @@ function reminderMessage(sourceType, record) {
   return `${record.title || "Sales follow-up"} is due at ${formatted}. Call or WhatsApp the client.`;
 }
 
-function reminderLink(sourceType) {
-  return sourceType === "sales_meeting" ? "/crm/meetings" : "/crm/followups";
+function reminderLink(sourceType, sourceId) {
+  const route = sourceType === "sales_meeting" ? "/crm/meetings" : "/crm/followups";
+  return sourceId ? `${route}?focus=${encodeURIComponent(sourceId)}` : route;
 }
 
 function getPrimaryTarget(record, sourceType) {
@@ -183,18 +185,6 @@ async function sendNoPayloadPush(admin, userId, notification) {
     }
   }
 
-  if (notification?.id) {
-    await admin
-      .from("notifications")
-      .update({
-        delivery_status: {
-          ...(notification.delivery_status || {}),
-          push_attempted_at: new Date().toISOString(),
-          push_results: results,
-        },
-      })
-      .eq("id", notification.id);
-  }
   return results;
 }
 
@@ -223,7 +213,7 @@ async function createReminder(admin, sourceType, record, userId, actorId) {
     return { error: eventError.message };
   }
 
-  const linkUrl = reminderLink(sourceType);
+  const linkUrl = reminderLink(sourceType, record.id);
   const { data: notification, error: notificationError } = await admin
     .from("notifications")
     .insert([{
@@ -233,7 +223,7 @@ async function createReminder(admin, sourceType, record, userId, actorId) {
       message: reminderMessage(sourceType, record),
       type: sourceType === "sales_meeting" ? "meeting" : "lead",
       link_url: safeInternalPath(linkUrl, "/crm/alerts"),
-      delivery_channels: ["in_app", "push"],
+      delivery_channels: ["in_app", "push", "native_push"],
       metadata: {
         requires_ack: true,
         reminder: true,
@@ -244,7 +234,7 @@ async function createReminder(admin, sourceType, record, userId, actorId) {
         scheduled_for: scheduledFor,
       },
     }])
-    .select("id, title, message, type, link_url, delivery_status")
+    .select("id, title, message, type, link_url, metadata, delivery_status")
     .single();
 
   if (notificationError) {
@@ -257,7 +247,21 @@ async function createReminder(admin, sourceType, record, userId, actorId) {
     .update({ notification_id: notification.id })
     .eq("id", eventRow.id);
 
-  const pushResults = await sendNoPayloadPush(admin, userId, notification);
+  const [webPushResults, nativePushResults] = await Promise.all([
+    sendNoPayloadPush(admin, userId, notification),
+    sendNativePushToUser(admin, userId, notification),
+  ]);
+  const pushResults = [...webPushResults, ...nativePushResults];
+  await admin
+    .from("notifications")
+    .update({
+      delivery_status: {
+        ...(notification.delivery_status || {}),
+        push_attempted_at: new Date().toISOString(),
+        push_results: pushResults,
+      },
+    })
+    .eq("id", notification.id);
   return { notification_id: notification.id, push: pushResults };
 }
 
