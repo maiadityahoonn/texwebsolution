@@ -4,6 +4,11 @@ import { StatusCardsSkeleton } from "../shared/CrmSkeletons";
 
 function isCardFilterActive({ viewMode, statusFilter, filterKey }) {
   if (!["leads", "pipeline", "followups", "sales_meetings"].includes(viewMode) || !filterKey) return false;
+  if (viewMode === "pipeline") {
+    return filterKey === "all"
+      ? statusFilter === "all" || !statusFilter
+      : filterKey === statusFilter;
+  }
   return (
     (filterKey === "all" && (statusFilter === "all" || !statusFilter)) ||
     (filterKey === "scheduled" && ["scheduled", "pending", "active"].includes(statusFilter)) ||

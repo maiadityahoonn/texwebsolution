@@ -35,11 +35,13 @@ export default function PipelineView({
   onNavigateSection = () => {},
 }) {
   const closedLostStage = { id: "closed_lost", label: "Closed Lost", color: "bg-rose-500" };
+  const closedWonStage = PIPELINE_STAGES.find((stage) => stage.id === "closed_won");
+  const isClosedOnlyView = ["lost", "won", "converted", "win_rate"].includes(statusFilter);
   const stages =
     statusFilter === "lost"
       ? [closedLostStage]
-      : statusFilter === "all"
-        ? [...PIPELINE_STAGES, closedLostStage]
+      : ["won", "converted", "win_rate"].includes(statusFilter)
+        ? [closedWonStage]
         : PIPELINE_STAGES;
 
   if (isPipelineLoading && visiblePipelineDeals.length === 0) {
@@ -49,7 +51,7 @@ export default function PipelineView({
   return (
     <div
       className={`flex overflow-x-auto pb-4 sm:pb-0 gap-2.5 min-[360px]:gap-3 snap-x snap-mandatory touch-pan-x no-scrollbar overscroll-x-contain ${
-        statusFilter === "lost"
+        isClosedOnlyView
           ? "sm:grid sm:grid-cols-2 lg:grid-cols-3 sm:overflow-x-visible"
           : statusFilter === "all"
             ? "sm:flex sm:overflow-x-auto"

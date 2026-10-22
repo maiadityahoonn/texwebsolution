@@ -324,7 +324,7 @@ export function useCrmCalculations({
         }
       }
       if (statusFilter === "lost") return stage === "closed_lost";
-      if (statusFilter === "won" || statusFilter === "converted") return stage === "closed_won";
+      if (["won", "converted", "win_rate"].includes(statusFilter)) return stage === "closed_won";
       if (statusFilter === "active") return !CLOSED_PIPELINE_STAGES.includes(stage);
       return true;
     });
