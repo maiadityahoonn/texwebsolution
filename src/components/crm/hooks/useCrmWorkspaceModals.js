@@ -404,7 +404,7 @@ export function useCrmWorkspaceModals({
     setShowLostModal(true);
   }
 
-  function handleMarkLostSubmit(e) {
+  async function handleMarkLostSubmit(e) {
     e.preventDefault();
     if (!lostTarget) return;
     const reasonText = [
@@ -419,27 +419,27 @@ export function useCrmWorkspaceModals({
 
     if (lostTarget.type === "deal") {
       if (onUpdateDealStage) {
-        onUpdateDealStage(lostTarget.item.id, "closed_lost", {
+        await onUpdateDealStage(lostTarget.item.id, "closed_lost", {
           loss_reason: reasonText,
           notes: [lostTarget.item.notes, `Lost: ${reasonText}`].filter(Boolean).join("\n"),
         });
       }
     } else if (lostTarget.type === "lead") {
       if (onMarkLeadLost) {
-        onMarkLeadLost(lostTarget.item.id, {
+        await onMarkLeadLost(lostTarget.item.id, {
           status: "Lost",
           loss_reason: reasonText,
           notes: [lostTarget.item.notes, `Lost: ${reasonText}`].filter(Boolean).join("\n"),
           lost_at_stage: lostForm.stage,
         });
       } else if (onUpdateLead) {
-        onUpdateLead(lostTarget.item.id, {
+        await onUpdateLead(lostTarget.item.id, {
           status: "Lost",
           loss_reason: reasonText,
           notes: [lostTarget.item.notes, `Lost: ${reasonText}`].filter(Boolean).join("\n"),
         });
       } else if (onUpdateLeadStatus) {
-        onUpdateLeadStatus(lostTarget.item.id, "Lost");
+        await onUpdateLeadStatus(lostTarget.item.id, "Lost");
       }
 
       if (selectedLead?.id === lostTarget.item.id) {

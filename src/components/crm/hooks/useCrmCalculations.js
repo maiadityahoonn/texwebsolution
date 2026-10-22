@@ -6,6 +6,7 @@ import { buildAiInsights, buildPageStatusCards, buildSalesReport } from "./crmDe
 import { matchesDateFilter as matchesDateFilterUtil, getLeadServerDateRange as getLeadServerDateRangeUtil } from "./crmDateFilterUtils";
 import { dedupeLeads, calculateLeadLetterCounts, filterLeadsList } from "./crmLeadFilterHelpers";
 import { calculateAggregateStats, calculateLeadSummaryMetrics } from "./crmMetricsHelpers";
+import { buildActiveEngagementScopes } from "@/services/crm/leadCategoryFilters";
 import {
   isMeetingActive,
   isMeetingCompleted,
@@ -159,13 +160,22 @@ export function useCrmCalculations({
 
   const filteredFollowUps = useMemo(() => {
     const now = Date.now();
+    const { activeDealIds, activeDealLeadIds, activeLeadIds } = buildActiveEngagementScopes(leads, deals);
+    const showHistorical = ["done", "completed", "missed", "cancelled", "all_with_completed"].includes(statusFilter);
     return followUps
       .filter((item) => {
-        if (followUpScope === "leads" && (!item.lead_id || item.deal_id)) {
-          return false;
-        }
-        if (followUpScope === "pipeline" && !item.deal_id) {
-          return false;
+        if (showHistorical) {
+          if (followUpScope === "leads" && (!item.lead_id || item.deal_id)) return false;
+          if (followUpScope === "pipeline" && !item.deal_id) return false;
+        } else {
+          const belongsToActiveDeal = (
+            (item.deal_id && activeDealIds.has(item.deal_id)) ||
+            (!item.deal_id && item.lead_id && activeDealLeadIds.has(item.lead_id))
+          );
+          const belongsToActiveLead = !item.deal_id && item.lead_id && activeLeadIds.has(item.lead_id);
+          if (!belongsToActiveDeal && !belongsToActiveLead) return false;
+          if (followUpScope === "leads" && !belongsToActiveLead) return false;
+          if (followUpScope === "pipeline" && !belongsToActiveDeal) return false;
         }
 
         if (dateFilter !== "all") {
@@ -206,7 +216,7 @@ export function useCrmCalculations({
         }
         return new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime();
       });
-  }, [followUps, matchesDateFilter, statusFilter, dateFilter, followUpScope]);
+  }, [deals, followUps, leads, matchesDateFilter, statusFilter, dateFilter, followUpScope]);
 
   const filteredSalesMeetings = useMemo(() => {
     const now = Date.now();
@@ -322,17 +332,18 @@ export function useCrmCalculations({
     if (dateFilter !== "all" || query || (followUpScope && followUpScope !== "all")) {
       return filteredFollowUps.length;
     }
+    const scopedFollowUpSummary = followUpSummary?.scope === followUpScope ? followUpSummary : null;
     if (statusFilter === "all") {
-      const total = followUpSummary?.total ?? followUpPagination?.count ?? 0;
+      const total = scopedFollowUpSummary?.total ?? followUpPagination?.count ?? 0;
       return total > filteredFollowUps.length ? total : filteredFollowUps.length;
     }
     const statusTotalMap = {
-      pending: followUpSummary?.active,
-      active: followUpSummary?.active,
-      overdue: followUpSummary?.overdue,
-      done: followUpSummary?.completed,
-      completed: followUpSummary?.completed,
-      missed: followUpSummary?.missed,
+      pending: scopedFollowUpSummary?.active,
+      active: scopedFollowUpSummary?.active,
+      overdue: scopedFollowUpSummary?.overdue,
+      done: scopedFollowUpSummary?.completed,
+      completed: scopedFollowUpSummary?.completed,
+      missed: scopedFollowUpSummary?.missed,
     };
     const expected = statusTotalMap[statusFilter];
     if (typeof expected === "number" && expected > filteredFollowUps.length) {
@@ -453,6 +464,8 @@ export function useCrmCalculations({
         commercialSummary,
         dateFilter,
         followUpScope,
+        leads,
+        deals,
       }),
     [
       agreements,
@@ -462,8 +475,10 @@ export function useCrmCalculations({
       dateFilteredMeetingsForStats,
       dateFilteredPipelineDealsForStats,
       dealSummary,
+      deals,
       followUpSummary,
       followUpScope,
+      leads,
       leadSummaryMetrics,
       meetingSummary,
       proposals,

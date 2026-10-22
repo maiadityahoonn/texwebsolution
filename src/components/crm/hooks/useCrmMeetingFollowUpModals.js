@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { toLocalDateTimeInput, DEFAULT_REMINDER_MINUTES } from "../shared/dateTimeUtils";
 import { PIPELINE_STAGES } from "../shared/leadUtils";
 import { formatStatusLabel, isFollowUpActive, isMeetingActive } from "../shared/meetingUtils";
+import { isActiveDealStage } from "@/services/crm/leadCategoryFilters";
 
 export function useCrmMeetingFollowUpModals({
   leads = [],
@@ -71,6 +72,12 @@ export function useCrmMeetingFollowUpModals({
 
   function getDealLead(deal) {
     return leads.find((lead) => lead.id === deal?.lead_id) || null;
+  }
+
+  function getActiveLeadDeal(leadId) {
+    return deals.find(
+      (deal) => deal.lead_id === leadId && isActiveDealStage(deal.pipeline_stage || deal.stage || "")
+    ) || null;
   }
 
   function getMeetingStartIso(rawValue = "") {
@@ -182,7 +189,7 @@ export function useCrmMeetingFollowUpModals({
       return;
     }
 
-    const linkedDeal = deals.find((item) => item.lead_id === lead?.id);
+    const linkedDeal = getActiveLeadDeal(lead?.id);
     setFollowUpForm({
       title: `Follow up: ${lead?.name || "Lead"}`,
       lead_id: lead?.id || "",
@@ -241,6 +248,7 @@ export function useCrmMeetingFollowUpModals({
     const l = lead || leads.find((item) => item.id === deal?.lead_id);
     setSalesMeetingForm({
       lead_id: deal?.lead_id || l?.id || "",
+      client_id: deal?.client_id || "",
       deal_id: deal?.id || "",
       title: `Meeting: ${deal?.title || l?.name || "Deal"}`,
       scheduled_at: toLocalDateTimeInput(new Date(Date.now() + 24 * 60 * 60 * 1000)),
@@ -262,9 +270,11 @@ export function useCrmMeetingFollowUpModals({
       return;
     }
 
+    const linkedDeal = getActiveLeadDeal(lead?.id);
     setSalesMeetingForm({
       lead_id: lead?.id || "",
-      deal_id: "",
+      client_id: linkedDeal?.client_id || "",
+      deal_id: linkedDeal?.id || "",
       title: `Meeting: ${lead?.name || "Lead"}`,
       meeting_type: "discovery",
       scheduled_at: toLocalDateTimeInput(new Date(Date.now() + 24 * 60 * 60 * 1000)),

@@ -34,6 +34,8 @@ import {
 } from "@/services/crm/meetingsService";
 import { CRM_NAV } from "./CrmShellConfig";
 import { isFollowUpActive, isMeetingActive } from "../shared/meetingUtils";
+import { completeActiveEngagementsForLost } from "@/services/crm/engagementLifecycleService";
+import { CLOSED_DEAL_STAGES, isActiveDealStage } from "@/services/crm/leadCategoryFilters";
 
 export function useCrmLayoutActions({
   crmData,
@@ -97,6 +99,48 @@ export function useCrmLayoutActions({
     [setToast]
   );
 
+  async function completeLostEngagements({ leadId = "", dealId = "" } = {}) {
+    const dealIds = leadId
+      ? deals.filter((deal) => deal.lead_id === leadId).map((deal) => deal.id)
+      : [];
+    await completeActiveEngagementsForLost({ leadId, dealId, dealIds });
+
+    const linkedDealIds = new Set([dealId, ...dealIds].filter(Boolean));
+    const isLinked = (item) => (
+      (leadId && item.lead_id === leadId) ||
+      (item.deal_id && linkedDealIds.has(item.deal_id))
+    );
+    const completedAt = new Date().toISOString();
+    setSalesFollowUps((prev) => prev.map((item) => (
+      isLinked(item) && isFollowUpActive(item.status)
+        ? { ...item, status: "done", completed_at: completedAt, updated_at: completedAt }
+        : item
+    )));
+    setSalesMeetings((prev) => prev.map((item) => (
+      isLinked(item) && isMeetingActive(item.status)
+        ? { ...item, status: "completed", updated_at: completedAt }
+        : item
+    )));
+    await Promise.all([
+      refreshFollowUpSummary?.({ force: true }),
+      refreshMeetingSummary?.({ force: true }),
+    ]);
+  }
+
+  async function closeActiveDealsForLostLead(leadId, extra = {}) {
+    const activeLinkedDeals = deals.filter(
+      (deal) => deal.lead_id === leadId && isActiveDealStage(deal.pipeline_stage || deal.stage || "")
+    );
+    if (activeLinkedDeals.length === 0) return;
+
+    await Promise.all(activeLinkedDeals.map((deal) => updateDealStage(deal.id, "closed_lost", extra)));
+    const linkedIds = new Set(activeLinkedDeals.map((deal) => deal.id));
+    setDeals((prev) => prev.map((deal) => (
+      linkedIds.has(deal.id) ? { ...deal, ...extra, pipeline_stage: "closed_lost" } : deal
+    )));
+    refreshDealSummary?.({ force: true });
+  }
+
   const workspaceViewProps = {
     leads,
     leadPagination,
@@ -155,6 +199,10 @@ export function useCrmLayoutActions({
     onUpdateLeadStatus: async (id, status) => {
       await updateCloudLeadStatus(id, status);
       setLeads((prev) => prev.map((lead) => (lead.id === id ? { ...lead, status } : lead)));
+      if (String(status).toLowerCase() === "lost") {
+        await closeActiveDealsForLostLead(id);
+        await completeLostEngagements({ leadId: id });
+      }
       refreshLeadSummary?.();
       setToast(`Lead status updated to ${status}.`);
     },
@@ -200,6 +248,10 @@ export function useCrmLayoutActions({
     onMarkLeadLost: async (id, updates) => {
       const res = await updateCloudLead(id, { ...updates, status: "Lost" });
       setLeads((prev) => prev.map((lead) => (lead.id === id ? { ...lead, ...updates, status: "Lost", ...(res || {}) } : lead)));
+      await closeActiveDealsForLostLead(id, {
+        loss_reason: updates?.loss_reason || "Linked lead marked Lost",
+      });
+      await completeLostEngagements({ leadId: id });
       refreshLeadSummary?.();
       setToast("Lead marked lost.");
       return res;
@@ -215,6 +267,9 @@ export function useCrmLayoutActions({
     onUpdateDealStage: async (id, stage, extra = {}) => {
       const res = await updateDealStage(id, stage, extra);
       if (res) setDeals((prev) => prev.map((deal) => (deal.id === id ? { ...deal, ...res } : deal)));
+      if (CLOSED_DEAL_STAGES.has(stage) && stage !== "closed_won") {
+        await completeLostEngagements({ dealId: id });
+      }
       setToast("Pipeline stage updated.");
       return res;
     },

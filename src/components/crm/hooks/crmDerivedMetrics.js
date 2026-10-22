@@ -26,6 +26,7 @@ import {
   isFollowUpOverdue,
   isFollowUpUpcomingPending,
 } from "../shared/meetingUtils";
+import { buildActiveEngagementScopes } from "@/services/crm/leadCategoryFilters";
 
 export function buildPageStatusCards({
   viewMode,
@@ -42,6 +43,8 @@ export function buildPageStatusCards({
   commercialSummary = null,
   dateFilter = "all",
   followUpScope = "all",
+  leads = [],
+  deals = [],
 }) {
   if (viewMode === "reports") return [];
   if (viewMode === "leads") {
@@ -138,6 +141,7 @@ export function buildPageStatusCards({
   if (viewMode === "followups") {
     const useServerSummary =
       followUpSummary &&
+      followUpSummary.scope === followUpScope &&
       typeof followUpSummary.total === "number";
 
     let activeCount = 0;
@@ -154,9 +158,16 @@ export function buildPageStatusCards({
       missedCount = followUpSummary.missed || 0;
     } else {
       const now = Date.now();
+      const { activeDealIds, activeDealLeadIds, activeLeadIds } = buildActiveEngagementScopes(leads, deals);
       const allFollowUps = dateFilteredFollowUpsForStats.filter((item) => {
-        if (followUpScope === "leads") return Boolean(item.lead_id && !item.deal_id);
-        if (followUpScope === "pipeline") return Boolean(item.deal_id);
+        const belongsToPipeline = (
+          (item.deal_id && activeDealIds.has(item.deal_id)) ||
+          (!item.deal_id && item.lead_id && activeDealLeadIds.has(item.lead_id))
+        );
+        const belongsToLead = !item.deal_id && item.lead_id && activeLeadIds.has(item.lead_id);
+        if (isFollowUpActive(item.status) && !belongsToPipeline && !belongsToLead) return false;
+        if (followUpScope === "leads") return isFollowUpActive(item.status) ? belongsToLead : Boolean(item.lead_id && !item.deal_id);
+        if (followUpScope === "pipeline") return isFollowUpActive(item.status) ? belongsToPipeline : Boolean(item.deal_id);
         return true;
       });
       activeCount = allFollowUps.filter((item) => isFollowUpActive(item.status)).length;

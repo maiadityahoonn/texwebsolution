@@ -2,7 +2,11 @@ import { createClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
 import { cacheGetJson, cacheSetJson } from "@/lib/upstashCache";
 import { isPrimaryCrmUser } from "@/lib/crmAccess";
-import { applyLeadCategoryFilter, buildLeadDealScopes } from "@/services/crm/leadCategoryFilters";
+import {
+  applyLeadCategoryFilter,
+  buildActiveEngagementScopes,
+  buildLeadDealScopes,
+} from "@/services/crm/leadCategoryFilters";
 
 const CRM_READ_ROLES = new Set([
   "sales_head",
@@ -73,6 +77,41 @@ async function getLeadDealScopes(admin) {
     .select("lead_id, pipeline_stage")
     .not("lead_id", "is", null);
   return buildLeadDealScopes(data || []);
+}
+
+async function getActiveEngagementScopes(admin) {
+  const [{ data: leads }, { data: deals }] = await Promise.all([
+    admin.from("leads").select("id, status"),
+    admin.from("deals").select("id, lead_id, pipeline_stage"),
+  ]);
+  const scopes = buildActiveEngagementScopes(leads || [], deals || []);
+  return {
+    activeDealIds: [...scopes.activeDealIds],
+    activeDealLeadIds: [...scopes.activeDealLeadIds],
+    activeLeadIds: [...scopes.activeLeadIds],
+  };
+}
+
+function applyActiveEngagementScope(query, scope, scopes) {
+  const pipelineClauses = [];
+  if (scopes.activeDealIds.length > 0) {
+    pipelineClauses.push(`deal_id.in.${toPostgrestInList(scopes.activeDealIds)}`);
+  }
+  if (scopes.activeDealLeadIds.length > 0) {
+    pipelineClauses.push(`and(deal_id.is.null,lead_id.in.${toPostgrestInList(scopes.activeDealLeadIds)})`);
+  }
+  const leadClause = scopes.activeLeadIds.length > 0
+    ? `and(deal_id.is.null,lead_id.in.${toPostgrestInList(scopes.activeLeadIds)})`
+    : "";
+  const clauses = scope === "pipeline"
+    ? pipelineClauses
+    : scope === "leads"
+      ? [leadClause].filter(Boolean)
+      : [...pipelineClauses, leadClause].filter(Boolean);
+
+  return clauses.length > 0
+    ? query.or(clauses.join(","))
+    : query.eq("id", "00000000-0000-0000-0000-000000000000");
 }
 
 function applySearch(query, table, search) {
@@ -269,7 +308,11 @@ export async function GET(request) {
       if (scope === "leads") return q.not("lead_id", "is", null).is("deal_id", null);
       return q;
     };
+    const engagementScopes = await getActiveEngagementScopes(admin);
     const applyFollowupFilters = (q) => applyFollowupScope(applyFollowupDates(q));
+    const applyActiveFollowupFilters = (q) => (
+      applyActiveEngagementScope(applyFollowupDates(q), scope, engagementScopes)
+    );
 
     const [
       { count: totalCount },
@@ -280,14 +323,15 @@ export async function GET(request) {
       { count: missedCount },
     ] = await Promise.all([
       applyFollowupFilters(admin.from("sales_followups").select("*", { count: "exact", head: true })),
-      applyFollowupFilters(admin.from("sales_followups").select("*", { count: "exact", head: true }).eq("status", "pending")),
-      applyFollowupFilters(admin.from("sales_followups").select("*", { count: "exact", head: true }).eq("status", "pending").lt("due_at", nowIso)),
-      applyFollowupFilters(admin.from("sales_followups").select("*", { count: "exact", head: true }).eq("status", "pending").gte("due_at", nowIso)),
+      applyActiveFollowupFilters(admin.from("sales_followups").select("*", { count: "exact", head: true }).eq("status", "pending")),
+      applyActiveFollowupFilters(admin.from("sales_followups").select("*", { count: "exact", head: true }).eq("status", "pending").lt("due_at", nowIso)),
+      applyActiveFollowupFilters(admin.from("sales_followups").select("*", { count: "exact", head: true }).eq("status", "pending").gte("due_at", nowIso)),
       applyFollowupFilters(admin.from("sales_followups").select("*", { count: "exact", head: true }).eq("status", "done")),
       applyFollowupFilters(admin.from("sales_followups").select("*", { count: "exact", head: true }).eq("status", "missed")),
     ]);
 
     const summary = {
+      scope,
       total: totalCount || 0,
       active: activeCount || 0,
       overdue: overdueCount || 0,
@@ -503,7 +547,10 @@ export async function GET(request) {
   }
 
   const scope = searchParams.get("scope") || "";
-  if (resource === "sales_followups" && scope === "pipeline") {
+  const activeFollowUpStatus = ["", "actionable", "active", "pending", "overdue"].includes(status);
+  if (resource === "sales_followups" && activeFollowUpStatus) {
+    query = applyActiveEngagementScope(query, scope || "all", await getActiveEngagementScopes(admin));
+  } else if (resource === "sales_followups" && scope === "pipeline") {
     query = query.not("deal_id", "is", null);
   } else if (resource === "sales_followups" && scope === "leads") {
     query = query.not("lead_id", "is", null).is("deal_id", null);
