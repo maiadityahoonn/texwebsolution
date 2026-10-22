@@ -44,23 +44,28 @@ export async function POST(request) {
   }
 
   const now = new Date().toISOString();
+  const endpoint = `fcm:${token}`;
   const { data, error } = await admin
-    .from("push_device_tokens")
+    .from("push_subscriptions")
     .upsert({
       user_id: requester.id,
-      token,
-      platform,
-      app_id: appId,
-      device_name: String(body.device_name || "").slice(0, 200) || null,
+      endpoint,
+      subscription: {
+        type: "fcm",
+        token,
+        platform,
+        app_id: appId,
+        device_name: String(body.device_name || "").slice(0, 200) || null,
+      },
       user_agent: String(request.headers.get("user-agent") || "").slice(0, 500),
       is_active: true,
       updated_at: now,
-    }, { onConflict: "token" })
-    .select("id, platform, app_id, is_active, updated_at")
+    }, { onConflict: "endpoint" })
+    .select("id, is_active, updated_at")
     .single();
 
   if (error) return NextResponse.json({ error: error.message }, { status: 400 });
-  return NextResponse.json({ device: data });
+  return NextResponse.json({ device: { ...data, platform, app_id: appId } });
 }
 
 export async function DELETE(request) {
@@ -71,10 +76,11 @@ export async function DELETE(request) {
 
   const token = validDeviceToken(new URL(request.url).searchParams.get("token"));
   let query = admin
-    .from("push_device_tokens")
+    .from("push_subscriptions")
     .update({ is_active: false, updated_at: new Date().toISOString() })
-    .eq("user_id", requester.id);
-  if (token) query = query.eq("token", token);
+    .eq("user_id", requester.id)
+    .like("endpoint", "fcm:%");
+  if (token) query = query.eq("endpoint", `fcm:${token}`);
   const { error } = await query;
   if (error) return NextResponse.json({ error: error.message }, { status: 400 });
   return NextResponse.json({ ok: true });

@@ -154,6 +154,7 @@ async function sendNoPayloadPush(admin, userId, notification) {
     .select("id, endpoint")
     .eq("user_id", userId)
     .eq("is_active", true)
+    .like("endpoint", "https://%")
     .limit(20);
 
   if (!subscriptions?.length) return [];

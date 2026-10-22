@@ -160,10 +160,11 @@ export async function sendNativePushToUser(admin, userId, notification) {
   }
 
   const { data: devices, error } = await admin
-    .from("push_device_tokens")
-    .select("id, token, platform")
+    .from("push_subscriptions")
+    .select("id, endpoint, subscription")
     .eq("user_id", userId)
     .eq("is_active", true)
+    .like("endpoint", "fcm:%")
     .limit(20);
   if (error) return [{ channel: "native_push", status: "skipped", reason: "device_tokens_unavailable" }];
   if (!devices?.length) return [{ channel: "native_push", status: "skipped", reason: "no_active_device" }];
@@ -176,8 +177,10 @@ export async function sendNativePushToUser(admin, userId, notification) {
   const linkUrl = String(notification?.link_url || "/crm/alerts");
   const results = [];
   for (const device of devices) {
+    const deviceToken = String(device?.subscription?.token || device?.endpoint?.slice(4) || "");
+    if (!deviceToken) continue;
     const result = await postFcmMessage(environment, oauth.accessToken, {
-      token: device.token,
+      token: deviceToken,
       notification: { title, body },
       data: stringifyData({
         notification_id: notification?.id,
@@ -196,7 +199,7 @@ export async function sendNativePushToUser(admin, userId, notification) {
     });
     const invalidToken = ["UNREGISTERED", "INVALID_ARGUMENT", "SENDER_ID_MISMATCH"].includes(result.code);
     await admin
-      .from("push_device_tokens")
+      .from("push_subscriptions")
       .update({
         is_active: !invalidToken,
         last_used_at: result.ok ? new Date().toISOString() : undefined,
@@ -205,7 +208,7 @@ export async function sendNativePushToUser(admin, userId, notification) {
       .eq("id", device.id);
     results.push({
       channel: "native_push",
-      platform: device.platform,
+      platform: device?.subscription?.platform || "android",
       status: result.ok ? "sent" : "failed",
       code: result.code,
     });
