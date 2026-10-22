@@ -107,6 +107,10 @@ export async function getDeals(options = null) {
 }
 
 export async function createDeal(dealData) {
+  if (!dealData?.lead_id) {
+    console.warn('Blocked unlinked pipeline deal creation: lead_id is required.');
+    return null;
+  }
   try {
     const insertPayload = {
       title: dealData.title,

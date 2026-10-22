@@ -3,6 +3,7 @@
 import { Phone, FileText, Users, MessageSquare, Briefcase, CheckCircle2, X } from "lucide-react";
 import SearchableLeadSelect from "../SearchableLeadSelect";
 import SplitDateTimeField from "../SplitDateTimeField";
+import { findDealForRelationship } from "../crmRelationshipUtils";
 
 export default function FollowUpModal({
   show,
@@ -70,14 +71,17 @@ export default function FollowUpModal({
               <label className="flex items-center gap-1.5 font-semibold text-gray-700 dark:text-neutral-200">
                 <Users className="w-3.5 h-3.5 text-orange-500" />
                 <span>Lead</span>
+                <span className="text-red-500">*</span>
               </label>
               <SearchableLeadSelect
                 leads={leads}
                 value={form?.lead_id || ""}
                 onChange={(leadId, lead) => {
+                  const linkedDeal = findDealForRelationship({ lead_id: leadId }, deals);
                   setForm({
                     ...(form || {}),
                     lead_id: leadId,
+                    deal_id: linkedDeal?.id || "",
                     title: form?.title === "Follow up for quotation approval" || !form?.title
                       ? (lead ? `Follow up: ${lead.name}` : (form?.title || ""))
                       : form?.title,
@@ -155,7 +159,8 @@ export default function FollowUpModal({
           </button>
           <button
             type="submit"
-            className="flex-1 sm:flex-initial text-center justify-center px-3 min-[360px]:px-5 py-2 min-[360px]:py-2.5 rounded-xl text-xs font-bold bg-linear-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-md shadow-blue-500/25 hover:shadow-lg transition flex items-center justify-center gap-1.5 cursor-pointer whitespace-nowrap min-w-0"
+            disabled={!form?.lead_id && !form?.deal_id}
+            className="flex-1 sm:flex-initial text-center justify-center px-3 min-[360px]:px-5 py-2 min-[360px]:py-2.5 rounded-xl text-xs font-bold bg-linear-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-md shadow-blue-500/25 hover:shadow-lg transition flex items-center justify-center gap-1.5 cursor-pointer whitespace-nowrap min-w-0 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <CheckCircle2 className="w-4 h-4 shrink-0" />
             <span className="truncate">Save Follow-up</span>

@@ -26,6 +26,7 @@ import { useCrmServerSync } from "../hooks/useCrmServerSync";
 
 export default function CrmWorkspaceView({
   leads = [],
+  relationshipLeads = leads,
   deals = [],
   dealPagination = null,
   clients = [],
@@ -192,6 +193,7 @@ export default function CrmWorkspaceView({
   // Calculations
   const calculations = useCrmCalculations({
     leads,
+    relationshipLeads,
     deals,
     proposals,
     quotations,
@@ -303,7 +305,7 @@ export default function CrmWorkspaceView({
 
   // Modal handlers and state
   const modals = useCrmWorkspaceModals({
-    leads,
+    leads: relationshipLeads,
     deals,
     clients,
     proposals,
@@ -462,6 +464,7 @@ export default function CrmWorkspaceView({
         setLeadsPerPage={setLeadsPerPage}
         leadTotal={leadTotalForPagination}
         leads={leads}
+        relationshipLeads={relationshipLeads}
         deals={deals}
         followUps={contextualFollowUps}
         salesMeetings={salesMeetings}
@@ -570,7 +573,7 @@ export default function CrmWorkspaceView({
         selectedDeal={modals.selectedDeal}
         setSelectedDeal={modals.setSelectedDeal}
         deals={deals}
-        leads={leads}
+        leads={relationshipLeads}
         clients={clients}
         proposals={proposals}
         quotations={quotations}

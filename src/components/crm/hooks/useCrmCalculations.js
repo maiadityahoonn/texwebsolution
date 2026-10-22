@@ -21,6 +21,7 @@ import {
 
 export function useCrmCalculations({
   leads = [],
+  relationshipLeads = leads,
   deals = [],
   proposals = [],
   quotations = [],
@@ -71,6 +72,10 @@ export function useCrmCalculations({
   const getServerDateRange = useCallback(() => getLeadServerDateRange(), [getLeadServerDateRange]);
 
   const dedupedLeads = useMemo(() => dedupeLeads(leads), [leads]);
+  const dedupedRelationshipLeads = useMemo(
+    () => dedupeLeads(relationshipLeads),
+    [relationshipLeads]
+  );
 
   const leadLetterCounts = useMemo(
     () =>
@@ -160,7 +165,7 @@ export function useCrmCalculations({
 
   const filteredFollowUps = useMemo(() => {
     const now = Date.now();
-    const { activeDealIds, activeDealLeadIds, activeLeadIds } = buildActiveEngagementScopes(leads, deals);
+    const { activeDealIds, activeDealLeadIds, activeLeadIds } = buildActiveEngagementScopes(relationshipLeads, deals);
     const showHistorical = ["done", "completed", "missed", "cancelled", "all_with_completed"].includes(statusFilter);
     return followUps
       .filter((item) => {
@@ -216,7 +221,7 @@ export function useCrmCalculations({
         }
         return new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime();
       });
-  }, [deals, followUps, leads, matchesDateFilter, statusFilter, dateFilter, followUpScope]);
+  }, [deals, followUps, relationshipLeads, matchesDateFilter, statusFilter, dateFilter, followUpScope]);
 
   const filteredSalesMeetings = useMemo(() => {
     const now = Date.now();
@@ -274,7 +279,7 @@ export function useCrmCalculations({
   const allPipelineDeals = useMemo(() => {
     const existingDealLeadIds = new Set(deals.map((d) => d.lead_id).filter(Boolean));
     const list = [...deals];
-    leads.forEach((l) => {
+    relationshipLeads.forEach((l) => {
       const isLeadWon = l.status === "Converted" || l.status === "Closed Won";
       if (isLeadWon && !existingDealLeadIds.has(l.id)) {
         list.push({
@@ -293,7 +298,7 @@ export function useCrmCalculations({
       }
     });
     return list;
-  }, [deals, leads]);
+  }, [deals, relationshipLeads]);
 
   const visiblePipelineDeals = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
@@ -302,7 +307,7 @@ export function useCrmCalculations({
       if (dateFilter !== "all" && !matchesDateFilter(deal, "created_at") && !matchesDateFilter(deal, "updated_at"))
         return false;
       if (normalizedQuery) {
-        const linkedLead = dedupedLeads.find((lead) => String(lead.id) === String(deal.lead_id));
+        const linkedLead = dedupedRelationshipLeads.find((lead) => String(lead.id) === String(deal.lead_id));
         const searchableValues = [
           deal.title,
           deal.service,
@@ -323,7 +328,7 @@ export function useCrmCalculations({
       if (statusFilter === "active") return !CLOSED_PIPELINE_STAGES.includes(stage);
       return true;
     });
-  }, [allPipelineDeals, dateFilter, dedupedLeads, matchesDateFilter, query, statusFilter]);
+  }, [allPipelineDeals, dateFilter, dedupedRelationshipLeads, matchesDateFilter, query, statusFilter]);
 
   const followUpTotal = useMemo(() => {
     if (viewMode === "followups" && typeof followUpPagination?.count === "number") {

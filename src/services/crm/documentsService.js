@@ -49,6 +49,10 @@ export async function getProposals(options = null) {
 }
 
 export async function createProposal(proposalData) {
+  if (!proposalData?.deal_id) {
+    console.warn('Blocked unlinked proposal creation: deal_id is required.');
+    return null;
+  }
   try {
     const insertPayload = pickPayload(proposalData, PROPOSAL_COLUMNS);
     const { data, error } = await supabase
@@ -130,6 +134,10 @@ export async function getQuotations(options = null) {
 }
 
 export async function createQuotation(quotationData) {
+  if (!quotationData?.deal_id) {
+    console.warn('Blocked unlinked quotation creation: deal_id is required.');
+    return null;
+  }
   try {
     const subtotal = Number(quotationData.subtotal ?? quotationData.amount ?? quotationData.total) || 0;
     const tax = Number(quotationData.tax ?? quotationData.tax_amount) || 0;
@@ -226,6 +234,10 @@ export async function getAgreements(options = null) {
 }
 
 export async function createAgreement(agreementData) {
+  if (!agreementData?.deal_id) {
+    console.warn('Blocked unlinked agreement creation: deal_id is required.');
+    return null;
+  }
   try {
     const insertPayload = pickPayload(agreementData, AGREEMENT_COLUMNS);
     const { data, error } = await supabase
@@ -336,6 +348,10 @@ export async function getInvoices(options = null) {
 }
 
 export async function createInvoice(invoiceData) {
+  if (!invoiceData?.deal_id) {
+    console.warn('Blocked unlinked invoice creation: deal_id is required.');
+    return null;
+  }
   try {
     const insertPayload = pickPayload(invoiceData, INVOICE_COLUMNS);
     const { data, error } = await supabase
@@ -424,4 +440,3 @@ export async function getCloudCommercialsSummary(options = {}) {
   }
   return null;
 }
-

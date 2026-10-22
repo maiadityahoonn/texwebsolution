@@ -21,6 +21,7 @@ import { useAuth } from "@/components/auth/useAuth";
 import { useCrmNotifications } from "@/components/crm/hooks/useCrmNotifications";
 import NotificationCenterModal from "@/components/crm/notifications/NotificationCenterModal";
 import { useCrmData } from "@/components/crm/hooks/useCrmData";
+import { useCrmRelationshipLeads } from "@/components/crm/hooks/useCrmRelationshipLeads";
 import { CrmShellContext } from "./CrmShellContext";
 import {
   CRM_NAV,
@@ -82,6 +83,15 @@ export default function CrmAppLayout({ children }) {
     handleRealtimeAgreement,
     handleRealtimeInvoice,
   } = crmData;
+
+  const relationshipLeads = useCrmRelationshipLeads({
+    sessionUserId: sessionUser?.id || "",
+    leads,
+    clients,
+    deals: crmData.deals,
+    followUps: salesFollowUps,
+    meetings: salesMeetings,
+  });
 
   const {
     notifications,
@@ -233,6 +243,7 @@ export default function CrmAppLayout({ children }) {
 
   const { workspaceViewProps } = useCrmLayoutActions({
     crmData,
+    relationshipLeads,
     sessionUser,
     userProfile,
     activeSection,

@@ -131,7 +131,7 @@ export function useCrmMeetingFollowUpModals({
 
   function handleCreateFollowUpSubmit(e) {
     e.preventDefault();
-    if (!followUpForm.title || !followUpForm.due_at) return;
+    if (!followUpForm.title || !followUpForm.due_at || (!followUpForm.lead_id && !followUpForm.deal_id)) return;
 
     if (followUpForm.lead_id || followUpForm.deal_id) {
       const existingActive = followUps.find((item) => (
@@ -295,7 +295,7 @@ export function useCrmMeetingFollowUpModals({
 
   function handleCreateSalesMeetingSubmit(e) {
     e.preventDefault();
-    if (!salesMeetingForm.title || !salesMeetingForm.scheduled_at) return;
+    if (!salesMeetingForm.title || !salesMeetingForm.scheduled_at || (!salesMeetingForm.lead_id && !salesMeetingForm.deal_id)) return;
 
     if (salesMeetingForm.lead_id || salesMeetingForm.deal_id) {
       const existingActive = salesMeetings.find((item) => (

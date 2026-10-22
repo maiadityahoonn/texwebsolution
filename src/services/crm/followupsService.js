@@ -96,6 +96,10 @@ export async function getSalesFollowUps(options = null) {
 }
 
 export async function createSalesFollowUp(followUpData) {
+  if (!followUpData?.lead_id) {
+    console.warn('Blocked unlinked follow-up creation: lead_id is required.');
+    return null;
+  }
   try {
     if (followUpData.lead_id || followUpData.deal_id) {
       let checkQuery = supabase

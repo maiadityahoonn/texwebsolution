@@ -105,6 +105,10 @@ export async function getSalesMeetings(options = null) {
 }
 
 export async function createSalesMeeting(meetingData) {
+  if (!meetingData?.lead_id) {
+    console.warn('Blocked unlinked meeting creation: lead_id is required.');
+    return null;
+  }
   try {
     if (meetingData.lead_id || meetingData.deal_id) {
       let checkQuery = supabase

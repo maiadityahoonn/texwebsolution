@@ -36,9 +36,14 @@ import { CRM_NAV } from "./CrmShellConfig";
 import { isFollowUpActive, isMeetingActive } from "../shared/meetingUtils";
 import { completeActiveEngagementsForLost } from "@/services/crm/engagementLifecycleService";
 import { CLOSED_DEAL_STAGES, isActiveDealStage } from "@/services/crm/leadCategoryFilters";
+import {
+  normalizeDocumentRelationship,
+  normalizeEngagementRelationship,
+} from "../shared/crmRelationshipUtils";
 
 export function useCrmLayoutActions({
   crmData,
+  relationshipLeads = [],
   sessionUser,
   userProfile,
   activeSection,
@@ -150,6 +155,7 @@ export function useCrmLayoutActions({
 
   const workspaceViewProps = {
     leads,
+    relationshipLeads,
     leadPagination,
     leadSummary,
     onRefreshLeadSummary: refreshLeadSummary,
@@ -265,6 +271,10 @@ export function useCrmLayoutActions({
       return res;
     },
     onCreateDeal: async (deal) => {
+      if (!deal?.lead_id) {
+        setToast("Pipeline deal create karne ke liye linked lead select karein.");
+        return null;
+      }
       const res = await createDeal({ ...deal, created_by: sessionUser?.id || null });
       if (res) {
         setDeals((prev) => [res, ...prev.filter((item) => item.id !== res.id)]);
@@ -289,7 +299,12 @@ export function useCrmLayoutActions({
     },
     onConvertToClientAndProject: handleConvertToClientAndProject,
     onCreateProposal: async (proposal) => {
-      const res = await createProposal({ ...proposal, created_by: sessionUser?.id || null });
+      const linkedProposal = normalizeDocumentRelationship(proposal, deals);
+      if (!linkedProposal.deal_id || !linkedProposal.lead_id) {
+        setToast("Quotation ke liye linked pipeline deal aur lead required hai.");
+        return null;
+      }
+      const res = await createProposal({ ...linkedProposal, created_by: sessionUser?.id || null });
       if (res) setProposals((prev) => [res, ...prev.filter((item) => item.id !== res.id)]);
       setToast("Sales quotation saved.");
       return res;
@@ -307,7 +322,12 @@ export function useCrmLayoutActions({
       return res;
     },
     onCreateAgreement: async (agreement) => {
-      const res = await createAgreement({ ...agreement, created_by: sessionUser?.id || null });
+      const linkedAgreement = normalizeDocumentRelationship(agreement, deals);
+      if (!linkedAgreement.deal_id || !linkedAgreement.lead_id) {
+        setToast("Agreement ke liye linked pipeline deal aur lead required hai.");
+        return null;
+      }
+      const res = await createAgreement({ ...linkedAgreement, created_by: sessionUser?.id || null });
       if (res) setAgreements((prev) => [res, ...prev.filter((item) => item.id !== res.id)]);
       setToast("Client agreement saved.");
       return res;
@@ -319,7 +339,12 @@ export function useCrmLayoutActions({
       return res;
     },
     onCreateInvoice: async (invoice) => {
-      const res = await createInvoice({ ...invoice, created_by: sessionUser?.id || null });
+      const linkedInvoice = normalizeDocumentRelationship(invoice, deals);
+      if (!linkedInvoice.deal_id || !linkedInvoice.lead_id) {
+        setToast("Invoice ke liye linked pipeline deal aur lead required hai.");
+        return null;
+      }
+      const res = await createInvoice({ ...linkedInvoice, created_by: sessionUser?.id || null });
       if (res) setInvoicesList((prev) => [res, ...prev.filter((item) => item.id !== res.id)]);
       setToast("Invoice generated successfully.");
       return res;
@@ -331,8 +356,13 @@ export function useCrmLayoutActions({
       return res;
     },
     onCreateFollowUp: async (followUp) => {
-      const targetLeadId = followUp.lead_id;
-      const targetDealId = followUp.deal_id;
+      const linkedFollowUp = normalizeEngagementRelationship(followUp, deals);
+      const targetLeadId = linkedFollowUp.lead_id;
+      const targetDealId = linkedFollowUp.deal_id;
+      if (!targetLeadId) {
+        setToast("Follow-up ke liye linked lead select karein.");
+        return null;
+      }
       if (targetLeadId || targetDealId) {
         const existingActive = engagementFollowUps.find((item) => (
           isFollowUpActive(item.status) && (
@@ -345,7 +375,7 @@ export function useCrmLayoutActions({
           return existingActive;
         }
       }
-      const res = await createSalesFollowUp({ ...followUp, created_by: sessionUser?.id || null, assigned_to: sessionUser?.id || null });
+      const res = await createSalesFollowUp({ ...linkedFollowUp, created_by: sessionUser?.id || null, assigned_to: sessionUser?.id || null });
       if (res) {
         setSalesFollowUps((prev) => [res, ...prev.filter((item) => item.id !== res.id)]);
         setEngagementFollowUps((prev) => [res, ...prev.filter((item) => item.id !== res.id)].slice(0, 500));
@@ -371,8 +401,13 @@ export function useCrmLayoutActions({
       setToast("Follow-up deleted.");
     },
     onCreateSalesMeeting: async (meeting) => {
-      const targetLeadId = meeting.lead_id;
-      const targetDealId = meeting.deal_id;
+      const linkedMeeting = normalizeEngagementRelationship(meeting, deals);
+      const targetLeadId = linkedMeeting.lead_id;
+      const targetDealId = linkedMeeting.deal_id;
+      if (!targetLeadId) {
+        setToast("Meeting ke liye linked lead select karein.");
+        return null;
+      }
       if (targetLeadId || targetDealId) {
         const existingActive = salesMeetings.find((item) => (
           isMeetingActive(item.status) && (
@@ -385,7 +420,7 @@ export function useCrmLayoutActions({
           return existingActive;
         }
       }
-      const res = await createSalesMeeting({ ...meeting, created_by: sessionUser?.id || null, host_id: sessionUser?.id || null });
+      const res = await createSalesMeeting({ ...linkedMeeting, created_by: sessionUser?.id || null, host_id: sessionUser?.id || null });
       if (res) setSalesMeetings((prev) => [res, ...prev.filter((item) => item.id !== res.id)]);
       setToast("Sales meeting scheduled.");
       return res;

@@ -30,6 +30,7 @@ export default function CrmWorkspaceViewSwitch({
   setLeadsPerPage,
   leadTotal = 0,
   leads,
+  relationshipLeads = leads,
   deals,
   followUps,
   salesMeetings,
@@ -205,7 +206,7 @@ export default function CrmWorkspaceViewSwitch({
           quotations={quotations}
           agreements={agreements}
           invoices={invoices}
-          leads={leads}
+          leads={relationshipLeads}
           clients={clients}
           setSelectedDeal={setSelectedDeal}
           setDealModalTab={() => {}}
@@ -227,7 +228,7 @@ export default function CrmWorkspaceViewSwitch({
           commercialDocs={commercialDocs}
           deals={deals}
           clients={clients}
-          leads={leads}
+          leads={relationshipLeads}
           openCommercialModal={openCommercialModal}
           openInvoiceModal={openInvoiceModal}
           sendDocWhatsApp={sendDocWhatsApp}
@@ -244,7 +245,7 @@ export default function CrmWorkspaceViewSwitch({
           isFollowUpsLoading={isFollowUpsLoading}
           paginatedFollowUps={paginatedFollowUps}
           filteredFollowUps={filteredFollowUps}
-          leads={leads}
+          leads={relationshipLeads}
           clients={clients}
           deals={deals}
           setSelectedLead={setSelectedLead}
@@ -273,7 +274,7 @@ export default function CrmWorkspaceViewSwitch({
           isMeetingsLoading={isMeetingsLoading}
           paginatedSalesMeetings={paginatedSalesMeetings}
           filteredSalesMeetings={filteredSalesMeetings}
-          leads={leads}
+          leads={relationshipLeads}
           clients={clients}
           deals={deals}
           dateFilter={dateFilter}
@@ -304,7 +305,7 @@ export default function CrmWorkspaceViewSwitch({
       return (
         <DashboardView
           isReportsLoading={isReportsLoading}
-          leads={leads}
+          leads={relationshipLeads}
           clients={clients}
           deals={deals}
           followUps={followUps}
@@ -348,7 +349,7 @@ export default function CrmWorkspaceViewSwitch({
           commercialDocs={commercialDocs}
           deals={deals}
           clients={clients}
-          leads={leads}
+          leads={relationshipLeads}
           openCommercialModal={openCommercialModal}
           openInvoiceModal={openInvoiceModal}
           sendDocWhatsApp={sendDocWhatsApp}

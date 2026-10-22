@@ -515,7 +515,7 @@ export function useCrmWorkspaceModals({
 
   async function handleCreateDealSubmit(e) {
     e.preventDefault();
-    if (!newDealForm.title?.trim() || !newDealForm.deal_value) return;
+    if (!newDealForm.title?.trim() || !newDealForm.deal_value || !newDealForm.lead_id) return;
 
     const finalMeetLink = newDealForm.meeting_link?.trim() || defaultMeetLink || "https://meet.google.com/new";
 

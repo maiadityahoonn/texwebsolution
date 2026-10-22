@@ -80,7 +80,7 @@ export function useCrmCommercialModals({
 
   async function handleInvoiceSubmit(e, sendWhatsApp = false) {
     if (e?.preventDefault) e.preventDefault();
-    if (!invoiceForm.title || !invoiceForm.amount) return;
+    if (!invoiceForm.title || !invoiceForm.amount || (!invoiceForm.deal_id && !invoiceDeal?.id)) return;
     const invoicePayload = {
       deal_id: invoiceForm.deal_id || invoiceDeal?.id || null,
       client_id: invoiceForm.client_id || invoiceDeal?.client_id || null,

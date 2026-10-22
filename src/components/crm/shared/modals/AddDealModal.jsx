@@ -155,6 +155,7 @@ export default function AddDealModal({
             <label className="flex items-center gap-1.5 font-semibold text-gray-700 dark:text-neutral-200">
               <Users className="w-3.5 h-3.5 text-orange-500" />
               <span>Linked Lead</span>
+              <span className="text-red-500">*</span>
             </label>
             {form?.lead_id ? (
               <div className="px-3.5 py-2.5 rounded-xl bg-gray-50/80 dark:bg-slate-800/80 border border-gray-200 dark:border-slate-700 text-gray-900 dark:text-white font-semibold flex items-center justify-between">
@@ -181,6 +182,11 @@ export default function AddDealModal({
                 }}
                 placeholder="Search lead by name, phone..."
               />
+            )}
+            {!form?.lead_id && (
+              <p className="text-[10px] font-semibold text-rose-600 dark:text-rose-400">
+                Every pipeline deal must be connected to a lead.
+              </p>
             )}
           </div>
 
@@ -210,7 +216,8 @@ export default function AddDealModal({
           </button>
           <button
             type="submit"
-            className="flex-1 sm:flex-initial text-center justify-center px-3 min-[360px]:px-5 py-2 min-[360px]:py-2.5 rounded-xl text-xs font-bold bg-linear-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white shadow-md shadow-emerald-500/25 hover:shadow-lg transition flex items-center justify-center gap-1.5 cursor-pointer whitespace-nowrap min-w-0"
+            disabled={!form?.lead_id}
+            className="flex-1 sm:flex-initial text-center justify-center px-3 min-[360px]:px-5 py-2 min-[360px]:py-2.5 rounded-xl text-xs font-bold bg-linear-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white shadow-md shadow-emerald-500/25 hover:shadow-lg transition flex items-center justify-center gap-1.5 cursor-pointer whitespace-nowrap min-w-0 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <Plus className="w-4 h-4 shrink-0" />
             <span className="truncate">Create Pipeline Deal</span>

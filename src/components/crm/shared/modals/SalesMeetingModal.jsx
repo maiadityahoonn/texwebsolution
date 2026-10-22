@@ -4,6 +4,7 @@ import { Video, FileText, Users, Target, Clock, Calendar, X } from "lucide-react
 import SearchableLeadSelect from "../SearchableLeadSelect";
 import SplitDateTimeField from "../SplitDateTimeField";
 import DurationSelectField from "../DurationSelectField";
+import { findDealForRelationship } from "../crmRelationshipUtils";
 
 export default function SalesMeetingModal({
   show,
@@ -72,14 +73,17 @@ export default function SalesMeetingModal({
               <label className="flex items-center gap-1.5 font-semibold text-gray-700 dark:text-neutral-200">
                 <Users className="w-3.5 h-3.5 text-orange-500" />
                 <span>Lead</span>
+                <span className="text-red-500">*</span>
               </label>
               <SearchableLeadSelect
                 leads={leads}
                 value={form?.lead_id || ""}
                 onChange={(leadId, lead) => {
+                  const linkedDeal = findDealForRelationship({ lead_id: leadId }, deals);
                   setForm({
                     ...(form || {}),
                     lead_id: leadId,
+                    deal_id: linkedDeal?.id || "",
                     title: form?.title === "Client requirement discovery call" || !form?.title
                       ? (lead ? `Sales call: ${lead.name}` : (form?.title || ""))
                       : form?.title,
@@ -173,7 +177,8 @@ export default function SalesMeetingModal({
           </button>
           <button
             type="submit"
-            className="flex-1 sm:flex-initial text-center justify-center px-3 min-[360px]:px-5 py-2 min-[360px]:py-2.5 rounded-xl text-xs font-bold bg-linear-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white shadow-md shadow-emerald-500/25 hover:shadow-lg transition flex items-center justify-center gap-1.5 cursor-pointer whitespace-nowrap min-w-0"
+            disabled={!form?.lead_id && !form?.deal_id}
+            className="flex-1 sm:flex-initial text-center justify-center px-3 min-[360px]:px-5 py-2 min-[360px]:py-2.5 rounded-xl text-xs font-bold bg-linear-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white shadow-md shadow-emerald-500/25 hover:shadow-lg transition flex items-center justify-center gap-1.5 cursor-pointer whitespace-nowrap min-w-0 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <Calendar className="w-4 h-4 shrink-0" />
             <span className="truncate">Schedule Meeting</span>
