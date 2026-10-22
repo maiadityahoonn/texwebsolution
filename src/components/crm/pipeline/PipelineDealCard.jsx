@@ -55,14 +55,6 @@ export default function PipelineDealCard({
     .sort((a, b) => new Date(a.due_at || 0).getTime() - new Date(b.due_at || 0).getTime());
   const nextFollowUp = dealFollowUps[0];
 
-  const lastCompletedFollowUp = allDealFollowUps
-    .filter((item) => item.status === "done" || item.status === "completed")
-    .sort(
-      (a, b) =>
-        new Date(b.updated_at || b.due_at || 0).getTime() -
-        new Date(a.updated_at || a.due_at || 0).getTime()
-    )[0];
-
   const allDealMeetings = salesMeetings.filter((item) => {
     const matchId =
       String(item.deal_id || "") === String(deal.id) ||
@@ -79,11 +71,6 @@ export default function PipelineDealCard({
       (a, b) => new Date(a.scheduled_at || 0).getTime() - new Date(b.scheduled_at || 0).getTime()
     )[0];
 
-  const lastCompletedMeeting = allDealMeetings
-    .filter((item) => item.status === "completed")
-    .sort(
-      (a, b) => new Date(b.scheduled_at || 0).getTime() - new Date(a.scheduled_at || 0).getTime()
-    )[0];
   const latestQuotation = getLatestLinkedDoc([...proposals, ...quotations], deal);
   const latestAgreement = getLatestLinkedDoc(agreements, deal);
   const latestInvoice = getLatestLinkedDoc(invoices, deal);
@@ -103,22 +90,6 @@ export default function PipelineDealCard({
       .slice(0, 2)
       .join("")
       .toUpperCase() || "DL";
-
-  const isMetaLead = Boolean(
-    lead?.source?.toLowerCase().includes("meta") ||
-      lead?.source?.toLowerCase().includes("instagram") ||
-      deal.notes?.toLowerCase().includes("meta") ||
-      deal.notes?.toLowerCase().includes("instagram")
-  );
-  const isInstagram = Boolean(
-    lead?.source?.toLowerCase().includes("instagram") ||
-      deal.notes?.toLowerCase().includes("instagram")
-  );
-
-  const isDefaultNote =
-    !deal.notes ||
-    ["converted lead", "created from lead"].some((kw) => deal.notes.toLowerCase().includes(kw));
-  const customNotes = !isDefaultNote ? deal.notes : null;
 
   const meetingDateStr = nextMeeting?.scheduled_at
     ? new Date(nextMeeting.scheduled_at).toLocaleDateString("en-IN", {
@@ -198,25 +169,47 @@ export default function PipelineDealCard({
         </div>
       </div>
 
-      {/* 2. Service & Badges */}
-      <div className="flex items-center gap-1 flex-wrap">
-        <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-neutral-300 truncate max-w-[110px] min-[360px]:max-w-[140px]">
+      {/* 2. Service & Stage */}
+      <div className="flex items-center gap-1.5 min-w-0">
+        <span
+          className="min-w-0 flex-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-neutral-300 truncate"
+          title={serviceName}
+        >
           {serviceName}
         </span>
-        {isMetaLead && (
-          <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-pink-50 text-pink-600 dark:bg-pink-950/40 dark:text-pink-400 border border-pink-200/50 shrink-0">
-            {isInstagram ? "IG" : "Meta"}
-          </span>
-        )}
-        {docBadges.map((badge) => (
-          <span
-            key={badge.label}
-            className={`px-1.5 py-0.5 rounded text-[9px] font-bold capitalize shrink-0 ${badge.tone}`}
+        {!["closed_won", "closed_lost"].includes(col.id) && (
+          <select
+            value={deal.pipeline_stage || "contacted"}
+            onClick={(event) => event.stopPropagation()}
+            onChange={(event) => {
+              event.stopPropagation();
+              handleDealStageChange(deal, event.target.value, col.id);
+            }}
+            className="w-[94px] shrink-0 text-[9px] font-semibold bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-md px-1 py-1 text-gray-700 dark:text-neutral-300"
+            title="Change pipeline stage"
+            aria-label="Change pipeline stage"
           >
-            {badge.label}
-          </span>
-        ))}
+            <option value="contacted">Contacted</option>
+            <option value="qualified">Meeting</option>
+            <option value="proposal">Quotation</option>
+            <option value="negotiation">Negotiation</option>
+            <option value="closed_won">Won</option>
+            <option value="closed_lost">Lost</option>
+          </select>
+        )}
       </div>
+      {docBadges.length > 0 && (
+        <div className="flex items-center gap-1 flex-wrap">
+          {docBadges.map((badge) => (
+            <span
+              key={badge.label}
+              className={`px-1.5 py-0.5 rounded text-[9px] font-bold capitalize shrink-0 ${badge.tone}`}
+            >
+              {badge.label}
+            </span>
+          ))}
+        </div>
+      )}
 
       {/* 3. Action / Status Highlight (Single Compact Row) */}
       {col.id === "closed_won" ? (
@@ -286,51 +279,6 @@ export default function PipelineDealCard({
               ) : null}
             </div>
           )}
-          {!meetingDateStr && !followUpDateStr && (
-            lastCompletedFollowUp ? (
-              <div
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setSelectedDeal(deal);
-                  setDealModalTab("followups");
-                }}
-                title={`Last follow-up completed: ${lastCompletedFollowUp.title} · Click to view history or schedule next`}
-                className="flex items-center justify-between gap-1 text-[9px] min-[360px]:text-[9.5px] font-medium text-emerald-800 dark:text-emerald-300 bg-emerald-50/70 dark:bg-emerald-950/30 px-1.5 min-[360px]:px-2 py-0.5 rounded-lg border border-emerald-200/50 dark:border-emerald-900/30 min-w-0 hover:bg-emerald-100/60 transition cursor-pointer"
-              >
-                <div className="flex items-center gap-1 truncate min-w-0 flex-1">
-                  <CheckCircle2 className="w-2.5 h-2.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
-                  <span className="font-bold shrink-0">Done:</span>
-                  <span className="truncate text-gray-600 dark:text-neutral-400 font-normal">{lastCompletedFollowUp.title}</span>
-                </div>
-                <span className="text-[8px] font-bold text-emerald-700 dark:text-emerald-400 shrink-0">
-                  + Next
-                </span>
-              </div>
-            ) : lastCompletedMeeting ? (
-              <div
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setSelectedDeal(deal);
-                  setDealModalTab("meetings");
-                }}
-                title={`Last meeting conducted: ${lastCompletedMeeting.title} · Click to view notes`}
-                className="flex items-center justify-between gap-1 text-[9px] min-[360px]:text-[9.5px] font-medium text-blue-800 dark:text-blue-300 bg-blue-50/70 dark:bg-blue-950/30 px-1.5 min-[360px]:px-2 py-0.5 rounded-lg border border-blue-200/50 dark:border-blue-900/30 min-w-0 hover:bg-blue-100/60 transition cursor-pointer"
-              >
-                <div className="flex items-center gap-1 truncate min-w-0 flex-1">
-                  <CheckCircle2 className="w-2.5 h-2.5 text-blue-600 dark:text-blue-400 shrink-0" />
-                  <span className="font-bold shrink-0">Met:</span>
-                  <span className="truncate text-gray-600 dark:text-neutral-400 font-normal">{lastCompletedMeeting.title}</span>
-                </div>
-                <span className="text-[8px] font-bold text-blue-700 dark:text-blue-400 shrink-0">
-                  Notes
-                </span>
-              </div>
-            ) : customNotes ? (
-              <div className="text-[10px] text-gray-500 dark:text-neutral-400 px-1 italic whitespace-pre-line break-words">
-                {customNotes}
-              </div>
-            ) : null
-          )}
         </div>
       )}
 
@@ -345,7 +293,6 @@ export default function PipelineDealCard({
         openPipelineFollowUpModal={openPipelineFollowUpModal}
         openDealMeetingModal={openDealMeetingModal}
         openCommercialModal={openCommercialModal}
-        sendDealDocWhatsApp={sendDealDocWhatsApp}
         openInvoiceModal={openInvoiceModal}
         onNavigateSection={onNavigateSection}
       />
