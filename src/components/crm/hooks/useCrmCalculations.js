@@ -109,7 +109,7 @@ export function useCrmCalculations({
   );
 
   const leadTotalForPagination = useMemo(() => {
-    if (viewMode === "leads" && typeof leadPagination?.count === "number") {
+    if (viewMode === "leads" && typeof leadPagination?.count === "number" && leadPagination.count > filteredLeads.length) {
       return leadPagination.count;
     }
     if (dateFilter !== "all" || query || leadAlphabetFilter !== "all") {
@@ -333,7 +333,7 @@ export function useCrmCalculations({
   }, [allPipelineDeals, dateFilter, dedupedRelationshipLeads, matchesDateFilter, query, statusFilter]);
 
   const followUpTotal = useMemo(() => {
-    if (viewMode === "followups" && typeof followUpPagination?.count === "number") {
+    if (viewMode === "followups" && typeof followUpPagination?.count === "number" && followUpPagination.count > filteredFollowUps.length) {
       return followUpPagination.count;
     }
     if (dateFilter !== "all" || query || (followUpScope && followUpScope !== "all")) {
@@ -367,7 +367,7 @@ export function useCrmCalculations({
   }, [filteredFollowUps, followUpPageSize, safeFollowUpPage, viewMode]);
 
   const meetingTotal = useMemo(() => {
-    if (viewMode === "sales_meetings" && typeof meetingPagination?.count === "number") {
+    if (viewMode === "sales_meetings" && typeof meetingPagination?.count === "number" && meetingPagination.count > filteredSalesMeetings.length) {
       return meetingPagination.count;
     }
     if (dateFilter !== "all" || query) {

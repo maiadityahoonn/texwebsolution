@@ -87,7 +87,8 @@ export function calculateLeadSummaryMetrics({
     typeof leadSummary?.lost === "number" &&
     typeof leadSummary?.pipeline === "number";
 
-  const useServerSummary = hasSummaryBreakdown;
+  const hasAllLeadsInMemory = dateFilteredLeadsForStats.length >= serverTotal && serverTotal > 0;
+  const useServerSummary = hasSummaryBreakdown && !hasAllLeadsInMemory && dateFilter === "all";
 
   let totalLeads = useServerSummary ? serverTotal : (dateFilteredLeadsForStats.length || serverTotal);
 

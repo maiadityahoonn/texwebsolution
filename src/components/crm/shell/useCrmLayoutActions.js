@@ -55,13 +55,17 @@ export function useCrmLayoutActions({
     leads,
     setLeads,
     leadPagination,
+    setLeadPagination,
     leadSummary,
+    setLeadSummary,
     refreshLeadSummary,
     clients,
     deals,
     setDeals,
     dealPagination,
+    setDealPagination,
     dealSummary,
+    setDealSummary,
     refreshDealSummary,
     proposals,
     setProposals,
@@ -70,18 +74,23 @@ export function useCrmLayoutActions({
     agreements,
     setAgreements,
     commercialSummary,
+    setCommercialSummary,
     refreshCommercialSummary,
     salesFollowUps,
     setSalesFollowUps,
     engagementFollowUps,
     setEngagementFollowUps,
     followUpPagination,
+    setFollowUpPagination,
     followUpSummary,
+    setFollowUpSummary,
     refreshFollowUpSummary,
     salesMeetings,
     setSalesMeetings,
     meetingPagination,
+    setMeetingPagination,
     meetingSummary,
+    setMeetingSummary,
     refreshMeetingSummary,
     invoicesList,
     setInvoicesList,
@@ -223,7 +232,9 @@ export function useCrmLayoutActions({
     onCreateLead: async (data) => {
       const res = await createCloudLead(data);
       if (res) {
-        setLeads((prev) => [res, ...prev]);
+        setLeads((prev) => [res, ...prev.filter((item) => item.id !== res.id)]);
+        setLeadPagination?.((prev) => ({ ...prev, count: (prev?.count || 0) + 1 }));
+        setLeadSummary?.((prev) => ({ ...prev, total: (prev?.total || 0) + 1, active: (prev?.active || 0) + 1 }));
         refreshLeadSummary?.();
         setToast("New lead created successfully.");
       }
@@ -231,7 +242,9 @@ export function useCrmLayoutActions({
     onAddLead: async (data) => {
       const res = await createCloudLead(data);
       if (res) {
-        setLeads((prev) => [res, ...prev]);
+        setLeads((prev) => [res, ...prev.filter((item) => item.id !== res.id)]);
+        setLeadPagination?.((prev) => ({ ...prev, count: (prev?.count || 0) + 1 }));
+        setLeadSummary?.((prev) => ({ ...prev, total: (prev?.total || 0) + 1, active: (prev?.active || 0) + 1 }));
         refreshLeadSummary?.();
         setToast("New lead created successfully.");
       }
@@ -240,6 +253,7 @@ export function useCrmLayoutActions({
       const res = await createCloudLeadsBatch(rows);
       if (res?.length) {
         setLeads((prev) => [...res, ...prev]);
+        setLeadPagination?.((prev) => ({ ...prev, count: (prev?.count || 0) + res.length }));
         refreshLeadSummary?.();
         setToast(`${res.length} Meta leads imported successfully.`);
       }
@@ -252,11 +266,22 @@ export function useCrmLayoutActions({
       return res;
     },
     onDeleteLead: async (id) => {
+      const targetLead = leads.find((l) => l.id === id);
+      setLeads((prev) => prev.filter((lead) => lead.id !== id));
+      setLeadPagination?.((prev) => ({ ...prev, count: Math.max((prev?.count || 0) - 1, 0) }));
+      setLeadSummary?.((prev) => ({ ...prev, total: Math.max((prev?.total || 0) - 1, 0) }));
+
       const ok = await deleteCloudLead(id);
       if (ok) {
-        setLeads((prev) => prev.filter((lead) => lead.id !== id));
         refreshLeadSummary?.();
         setToast("Lead deleted successfully.");
+      } else {
+        if (targetLead) {
+          setLeads((prev) => [targetLead, ...prev]);
+          setLeadPagination?.((prev) => ({ ...prev, count: (prev?.count || 0) + 1 }));
+          setLeadSummary?.((prev) => ({ ...prev, total: (prev?.total || 0) + 1 }));
+        }
+        setToast("Lead delete nahi ho payi. Please try again.");
       }
     },
     onMarkLeadLost: async (id, updates) => {
@@ -278,13 +303,23 @@ export function useCrmLayoutActions({
       const res = await createDeal({ ...deal, created_by: sessionUser?.id || null });
       if (res) {
         setDeals((prev) => [res, ...prev.filter((item) => item.id !== res.id)]);
+        setDealPagination?.((prev) => ({ ...prev, count: (prev?.count || 0) + 1 }));
+        if (deal.lead_id) {
+          setLeads((prev) => prev.map((l) => (l.id === deal.lead_id ? { ...l, status: "In Pipeline" } : l)));
+          updateCloudLeadStatus(deal.lead_id, "In Pipeline").catch(() => {});
+        }
+        refreshLeadSummary?.();
+        refreshDealSummary?.();
         setToast("Pipeline deal created.");
       }
       return res;
     },
     onUpdateDealStage: async (id, stage, extra = {}) => {
       const res = await updateDealStage(id, stage, extra);
-      if (res) setDeals((prev) => prev.map((deal) => (deal.id === id ? { ...deal, ...res } : deal)));
+      if (res) {
+        setDeals((prev) => prev.map((deal) => (deal.id === id ? { ...deal, ...res } : deal)));
+        refreshDealSummary?.();
+      }
       if (CLOSED_DEAL_STAGES.has(stage) && stage !== "closed_won") {
         await completeLostEngagements({ dealId: id });
       }
@@ -293,7 +328,10 @@ export function useCrmLayoutActions({
     },
     onUpdateDeal: async (id, updates) => {
       const res = await updateDeal(id, updates);
-      if (res) setDeals((prev) => prev.map((deal) => (deal.id === id ? { ...deal, ...updates, ...res } : deal)));
+      if (res) {
+        setDeals((prev) => prev.map((deal) => (deal.id === id ? { ...deal, ...updates, ...res } : deal)));
+        refreshDealSummary?.();
+      }
       setToast("Deal updated.");
       return res;
     },
@@ -379,6 +417,8 @@ export function useCrmLayoutActions({
       if (res) {
         setSalesFollowUps((prev) => [res, ...prev.filter((item) => item.id !== res.id)]);
         setEngagementFollowUps((prev) => [res, ...prev.filter((item) => item.id !== res.id)].slice(0, 500));
+        setFollowUpPagination?.((prev) => ({ ...prev, count: (prev?.count || 0) + 1 }));
+        refreshFollowUpSummary?.();
       }
       setToast("Sales follow-up scheduled.");
       return res;
@@ -388,6 +428,7 @@ export function useCrmLayoutActions({
       if (res) {
         setSalesFollowUps((prev) => prev.map((item) => (item.id === id ? { ...item, ...updates, ...res } : item)));
         setEngagementFollowUps((prev) => prev.map((item) => (item.id === id ? { ...item, ...updates, ...res } : item)));
+        refreshFollowUpSummary?.();
       }
       setToast("Follow-up updated.");
       return res;
@@ -397,6 +438,8 @@ export function useCrmLayoutActions({
       if (ok) {
         setSalesFollowUps((prev) => prev.filter((item) => item.id !== id));
         setEngagementFollowUps((prev) => prev.filter((item) => item.id !== id));
+        setFollowUpPagination?.((prev) => ({ ...prev, count: Math.max((prev?.count || 0) - 1, 0) }));
+        refreshFollowUpSummary?.();
       }
       setToast("Follow-up deleted.");
     },
@@ -421,19 +464,30 @@ export function useCrmLayoutActions({
         }
       }
       const res = await createSalesMeeting({ ...linkedMeeting, created_by: sessionUser?.id || null, host_id: sessionUser?.id || null });
-      if (res) setSalesMeetings((prev) => [res, ...prev.filter((item) => item.id !== res.id)]);
+      if (res) {
+        setSalesMeetings((prev) => [res, ...prev.filter((item) => item.id !== res.id)]);
+        setMeetingPagination?.((prev) => ({ ...prev, count: (prev?.count || 0) + 1 }));
+        refreshMeetingSummary?.();
+      }
       setToast("Sales meeting scheduled.");
       return res;
     },
     onUpdateSalesMeeting: async (id, updates) => {
       const res = await updateSalesMeeting(id, updates);
-      if (res) setSalesMeetings((prev) => prev.map((item) => (item.id === id ? { ...item, ...updates, ...res } : item)));
+      if (res) {
+        setSalesMeetings((prev) => prev.map((item) => (item.id === id ? { ...item, ...updates, ...res } : item)));
+        refreshMeetingSummary?.();
+      }
       setToast("Meeting updated.");
       return res;
     },
     onDeleteSalesMeeting: async (id) => {
       const ok = await deleteSalesMeeting(id);
-      if (ok) setSalesMeetings((prev) => prev.filter((item) => item.id !== id));
+      if (ok) {
+        setSalesMeetings((prev) => prev.filter((item) => item.id !== id));
+        setMeetingPagination?.((prev) => ({ ...prev, count: Math.max((prev?.count || 0) - 1, 0) }));
+        refreshMeetingSummary?.();
+      }
       setToast("Meeting deleted.");
     },
   };

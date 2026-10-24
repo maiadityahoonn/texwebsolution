@@ -139,10 +139,16 @@ export function buildPageStatusCards({
   }
 
   if (viewMode === "followups") {
-    const useServerSummary =
+    const hasAllInMemory =
+      dateFilteredFollowUpsForStats.length >= (followUpSummary?.total || 0) &&
+      (followUpSummary?.total || 0) > 0;
+    const useServerSummary = Boolean(
       followUpSummary &&
       followUpSummary.scope === followUpScope &&
-      typeof followUpSummary.total === "number";
+      typeof followUpSummary.total === "number" &&
+      !hasAllInMemory &&
+      dateFilter === "all"
+    );
 
     let activeCount = 0;
     let overdueCount = 0;
@@ -239,9 +245,15 @@ export function buildPageStatusCards({
   }
 
   if (viewMode === "sales_meetings") {
-    const useServerSummary =
+    const hasAllMeetingsInMemory =
+      dateFilteredMeetingsForStats.length >= (meetingSummary?.total || 0) &&
+      (meetingSummary?.total || 0) > 0;
+    const useServerSummary = Boolean(
       meetingSummary &&
-      typeof meetingSummary.total === "number";
+      typeof meetingSummary.total === "number" &&
+      !hasAllMeetingsInMemory &&
+      dateFilter === "all"
+    );
 
     let activeCount = 0;
     let overdueCount = 0;
