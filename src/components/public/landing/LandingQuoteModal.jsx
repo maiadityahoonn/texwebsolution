@@ -131,8 +131,6 @@ export default function LandingQuoteModal() {
 
     trackMetaEvent("LeadFormInteraction", {
       step: 1,
-      name: formData.name,
-      city: formData.city,
       state: formData.state,
     });
 
