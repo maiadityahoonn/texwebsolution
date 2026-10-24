@@ -2,7 +2,7 @@
 
 import React, { useEffect } from "react";
 import { useSearchParams } from "next/navigation";
-import { Check, History, Mail, Phone, RotateCcw, Trash2, X } from "lucide-react";
+import { Check, History, RotateCcw, Trash2, X } from "lucide-react";
 import TablePagination from "../shared/TablePagination";
 import { TableSkeleton as DefaultTableSkeleton } from "../shared/CrmSkeletons";
 import DefaultResponsiveTableContainer from "../shared/ResponsiveTableContainer";
@@ -73,7 +73,7 @@ export default function FollowUpsTable({
                   <th className="py-3 px-4 min-w-[120px]">Channel</th>
                   <th className="py-3 px-4 min-w-[150px] whitespace-nowrap">Due</th>
                   <th className="py-3 px-4 min-w-[110px] whitespace-nowrap">Status</th>
-                  <th className="py-3 px-4 text-right min-w-[210px] whitespace-nowrap">Actions</th>
+                  <th className="py-3 px-4 text-right min-w-[160px] whitespace-nowrap">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100 dark:divide-[#3a3020]/60">
@@ -187,7 +187,7 @@ export default function FollowUpsTable({
                           isFollowUpCompleted(item.status) ? "bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-300" : isFollowUpMissed(item.status) || isOverdue ? "bg-red-50 text-red-600 dark:bg-red-950/40 dark:text-red-300" : "bg-amber-50 text-amber-600 dark:bg-amber-950/40 dark:text-amber-300"
                         }`}>{item.status}</button>
                       </td>
-                      <td className="py-3.5 px-4 text-right whitespace-nowrap min-w-[210px]">
+                      <td className="py-3.5 px-4 text-right whitespace-nowrap min-w-[160px]">
                         <div className="flex items-center justify-end gap-1.5 shrink-0">
                           {contactPhone && (
                             <button
@@ -201,16 +201,6 @@ export default function FollowUpsTable({
                             >
                               <WhatsAppIcon className="w-3.5 h-3.5" />
                             </button>
-                          )}
-                          {contactPhone && (
-                            <a href={`tel:${contactPhone.replace(/[^0-9+]/g, "")}`} className="p-1.5 rounded-lg text-orange-600 bg-orange-50 dark:bg-orange-950/40" title={`Call ${contactPhone}`} aria-label="Call contact">
-                              <Phone className="w-3.5 h-3.5" />
-                            </a>
-                          )}
-                          {emailHref && (
-                            <a href={emailHref} className="p-1.5 rounded-lg text-sky-600 bg-sky-50 dark:bg-sky-950/40" title={`Email ${contactEmail}`} aria-label="Email contact">
-                              <Mail className="w-3.5 h-3.5" />
-                            </a>
                           )}
                           <button
                             type="button"

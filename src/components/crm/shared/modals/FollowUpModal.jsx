@@ -93,16 +93,16 @@ export default function FollowUpModal({
 
             <div className="space-y-1.5">
               <label className="flex items-center gap-1.5 font-semibold text-gray-700 dark:text-neutral-200">
-                <MessageSquare className="w-3.5 h-3.5 text-emerald-500" />
+                <Phone className="w-3.5 h-3.5 text-blue-500" />
                 <span>Channel</span>
               </label>
               <select
-                value={form?.channel || "whatsapp"}
+                value={form?.channel || "phone"}
                 onChange={(e) => setForm({ ...(form || {}), channel: e.target.value })}
                 className="w-full px-3.5 py-2.5 rounded-xl bg-gray-50/80 dark:bg-slate-800/80 border border-gray-200 dark:border-slate-700 text-gray-900 dark:text-white font-medium focus:bg-white dark:focus:bg-slate-800 focus:outline-hidden focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 transition shadow-2xs cursor-pointer"
               >
-                <option value="whatsapp">WhatsApp</option>
                 <option value="phone">Phone Call</option>
+                <option value="whatsapp">WhatsApp</option>
                 <option value="email">Email</option>
                 <option value="meeting">In-Person / Meeting</option>
                 <option value="other">Other</option>

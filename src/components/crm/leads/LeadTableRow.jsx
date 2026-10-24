@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { getLeadFullBudget } from "../shared/leadUtils";
 import { buildCommunicationTemplate, getEmailHref, openWhatsAppMessage } from "../shared/communicationTemplates";
+import LeadSourceBadge from "./LeadSourceBadge";
 
 function WhatsAppIcon({ className = "w-4 h-4" }) {
   return (
@@ -153,12 +154,7 @@ export default function LeadTableRow({
               </span>
             </button>
           )}
-          {lead.source?.toLowerCase().includes("meta") && (
-            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9.5px] font-bold bg-pink-50 text-pink-700 dark:bg-pink-950/60 dark:text-pink-300 border border-pink-200/60 shrink-0">
-              <Sparkles className="w-2.5 h-2.5 text-pink-500" />
-              <span>{lead.source.includes("Instagram") ? "Instagram" : "Meta"}</span>
-            </span>
-          )}
+          <LeadSourceBadge source={lead.source} />
         </div>
         <div className="text-[10.5px] text-gray-400 mt-0.5">
           {new Date(lead.created_at || Date.now()).toLocaleDateString("en-IN", {

@@ -2,7 +2,7 @@
 
 import React, { useEffect } from "react";
 import { useSearchParams } from "next/navigation";
-import { Calendar, Check, History, Mail, Phone, RotateCcw, Trash2, Video, X } from "lucide-react";
+import { Calendar, Check, History, RotateCcw, Trash2, Video, X } from "lucide-react";
 import TablePagination from "../shared/TablePagination";
 import { TableSkeleton as DefaultTableSkeleton } from "../shared/CrmSkeletons";
 import DefaultResponsiveTableContainer from "../shared/ResponsiveTableContainer";
@@ -107,7 +107,7 @@ export default function MeetingsTable({
                   <th className="py-3 px-4 min-w-[100px]">Type</th>
                   <th className="py-3 px-4 min-w-[150px] whitespace-nowrap">Schedule</th>
                   <th className="py-3 px-4 min-w-[120px] whitespace-nowrap">Status</th>
-                  <th className="py-3 px-4 text-right min-w-[260px] whitespace-nowrap">Actions</th>
+                  <th className="py-3 px-4 text-right min-w-[200px] whitespace-nowrap">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100 dark:divide-[#3a3020]/60">
@@ -233,35 +233,20 @@ export default function MeetingsTable({
                           {item.status === "no_show" ? "No Show" : isOverdue ? "Passed" : formatStatusLabel(item.status)}
                         </button>
                       </td>
-                      <td className="py-3.5 px-4 text-right whitespace-nowrap min-w-[260px]">
+                      <td className="py-3.5 px-4 text-right whitespace-nowrap min-w-[200px]">
                         <div className="flex items-center justify-end gap-1.5 shrink-0">
                           {contactPhone && (
-                            <>
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  openWhatsAppMessage(contactPhone, communicationTemplate.body);
-                                }}
-                                className="p-1.5 rounded-lg text-emerald-600 bg-emerald-50 dark:bg-emerald-950/40 hover:bg-emerald-100 transition shrink-0 cursor-pointer"
-                                title={`Chat on WhatsApp (${contactPhone})`}
-                                aria-label="Chat on WhatsApp"
-                              >
-                                <WhatsAppIcon className="w-3.5 h-3.5" />
-                              </button>
-                              <a
-                                href={`tel:${contactPhone.replace(/[^0-9+]/g, "")}`}
-                                className="p-1.5 rounded-lg text-orange-600 bg-orange-50 dark:bg-orange-950/40 hover:bg-orange-100 transition shrink-0 inline-flex items-center justify-center cursor-pointer"
-                                title={`Call Contact (${contactPhone})`}
-                                aria-label="Call Contact"
-                              >
-                                <Phone className="w-3.5 h-3.5" />
-                              </a>
-                            </>
-                          )}
-                          {emailHref && (
-                            <a href={emailHref} className="p-1.5 rounded-lg text-sky-600 bg-sky-50 dark:bg-sky-950/40 inline-flex items-center justify-center" title={`Email meeting template to ${contactEmail}`} aria-label="Email meeting details">
-                              <Mail className="w-3.5 h-3.5" />
-                            </a>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                openWhatsAppMessage(contactPhone, communicationTemplate.body);
+                              }}
+                              className="p-1.5 rounded-lg text-emerald-600 bg-emerald-50 dark:bg-emerald-950/40 hover:bg-emerald-100 transition shrink-0 cursor-pointer"
+                              title={`Chat on WhatsApp (${contactPhone})`}
+                              aria-label="Chat on WhatsApp"
+                            >
+                              <WhatsAppIcon className="w-3.5 h-3.5" />
+                            </button>
                           )}
                           {effectiveMeetLink && item.status !== "completed" && item.status !== "no_show" && item.status !== "cancelled" && (
                             <a

@@ -82,27 +82,6 @@ export default function LeadFilters({
         </div>
       </div>
 
-      <div className="flex items-center gap-2 pt-2 border-t border-gray-100 dark:border-[#2e2619]">
-        <span className="text-[10px] font-bold text-gray-400 dark:text-neutral-500 uppercase tracking-wider shrink-0">Source:</span>
-        <button
-          type="button"
-          onClick={() => {
-            setSourceFilter(sourceFilter === "meta" ? "all" : "meta");
-            setLeadPage(1);
-          }}
-          className={`px-2.5 py-1.5 rounded-lg text-[11px] font-bold transition cursor-pointer ${
-            sourceFilter === "meta"
-              ? "bg-blue-600 text-white shadow-2xs"
-              : "bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300 hover:bg-blue-100"
-          }`}
-          title="Show only leads attributed to Meta Ads"
-        >
-          Meta Ads{sourceFilter === "meta" ? ` (${leadTotal})` : ""}
-        </button>
-        {sourceFilter === "meta" && (
-          <span className="text-[10px] text-blue-600 dark:text-blue-300">Organic and manual leads hidden</span>
-        )}
-      </div>
 
       <div className="flex items-center gap-1 overflow-x-auto no-scrollbar pt-2 border-t border-gray-100 dark:border-[#2e2619]">
         <span className="text-[10px] font-bold text-gray-400 dark:text-neutral-500 uppercase tracking-wider shrink-0 mr-1 select-none">
