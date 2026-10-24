@@ -231,7 +231,7 @@ export default function LandingQuoteModal() {
 
       {/* Modal Dialog Card */}
       <div 
-        className="relative w-full max-w-xl max-h-[94vh] sm:max-h-[92vh] flex flex-col bg-white border border-gray-100 rounded-2xl sm:rounded-3xl p-3.5 min-[375px]:p-4 sm:p-6 shadow-2xl overflow-hidden animate-scaleUp text-left overscroll-contain"
+        className="relative w-full max-w-xl max-h-[86vh] min-[375px]:max-h-[88vh] sm:max-h-[92vh] flex flex-col bg-white border border-gray-100 rounded-2xl sm:rounded-3xl p-3.5 min-[375px]:p-4 sm:p-6 shadow-2xl overflow-hidden animate-scaleUp text-left overscroll-contain"
         style={{ fontFamily: "Matter, sans-serif" }}
       >
         {/* Top Gradient Accent Bar */}
