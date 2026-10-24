@@ -42,6 +42,21 @@ export function dedupeLeads(leads = []) {
   });
 }
 
+export function isMetaAttributedLead(lead) {
+  const source = String(lead?.source || "").toLowerCase();
+  const metadataSource = String(lead?.raw_metadata?.source || "").toLowerCase();
+  const notes = String(lead?.notes || "").toLowerCase();
+  return (
+    source.startsWith("meta ads") ||
+    source.includes("facebook") ||
+    source.includes("instagram") ||
+    Boolean(lead?.meta_lead_id || lead?.leadgen_id || lead?.ad_id) ||
+    metadataSource.startsWith("meta_") ||
+    notes.includes("fbclid:") ||
+    notes.includes("[meta ads attribution:")
+  );
+}
+
 export function getLeadComputedCategory(lead, deals = []) {
   const linkedDeal = deals.find((deal) => deal.lead_id === lead.id);
   const isInPipeline = Boolean(
@@ -77,6 +92,7 @@ export function matchesLeadStatusFilter(category, statusFilter) {
 export function calculateLeadLetterCounts({
   dedupedLeads = [],
   deals = [],
+  sourceFilter = "all",
   statusFilter = "active",
   matchesDateFilterFn,
 }) {
@@ -84,9 +100,10 @@ export function calculateLeadLetterCounts({
   dedupedLeads.forEach((lead) => {
     const category = getLeadComputedCategory(lead, deals);
     const matchStatus = matchesLeadStatusFilter(category, statusFilter);
+    const matchSource = sourceFilter !== "meta" || isMetaAttributedLead(lead);
     const matchDate = matchesDateFilterFn(lead);
 
-    if (matchStatus && matchDate) {
+    if (matchStatus && matchSource && matchDate) {
       const first = (lead.name || "").trim().toUpperCase().charAt(0);
       if (/[A-Z]/.test(first)) {
         counts[first] = (counts[first] || 0) + 1;
@@ -101,6 +118,7 @@ export function calculateLeadLetterCounts({
 export function filterLeadsList({
   dedupedLeads = [],
   deals = [],
+  sourceFilter = "all",
   query = "",
   statusFilter = "active",
   leadAlphabetFilter = "all",
@@ -111,6 +129,7 @@ export function filterLeadsList({
   const result = dedupedLeads.filter((lead) => {
     const category = getLeadComputedCategory(lead, deals);
     const matchStatus = matchesLeadStatusFilter(category, statusFilter);
+    const matchSource = sourceFilter !== "meta" || isMetaAttributedLead(lead);
 
     const matchDate = matchesDateFilterFn(lead);
     const matchQuery =
@@ -127,7 +146,7 @@ export function filterLeadsList({
         ? !/[A-Z]/.test(firstChar)
         : firstChar === leadAlphabetFilter;
 
-    return matchStatus && matchQuery && matchDate && matchAlphabet;
+    return matchStatus && matchSource && matchQuery && matchDate && matchAlphabet;
   });
 
   if (leadSortOrder === "asc" || (leadSortOrder === "default" && leadAlphabetFilter !== "all")) {

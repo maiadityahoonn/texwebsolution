@@ -98,6 +98,7 @@ export default function CrmWorkspaceView({
   // Filter and pagination state
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("active");
+  const [sourceFilter, setSourceFilter] = useState("all");
   const [leadPage, setLeadPage] = useState(1);
   const [leadsPerPage, setLeadsPerPage] = useState(10);
   const [leadAlphabetFilter, setLeadAlphabetFilter] = useState("all");
@@ -132,6 +133,7 @@ export default function CrmWorkspaceView({
   useEffect(() => {
     setQuery("");
     setStatusFilter(urlStatus || (viewMode === "leads" ? "active" : "all"));
+    setSourceFilter("all");
     if (urlDateFilter) {
       setDateFilter(urlDateFilter);
     } else {
@@ -162,6 +164,7 @@ export default function CrmWorkspaceView({
     leadAlphabetFilter,
     leadSortOrder,
     query,
+    sourceFilter,
     selectedDate,
     statusFilter,
     viewMode,
@@ -216,6 +219,7 @@ export default function CrmWorkspaceView({
     followUpScope,
     query,
     statusFilter,
+    sourceFilter,
     leadAlphabetFilter,
     leadSortOrder,
     leadPage,
@@ -301,6 +305,7 @@ export default function CrmWorkspaceView({
     onRefreshMeetingSummary,
     onRefreshCommercialSummary,
     statusFilter,
+    sourceFilter,
   });
 
   // Modal handlers and state
@@ -450,6 +455,8 @@ export default function CrmWorkspaceView({
         isLeadsLoading={isLeadsLoading}
         paginatedLeads={paginatedLeads}
         filteredLeads={filteredLeads}
+        sourceFilter={sourceFilter}
+        setSourceFilter={setSourceFilter}
         leadAlphabetFilter={leadAlphabetFilter}
         query={query}
         setLeadAlphabetFilter={setLeadAlphabetFilter}

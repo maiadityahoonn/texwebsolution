@@ -21,8 +21,6 @@ export default function MetaPixelTracker() {
       trackMetaEvent("ViewContent", {
         content_name: "Meta Ads Free Quote Landing Page",
         content_category: "Lead Generation",
-        value: 35000,
-        currency: "INR"
       });
     }
   }, [pathname, isCrmRoute]);

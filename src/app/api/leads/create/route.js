@@ -92,5 +92,6 @@ export async function POST(request) {
 
   if (data) await sendMetaCrmEvent(request, data, data.status || "New", eventId);
   await cacheDel("crm:leads-summary:all");
+  await cacheDel("crm:leads-summary:start:end:meta");
   return NextResponse.json({ ok: true });
 }

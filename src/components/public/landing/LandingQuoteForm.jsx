@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Clock, Lock, ArrowRight, ShieldCheck } from "lucide-react";
-import { buildTrackingNotes, trackMetaEvent, getTrackingParams } from "./landingTracking";
+import { buildTrackingNotes, getTrackingParams, hasMetaAdAttribution, trackMetaEvent } from "./landingTracking";
 import { SERVICE_OPTIONS, BUDGET_OPTIONS, TIMELINE_OPTIONS } from "./quoteFormConstants";
 import QuoteFormSuccess from "./QuoteFormSuccess";
 import QuoteFormInputs from "./QuoteFormInputs";
@@ -59,8 +59,9 @@ export default function LandingQuoteForm() {
 
     try {
       const trackingParams = getTrackingParams();
-      const utmSource = trackingParams.utm_source || "Meta Ads";
-      const sourceLabel = `Meta Ads (${utmSource})`;
+      const sourceLabel = hasMetaAdAttribution(trackingParams)
+        ? `Meta Ads (${trackingParams.utm_source || "paid"})`
+        : "Website Form";
 
       const notes = buildTrackingNotes({
         service: formData.service,
@@ -99,17 +100,6 @@ export default function LandingQuoteForm() {
         {
           content_name: formData.service,
           content_category: "Meta Ads Quote Request",
-          currency: "INR",
-          value: formData.budget.includes("₹75k") ? 75000 : formData.budget.includes("₹35k") ? 35000 : 20000,
-        },
-        eventId
-      );
-
-      trackMetaEvent(
-        "CompleteRegistration",
-        {
-          status: "successful",
-          service: formData.service,
         },
         eventId
       );

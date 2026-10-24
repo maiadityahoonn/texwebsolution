@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { X, Sparkles, ShieldCheck } from "lucide-react";
-import { buildTrackingNotes, trackMetaEvent, getTrackingParams } from "./landingTracking";
+import { buildTrackingNotes, getTrackingParams, hasMetaAdAttribution, trackMetaEvent } from "./landingTracking";
 import { DYNAMIC_SERVICE_CONFIGS, validatePhoneNumber } from "./quoteModalConstants";
 import QuoteModalStep1 from "./QuoteModalStep1";
 import QuoteModalStep2 from "./QuoteModalStep2";
@@ -145,8 +145,9 @@ export default function LandingQuoteModal() {
 
     try {
       const trackingParams = getTrackingParams();
-      const utmSource = trackingParams.utm_source || "Meta Ads";
-      const sourceLabel = `Meta Ads (${utmSource})`;
+      const sourceLabel = hasMetaAdAttribution(trackingParams)
+        ? `Meta Ads (${trackingParams.utm_source || "paid"})`
+        : "Website Form";
 
       const notes = buildTrackingNotes({
         service: formData.service,
@@ -189,18 +190,6 @@ export default function LandingQuoteModal() {
         {
           content_name: formData.service,
           content_category: formData.what_type_of_business_do_you_have,
-          currency: "INR",
-          value: 35000,
-        },
-        eventId
-      );
-
-      trackMetaEvent(
-        "CompleteRegistration",
-        {
-          status: "successful",
-          service: formData.service,
-          city: formData.city,
         },
         eventId
       );

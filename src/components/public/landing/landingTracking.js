@@ -84,6 +84,19 @@ export function getTrackingParams() {
   return currentParams;
 }
 
+export function hasMetaAdAttribution(params = getTrackingParams()) {
+  const source = String(params.utm_source || "").toLowerCase();
+  const medium = String(params.utm_medium || "").toLowerCase();
+  return Boolean(
+    params.fbclid ||
+    params.ad_id ||
+    params.adset_id ||
+    params.campaign_id ||
+    ["facebook", "instagram", "meta"].includes(source) ||
+    ["paid_social", "paidsocial", "cpc"].includes(medium)
+  );
+}
+
 /**
  * Format notes string with full tracking attribution for CRM Leads
  */
@@ -126,12 +139,11 @@ export function trackMetaEvent(eventName, customData = {}, eventId = null) {
     const isDeferredConversion =
       eventId &&
       window.location.pathname !== "/thank-you" &&
-      (eventName === "Lead" || eventName === "CompleteRegistration");
+      eventName === "Lead";
     if (isDeferredConversion) {
       queueMetaLeadConversion({
         eventId,
         leadData: eventName === "Lead" ? customData : {},
-        registrationData: eventName === "CompleteRegistration" ? customData : {},
       });
       return;
     }
@@ -153,7 +165,6 @@ export function trackMetaEvent(eventName, customData = {}, eventId = null) {
         "PageView",
         "Lead",
         "Contact",
-        "CompleteRegistration",
         "InitiateCheckout",
         "ViewContent",
         "Search"

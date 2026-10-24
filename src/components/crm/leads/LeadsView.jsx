@@ -10,6 +10,8 @@ export default function LeadsView({
   isLeadsLoading = false,
   paginatedLeads = [],
   filteredLeads = [],
+  sourceFilter = "all",
+  setSourceFilter = () => {},
   leadAlphabetFilter = "all",
   query = "",
   setLeadAlphabetFilter = () => {},
@@ -65,6 +67,9 @@ export default function LeadsView({
         leadAlphabetFilter={leadAlphabetFilter}
         setLeadAlphabetFilter={setLeadAlphabetFilter}
         setLeadPage={setLeadPage}
+        sourceFilter={sourceFilter}
+        setSourceFilter={setSourceFilter}
+        leadTotal={pagination?.total || filteredLeads.length}
         totalLettersCount={totalLettersCount}
         leadLetterCounts={leadLetterCounts}
       />

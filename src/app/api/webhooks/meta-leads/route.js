@@ -34,6 +34,7 @@ async function afterLeadInserted(request, lead, status = "New") {
     created_at: lead.created_at || new Date().toISOString(),
   }, { ttlSeconds: 60 * 60 * 24 * 7, maxItems: 100 });
   await cacheDel("crm:leads-summary:all");
+  await cacheDel("crm:leads-summary:start:end:meta");
   await sendMetaCrmEvent(request, lead, status);
 }
 

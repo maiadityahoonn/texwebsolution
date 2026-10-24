@@ -20,11 +20,6 @@ function ThankYouContent() {
       ...pendingConversion.leadData,
       source: "thank_you_page",
     }, pendingConversion.eventId);
-    trackMetaEvent("CompleteRegistration", {
-      ...pendingConversion.registrationData,
-      status: "successful",
-      service: pendingConversion.registrationData?.service || service,
-    }, pendingConversion.eventId);
   }, [service]);
 
   const whatsappMessage = `Hi TexWeb Solution, I just submitted a quote request for ${service}.${

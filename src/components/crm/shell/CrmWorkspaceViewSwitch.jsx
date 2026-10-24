@@ -16,6 +16,8 @@ export default function CrmWorkspaceViewSwitch({
   isLeadsLoading,
   paginatedLeads,
   filteredLeads,
+  sourceFilter = "all",
+  setSourceFilter = () => {},
   leadAlphabetFilter,
   query,
   setLeadAlphabetFilter,
@@ -135,6 +137,8 @@ export default function CrmWorkspaceViewSwitch({
           isLeadsLoading={isLeadsLoading}
           paginatedLeads={paginatedLeads}
           filteredLeads={filteredLeads}
+          sourceFilter={sourceFilter}
+          setSourceFilter={setSourceFilter}
           leadAlphabetFilter={leadAlphabetFilter}
           query={query}
           setLeadAlphabetFilter={setLeadAlphabetFilter}

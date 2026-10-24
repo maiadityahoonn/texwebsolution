@@ -23,6 +23,7 @@ export function useCrmServerSync({
   selectedDate,
   customDateRange,
   statusFilter = "all",
+  sourceFilter = "all",
   query = "",
   leadPage = 1,
   leadsPerPage = 10,
@@ -59,6 +60,7 @@ export function useCrmServerSync({
         pageSize: leadsPerPage,
         search: query,
         status: statusFilter,
+        sourceFilter,
         alphabet: leadAlphabetFilter,
         sort: leadSortOrder === "asc" ? "a-z" : leadSortOrder === "desc" ? "z-a" : leadSortOrder,
         ...range,
@@ -66,7 +68,7 @@ export function useCrmServerSync({
     }, 350);
     return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [customDateRange?.from, customDateRange?.to, dateFilter, leadAlphabetFilter, leadPage, leadSortOrder, leadsPerPage, onFetchLeadsPage, query, selectedDate, statusFilter, viewMode]);
+  }, [customDateRange?.from, customDateRange?.to, dateFilter, leadAlphabetFilter, leadPage, leadSortOrder, leadsPerPage, onFetchLeadsPage, query, selectedDate, sourceFilter, statusFilter, viewMode]);
 
   useEffect(() => {
     if (!onFetchDealsPage || viewMode !== "pipeline") return;
@@ -120,7 +122,7 @@ export function useCrmServerSync({
   useEffect(() => {
     const timer = setTimeout(() => {
       if (viewMode === "leads") {
-        onRefreshLeadSummary?.(getLeadServerDateRange());
+        onRefreshLeadSummary?.({ ...getLeadServerDateRange(), sourceFilter });
       } else if (viewMode === "pipeline") {
         onRefreshDealSummary?.(getServerDateRange());
       } else if (viewMode === "followups") {
@@ -131,7 +133,7 @@ export function useCrmServerSync({
     }, 350);
     return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [customDateRange?.from, customDateRange?.to, dateFilter, followUpScope, onRefreshDealSummary, onRefreshFollowUpSummary, onRefreshLeadSummary, onRefreshMeetingSummary, selectedDate, viewMode]);
+  }, [customDateRange?.from, customDateRange?.to, dateFilter, followUpScope, onRefreshDealSummary, onRefreshFollowUpSummary, onRefreshLeadSummary, onRefreshMeetingSummary, selectedDate, sourceFilter, viewMode]);
 
   useEffect(() => {
     if (viewMode !== "dashboard") return;
@@ -165,12 +167,13 @@ export function useCrmServerSync({
             pageSize: leadsPerPage,
             search: query,
             status: statusFilter,
+            sourceFilter,
             alphabet: leadAlphabetFilter,
             sort: leadSortOrder === "asc" ? "a-z" : leadSortOrder === "desc" ? "z-a" : leadSortOrder,
             force: true,
             ...range,
           }),
-          onRefreshLeadSummary?.(range),
+          onRefreshLeadSummary?.({ ...range, sourceFilter }),
         ]);
       } else if (viewMode === "pipeline") {
         await Promise.all([

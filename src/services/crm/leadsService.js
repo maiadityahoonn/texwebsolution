@@ -164,6 +164,10 @@ export async function getCloudLeads(options = null) {
       query = query.eq('source', options.source);
     }
 
+    if (options?.sourceFilter === 'meta') {
+      query = query.ilike('source', 'Meta Ads%');
+    }
+
     if (options?.service) {
       query = query.eq('service', options.service);
     }
@@ -217,7 +221,7 @@ export async function getCloudLeadsSummary(options = {}) {
       return apiResult;
     }
 
-    let qLeads = supabase.from('leads').select('id, status, created_at');
+    let qLeads = supabase.from('leads').select('id, status, created_at, source, meta_lead_id, ad_id');
     let qDeals = supabase.from('deals').select('id, lead_id, pipeline_stage, created_at, updated_at');
 
     if (options?.dateFrom) {
@@ -227,6 +231,9 @@ export async function getCloudLeadsSummary(options = {}) {
     if (options?.dateTo) {
       qLeads = qLeads.lte('created_at', options.dateTo);
       qDeals = qDeals.lte('created_at', options.dateTo);
+    }
+    if (options?.sourceFilter === 'meta') {
+      qLeads = qLeads.ilike('source', 'Meta Ads%');
     }
 
     const [{ data: leadsData }, { data: dealsData }] = await Promise.all([qLeads, qDeals]);

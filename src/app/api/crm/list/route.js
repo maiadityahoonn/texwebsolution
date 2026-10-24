@@ -132,6 +132,10 @@ function applySearch(query, table, search) {
   return fields.length ? query.or(fields.map((field) => `${field}.ilike.${like}`).join(",")) : query;
 }
 
+function applyMetaLeadFilter(query) {
+  return query.ilike("source", "Meta Ads%");
+}
+
 export async function GET(request) {
   const admin = getAdminClient();
   if (!admin) {
@@ -153,9 +157,10 @@ export async function GET(request) {
   if (resource === "leads_summary") {
     const dateFrom = searchParams.get("dateFrom") || "";
     const dateTo = searchParams.get("dateTo") || "";
+    const sourceFilter = searchParams.get("sourceFilter") || "";
     const isFresh = searchParams.get("fresh") === "true" || searchParams.get("force") === "true";
-    const cacheKey = dateFrom || dateTo
-      ? `crm:leads-summary:${dateFrom || "start"}:${dateTo || "end"}`
+    const cacheKey = dateFrom || dateTo || sourceFilter
+      ? `crm:leads-summary:${dateFrom || "start"}:${dateTo || "end"}:${sourceFilter || "all"}`
       : "crm:leads-summary:all";
     if (!isFresh) {
       const cached = await cacheGetJson(cacheKey);
@@ -170,12 +175,21 @@ export async function GET(request) {
 
     const scopes = await getLeadDealScopes(admin);
     const countCategory = (category) => applyLeadDates(
-      applyLeadCategoryFilter(
+      sourceFilter === "meta" ? applyMetaLeadFilter(
+        applyLeadCategoryFilter(
+          admin.from("leads").select("*", { count: "exact", head: true }),
+          category,
+          scopes
+        )
+      ) : applyLeadCategoryFilter(
         admin.from("leads").select("*", { count: "exact", head: true }),
         category,
         scopes
       )
     );
+    const totalQuery = sourceFilter === "meta"
+      ? applyMetaLeadFilter(admin.from("leads").select("*", { count: "exact", head: true }))
+      : admin.from("leads").select("*", { count: "exact", head: true });
     const [
       { count: totalCount },
       { count: activeCount },
@@ -183,7 +197,7 @@ export async function GET(request) {
       { count: convertedCount },
       { count: lostCount },
     ] = await Promise.all([
-      applyLeadDates(admin.from("leads").select("*", { count: "exact", head: true })),
+      applyLeadDates(totalQuery),
       countCategory("active"),
       countCategory("pipeline"),
       countCategory("converted"),
@@ -554,6 +568,10 @@ export async function GET(request) {
     query = query.not("deal_id", "is", null);
   } else if (resource === "sales_followups" && scope === "leads") {
     query = query.not("lead_id", "is", null).is("deal_id", null);
+  }
+
+  if (resource === "leads" && searchParams.get("sourceFilter") === "meta") {
+    query = applyMetaLeadFilter(query);
   }
 
   const dateFrom = searchParams.get("dateFrom") || "";

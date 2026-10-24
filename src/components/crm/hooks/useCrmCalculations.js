@@ -44,6 +44,7 @@ export function useCrmCalculations({
   followUpScope = "all",
   query = "",
   statusFilter = "active",
+  sourceFilter = "all",
   leadAlphabetFilter = "all",
   leadSortOrder = "default",
   leadPage = 1,
@@ -82,10 +83,11 @@ export function useCrmCalculations({
       calculateLeadLetterCounts({
         dedupedLeads,
         deals,
+        sourceFilter,
         statusFilter,
         matchesDateFilterFn: matchesDateFilter,
       }),
-    [dedupedLeads, deals, matchesDateFilter, statusFilter]
+    [dedupedLeads, deals, matchesDateFilter, sourceFilter, statusFilter]
   );
 
   const totalLettersCount = useMemo(() => {
@@ -103,7 +105,7 @@ export function useCrmCalculations({
         leadSortOrder,
         matchesDateFilterFn: matchesDateFilter,
       }),
-    [dedupedLeads, deals, query, statusFilter, leadAlphabetFilter, leadSortOrder, matchesDateFilter]
+    [dedupedLeads, deals, query, sourceFilter, statusFilter, leadAlphabetFilter, leadSortOrder, matchesDateFilter]
   );
 
   const leadTotalForPagination = useMemo(() => {
