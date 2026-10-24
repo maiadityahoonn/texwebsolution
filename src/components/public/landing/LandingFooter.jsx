@@ -3,11 +3,9 @@
 import Image from "next/image";
 import Link from "next/link";
 import { Mail, PhoneCall, MapPin, Sparkles, ShieldCheck } from "lucide-react";
-import { trackMetaEvent } from "./landingTracking";
 
 export default function LandingFooter() {
   const handleOpenQuote = (serviceName = "Website Development") => {
-    trackMetaEvent("InitiateCheckout", { source: `footer_${serviceName}` });
     if (typeof window !== "undefined") {
       window.dispatchEvent(
         new CustomEvent("openQuoteModal", {

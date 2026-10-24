@@ -2,7 +2,6 @@
 
 import Image from "next/image";
 import { safeExternalUrl } from "@/lib/safeUrl";
-import { trackMetaEvent } from "./landingTracking";
 import { FEATURED_WEBSITES, FEATURED_APPLICATIONS } from "./portfolioConstants";
 
 function ProjectCard({ project, isApp }) {
@@ -72,7 +71,6 @@ function ProjectCard({ project, isApp }) {
 
 export default function LandingPortfolioSection() {
   const handleScrollToQuote = (source) => {
-    trackMetaEvent("InitiateCheckout", { source: `landing_portfolio_${source}` });
     if (typeof window !== "undefined") {
       const isApp = source.includes("apps");
       window.dispatchEvent(new CustomEvent("openQuoteModal", { 

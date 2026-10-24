@@ -9,7 +9,6 @@ import { trackMetaEvent } from "./landingTracking";
 
 export default function LandingHeroSection() {
   const handleScrollToQuote = (source = "hero_cta") => {
-    trackMetaEvent("InitiateCheckout", { source });
     if (typeof window !== "undefined") {
       window.dispatchEvent(new CustomEvent("openQuoteModal", { detail: { source } }));
     }

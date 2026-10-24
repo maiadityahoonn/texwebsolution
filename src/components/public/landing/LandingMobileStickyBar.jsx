@@ -6,7 +6,6 @@ import { trackMetaEvent } from "./landingTracking";
 
 export default function LandingMobileStickyBar() {
   const handleScrollToForm = () => {
-    trackMetaEvent("InitiateCheckout", { source: "mobile_sticky_quote_btn" });
     if (typeof window !== "undefined") {
       window.dispatchEvent(new CustomEvent("openQuoteModal", { detail: { source: "mobile_sticky_bar" } }));
     }
