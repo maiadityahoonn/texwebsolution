@@ -4,6 +4,7 @@ import { useEffect } from "react";
 import { usePathname } from "next/navigation";
 import Script from "next/script";
 import { META_PIXEL_ID, getTrackingParams, trackMetaEvent } from "./landingTracking";
+import { OPENAI_ADS_PIXEL_ID } from "./openAiAdsTracking";
 
 export default function MetaPixelTracker() {
   const pathname = usePathname();
@@ -47,6 +48,18 @@ export default function MetaPixelTracker() {
           `
         }}
       />
+      {OPENAI_ADS_PIXEL_ID && (
+        <Script
+          id="openai-ads-pixel-init"
+          strategy="afterInteractive"
+          dangerouslySetInnerHTML={{
+            __html: `
+              !function(w,d,s,u){if(w.oaiq)return;var q=function(){q.q.push(arguments)};q.q=[];w.oaiq=q;var j=d.createElement(s);j.async=1;j.src=u;var f=d.getElementsByTagName(s)[0];f.parentNode.insertBefore(j,f)}(window,document,'script','https://bzrcdn.openai.com/sdk/oaiq.min.js');
+              oaiq('init',{pixelId:'${OPENAI_ADS_PIXEL_ID}',debug:${process.env.NODE_ENV !== "production"}});
+            `,
+          }}
+        />
+      )}
       <noscript>
         <img
           height="1"

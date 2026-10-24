@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Clock, Lock, ArrowRight, ShieldCheck } from "lucide-react";
 import { buildTrackingNotes, getTrackingParams, hasMetaAdAttribution, trackMetaEvent } from "./landingTracking";
+import { trackOpenAiAdsEvent } from "./openAiAdsTracking";
 import { SERVICE_OPTIONS, BUDGET_OPTIONS, TIMELINE_OPTIONS } from "./quoteFormConstants";
 import QuoteFormSuccess from "./QuoteFormSuccess";
 import QuoteFormInputs from "./QuoteFormInputs";
@@ -103,6 +104,7 @@ export default function LandingQuoteForm() {
         },
         eventId
       );
+      trackOpenAiAdsEvent("lead_created", { type: "customer_action" }, eventId);
 
       const queryParams = new URLSearchParams({
         name: formData.name.trim(),

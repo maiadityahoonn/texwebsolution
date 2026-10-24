@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { X, Sparkles, ShieldCheck } from "lucide-react";
 import { buildTrackingNotes, getTrackingParams, hasMetaAdAttribution, trackMetaEvent } from "./landingTracking";
+import { trackOpenAiAdsEvent } from "./openAiAdsTracking";
 import { DYNAMIC_SERVICE_CONFIGS, validatePhoneNumber } from "./quoteModalConstants";
 import QuoteModalStep1 from "./QuoteModalStep1";
 import QuoteModalStep2 from "./QuoteModalStep2";
@@ -191,6 +192,7 @@ export default function LandingQuoteModal() {
         },
         eventId
       );
+      trackOpenAiAdsEvent("lead_created", { type: "customer_action" }, eventId);
 
       if (typeof window !== "undefined") {
         sessionStorage.setItem("texweb_quote_modal_dismissed", "true");

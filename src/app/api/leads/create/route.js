@@ -41,6 +41,51 @@ async function sendMetaCrmEvent(request, lead, status = "New", eventId = null) {
   }
 }
 
+async function sendOpenAiAdsEvent(request, lead, eventId = null) {
+  const pixelId = process.env.OPENAI_ADS_PIXEL_ID;
+  const apiKey = process.env.OPENAI_ADS_CAPI_KEY;
+  if (!pixelId || !apiKey || !eventId) return;
+
+  try {
+    const referer = request.headers.get("referer") || process.env.NEXT_PUBLIC_SITE_URL || "https://texwebsolution.in";
+    const cookie = request.headers.get("cookie") || "";
+    const obref = cookie.match(/(?:^|;\s*)__obref=([^;]+)/)?.[1];
+    const userAgent = request.headers.get("user-agent") || "";
+    const forwardedFor = request.headers.get("x-forwarded-for") || "";
+    const ipAddress = forwardedFor.split(",")[0]?.trim() || undefined;
+
+    const response = await fetch(`https://bzr.openai.com/v1/events?pid=${encodeURIComponent(pixelId)}`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        validate_only: false,
+        events: [{
+          id: String(eventId),
+          type: "lead_created",
+          timestamp_ms: Date.now(),
+          source_url: referer,
+          action_source: "web",
+          data: { type: "customer_action" },
+          user: {
+            ...(obref ? { obref: decodeURIComponent(obref) } : {}),
+            ...(ipAddress ? { ip_address: ipAddress } : {}),
+            ...(userAgent ? { user_agent: userAgent } : {}),
+          },
+        }],
+      }),
+    });
+
+    if (!response.ok) {
+      console.warn("OpenAI Ads CAPI event rejected:", response.status);
+    }
+  } catch (error) {
+    console.warn("OpenAI Ads CAPI event skipped:", error?.message || error);
+  }
+}
+
 export async function POST(request) {
   const ip = getClientIp(request);
   const limited = await checkApiRateLimit(`lead-create:${ip}`, { limit: 8, windowMs: 60_000 });
@@ -91,6 +136,7 @@ export async function POST(request) {
   }
 
   if (data) await sendMetaCrmEvent(request, data, data.status || "New", eventId);
+  if (data) await sendOpenAiAdsEvent(request, data, eventId);
   await cacheDel("crm:leads-summary:all");
   await cacheDel("crm:leads-summary:start:end:meta");
   return NextResponse.json({ ok: true });
