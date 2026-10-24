@@ -50,9 +50,18 @@ async function sendOpenAiAdsEvent(request, lead, eventId = null) {
     const referer = request.headers.get("referer") || process.env.NEXT_PUBLIC_SITE_URL || "https://texwebsolution.in";
     const cookie = request.headers.get("cookie") || "";
     const obref = cookie.match(/(?:^|;\s*)__obref=([^;]+)/)?.[1];
+    const oppref = cookie.match(/(?:^|;\s*)__oppref=([^;]+)/)?.[1];
     const userAgent = request.headers.get("user-agent") || "";
     const forwardedFor = request.headers.get("x-forwarded-for") || "";
     const ipAddress = forwardedFor.split(",")[0]?.trim() || undefined;
+
+    const decodeCookieValue = (value) => {
+      try {
+        return value ? decodeURIComponent(value) : undefined;
+      } catch (_) {
+        return value || undefined;
+      }
+    };
 
     const response = await fetch(`https://bzr.openai.com/v1/events?pid=${encodeURIComponent(pixelId)}`, {
       method: "POST",
@@ -66,6 +75,7 @@ async function sendOpenAiAdsEvent(request, lead, eventId = null) {
           id: String(eventId),
           type: "lead_created",
           timestamp_ms: Date.now(),
+          ...(oppref ? { oppref: decodeCookieValue(oppref) } : {}),
           source_url: referer,
           action_source: "web",
           data: { type: "customer_action" },
@@ -107,12 +117,20 @@ export async function POST(request) {
 
   const body = await request.json().catch(() => ({}));
   const eventId = cleanText(body.event_id || body.eventId, 120) || null;
+  const requestCookie = request.headers.get("cookie") || "";
+  const hasOpenAiAttribution = /(?:^|;\s*)__oppref=/.test(requestCookie);
+  const requestedSource = cleanText(body.source || "Website Form", 80);
+  const source = hasOpenAiAttribution
+    ? requestedSource.startsWith("Meta Ads")
+      ? `${requestedSource} + OpenAI Ads`
+      : "OpenAI Ads"
+    : requestedSource;
   const payload = {
     name: cleanText(body.name, 120),
     phone: cleanPhone(body.phone),
     email: normalizeEmail(body.email),
     service: cleanText(body.service || "General Inquiry", 160),
-    source: cleanText(body.source || "Website Form", 80),
+    source,
     status: "New",
     notes: cleanText(body.notes, 1000),
   };
