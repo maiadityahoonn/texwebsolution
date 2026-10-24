@@ -10,7 +10,12 @@ export function trackOpenAiAdsEvent(eventName, data = {}, eventId = null) {
       type: data.type || "customer_action",
       ...(eventId ? { event_id: String(eventId) } : {}),
     };
-    window.oaiq("measure", eventName, payload);
+    window.oaiq(
+      "measure",
+      eventName,
+      payload,
+      eventId ? { event_id: String(eventId) } : undefined
+    );
     return true;
   } catch (error) {
     console.warn("OpenAI Ads tracking event error:", error);
