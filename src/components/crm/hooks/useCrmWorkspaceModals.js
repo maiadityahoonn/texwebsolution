@@ -170,9 +170,14 @@ export function useCrmWorkspaceModals({
   const [newLeadForm, setNewLeadForm] = useState({
     name: "",
     phone: "",
+    country_code: "+91",
     email: "",
-    service: "Web Development",
-    source: "Website",
+    service: "Website Development",
+    budget: "₹35k - ₹75k",
+    timeline: "🚀 2 - 3 Weeks",
+    city: "",
+    business_name: "",
+    source: "Manual Entry",
     status: "New",
     notes: "",
   });
@@ -323,19 +328,52 @@ export function useCrmWorkspaceModals({
   }, [hasOpenCrmModal]);
 
   // Lead Handlers
-  function handleAddLeadSubmit(e) {
-    e.preventDefault();
-    if (!newLeadForm.name || !newLeadForm.phone) return;
+  function handleAddLeadSubmit(e, customPayload) {
+    e?.preventDefault?.();
+    const payload = customPayload || newLeadForm;
+    if (!payload.name || !payload.phone) return;
+
+    let finalNotes = payload.notes || "";
+    const noteLines = [];
+    if (payload.budget && !finalNotes.includes("Budget:")) {
+      noteLines.push(`Budget: ${payload.budget}`);
+    }
+    if (payload.timeline && !finalNotes.includes("Timeline:")) {
+      noteLines.push(`Timeline: ${payload.timeline}`);
+    }
+    const loc = [payload.city, payload.state].filter(Boolean).join(", ");
+    if (loc && !finalNotes.includes("Location:")) {
+      noteLines.push(`Location: ${loc}`);
+    }
+    if (payload.business_name && !finalNotes.includes("Business:")) {
+      noteLines.push(`Business: ${payload.business_name}`);
+    }
+    const req = payload.details || (!finalNotes.includes("Requirement:") ? finalNotes : "");
+    if (req && !noteLines.some((l) => l.includes(req))) {
+      noteLines.push(`Requirement: ${req}`);
+    }
+    if (noteLines.length > 0) {
+      finalNotes = noteLines.join("\n");
+    }
+
     const addFn = onCreateLead || onAddLead;
-    addFn?.(newLeadForm);
+    addFn?.({
+      ...payload,
+      notes: finalNotes,
+    });
     playNotificationSound("lead");
     setShowAddLeadModal(false);
     setNewLeadForm({
       name: "",
       phone: "",
+      country_code: "+91",
       email: "",
-      service: "Web Development",
-      source: "Manual",
+      service: "Website Development",
+      budget: "₹35k - ₹75k",
+      timeline: "🚀 2 - 3 Weeks",
+      city: "",
+      business_name: "",
+      source: "Manual Entry",
       status: "New",
       notes: "",
     });
