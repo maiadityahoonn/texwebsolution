@@ -15,6 +15,7 @@ import {
 } from "@/services/crm/documentsService";
 import { getSalesFollowUps, getCloudFollowUpsSummary } from "@/services/crm/followupsService";
 import { getSalesMeetings, getCloudMeetingsSummary } from "@/services/crm/meetingsService";
+import { playNotificationSound } from "@/lib/notificationSound";
 
 export function useCrmData({ sessionUserId = "", pushLiveSalesNotification } = {}) {
   const [leads, setLeads] = useState([]);
@@ -369,7 +370,7 @@ export function useCrmData({ sessionUserId = "", pushLiveSalesNotification } = {
     });
   }, []);
 
-  const handleRealtimeLead = useCallback(function handleRealtimeLead(payload) {
+  const handleRealtimeLead = useCallback(function handleRealtimeLead(payload, { notify = true } = {}) {
     const eventType = payload?.eventType;
     const row = eventType === "DELETE" ? payload?.old : payload?.new;
     if (!row?.id) return;
@@ -392,12 +393,40 @@ export function useCrmData({ sessionUserId = "", pushLiveSalesNotification } = {
     if (eventType === "INSERT" && !exists) {
       setLeadPagination((prev) => ({ ...prev, count: Math.max((prev.count || 0) + 1, 1) }));
       setLeadSummary((prev) => ({ ...prev, total: (prev.total || 0) + 1 }));
+
+      if (notify) {
+        try {
+          playNotificationSound("lead");
+        } catch {}
+
+        const leadName = row.name || "New Client";
+        const leadService = row.service ? ` (${row.service})` : "";
+        const leadSource = row.source ? ` via ${row.source}` : "";
+        pushLiveSalesNotification?.(
+          "New Inbound Lead! 🚀",
+          `${leadName}${leadService}${leadSource}`,
+          "lead",
+          "/crm/leads"
+        );
+
+        if (typeof window !== "undefined" && "Notification" in window) {
+          if (window.Notification.permission === "granted") {
+            try {
+              new Notification(`New Inbound Lead: ${leadName}`, {
+                body: `${row.service || "Tech Inquiry"}${leadSource}. Tap to open in CRM.`,
+                icon: "/favicon.ico",
+                tag: `lead-${row.id}`,
+              });
+            } catch {}
+          }
+        }
+      }
     }
     if (eventType === "DELETE" && exists) {
       setLeadPagination((prev) => ({ ...prev, count: Math.max((prev.count || 0) - 1, 0) }));
       setLeadSummary((prev) => ({ ...prev, total: Math.max((prev.total || 0) - 1, 0) }));
     }
-  }, [leadPagination.pageSize]);
+  }, [leadPagination.pageSize, pushLiveSalesNotification]);
 
   const handleRealtimeDeal = useCallback(function handleRealtimeDeal(payload) {
     const insertedId = payload?.eventType === "INSERT" ? payload?.new?.id : null;

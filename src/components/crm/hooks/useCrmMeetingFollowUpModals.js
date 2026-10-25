@@ -2,8 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { toLocalDateTimeInput, DEFAULT_REMINDER_MINUTES } from "../shared/dateTimeUtils";
-import { PIPELINE_STAGES } from "../shared/leadUtils";
-import { formatStatusLabel, isFollowUpActive, isMeetingActive } from "../shared/meetingUtils";
+import { formatFriendlyDateTime, formatStatusLabel, isFollowUpActive, isMeetingActive } from "../shared/meetingUtils";
 import { isActiveDealStage } from "@/services/crm/leadCategoryFilters";
 import { buildCommunicationTemplate, openWhatsAppMessage } from "../shared/communicationTemplates";
 
@@ -337,15 +336,8 @@ export function useCrmMeetingFollowUpModals({
     if (!stageModalTarget) return;
 
     const { item, type } = stageModalTarget;
-    const isDone = type === "meeting" ? stageModalStatus === "completed" : stageModalStatus === "done";
-    const nowStr = new Date().toLocaleString("en-IN", {
-      day: "2-digit",
-      month: "short",
-      year: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-      hour12: true,
-    });
+    const nowStr = formatFriendlyDateTime(new Date());
+    const isDone = ["done", "completed"].includes(stageModalStatus);
 
     const formattedStage = formatStatusLabel(stageModalStatus);
     const noteText = isQuickDoneWithoutNote
@@ -366,7 +358,7 @@ export function useCrmMeetingFollowUpModals({
       onUpdateSalesMeeting?.(item.id, {
         status: stageModalStatus,
         outcome: updatedOutcome,
-        next_action: isDone ? noteText || item.next_action || "" : item.next_action,
+        next_action: item.next_action || (isDone ? "Discussion completed" : ""),
       });
     }
 
@@ -380,7 +372,7 @@ export function useCrmMeetingFollowUpModals({
     setRescheduleForm({
       due_at: toLocalDateTimeInput(new Date(Date.now() + 86400000)),
       reminder_before_minutes: Number(item.reminder_before_minutes) || DEFAULT_REMINDER_MINUTES,
-      notes: item.notes || "",
+      notes: "",
       meeting_link: "",
     });
     setShowRescheduleModal(true);
@@ -392,7 +384,7 @@ export function useCrmMeetingFollowUpModals({
     setRescheduleForm({
       due_at: item.scheduled_at ? toLocalDateTimeInput(item.scheduled_at) : toLocalDateTimeInput(new Date(Date.now() + 86400000)),
       reminder_before_minutes: Number(item.reminder_before_minutes) || DEFAULT_REMINDER_MINUTES,
-      notes: item.agenda || item.outcome || "",
+      notes: "",
       meeting_link: item.meeting_link || defaultMeetLink || "https://meet.google.com/new",
     });
     setShowRescheduleModal(true);
@@ -400,7 +392,15 @@ export function useCrmMeetingFollowUpModals({
 
   async function handleRescheduleSubmit(e) {
     e.preventDefault();
+    const nowStr = formatFriendlyDateTime(new Date());
+
     if (salesMeetingRescheduleTarget) {
+      const newSchedStr = formatFriendlyDateTime(rescheduleForm.due_at);
+      const oldSchedStr = formatFriendlyDateTime(salesMeetingRescheduleTarget.scheduled_at);
+      const userNote = rescheduleForm.notes?.trim() ? ` · Reason: ${rescheduleForm.notes.trim()}` : "";
+      const rescheduleEntry = `[${nowStr} • Rescheduled]: Meeting moved to ${newSchedStr} (was ${oldSchedStr})${userNote}`;
+      const updatedOutcome = [rescheduleEntry, salesMeetingRescheduleTarget.outcome].filter(Boolean).join("\n\n");
+
       await onUpdateSalesMeeting?.(salesMeetingRescheduleTarget.id, {
         status: "scheduled",
         scheduled_at: new Date(rescheduleForm.due_at).toISOString(),
@@ -410,20 +410,25 @@ export function useCrmMeetingFollowUpModals({
           salesMeetingRescheduleTarget.meeting_link ||
           defaultMeetLink ||
           "https://meet.google.com/new",
-        agenda: rescheduleForm.notes || salesMeetingRescheduleTarget.agenda || "",
+        outcome: updatedOutcome,
+        agenda: salesMeetingRescheduleTarget.agenda || "",
       });
       setShowRescheduleModal(false);
       setSalesMeetingRescheduleTarget(null);
       return;
     }
     if (!rescheduleTarget || !rescheduleForm.due_at) return;
+    const newDueStr = formatFriendlyDateTime(rescheduleForm.due_at);
+    const oldDueStr = formatFriendlyDateTime(rescheduleTarget.due_at);
+    const userNote = rescheduleForm.notes?.trim() ? ` · Note: ${rescheduleForm.notes.trim()}` : "";
+    const rescheduleEntry = `[${nowStr} • Rescheduled]: Follow-up moved to ${newDueStr} (was ${oldDueStr})${userNote}`;
+    const updatedNotes = [rescheduleEntry, rescheduleTarget.notes].filter(Boolean).join("\n\n");
+
     await onUpdateFollowUp?.(rescheduleTarget.id, {
       status: "pending",
       due_at: new Date(rescheduleForm.due_at).toISOString(),
       reminder_before_minutes: Number(rescheduleForm.reminder_before_minutes) || DEFAULT_REMINDER_MINUTES,
-      notes: [rescheduleForm.notes, `Rescheduled from ${new Date(rescheduleTarget.due_at).toLocaleString("en-IN")}`]
-        .filter(Boolean)
-        .join("\n"),
+      notes: updatedNotes,
     });
     setShowRescheduleModal(false);
     setRescheduleTarget(null);

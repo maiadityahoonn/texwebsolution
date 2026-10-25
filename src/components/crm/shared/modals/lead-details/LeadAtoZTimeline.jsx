@@ -66,36 +66,38 @@ export default function LeadAtoZTimeline({
     // 3. Sales Meetings Events (Scheduled, Rescheduled, Conducted, Notes)
     meetings.forEach((m) => {
       const isCompleted = m.status === "completed";
+      const cleanMeetingTitle = m.title.replace(/^(Client meeting|Meeting with|Meeting)\s*:\s*/i, "");
+      const scheduledFormatted = m.scheduled_at
+        ? new Date(m.scheduled_at).toLocaleString("en-IN", {
+            day: "numeric",
+            month: "short",
+            year: "numeric",
+            hour: "2-digit",
+            minute: "2-digit",
+            hour12: true,
+          })
+        : "Scheduled";
+
       events.push({
         type: isCompleted ? "completed" : "meeting",
-        title: `Meeting: ${m.title} [${formatStatusLabel(m.status)}]`,
-        description: `Scheduled: ${new Date(m.scheduled_at).toLocaleString("en-IN", {
-          day: "numeric",
-          month: "short",
-          hour: "2-digit",
-          minute: "2-digit",
-          hour12: true,
-        })} (${m.duration_minutes || 30} mins)${m.agenda ? ` · Agenda: ${m.agenda}` : ""}`,
-        time: new Date(m.scheduled_at || m.created_at || 0).toLocaleString("en-IN", {
-          day: "numeric",
-          month: "short",
-          hour: "2-digit",
-          minute: "2-digit",
-          hour12: true,
-        }),
+        title: `Meeting: ${cleanMeetingTitle} [${formatStatusLabel(m.status)}]`,
+        description: `Scheduled: ${scheduledFormatted} (${m.duration_minutes || 30} mins)${m.agenda ? ` · Agenda: ${m.agenda}` : ""}`,
+        time: scheduledFormatted,
         timestamp: new Date(m.scheduled_at || m.created_at || 0).getTime(),
       });
 
       // Parse meeting discussion notes and outcome updates
-      const mHistory = parseNotesHistory(getMeetingFullNotes(m));
-      mHistory.forEach((entry, idx) => {
+      const fallbackMeetingDate = m.updated_at || m.scheduled_at || m.created_at;
+      const mHistory = parseNotesHistory(m.outcome || m.notes, fallbackMeetingDate);
+      mHistory.forEach((entry) => {
         if (entry.note && !entry.note.toLowerCase().includes("no agenda or notes logged")) {
+          if (entry.note === m.agenda || entry.note === m.next_action) return;
           events.push({
             type: entry.stage?.toLowerCase().includes("completed") ? "completed" : "meeting",
             title: `Meeting Outcome · ${entry.stage || formatStatusLabel(m.status)}`,
             description: entry.note,
-            time: entry.timestamp || "Outcome Note",
-            timestamp: new Date(m.updated_at || m.scheduled_at || 0).getTime() + (idx + 1) * 1000,
+            time: entry.timestamp,
+            timestamp: entry.timeMs || new Date(fallbackMeetingDate || 0).getTime(),
           });
         }
       });
@@ -104,42 +106,37 @@ export default function LeadAtoZTimeline({
     // 4. Sales Follow-ups Events (Scheduled, Done, Notes History)
     followUps.forEach((f) => {
       const isDone = f.status === "done";
+      const cleanFollowUpTitle = f.title.replace(/^(Follow-up|Follow up|Followup)\s*:\s*/i, "");
+      const dueFormatted = f.due_at
+        ? new Date(f.due_at).toLocaleString("en-IN", {
+            day: "numeric",
+            month: "short",
+            year: "numeric",
+            hour: "2-digit",
+            minute: "2-digit",
+            hour12: true,
+          })
+        : "Pending";
+
       events.push({
         type: isDone ? "completed" : "call",
-        title: `Follow-up: ${f.title} [${formatStatusLabel(f.status)}]`,
-        description: `Via ${f.channel || "Phone"}${f.priority ? ` · Priority: ${f.priority}` : ""} · Due: ${
-          f.due_at
-            ? new Date(f.due_at).toLocaleString("en-IN", {
-                day: "numeric",
-                month: "short",
-                hour: "2-digit",
-                minute: "2-digit",
-                hour12: true,
-              })
-            : "Pending"
-        }`,
-        time: f.due_at
-          ? new Date(f.due_at).toLocaleString("en-IN", {
-              day: "numeric",
-              month: "short",
-              hour: "2-digit",
-              minute: "2-digit",
-              hour12: true,
-            })
-          : "Follow-up",
+        title: `Follow-up: ${cleanFollowUpTitle} [${formatStatusLabel(f.status)}]`,
+        description: `Via ${f.channel || "Phone"}${f.priority ? ` · Priority: ${f.priority}` : ""} · Due: ${dueFormatted}`,
+        time: dueFormatted,
         timestamp: new Date(f.due_at || f.created_at || 0).getTime(),
       });
 
       // Parse individual timestamped notes / history updates
-      const fHistory = parseNotesHistory(f.notes);
-      fHistory.forEach((entry, idx) => {
+      const fallbackFollowUpDate = f.updated_at || f.due_at || f.created_at;
+      const fHistory = parseNotesHistory(f.notes, fallbackFollowUpDate);
+      fHistory.forEach((entry) => {
         if (entry.note) {
           events.push({
             type: entry.stage?.toLowerCase().includes("done") || entry.stage?.toLowerCase().includes("completed") ? "completed" : "chat",
             title: `Follow-up Update · ${entry.stage || formatStatusLabel(f.status)}`,
             description: entry.note,
-            time: entry.timestamp || "Update Note",
-            timestamp: new Date(f.updated_at || f.due_at || 0).getTime() + (idx + 1) * 1000,
+            time: entry.timestamp,
+            timestamp: entry.timeMs || new Date(fallbackFollowUpDate || 0).getTime(),
           });
         }
       });
@@ -220,8 +217,16 @@ export default function LeadAtoZTimeline({
       });
     }
 
-    // Sort in reverse chronological order (latest event first)
-    return events.sort((a, b) => b.timestamp - a.timestamp);
+    // Deduplicate identical events, and sort strictly in reverse chronological order (latest on top)
+    const seenEventKeys = new Set();
+    return events
+      .filter((evt) => {
+        const key = `${evt.title}__${evt.description?.slice(0, 50)}__${evt.time}`;
+        if (seenEventKeys.has(key)) return false;
+        seenEventKeys.add(key);
+        return true;
+      })
+      .sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
   }, [lead, deal, meetings, followUps, proposals, quotations, agreements, invoices]);
 
   return (

@@ -126,7 +126,9 @@ export default function CrmAppLayout({ children }) {
     if (!sessionUser?.id) return undefined;
     const channel = supabase
       .channel(`crm-routes-${sessionUser.id}`)
-      .on("postgres_changes", { event: "*", schema: "public", table: "leads" }, handleRealtimeLead)
+      .on("postgres_changes", { event: "*", schema: "public", table: "leads" }, (payload) =>
+        handleRealtimeLead(payload, { notify: true })
+      )
       .on("postgres_changes", { event: "*", schema: "public", table: "deals" }, handleRealtimeDeal)
       .on("postgres_changes", { event: "*", schema: "public", table: "sales_followups" }, (payload) =>
         handleRealtimeFollowUp(payload, { notify: true })

@@ -21,9 +21,10 @@ export default function StageChangeModal({
   const contact = lead || client;
   const contactPhone = client?.phone || lead?.phone || "";
 
+  const fallbackDate = target.item?.updated_at || target.item?.scheduled_at || target.item?.due_at || target.item?.created_at;
   const hist = target.type === "meeting"
-    ? parseNotesHistory(getMeetingFullNotes(target.item))
-    : parseNotesHistory(target.item?.notes);
+    ? parseNotesHistory(getMeetingFullNotes(target.item), fallbackDate)
+    : parseNotesHistory(target.item?.notes, fallbackDate);
 
   return (
     <div
@@ -155,6 +156,28 @@ export default function StageChangeModal({
                     : "bg-gray-50/80 dark:bg-slate-800/80 border-gray-200 dark:border-slate-700 focus:ring-orange-500/30 focus:border-orange-500"
                 }`}
               />
+              {/* Quick note preset chips */}
+              <div className="flex items-center gap-1.5 flex-wrap pt-1">
+                {[
+                  "Call Busy / No Answer",
+                  "Client asked to call later",
+                  "Quotation / Portfolio Sent",
+                  "Discussed Requirements",
+                  "Discussion in Progress",
+                  "Advance / Payment Scheduled",
+                ].map((chip) => (
+                  <button
+                    key={chip}
+                    type="button"
+                    onClick={() => {
+                      setNote((prev) => (prev ? `${prev}. ${chip}` : chip));
+                    }}
+                    className="px-2 py-0.5 rounded-lg bg-gray-100 hover:bg-orange-50 dark:bg-slate-800 dark:hover:bg-orange-950/40 text-[10px] text-gray-600 dark:text-neutral-300 hover:text-orange-600 transition border border-gray-200/60 dark:border-slate-700/60 cursor-pointer"
+                  >
+                    + {chip}
+                  </button>
+                ))}
+              </div>
               <p className="text-[10px] min-[360px]:text-[11px] text-gray-500 dark:text-neutral-400 leading-normal">
                 {["done", "completed"].includes(status)
                   ? "This note will be permanently logged in the history timeline so you remember why & how it was completed."

@@ -29,16 +29,21 @@ function isPersistedId(id) {
 
 function isCrmReminderNotification(item) {
   const metadata = item?.metadata || {};
-  const sourceType = metadata.source_type || metadata.sourceType || "";
+  const sourceType = metadata.source_type || metadata.sourceType || item?.source_type || "";
+  const itemType = String(item?.type || "").toLowerCase();
   const linkUrl = String(item?.link_url || "");
   return Boolean(
-    metadata.reminder === true ||
+    itemType === "lead" ||
+      sourceType === "lead" ||
+      metadata.reminder === true ||
       metadata.requires_ack === true ||
-      ["sales_followup", "sales_meeting"].includes(sourceType) ||
+      ["sales_followup", "sales_meeting", "lead"].includes(sourceType) ||
       linkUrl.includes("sales_followups") ||
       linkUrl.includes("sales_meetings") ||
       linkUrl.includes("/crm/followups") ||
-      linkUrl.includes("/crm/meetings")
+      linkUrl.includes("/crm/meetings") ||
+      linkUrl.includes("/crm/leads") ||
+      linkUrl.includes("leads")
   );
 }
 
@@ -230,7 +235,20 @@ export function useCrmNotifications({
           const newNotif = payload?.new;
           if (newNotif && isCrmReminderNotification(newNotif)) {
             setNotifications((prev) => [newNotif, ...prev.filter((n) => n.id !== newNotif.id)]);
-            playNotificationSound(newNotif.type || "general");
+            playNotificationSound(newNotif.type === "lead" ? "lead" : newNotif.type || "general");
+            setToast?.(`🔔 ${newNotif.title}`);
+
+            if (typeof window !== "undefined" && "Notification" in window) {
+              if (window.Notification.permission === "granted") {
+                try {
+                  new Notification(newNotif.title, {
+                    body: newNotif.message || "New CRM alert",
+                    icon: "/favicon.ico",
+                    tag: `notif-${newNotif.id}`,
+                  });
+                } catch {}
+              }
+            }
           }
         }
       )

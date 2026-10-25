@@ -49,7 +49,8 @@ export default function DealMeetingsTab({
       ) : (
         <div className="space-y-2.5 min-[360px]:space-y-3">
           {sortedDealMeetings.map((meeting) => {
-            const meetingHistory = parseNotesHistory(getMeetingFullNotes(meeting));
+            const fallbackDate = meeting.updated_at || meeting.scheduled_at || meeting.created_at;
+            const meetingHistory = parseNotesHistory(meeting.outcome || meeting.notes, fallbackDate);
             const isMeetingScheduled = meeting.status === "scheduled";
             const isMeetingDone = meeting.status === "completed";
 

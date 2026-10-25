@@ -184,40 +184,142 @@ export function formatStatusLabel(status) {
   return map[status] || status.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
-export function parseNotesHistory(rawNotes) {
+export function parseDateMs(str, fallbackMs = 0) {
+  if (!str) return fallbackMs;
+  const parsed = Date.parse(str);
+  if (!Number.isNaN(parsed)) return parsed;
+
+  const dmyMatch = String(str).match(/(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})(?:[,\s]+(\d{1,2}):(\d{2})(?::(\d{2}))?\s*(am|pm)?)?/i);
+  if (dmyMatch) {
+    const day = parseInt(dmyMatch[1], 10);
+    const month = parseInt(dmyMatch[2], 10) - 1;
+    const year = parseInt(dmyMatch[3], 10);
+    let hour = dmyMatch[4] ? parseInt(dmyMatch[4], 10) : 12;
+    const minute = dmyMatch[5] ? parseInt(dmyMatch[5], 10) : 0;
+    const second = dmyMatch[6] ? parseInt(dmyMatch[6], 10) : 0;
+    const ampm = dmyMatch[7]?.toLowerCase();
+    if (ampm === "pm" && hour < 12) hour += 12;
+    if (ampm === "am" && hour === 12) hour = 0;
+    const d = new Date(year, month, day, hour, minute, second);
+    if (!Number.isNaN(d.getTime())) return d.getTime();
+  }
+  return fallbackMs;
+}
+
+export function formatFriendlyDateTime(dateVal) {
+  if (!dateVal) return "";
+  const d = new Date(dateVal);
+  if (Number.isNaN(d.getTime())) return String(dateVal);
+  return d.toLocaleString("en-IN", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: true,
+  });
+}
+
+export function parseNotesHistory(rawNotes, fallbackDate = null) {
   if (!rawNotes || typeof rawNotes !== "string") return [];
   const trimmed = rawNotes.trim();
   if (!trimmed) return [];
 
-  const blocks = trimmed.split(/\n{2,}/);
-  const parsed = [];
+  const defaultFormatted = fallbackDate ? formatFriendlyDateTime(fallbackDate) : formatFriendlyDateTime(new Date());
+  const fallbackMs = fallbackDate ? new Date(fallbackDate).getTime() || Date.now() : Date.now();
 
-  blocks.forEach((block, idx) => {
-    const text = block.trim();
-    if (!text) return;
+  // First split into major blocks: bracket headers [date • stage]: or double newlines
+  const majorBlocks = trimmed
+    .split(/\n{2,}|\n(?=\[)/i)
+    .map((b) => b.trim())
+    .filter(Boolean);
 
-    // Pattern: [11 Oct 2026, 06:45 PM • Completed]: Note body
-    const match = text.match(/^\[(.*?)(?:\s*[•\-|]\s*(?:Status:\s*)?(.*?))?\]:\s*([\s\S]*)$/i);
-    if (match) {
-      parsed.push({
-        id: `entry-${idx}`,
-        timestamp: match[1]?.trim() || "",
-        stage: match[2]?.trim() || "",
-        note: match[3]?.trim() || "",
-        raw: text,
+  const rawEntries = [];
+
+  majorBlocks.forEach((block) => {
+    // 1. Bracket header: [11 Oct 2026, 06:45 PM • Completed]: Note body
+    const bracketMatch = block.match(/^\[(.*?)(?:\s*[•\-|]\s*(?:Status:\s*)?(.*?))?\]:\s*([\s\S]*)$/i);
+    if (bracketMatch) {
+      const rawTime = bracketMatch[1]?.trim() || defaultFormatted;
+      const stage = bracketMatch[2]?.trim() || "";
+      const note = bracketMatch[3]?.trim() || "";
+      const timeMs = parseDateMs(rawTime, fallbackMs);
+      rawEntries.push({
+        timestamp: rawTime,
+        timeMs,
+        stage: formatStatusLabel(stage) || "Update",
+        note,
+        raw: block,
       });
-    } else {
-      parsed.push({
-        id: `entry-${idx}`,
-        timestamp: idx === 0 && blocks.length > 1 ? "Latest Note" : "Note",
-        stage: "",
-        note: text,
-        raw: text,
-      });
+      return;
     }
+
+    // 2. Legacy / multi-line plain text: split line by line
+    const lines = block.split(/\n+/).map((l) => l.trim()).filter(Boolean);
+    lines.forEach((line) => {
+      // 2a. Rescheduled line
+      const reschedMatch = line.match(/^Rescheduled\s+from\s+([^\n]+)$/i);
+      if (reschedMatch) {
+        const rawTime = reschedMatch[1]?.trim();
+        const timeMs = parseDateMs(rawTime, fallbackMs);
+        rawEntries.push({
+          timestamp: formatFriendlyDateTime(timeMs) || rawTime || defaultFormatted,
+          timeMs,
+          stage: "Rescheduled",
+          note: `Follow-up / Meeting shifted from ${rawTime || "previous schedule"}`,
+          raw: line,
+        });
+        return;
+      }
+
+      // 2b. Check embedded date in line (e.g. "call busy 21/10" or "Today Reschedule at 7 PM")
+      let lineTimeMs = fallbackMs;
+      let lineTimeStr = defaultFormatted;
+
+      const embeddedDateMatch = line.match(/(?:at|on|from|\b)(\d{1,2}[\/\-]\d{1,2}(?:[\/\-]\d{2,4})?|\d{1,2}\s+[A-Za-z]+(?:\s+\d{4})?)(?:[,\s]+(\d{1,2}:\d{2}(?::\d{2})?\s*(?:am|pm)?|\d{1,2}\s*(?:am|pm)))?/i);
+      if (embeddedDateMatch) {
+        const parsedMs = parseDateMs(embeddedDateMatch[0]);
+        if (parsedMs > 0) {
+          lineTimeMs = parsedMs;
+          lineTimeStr = formatFriendlyDateTime(parsedMs);
+        }
+      }
+
+      let detectedStage = "Note";
+      const lLower = line.toLowerCase();
+      if (lLower.includes("reschedule")) detectedStage = "Rescheduled";
+      else if (lLower.includes("complete") || lLower.includes("done")) detectedStage = "Completed";
+      else if (lLower.includes("call busy") || lLower.includes("busy")) detectedStage = "Call Busy";
+      else if (lLower.includes("manual follow-up") || lLower.includes("agenda")) detectedStage = "Initial";
+      else if (lLower.includes("quotation") || lLower.includes("quote")) detectedStage = "Quotation";
+      else if (lLower.includes("discuss")) detectedStage = "Discussion";
+
+      rawEntries.push({
+        timestamp: lineTimeStr,
+        timeMs: lineTimeMs,
+        stage: detectedStage,
+        note: line,
+        raw: line,
+      });
+    });
   });
 
-  return parsed;
+  // Deduplicate and assign unique IDs
+  const seenNotes = new Set();
+  const parsed = [];
+
+  rawEntries.forEach((entry, idx) => {
+    const key = `${entry.timestamp}__${entry.note.toLowerCase().trim()}`;
+    if (seenNotes.has(key)) return;
+    seenNotes.add(key);
+    parsed.push({
+      id: `entry-${idx}-${entry.timeMs}`,
+      ...entry,
+    });
+  });
+
+  // Strictly reverse-chronological: current / newest on top
+  return parsed.sort((a, b) => (b.timeMs || 0) - (a.timeMs || 0));
 }
 
 export function getLatestNoteSnippet(rawNotes) {
@@ -232,10 +334,20 @@ export function getLatestNoteSnippet(rawNotes) {
 export function getMeetingFullNotes(item) {
   if (!item) return "";
   const parts = [];
-  if (item.outcome) parts.push(item.outcome);
-  if (item.agenda) parts.push(`Agenda: ${item.agenda}`);
-  if (item.next_action) parts.push(`Next Action: ${item.next_action}`);
-  return parts.join("\n\n") || "No agenda or notes logged yet.";
+  const outcomeText = String(item.outcome || "").trim();
+  if (outcomeText) parts.push(outcomeText);
+
+  const outcomeLower = outcomeText.toLowerCase();
+
+  if (item.next_action && !outcomeLower.includes(item.next_action.toLowerCase().trim())) {
+    const nextTime = formatFriendlyDateTime(item.updated_at || item.scheduled_at);
+    parts.push(`[${nextTime} • Next Action]: ${item.next_action}`);
+  }
+  if (item.agenda && !outcomeLower.includes(item.agenda.toLowerCase().trim()) && parts.length === 0) {
+    const agendaTime = formatFriendlyDateTime(item.created_at || item.scheduled_at);
+    parts.push(`[${agendaTime} • Agenda]: ${item.agenda}`);
+  }
+  return parts.join("\n\n") || "";
 }
 
 export function getLatestMeetingSnippet(item) {

@@ -49,7 +49,8 @@ export default function DealFollowUpsTab({
       ) : (
         <div className="space-y-2.5 min-[360px]:space-y-3">
           {sortedDealFollowUps.map((followUp) => {
-            const followUpHistory = parseNotesHistory(followUp.notes);
+            const fallbackDate = followUp.updated_at || followUp.due_at || followUp.created_at;
+            const followUpHistory = parseNotesHistory(followUp.notes, fallbackDate);
             const isFollowUpPending = followUp.status === "pending";
             const isFollowUpDone = followUp.status === "done";
 

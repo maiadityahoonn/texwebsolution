@@ -36,6 +36,37 @@ async function afterLeadInserted(request, lead, status = "New") {
   await cacheDel("crm:leads-summary:all");
   await cacheDel("crm:leads-summary:start:end:meta");
   await sendMetaCrmEvent(request, lead, status);
+
+  // Instant In-App Notification for CRM users
+  try {
+    const admin = getAdminClient();
+    if (admin) {
+      const { data: crmProfiles } = await admin
+        .from("profiles")
+        .select("id")
+        .or("role.in.(super_admin,hr,sales_head,admin),domain.eq.sales")
+        .limit(20);
+
+      if (crmProfiles && crmProfiles.length > 0) {
+        const notifRows = crmProfiles.map((p) => ({
+          user_id: p.id,
+          title: `New Meta Lead: ${lead.name || "New Client"}`,
+          message: `${lead.name || "Client"} inquired via ${lead.source || "Meta Ads"} for ${lead.service || "Tech Development"}${lead.phone ? ` (${lead.phone})` : ""}`,
+          type: "lead",
+          link_url: "/crm/leads",
+          delivery_channels: ["in_app", "push"],
+          metadata: {
+            lead_id: lead.id,
+            source_type: "lead",
+            source: lead.source || "meta_ads",
+          },
+        }));
+        await admin.from("notifications").insert(notifRows);
+      }
+    }
+  } catch (notifErr) {
+    console.warn("Error creating meta lead notification:", notifErr?.message);
+  }
 }
 
 function getAdminClient() {

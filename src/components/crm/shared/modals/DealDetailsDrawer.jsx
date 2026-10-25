@@ -132,72 +132,69 @@ export default function DealDetailsDrawer({
   });
 
   dealMeetings.forEach((m) => {
+    const cleanMeetingTitle = m.title.replace(/^(Client meeting|Meeting with|Meeting)\s*:\s*/i, "");
+    const scheduledFormatted = m.scheduled_at
+      ? new Date(m.scheduled_at).toLocaleString("en-IN", {
+          day: "numeric",
+          month: "short",
+          year: "numeric",
+          hour: "2-digit",
+          minute: "2-digit",
+          hour12: true,
+        })
+      : "Scheduled";
+
     rawTimelineEvents.push({
       type: m.status === "completed" ? "completed" : "meeting",
-      title: `Meeting: ${m.title} [${formatStatusLabel(m.status)}]`,
-      description: `Scheduled: ${new Date(m.scheduled_at).toLocaleString("en-IN", {
-        day: "numeric",
-        month: "short",
-        hour: "2-digit",
-        minute: "2-digit",
-        hour12: true,
-      })}${m.agenda ? ` · Agenda: ${m.agenda}` : ""}`,
-      time: new Date(m.scheduled_at).toLocaleString("en-IN", {
-        day: "numeric",
-        month: "short",
-        hour: "2-digit",
-        minute: "2-digit",
-        hour12: true,
-      }),
-      timestamp: new Date(m.scheduled_at || 0).getTime(),
+      title: `Meeting: ${cleanMeetingTitle} [${formatStatusLabel(m.status)}]`,
+      description: `Scheduled: ${scheduledFormatted} (${m.duration_minutes || 30} mins)${m.agenda ? ` · Agenda: ${m.agenda}` : ""}`,
+      time: scheduledFormatted,
+      timestamp: new Date(m.scheduled_at || m.created_at || 0).getTime(),
     });
 
-    const mHistory = parseNotesHistory(getMeetingFullNotes(m));
-    mHistory.forEach((entry, idx) => {
+    const fallbackMeetingDate = m.updated_at || m.scheduled_at || m.created_at;
+    const mHistory = parseNotesHistory(m.outcome || m.notes, fallbackMeetingDate);
+    mHistory.forEach((entry) => {
       if (entry.note && !entry.note.toLowerCase().includes("no agenda or notes logged")) {
+        if (entry.note === m.agenda || entry.note === m.next_action) return;
         rawTimelineEvents.push({
           type:
             entry.stage?.toLowerCase().includes("conducted") || entry.stage?.toLowerCase().includes("completed")
               ? "completed"
               : "meeting",
-          title: `Meeting Update · ${entry.stage || formatStatusLabel(m.status)}`,
+          title: `Meeting Note · ${entry.stage || formatStatusLabel(m.status)}`,
           description: entry.note,
-          time: entry.timestamp || "Update",
-          timestamp: new Date(m.updated_at || m.scheduled_at || 0).getTime() + (idx + 1) * 1000,
+          time: entry.timestamp,
+          timestamp: entry.timeMs || new Date(fallbackMeetingDate || 0).getTime(),
         });
       }
     });
   });
 
   dealFollowUps.forEach((f) => {
+    const cleanFollowUpTitle = f.title.replace(/^(Follow-up|Follow up|Followup)\s*:\s*/i, "");
+    const dueFormatted = f.due_at
+      ? new Date(f.due_at).toLocaleString("en-IN", {
+          day: "numeric",
+          month: "short",
+          year: "numeric",
+          hour: "2-digit",
+          minute: "2-digit",
+          hour12: true,
+        })
+      : "Follow-up";
+
     rawTimelineEvents.push({
       type: f.status === "done" ? "completed" : "call",
-      title: `Follow-up: ${f.title} [${formatStatusLabel(f.status)}]`,
-      description: `Via ${f.channel || "Phone"} · Priority: ${f.priority || "Medium"} · Due: ${
-        f.due_at
-          ? new Date(f.due_at).toLocaleString("en-IN", {
-              day: "numeric",
-              month: "short",
-              hour: "2-digit",
-              minute: "2-digit",
-              hour12: true,
-            })
-          : "No date"
-      }`,
-      time: f.due_at
-        ? new Date(f.due_at).toLocaleString("en-IN", {
-            day: "numeric",
-            month: "short",
-            hour: "2-digit",
-            minute: "2-digit",
-            hour12: true,
-          })
-        : "Follow-up",
+      title: `Follow-up: ${cleanFollowUpTitle} [${formatStatusLabel(f.status)}]`,
+      description: `Via ${f.channel || "Phone"} · Priority: ${f.priority || "Medium"} · Due: ${dueFormatted}`,
+      time: dueFormatted,
       timestamp: new Date(f.due_at || f.created_at || 0).getTime(),
     });
 
-    const fHistory = parseNotesHistory(f.notes);
-    fHistory.forEach((entry, idx) => {
+    const fallbackFollowUpDate = f.updated_at || f.due_at || f.created_at;
+    const fHistory = parseNotesHistory(f.notes, fallbackFollowUpDate);
+    fHistory.forEach((entry) => {
       if (entry.note) {
         rawTimelineEvents.push({
           type:
@@ -206,8 +203,8 @@ export default function DealDetailsDrawer({
               : "chat",
           title: `Follow-up Update · ${entry.stage || formatStatusLabel(f.status)}`,
           description: entry.note,
-          time: entry.timestamp || "Update",
-          timestamp: new Date(f.updated_at || f.due_at || 0).getTime() + (idx + 1) * 1000,
+          time: entry.timestamp,
+          timestamp: entry.timeMs || new Date(fallbackFollowUpDate || 0).getTime(),
         });
       }
     });
@@ -262,7 +259,15 @@ export default function DealDetailsDrawer({
     });
   }
 
-  const dealTimelineEvents = rawTimelineEvents.sort((a, b) => b.timestamp - a.timestamp);
+  const seenEventKeys = new Set();
+  const dealTimelineEvents = rawTimelineEvents
+    .filter((evt) => {
+      const key = `${evt.title}__${evt.description?.slice(0, 50)}__${evt.time}`;
+      if (seenEventKeys.has(key)) return false;
+      seenEventKeys.add(key);
+      return true;
+    })
+    .sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
 
   const STAGES = [
     { id: "contacted", label: "Contacted" },

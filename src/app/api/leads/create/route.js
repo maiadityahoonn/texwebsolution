@@ -155,6 +155,37 @@ export async function POST(request) {
 
   if (data) await sendMetaCrmEvent(request, data, data.status || "New", eventId);
   if (data) await sendOpenAiAdsEvent(request, data, eventId);
+
+  // Instant In-App Notification for CRM users
+  if (data) {
+    try {
+      const { data: crmProfiles } = await admin
+        .from("profiles")
+        .select("id")
+        .or("role.in.(super_admin,hr,sales_head,admin),domain.eq.sales")
+        .limit(20);
+
+      if (crmProfiles && crmProfiles.length > 0) {
+        const notifRows = crmProfiles.map((p) => ({
+          user_id: p.id,
+          title: `New Lead: ${data.name || "New Client"}`,
+          message: `${data.name || "Client"} submitted inquiry for ${data.service || "Tech Development"}${data.source ? ` via ${data.source}` : ""}${data.phone ? ` (${data.phone})` : ""}`,
+          type: "lead",
+          link_url: "/crm/leads",
+          delivery_channels: ["in_app", "push"],
+          metadata: {
+            lead_id: data.id,
+            source_type: "lead",
+            source: data.source || "website",
+          },
+        }));
+        await admin.from("notifications").insert(notifRows);
+      }
+    } catch (notifErr) {
+      console.warn("Error creating lead notification:", notifErr?.message);
+    }
+  }
+
   await cacheDel("crm:leads-summary:all");
   await cacheDel("crm:leads-summary:start:end:meta");
   return NextResponse.json({ ok: true });
