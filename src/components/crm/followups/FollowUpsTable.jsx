@@ -65,15 +65,15 @@ export default function FollowUpsTable({
       ) : (
         <>
           <ResponsiveTableContainer>
-            <table className="w-full text-left text-xs sm:text-sm border-collapse min-w-[980px]">
+            <table className="w-full text-left text-xs sm:text-sm border-collapse min-w-[1080px]">
               <thead>
                 <tr className="border-b border-gray-100 dark:border-[#3a3020] bg-gray-50/70 dark:bg-[#211d14] text-gray-500 dark:text-neutral-400 text-[11px] font-semibold uppercase tracking-wider">
                   <th className="py-3 px-4 min-w-[200px]">Follow-up</th>
                   <th className="py-3 px-4 min-w-[140px]">Linked Account</th>
                   <th className="py-3 px-4 min-w-[120px]">Channel</th>
                   <th className="py-3 px-4 min-w-[150px] whitespace-nowrap">Due</th>
-                  <th className="py-3 px-4 min-w-[110px] whitespace-nowrap">Status</th>
-                  <th className="py-3 px-4 text-right min-w-[160px] whitespace-nowrap">Actions</th>
+                  <th className="py-3 px-4 min-w-[130px] whitespace-nowrap">Status</th>
+                  <th className="py-3 px-4 text-right min-w-[260px] whitespace-nowrap">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100 dark:divide-[#3a3020]/60">
@@ -178,7 +178,7 @@ export default function FollowUpsTable({
                         )}
                       </td>
                       <td className="py-3.5 px-4 text-gray-500 text-xs whitespace-nowrap">{new Date(item.due_at).toLocaleString("en-IN")}</td>
-                      <td className="py-3.5 px-4 whitespace-nowrap min-w-[110px]">
+                      <td className="py-3.5 px-4 whitespace-nowrap min-w-[130px]">
                         <button
                           type="button"
                           onClick={() => openStageModal(item, "followup")}
@@ -187,8 +187,8 @@ export default function FollowUpsTable({
                           isFollowUpCompleted(item.status) ? "bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-300" : isFollowUpMissed(item.status) || isOverdue ? "bg-red-50 text-red-600 dark:bg-red-950/40 dark:text-red-300" : "bg-amber-50 text-amber-600 dark:bg-amber-950/40 dark:text-amber-300"
                         }`}>{item.status}</button>
                       </td>
-                      <td className="py-3.5 px-4 text-right whitespace-nowrap min-w-[160px]">
-                        <div className="flex items-center justify-end gap-1.5 shrink-0">
+                      <td className="py-3.5 px-4 text-right whitespace-nowrap min-w-[260px]">
+                        <div className="flex items-center justify-end gap-1.5 shrink-0 min-w-[240px] ml-auto">
                           {contactPhone && (
                             <button
                               type="button"

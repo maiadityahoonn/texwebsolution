@@ -99,15 +99,15 @@ export default function MeetingsTable({
       ) : (
         <>
           <ResponsiveTableContainer>
-            <table className="w-full text-left text-xs sm:text-sm border-collapse min-w-[1040px]">
+            <table className="w-full text-left text-xs sm:text-sm border-collapse min-w-[1160px]">
               <thead>
                 <tr className="border-b border-gray-100 dark:border-[#3a3020] bg-gray-50/70 dark:bg-[#211d14] text-gray-500 dark:text-neutral-400 text-[11px] font-semibold uppercase tracking-wider">
                   <th className="py-3 px-4 min-w-[220px]">Meeting</th>
                   <th className="py-3 px-4 min-w-[140px]">Linked Account</th>
                   <th className="py-3 px-4 min-w-[100px]">Type</th>
                   <th className="py-3 px-4 min-w-[150px] whitespace-nowrap">Schedule</th>
-                  <th className="py-3 px-4 min-w-[120px] whitespace-nowrap">Status</th>
-                  <th className="py-3 px-4 text-right min-w-[200px] whitespace-nowrap">Actions</th>
+                  <th className="py-3 px-4 min-w-[130px] whitespace-nowrap">Status</th>
+                  <th className="py-3 px-4 text-right min-w-[280px] whitespace-nowrap">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100 dark:divide-[#3a3020]/60">
@@ -216,7 +216,7 @@ export default function MeetingsTable({
                         <div>{new Date(item.scheduled_at).toLocaleString("en-IN")}</div>
                         <div className="text-[11px] text-gray-400">{item.duration_minutes || 30} mins</div>
                       </td>
-                      <td className="py-3.5 px-4 whitespace-nowrap min-w-[120px]">
+                      <td className="py-3.5 px-4 whitespace-nowrap min-w-[130px]">
                         <button
                           type="button"
                           onClick={() => openStageModal(item, "meeting")}
@@ -233,8 +233,8 @@ export default function MeetingsTable({
                           {item.status === "no_show" ? "No Show" : isOverdue ? "Passed" : formatStatusLabel(item.status)}
                         </button>
                       </td>
-                      <td className="py-3.5 px-4 text-right whitespace-nowrap min-w-[200px]">
-                        <div className="flex items-center justify-end gap-1.5 shrink-0">
+                      <td className="py-3.5 px-4 text-right whitespace-nowrap min-w-[280px]">
+                        <div className="flex items-center justify-end gap-1.5 shrink-0 min-w-[260px] ml-auto">
                           {contactPhone && (
                             <button
                               type="button"
