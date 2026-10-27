@@ -83,7 +83,7 @@ export default function LandingHeroSection() {
             <div className="flex items-center justify-between gap-4 min-[840px]:gap-6 lg:gap-10">
               {/* Right Item 1: Direct WhatsApp Chat (Placed adjacent to the center logo) */}
               <a
-                href="https://wa.me/+917462827259?text=Hi%20TexWeb%20Solution,%20I%20saw%20your%20Meta%20ad%20and%20want%20to%20discuss%20a%20project%20for%20my%20business."
+                href="https://wa.me/+917462827259?text=Hi%20TexWeb%20Solution,%20I%20want%20to%20discuss%20a%20project%20for%20my%20business."
                 target="_blank"
                 rel="noopener noreferrer"
                 onClick={handleWhatsApp}
@@ -181,7 +181,7 @@ export default function LandingHeroSection() {
             <span className="truncate whitespace-nowrap text-xs sm:text-sm md:text-base">Get Free Quote ➔</span>
           </button>
           <a
-            href="https://wa.me/+917462827259?text=Hi%20TexWeb%20Solution,%20I%20saw%20your%20Meta%20ad%20and%20want%20to%20discuss%20a%20project."
+            href="https://wa.me/+917462827259?text=Hi%20TexWeb%20Solution,%20I%20want%20to%20discuss%20a%20project."
             target="_blank"
             rel="noopener noreferrer"
             onClick={handleWhatsApp}

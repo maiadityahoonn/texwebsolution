@@ -43,8 +43,11 @@ export default function LandingOfferingsSection() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
           {CORE_OFFERINGS.map((item) => {
             const IconComponent = item.icon;
+            const cleanTitle = (item.title || "services")
+              .replace(/Meta\s*Ads?/gi, "Digital Marketing")
+              .replace(/\+/g, "&");
             const whatsappUrl = `https://wa.me/+917462827259?text=${encodeURIComponent(
-              `Hi TexWeb Solution, I saw your Meta ad and want to enquire about ${item.title} for my business.`
+              `Hi TexWeb Solution, I want to enquire about ${cleanTitle} for my business.`
             )}`;
 
             return (

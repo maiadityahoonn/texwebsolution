@@ -178,8 +178,18 @@ export function buildWhatsAppQuoteUrl(formData) {
   const phone = `${formData.country_code || "+91"} ${(formData.phone || "").replace(/\D/g, "")}`.trim();
   const businessName = (formData.business_name || "").trim() || "Not Specified";
   const businessType = formData.business_type || "General Business";
-  const service = formData.service || "Tech Development";
-  const budget = formData.budget || "Flexible";
+  const rawService = formData.service || "Tech Development";
+  const service = rawService
+    .replace(/E-Commerce\s*\+\s*Meta\s*Ads/gi, "E-Commerce & Online Store")
+    .replace(/Meta\s*Ads\s*(&|\+|and)?\s*(Digital\s*Marketing|Marketing)?/gi, "Digital Marketing & Growth")
+    .replace(/Meta\s*Ads?/gi, "Digital Marketing")
+    .trim();
+
+  const rawBudget = formData.budget || "Flexible";
+  const budget = rawBudget
+    .replace(/Meta\s*Ads?/gi, "Marketing")
+    .trim();
+
   const timeline = formData.timeline || "Exploring";
 
   const lines = [

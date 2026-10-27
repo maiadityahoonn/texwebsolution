@@ -193,7 +193,7 @@ export const DYNAMIC_SERVICE_CONFIGS = {
     ],
     budgets: [
       { amount: "₹45,000 - ₹65,000", desc: "Store Launch + Ad Setup Bundle" },
-      { amount: "₹65,000 - ₹95,000", desc: "Custom Store + 30 Days Meta Ads Scaling" },
+      { amount: "₹65,000 - ₹95,000", desc: "Custom Store + 30 Days Ad Scaling & Growth" },
       { amount: "₹95,000+", desc: "High Volume D2C Brand Scale-Up" }
     ]
   },

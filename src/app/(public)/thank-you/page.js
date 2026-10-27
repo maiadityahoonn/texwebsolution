@@ -25,13 +25,23 @@ function ThankYouContent() {
     }, pendingConversion.eventId);
   }, [service]);
 
+  const cleanService = (service || "Web / App Development")
+    .replace(/E-Commerce\s*\+\s*Meta\s*Ads/gi, "E-Commerce & Online Store")
+    .replace(/Meta\s*Ads\s*(&|\+|and)?\s*(Digital\s*Marketing|Marketing)?/gi, "Digital Marketing & Growth")
+    .replace(/Meta\s*Ads?/gi, "Digital Marketing")
+    .trim();
+
+  const cleanBudget = (budget || "")
+    .replace(/Meta\s*Ads?/gi, "Marketing")
+    .trim();
+
   const messageLines = [
     "Hi TexWeb Solution, I just submitted a quote request on your website!",
     "",
     name ? `👤 *Name:* ${name}` : null,
     business ? `🏢 *Business Name:* ${business}` : null,
-    `💻 *Service Required:* ${service}`,
-    budget ? `💰 *Budget:* ${budget}` : null,
+    `💻 *Service Required:* ${cleanService}`,
+    cleanBudget ? `💰 *Budget:* ${cleanBudget}` : null,
     timeline ? `⏱️ *Timeline:* ${timeline}` : null,
     "",
     "Can we discuss the technical scope and cost estimate on WhatsApp?",

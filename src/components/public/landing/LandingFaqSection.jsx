@@ -128,7 +128,7 @@ export default function LandingFaqSection() {
             Have a custom requirement or question not listed here?
           </p>
           <a
-            href="https://wa.me/+917462827259?text=Hi%20TexWeb%20Solution,%20I%20have%20a%20question%20about%20my%20website/app/meta%20ads%20project."
+            href="https://wa.me/+917462827259?text=Hi%20TexWeb%20Solution,%20I%20have%20a%20question%20about%20my%20website/app%20project."
             target="_blank"
             rel="noopener noreferrer"
             onClick={() => trackMetaEvent("Contact", { method: "whatsapp", source: "faq_bottom" })}

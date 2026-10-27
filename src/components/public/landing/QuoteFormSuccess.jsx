@@ -5,8 +5,14 @@ import { CheckCircle2 } from "lucide-react";
 import { trackMetaEvent } from "./landingTracking";
 
 export default function QuoteFormSuccess({ formData, onReset }) {
+  const cleanService = (formData.service || "Web / App Development")
+    .replace(/E-Commerce\s*\+\s*Meta\s*Ads/gi, "E-Commerce & Online Store")
+    .replace(/Meta\s*Ads\s*(&|\+|and)?\s*(Digital\s*Marketing|Marketing)?/gi, "Digital Marketing & Growth")
+    .replace(/Meta\s*Ads?/gi, "Digital Marketing")
+    .trim();
+
   const whatsappUrl = `https://wa.me/+917462827259?text=Hi%20TexWeb%20Solution,%20I%20just%20submitted%20a%20quote%20request%20for%20${encodeURIComponent(
-    formData.service || "Web / App Development"
+    cleanService
   )}.%20My%20name%20is%20${encodeURIComponent(formData.name || "Client")}.`;
 
   return (
