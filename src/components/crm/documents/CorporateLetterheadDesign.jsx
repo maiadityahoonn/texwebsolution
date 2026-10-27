@@ -6,6 +6,7 @@ import LetterheadHeaderSvg from "./LetterheadHeaderSvg";
 import LetterheadWavesSvg from "./LetterheadWavesSvg";
 import LetterheadFooterSvg from "./LetterheadFooterSvg";
 import LetterheadDividerLine from "./LetterheadDividerLine";
+import LetterheadFooterTopLine from "./LetterheadFooterTopLine";
 import LetterheadContactBadges from "./LetterheadContactBadges";
 import LetterheadFooterServices from "./LetterheadFooterServices";
 
@@ -243,9 +244,24 @@ export default function CorporateLetterheadDesign({
       {/* ======================================================== */}
       {/* 4. FOOTER SECTION (Canva Move, Align & Inline Edit)      */}
       {/* ======================================================== */}
-      <footer className="absolute bottom-0 left-0 right-0 h-[56px] overflow-visible">
+      <footer className="absolute bottom-0 left-0 right-0 h-[56px] overflow-visible z-10">
         {/* Geometric Polygon Layer */}
-        <LetterheadFooterSvg />
+        <LetterheadFooterSvg
+          showTopLine={false}
+          topLineColor={lhConfig.footerTopLine?.color || "#D3151D"}
+        />
+
+        {/* Top Accent Line Layer (Fully Editable, Moveable, Color Changeable, Deletable) */}
+        <LetterheadFooterTopLine
+          footerTopLineConfig={lhConfig.footerTopLine || {}}
+          updateFooterTopLine={(updates) => updateLetterhead("footerTopLine", updates)}
+          selectedBlockId={selectedBlockId}
+          setSelectedBlockId={setSelectedBlockId}
+          startMove={startMove}
+          startResize={startResize}
+          startRotate={startRotate}
+          zoom={zoom}
+        />
 
         {/* Content Layer (Company Legal Info + 6 Core Digital Services) */}
         <div className="relative z-10 w-full h-full px-5 pt-2.5 flex items-center justify-between text-white">
@@ -322,8 +338,25 @@ export default function CorporateLetterheadDesign({
             </div>
           </LetterheadElementWrapper>
 
-          {/* Vertical Divider */}
-          <div className="h-6 w-[1px] bg-slate-700 shrink-0 mx-2 pointer-events-none" />
+          {/* Footer Vertical Divider (Fully Editable Size, Length, Color, Move, Delete, Add) */}
+          <LetterheadDividerLine
+            id="letterhead-footer-divider"
+            elementTitle="Footer Divider"
+            dividerConfig={lhConfig.footerDivider || {}}
+            updateDivider={(updates) => updateLetterhead("footerDivider", updates)}
+            selectedBlockId={selectedBlockId}
+            setSelectedBlockId={setSelectedBlockId}
+            startMove={startMove}
+            startResize={startResize}
+            startRotate={startRotate}
+            zoom={zoom}
+            defaultWidth={1}
+            defaultHeight={24}
+            defaultColor="#334155"
+            minHeight={6}
+            maxHeight={48}
+            addLabel="+ Add Footer Divider"
+          />
 
           {/* Right: 6 Core Digital Services with Custom PNG Icon Replacement */}
           <LetterheadFooterServices

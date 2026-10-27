@@ -40,6 +40,7 @@ export default function LetterheadElementWrapper({
   lineHeight,
   onChangeLineHeight,
   onDeleteElement,
+  isHorizontal = false,
   className = "",
   style = {},
 }) {
@@ -189,6 +190,7 @@ export default function LetterheadElementWrapper({
         <CanvasAlignmentToolbar
           blockId={id}
           elementTitle={elementTitle}
+          isHorizontal={isHorizontal}
           onAlignLeft={handleAlignLeft}
           onAlignCenter={handleAlignCenter}
           onAlignRight={handleAlignRight}

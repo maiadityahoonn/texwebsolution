@@ -1,6 +1,5 @@
 import { Suspense } from "react";
 import localFont from "next/font/local";
-import { Poppins } from "next/font/google";
 import Script from "next/script";
 import "./globals.css";
 import PublicFloatingWidgets from "@/components/public/PublicFloatingWidgets";
@@ -9,10 +8,16 @@ import AppBackButtonHandler from "@/components/crm/shell/AppBackButtonHandler";
 import ScrollToTop from "@/components/public/ScrollToTop";
 import MetaPixelTracker from "@/components/public/landing/MetaPixelTracker";
 
-const poppins = Poppins({
-  subsets: ["latin"],
-  weight: ["300", "400", "500", "600", "700"],
+const poppins = localFont({
+  src: [
+    { path: "../../public/fonts/Poppins/Poppins-Light.woff2", weight: "300", style: "normal" },
+    { path: "../../public/fonts/Poppins/Poppins-Regular.woff2", weight: "400", style: "normal" },
+    { path: "../../public/fonts/Poppins/Poppins-Medium.woff2", weight: "500", style: "normal" },
+    { path: "../../public/fonts/Poppins/Poppins-SemiBold.woff2", weight: "600", style: "normal" },
+    { path: "../../public/fonts/Poppins/Poppins-Bold.woff2", weight: "700", style: "normal" },
+  ],
   variable: "--font-poppins",
+  display: "swap",
 });
 
 const matter = localFont({

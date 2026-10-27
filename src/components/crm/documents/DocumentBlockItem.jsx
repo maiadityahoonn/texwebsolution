@@ -33,6 +33,7 @@ export default function DocumentBlockItem({
   zoom = 1,
   onShiftToPage,
   pageCount = 1,
+  font = "Inter",
 }) {
   const containerRef = useRef(null);
   const headingRef = useRef(null);
@@ -59,7 +60,16 @@ export default function DocumentBlockItem({
       textRef.current.style.height = "0px";
       textRef.current.style.height = `${textRef.current.scrollHeight}px`;
     }
-  }, [block.heading, block.body, block.text, block.width]);
+  }, [
+    block.heading,
+    block.body,
+    block.text,
+    block.width,
+    block.fontSize,
+    block.fontWeight,
+    block.fontFamily,
+    font,
+  ]);
 
   function getElementRect() {
     if (!containerRef.current) return null;
@@ -371,8 +381,11 @@ export default function DocumentBlockItem({
       {/* BLOCK TYPE: HEADING (Tight height to content) */}
       {block.type === "heading" && (
         <div
-          className="relative z-10 w-full flex items-center"
-          style={{ height: block.height ? "100%" : "auto" }}
+          className="relative z-10 w-full flex items-center rounded"
+          style={{
+            height: block.height ? "100%" : "auto",
+            backgroundColor: block.backgroundColor || "transparent",
+          }}
         >
           <textarea
             ref={headingRef}
@@ -384,16 +397,16 @@ export default function DocumentBlockItem({
             }}
             rows={1}
             placeholder="Heading Title..."
-            className="w-full text-lg sm:text-xl font-black uppercase tracking-wider text-gray-950 dark:text-white border-0 bg-transparent outline-hidden p-0 resize-none overflow-hidden leading-tight block transition cursor-text focus:bg-orange-50/20"
+            className="w-full text-lg sm:text-xl border-0 bg-transparent outline-hidden p-0 resize-none overflow-hidden leading-tight block transition cursor-text focus:bg-orange-50/20"
             style={{
               height: block.height ? "100%" : "auto",
               fontSize: block.fontSize ? `${block.fontSize}px` : undefined,
-              fontWeight: block.fontWeight || undefined,
-              fontStyle: block.fontStyle || undefined,
-              textDecoration: block.textDecoration || undefined,
-              color: block.color || undefined,
-              fontFamily: block.fontFamily || undefined,
-              textAlign: block.textAlign || undefined,
+              fontWeight: block.fontWeight || "900",
+              fontStyle: block.fontStyle || "normal",
+              textDecoration: block.textDecoration || "none",
+              color: block.color || "#0f172a",
+              fontFamily: block.fontFamily || font,
+              textAlign: block.textAlign || "left",
             }}
           />
         </div>
@@ -402,8 +415,11 @@ export default function DocumentBlockItem({
       {/* BLOCK TYPE: TEXT (Tight height to content - exact height match!) */}
       {block.type === "text" && (
         <div
-          className="relative z-10 w-full flex items-center"
-          style={{ height: block.height ? "100%" : "auto" }}
+          className="relative z-10 w-full flex items-center rounded"
+          style={{
+            height: block.height ? "100%" : "auto",
+            backgroundColor: block.backgroundColor || "transparent",
+          }}
         >
           <textarea
             ref={textRef}
@@ -415,16 +431,16 @@ export default function DocumentBlockItem({
             }}
             rows={1}
             placeholder="Type your paragraph text here..."
-            className="w-full text-xs sm:text-sm text-gray-800 dark:text-neutral-200 border-0 bg-transparent outline-hidden resize-none leading-relaxed p-0 font-normal overflow-hidden block transition cursor-text focus:bg-orange-50/20"
+            className="w-full text-xs sm:text-sm border-0 bg-transparent outline-hidden resize-none leading-relaxed p-0 overflow-hidden block transition cursor-text focus:bg-orange-50/20"
             style={{
               height: block.height ? "100%" : "auto",
               fontSize: block.fontSize ? `${block.fontSize}px` : undefined,
-              fontWeight: block.fontWeight || undefined,
-              fontStyle: block.fontStyle || undefined,
-              textDecoration: block.textDecoration || undefined,
-              color: block.color || undefined,
-              fontFamily: block.fontFamily || undefined,
-              textAlign: block.textAlign || undefined,
+              fontWeight: block.fontWeight || "normal",
+              fontStyle: block.fontStyle || "normal",
+              textDecoration: block.textDecoration || "none",
+              color: block.color || "#1e293b",
+              fontFamily: block.fontFamily || font,
+              textAlign: block.textAlign || "left",
             }}
           />
         </div>
@@ -434,7 +450,10 @@ export default function DocumentBlockItem({
       {block.type === "pricing" && (
         <div
           className="relative z-10 w-full"
-          style={{ height: block.height ? `${block.height}px` : "auto" }}
+          style={{
+            height: block.height ? `${block.height}px` : "auto",
+            fontFamily: block.fontFamily || font,
+          }}
         >
           <PricingBlockRenderer block={block} onUpdate={onUpdate} />
         </div>
@@ -444,7 +463,10 @@ export default function DocumentBlockItem({
       {block.type === "payment" && (
         <div
           className="relative z-10 w-full"
-          style={{ height: block.height ? `${block.height}px` : "auto" }}
+          style={{
+            height: block.height ? `${block.height}px` : "auto",
+            fontFamily: block.fontFamily || font,
+          }}
         >
           <PaymentBlockRenderer block={block} onUpdate={onUpdate} />
         </div>
@@ -454,7 +476,10 @@ export default function DocumentBlockItem({
       {block.type === "table" && (
         <div
           className="relative z-10 w-full"
-          style={{ height: block.height ? `${block.height}px` : "auto" }}
+          style={{
+            height: block.height ? `${block.height}px` : "auto",
+            fontFamily: block.fontFamily || font,
+          }}
         >
           <CustomTableBlockRenderer block={block} onUpdate={onUpdate} />
         </div>
@@ -481,21 +506,43 @@ export default function DocumentBlockItem({
       {/* BLOCK TYPE: BOX (Callout card) */}
       {block.type === "box" && (
         <div
-          className="relative z-10 rounded-xl border border-orange-200 dark:border-orange-900/50 bg-orange-50/40 dark:bg-orange-950/20 p-3 space-y-1 w-full"
-          style={{ height: block.height ? `${block.height}px` : "auto" }}
+          className="relative z-10 rounded-xl border border-orange-200 dark:border-orange-900/50 p-3 space-y-1 w-full"
+          style={{
+            height: block.height ? `${block.height}px` : "auto",
+            backgroundColor: block.backgroundColor || "rgba(255, 237, 213, 0.4)",
+            fontFamily: block.fontFamily || font,
+          }}
         >
           <input
             type="text"
             value={block.heading || "Important Note"}
             onChange={(e) => onUpdate({ heading: e.target.value })}
-            className="w-full text-xs font-black uppercase tracking-wider text-orange-700 dark:text-orange-300 border-0 bg-transparent outline-hidden cursor-text focus:bg-orange-100/50 rounded px-1"
+            className="w-full text-xs font-black uppercase tracking-wider border-0 bg-transparent outline-hidden cursor-text focus:bg-orange-100/50 rounded px-1"
+            style={{
+              fontSize: block.fontSize ? `${Math.max(11, block.fontSize)}px` : undefined,
+              fontWeight: block.fontWeight || "800",
+              fontStyle: block.fontStyle || "normal",
+              textDecoration: block.textDecoration || "none",
+              color: block.color || "#c2410c",
+              textAlign: block.textAlign || "left",
+              fontFamily: block.fontFamily || font,
+            }}
           />
           <textarea
             value={block.body || ""}
             onChange={(e) => onUpdate({ body: e.target.value })}
             rows={1}
             placeholder="Add highlighted terms, notes, or acceptance criteria..."
-            className="w-full text-xs text-gray-800 dark:text-neutral-200 border-0 bg-transparent outline-hidden resize-none leading-relaxed p-1 rounded block cursor-text focus:bg-orange-100/50"
+            className="w-full text-xs border-0 bg-transparent outline-hidden resize-none leading-relaxed p-1 rounded block cursor-text focus:bg-orange-100/50"
+            style={{
+              fontSize: block.fontSize ? `${block.fontSize}px` : undefined,
+              fontWeight: block.fontWeight || "normal",
+              fontStyle: block.fontStyle || "normal",
+              textDecoration: block.textDecoration || "none",
+              color: block.color || "#334155",
+              textAlign: block.textAlign || "left",
+              fontFamily: block.fontFamily || font,
+            }}
           />
         </div>
       )}

@@ -3,16 +3,11 @@
 import { useState } from "react";
 import {
   ArrowLeft,
-  Bookmark,
   Check,
-  CheckCircle2,
   ChevronDown,
   Download,
-  FileCheck2,
   FileText,
-  Link2,
   Pencil,
-  Printer,
   Save,
   Send,
   X,
@@ -28,10 +23,7 @@ export default function DocumentEditorTopBar({
   updateDraftDoc,
   onClose,
   onSave,
-  onSaveLetterheadAsDefault,
-  onSaveTemplate,
   onDownload,
-  onPrint,
   isExportingPdf = false,
   onShare,
 }) {
@@ -202,18 +194,18 @@ export default function DocumentEditorTopBar({
           )}
         </div>
 
-        {/* Save as template */}
+        {/* Unified Save (Saves document & letterhead design permanently) */}
         <button
           type="button"
-          onClick={onSaveTemplate}
-          className="px-3 py-1.5 rounded-xl border border-gray-200 dark:border-[#3a3020] bg-white dark:bg-[#18150f] text-xs font-semibold text-gray-700 dark:text-neutral-200 flex items-center gap-1.5 hover:bg-gray-50 cursor-pointer"
-          title="Save as reusable template"
+          onClick={onSave}
+          className="px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold flex items-center gap-1.5 shadow-md shadow-emerald-600/20 cursor-pointer transition active:scale-95"
+          title="Save Document & Letterhead Design"
         >
-          <Bookmark className="w-3.5 h-3.5 text-gray-500" />
-          <span className="hidden sm:inline">Save as template</span>
+          <Save className="w-3.5 h-3.5" />
+          <span>Save</span>
         </button>
 
-        {/* Download PDF (with Letterhead) */}
+        {/* Download PDF */}
         <button
           type="button"
           onClick={onDownload}
@@ -225,58 +217,22 @@ export default function DocumentEditorTopBar({
           <span>{isExportingPdf ? "Generating PDF..." : "Download PDF"}</span>
         </button>
 
-        {/* Print Option */}
-        {onPrint && (
-          <button
-            type="button"
-            onClick={onPrint}
-            className="p-1.5 rounded-xl border border-gray-200 dark:border-[#3a3020] bg-white dark:bg-[#18150f] text-gray-600 dark:text-neutral-300 hover:bg-gray-50 cursor-pointer"
-            title="Print Document"
-          >
-            <Printer className="w-3.5 h-3.5" />
-          </button>
-        )}
-
-        {/* Save Letterhead Design as Default */}
-        {templateMode === "letterhead" && onSaveLetterheadAsDefault && (
-          <button
-            type="button"
-            onClick={onSaveLetterheadAsDefault}
-            className="px-3 py-1.5 rounded-xl border border-orange-300 dark:border-orange-800 bg-orange-50 dark:bg-orange-950/40 text-orange-700 dark:text-orange-300 text-xs font-bold flex items-center gap-1.5 hover:bg-orange-100 cursor-pointer shadow-2xs transition active:scale-95"
-            title="Lock & Save this customized letterhead design permanently as the default for all pages and new documents"
-          >
-            <CheckCircle2 className="w-3.5 h-3.5 text-orange-600" />
-            <span className="hidden md:inline">Save Letterhead Design</span>
-          </button>
-        )}
-
-        {/* Save changes */}
-        <button
-          type="button"
-          onClick={onSave}
-          className="px-3 py-1.5 rounded-xl border border-emerald-300 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 text-xs font-bold flex items-center gap-1.5 hover:bg-emerald-100 cursor-pointer"
-          title="Save Document Changes"
-        >
-          <Save className="w-3.5 h-3.5 text-emerald-600" />
-          <span className="hidden sm:inline">Save</span>
-        </button>
-
-        {/* Share link (Orange button like in screenshot!) */}
+        {/* Share link */}
         <button
           type="button"
           onClick={onShare}
-          className="px-4 py-1.5 rounded-xl bg-orange-600 hover:bg-orange-700 text-white text-xs font-black flex items-center gap-1.5 shadow-md shadow-orange-500/25 cursor-pointer transition active:scale-95"
+          className="px-3.5 py-1.5 rounded-xl border border-gray-200 dark:border-[#3a3020] bg-white dark:bg-[#18150f] text-gray-700 dark:text-neutral-200 text-xs font-bold flex items-center gap-1.5 hover:bg-gray-50 cursor-pointer transition active:scale-95"
           title="Share document link with client"
         >
-          <Send className="w-3.5 h-3.5" />
-          <span>Share link</span>
+          <Send className="w-3.5 h-3.5 text-orange-600" />
+          <span className="hidden sm:inline">Share link</span>
         </button>
 
         {/* Close Button */}
         <button
           type="button"
           onClick={onClose}
-          className="p-1.5 rounded-xl hover:bg-gray-100 dark:hover:bg-slate-800 text-gray-400 hover:text-gray-700 cursor-pointer transition"
+          className="p-1.5 rounded-xl hover:bg-gray-100 dark:hover:bg-slate-800 text-gray-400 hover:text-gray-700 cursor-pointer transition ml-1"
           title="Close Editor"
         >
           <X className="w-4 h-4" />

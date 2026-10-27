@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { X, Sparkles, ShieldCheck } from "lucide-react";
 import { buildTrackingNotes, getTrackingParams, hasMetaAdAttribution, trackMetaEvent } from "./landingTracking";
 import { trackOpenAiAdsEvent } from "./openAiAdsTracking";
-import { DYNAMIC_SERVICE_CONFIGS, validatePhoneNumber } from "./quoteModalConstants";
+import { buildWhatsAppQuoteUrl, validatePhoneNumber, getBudgetsForService } from "./quoteModalConstants";
 import QuoteModalStep1 from "./QuoteModalStep1";
 import QuoteModalStep2 from "./QuoteModalStep2";
 import QuoteFormSuccess from "./QuoteFormSuccess";
@@ -14,16 +14,11 @@ const INITIAL_FORM_STATE = {
   name: "",
   country_code: "+91",
   phone: "",
-  email: "",
-  state: "",
-  city: "",
+  business_name: "",
+  business_type: "Retail Shop, Showroom & Products",
   service: "Website Development",
-  what_best_describes_you: "Business Owner / Dukaandar",
-  what_type_of_business_do_you_have: "Retail Shop, Showroom & Products",
-  specific_type: "Company & Business Profile",
   budget: "₹25,000 - ₹45,000 (Standard Business & Profile Website)",
-  timeline: "Immediately - Next 2 - 7 Days (Urgent)",
-  details: "",
+  timeline: "⚡ Urgent (2 - 7 Days)",
 };
 
 export default function LandingQuoteModal() {
@@ -63,15 +58,15 @@ export default function LandingQuoteModal() {
       setIsOpen(true);
       if (e.detail?.service) {
         const srv = e.detail.service;
-        if (srv in DYNAMIC_SERVICE_CONFIGS) {
-          const cfg = DYNAMIC_SERVICE_CONFIGS[srv];
-          setFormData((prev) => ({
-            ...prev,
-            service: srv,
-            budget: `${cfg.budgets[0].amount} (${cfg.budgets[0].desc})`,
-            specific_type: cfg.specificOptions[0].title,
-          }));
-        }
+        const bList = getBudgetsForService(srv);
+        const defaultBudget = bList && bList[0]
+          ? (bList[0].desc ? `${bList[0].amount} (${bList[0].desc})` : bList[0].amount)
+          : "₹25,000 - ₹45,000";
+        setFormData((prev) => ({
+          ...prev,
+          service: srv,
+          budget: defaultBudget,
+        }));
       }
       trackMetaEvent("InitiateCheckout", { source: e.detail?.source || "modal_trigger" });
     };
@@ -114,25 +109,9 @@ export default function LandingQuoteModal() {
       return;
     }
 
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!formData.email.trim() || !emailRegex.test(formData.email.trim())) {
-      setStep1Error("Please enter a valid email address.");
-      return;
-    }
-
-    if (!formData.state.trim()) {
-      setStep1Error("Please select your state.");
-      return;
-    }
-
-    if (!formData.city.trim()) {
-      setStep1Error("Please enter your city.");
-      return;
-    }
-
     trackMetaEvent("LeadFormInteraction", {
       step: 1,
-      state: formData.state,
+      country_code: formData.country_code,
     });
 
     setStep(2);
@@ -140,6 +119,12 @@ export default function LandingQuoteModal() {
 
   const handleSubmit = async () => {
     setSubmitError("");
+
+    if (!formData.business_name?.trim()) {
+      setSubmitError("Please enter your business or company name.");
+      return;
+    }
+
     setLoading(true);
 
     try {
@@ -152,13 +137,10 @@ export default function LandingQuoteModal() {
         service: formData.service,
         budget: formData.budget,
         timeline: formData.timeline,
-        message: formData.details,
         extra: {
-          "City": formData.city,
-          "State": formData.state,
-          "Role": formData.what_best_describes_you,
-          "Business Type": formData.what_type_of_business_do_you_have,
-          "Specific Sub-Type": formData.specific_type,
+          "Business Name": formData.business_name.trim(),
+          "Business Type": formData.business_type,
+          "WhatsApp Number": `${formData.country_code || "+91"} ${formData.phone.replace(/\D/g, "")}`,
           "Landing Page": "/get-quote",
         },
       });
@@ -171,7 +153,6 @@ export default function LandingQuoteModal() {
         body: JSON.stringify({
           name: formData.name.trim(),
           phone: `${formData.country_code || "+91"} ${formData.phone.replace(/\D/g, "")}`,
-          email: formData.email.trim() || undefined,
           service: formData.service,
           source: sourceLabel,
           notes: notes,
@@ -188,7 +169,7 @@ export default function LandingQuoteModal() {
         "Lead",
         {
           content_name: formData.service,
-          content_category: formData.what_type_of_business_do_you_have,
+          content_category: formData.business_type,
         },
         eventId
       );
@@ -198,10 +179,19 @@ export default function LandingQuoteModal() {
         sessionStorage.setItem("texweb_quote_modal_dismissed", "true");
       }
 
+      // Open WhatsApp directly with full quote summary
+      const whatsappUrl = buildWhatsAppQuoteUrl(formData);
+      try {
+        window.open(whatsappUrl, "_blank");
+      } catch (_) {}
+
       setIsOpen(false);
       const queryParams = new URLSearchParams({
         name: formData.name.trim(),
         service: formData.service || "Web / App Development",
+        business: formData.business_name.trim(),
+        budget: formData.budget || "",
+        timeline: formData.timeline || "",
       }).toString();
       router.push(`/thank-you?${queryParams}`);
     } catch (err) {
@@ -229,19 +219,19 @@ export default function LandingQuoteModal() {
         onClick={handleClose}
       />
 
-      {/* Modal Dialog Card */}
+      {/* Modal Dialog Card (Optimized for 320px, 375px, 425px, 768px+) */}
       <div 
-        className="relative w-full max-w-xl max-h-[86vh] min-[375px]:max-h-[88vh] sm:max-h-[92vh] flex flex-col bg-white border border-gray-100 rounded-2xl sm:rounded-3xl p-3.5 min-[375px]:p-4 sm:p-6 shadow-2xl overflow-hidden animate-scaleUp text-left overscroll-contain"
+        className="relative w-full max-w-xl max-h-[90dvh] sm:max-h-[88vh] flex flex-col bg-white border border-gray-100 rounded-2xl sm:rounded-3xl p-2.5 min-[375px]:p-4 sm:p-6 shadow-2xl overflow-hidden animate-scaleUp text-left overscroll-contain"
         style={{ fontFamily: "Matter, sans-serif" }}
       >
         {/* Top Gradient Accent Bar */}
-        <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-red-600 via-rose-500 to-amber-500" />
+        <div className="absolute top-0 left-0 w-full h-1 sm:h-1.5 bg-gradient-to-r from-red-600 via-rose-500 to-amber-500" />
 
         {/* Close Button */}
         <button
           type="button"
           onClick={handleClose}
-          className="absolute top-2.5 right-2.5 sm:top-4 sm:right-4 p-1.5 sm:p-2 rounded-full text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition cursor-pointer z-20"
+          className="absolute top-2 right-2 min-[375px]:top-3 min-[375px]:right-3.5 p-1.5 rounded-full text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition cursor-pointer z-20"
           aria-label="Close modal"
         >
           <X className="w-4 h-4 sm:w-5 sm:h-5" />
@@ -250,26 +240,26 @@ export default function LandingQuoteModal() {
         {!submitted ? (
           <div className="flex flex-col flex-1 min-h-0">
             {/* Modal Header */}
-            <div className="pr-7 sm:pr-8 mb-2.5 sm:mb-3.5 shrink-0">
-              <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-red-50 text-red-600 border border-red-100 text-[10.5px] sm:text-[11px] font-bold font-[Matter] mb-1">
+            <div className="pr-8 min-[375px]:pr-10 mb-2 sm:mb-2.5 shrink-0">
+              <div className="inline-flex items-center gap-1 px-2 min-[375px]:px-2.5 py-0.5 rounded-full bg-red-50 text-red-600 border border-red-100 text-[10px] min-[375px]:text-[11px] font-bold font-[Matter] mb-0.5 min-[375px]:mb-1">
                 <Sparkles className="w-3 h-3 text-red-500 shrink-0" />
                 <span>Get Free Architecture & Quote</span>
               </div>
-              <h2 className="text-xs min-[375px]:text-sm sm:text-lg md:text-xl font-bold text-gray-950 font-[Matter] tracking-tight leading-snug">
-                {step === 1 ? "Step 1 of 2: Contact & Business Location" : "Step 2 of 2: Define Project Scope"}
+              <h2 className="text-xs min-[360px]:text-sm sm:text-base md:text-lg font-bold text-gray-950 font-[Matter] tracking-tight leading-snug">
+                {step === 1 ? "Step 1 of 2: Your Name & WhatsApp" : "Step 2 of 2: Business & Project Scope"}
               </h2>
               
               {/* Progress 2-Step Bar */}
-              <div className="flex items-center gap-2 mt-1.5 sm:mt-2">
+              <div className="flex items-center gap-1.5 min-[375px]:gap-2 mt-1 sm:mt-1.5">
                 <div className={`h-1.5 flex-1 rounded-full transition-colors ${step >= 1 ? "bg-red-600" : "bg-gray-200"}`} />
                 <div className={`h-1.5 flex-1 rounded-full transition-colors ${step >= 2 ? "bg-red-600" : "bg-gray-200"}`} />
-                <span className="text-[10px] min-[375px]:text-[11px] font-bold text-gray-500 shrink-0 font-[Matter] whitespace-nowrap">
+                <span className="text-[9.5px] min-[375px]:text-[10.5px] font-bold text-gray-500 shrink-0 font-[Matter] whitespace-nowrap">
                   Step {step} of 2
                 </span>
               </div>
             </div>
 
-            {/* Content Container (Non-scrolling flex wrapper; steps manage inner single scroll) */}
+            {/* Content Container */}
             <div className="flex-1 min-h-0 flex flex-col">
               {step === 1 && (
                 <QuoteModalStep1
@@ -292,13 +282,13 @@ export default function LandingQuoteModal() {
               )}
             </div>
 
-            {/* Trust Footer */}
-            <div className="mt-2.5 sm:mt-3.5 pt-2.5 sm:pt-3 border-t border-gray-100 flex items-center justify-between text-[10px] min-[375px]:text-[11px] text-gray-500 font-poppins font-light shrink-0 gap-2">
-              <span className="inline-flex items-center gap-1 min-w-0">
-                <ShieldCheck className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                <span>100% Privacy & Zero Spam</span>
+            {/* Trust Footer (Responsive across 320px to 768px+) */}
+            <div className="mt-1.5 min-[375px]:mt-2 pt-1.5 min-[375px]:pt-2 border-t border-gray-100 flex items-center justify-between text-[9px] min-[375px]:text-[10px] text-gray-500 font-poppins shrink-0 gap-1">
+              <span className="inline-flex items-center gap-1 shrink-0">
+                <ShieldCheck className="w-3 h-3 min-[375px]:w-3.5 min-[375px]:h-3.5 text-emerald-600 shrink-0" />
+                <span>Zero Spam Guarantee</span>
               </span>
-              <span className="shrink-0 whitespace-nowrap">15-Min Response</span>
+              <span className="shrink-0 text-emerald-600 font-semibold whitespace-nowrap">⚡ 15-Min Response</span>
             </div>
           </div>
         ) : (

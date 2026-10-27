@@ -11,6 +11,9 @@ function ThankYouContent() {
   const searchParams = useSearchParams();
   const name = searchParams.get("name") || "";
   const service = searchParams.get("service") || "Web / App Development";
+  const business = searchParams.get("business") || "";
+  const budget = searchParams.get("budget") || "";
+  const timeline = searchParams.get("timeline") || "";
 
   useEffect(() => {
     const pendingConversion = consumePendingMetaLeadConversion();
@@ -22,10 +25,19 @@ function ThankYouContent() {
     }, pendingConversion.eventId);
   }, [service]);
 
-  const whatsappMessage = `Hi TexWeb Solution, I just submitted a quote request for ${service}.${
-    name ? ` My name is ${name}.` : ""
-  } Can we discuss the architecture roadmap?`;
+  const messageLines = [
+    "Hi TexWeb Solution, I just submitted a quote request on your website!",
+    "",
+    name ? `👤 *Name:* ${name}` : null,
+    business ? `🏢 *Business Name:* ${business}` : null,
+    `💻 *Service Required:* ${service}`,
+    budget ? `💰 *Budget:* ${budget}` : null,
+    timeline ? `⏱️ *Timeline:* ${timeline}` : null,
+    "",
+    "Can we discuss the technical scope and cost estimate on WhatsApp?",
+  ].filter(Boolean);
 
+  const whatsappMessage = messageLines.join("\n");
   const whatsappUrl = `https://wa.me/+917462827259?text=${encodeURIComponent(whatsappMessage)}`;
 
   return (
@@ -59,18 +71,19 @@ function ThankYouContent() {
           </h1>
           <p className="text-[11px] min-[375px]:text-xs text-gray-600 font-poppins max-w-xs sm:max-w-sm mx-auto leading-relaxed">
             We have received your requirements for{" "}
-            <strong className="text-gray-900 font-semibold">{service}</strong>. Our sales team will connect with you shortly.
+            <strong className="text-gray-900 font-semibold">{service}</strong>
+            {business ? <> (<strong className="text-gray-900 font-semibold">{business}</strong>)</> : ""}. Our solutions team will connect with you shortly.
           </p>
         </div>
 
         {/* 15-Min Response Guarantee Banner */}
-        <div className="p-2.5 min-[375px]:p-3 bg-emerald-50/70 border border-emerald-200/80 rounded-xl text-left space-y-1 text-xs font-poppins text-emerald-950">
-          <div className="flex items-center gap-1.5 font-bold text-xs min-[375px]:text-xs sm:text-sm">
-            <Clock className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-            <span className="whitespace-nowrap">Response within 15 Minutes Guaranteed</span>
+        <div className="p-2.5 min-[375px]:p-3 bg-emerald-50/70 border border-emerald-200/80 rounded-xl text-left space-y-1 font-poppins text-emerald-950">
+          <div className="flex items-start gap-1.5 font-bold text-xs min-[375px]:text-xs sm:text-sm">
+            <Clock className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+            <span className="leading-snug break-words">Response within 15 Minutes Guaranteed</span>
           </div>
-          <p className="text-[10px] min-[375px]:text-[11px] text-emerald-800 leading-snug pl-5">
-            Our team will review your requirements and reach out on your mobile number.
+          <p className="text-[10px] min-[375px]:text-[11px] text-emerald-800 leading-snug pl-5.5">
+            Our team will review your requirements and reach out directly on WhatsApp & phone.
           </p>
         </div>
 
@@ -88,12 +101,12 @@ function ThankYouContent() {
               alt="WhatsApp"
               width={18}
               height={18}
-              className="w-4 h-4 min-[375px]:w-4.5 min-[375px]:h-4.5 object-contain shrink-0"
+              className="w-4 h-4 min-[375px]:w-4.5 min-[375px]:h-4.5 object-contain brightness-0 invert shrink-0"
             />
             <span className="whitespace-nowrap">Chat on WhatsApp with Team ➔</span>
           </a>
           <p className="text-[9.5px] min-[375px]:text-[10px] text-gray-400 font-poppins">
-            Need an urgent quote? Connect directly with us on WhatsApp
+            Need an instant quote? Connect directly with us on WhatsApp
           </p>
         </div>
 

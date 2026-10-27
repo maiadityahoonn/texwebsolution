@@ -5,6 +5,7 @@ import {
   autoPaginateBlocks,
   buildDocumentSections,
   createBlockId,
+  deepMergeLetterhead,
   estimateBlockHeight,
   getDefaultBrand,
   getDocumentAmount,
@@ -35,12 +36,19 @@ export function useDocumentEditor({
   const [brand, setBrand] = useState(() => {
     const stored = loadStoredEditorState(doc);
     const defaultB = getDefaultBrand();
-    const b = stored?.brand || defaultB;
+    const b = stored?.brand
+      ? {
+          ...defaultB,
+          ...stored.brand,
+          letterhead: deepMergeLetterhead(
+            defaultB.letterhead,
+            stored.brand.letterhead || {}
+          ),
+        }
+      : defaultB;
     if (!b.logoUrl || b.logoUrl === "/logo.png") {
-      b.logoUrl = "https://qfbsszbgmipbercujiak.supabase.co/storage/v1/object/public/site-assets/texweb-header-logo.png";
-    }
-    if (!b.letterhead) {
-      b.letterhead = defaultB.letterhead;
+      b.logoUrl =
+        "https://qfbsszbgmipbercujiak.supabase.co/storage/v1/object/public/site-assets/texweb-header-logo.png";
     }
     return b;
   });
@@ -688,9 +696,21 @@ export function useDocumentEditor({
     [draftDoc, currentPage, pushHistory, flashNotice]
   );
 
+  const handleSetTemplateMode = useCallback((mode) => {
+    setTemplateMode(mode);
+    if (mode === "letterhead") {
+      const defaultB = getDefaultBrand();
+      setBrand((prev) => ({
+        ...prev,
+        ...defaultB,
+        letterhead: deepMergeLetterhead(defaultB.letterhead, prev?.letterhead || {}),
+      }));
+    }
+  }, []);
+
   return {
     templateMode,
-    setTemplateMode,
+    setTemplateMode: handleSetTemplateMode,
     draftDoc,
     setDraftDoc,
     updateDraftDoc,

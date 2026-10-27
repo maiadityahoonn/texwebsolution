@@ -1,4 +1,5 @@
-export { DYNAMIC_SERVICE_CONFIGS } from "./serviceConfigs";
+import { DYNAMIC_SERVICE_CONFIGS } from "./serviceConfigs";
+export { DYNAMIC_SERVICE_CONFIGS };
 
 export const COUNTRY_CODES = [
   { code: "+91", country: "India", label: "India (+91)", flag: "🇮🇳" },
@@ -60,6 +61,158 @@ export function validatePhoneNumber(phone, countryCode = "+91") {
   return { isValid: true, message: "Valid mobile number" };
 }
 
+/**
+ * What type of business do you run?
+ */
+export const BUSINESS_TYPE_OPTIONS = [
+  { id: "retail", title: "Retail Shop, Showroom & Products", icon: "ShoppingCart", sub: "Clothing, Electronics, Grocery ya Consumer Products" },
+  { id: "healthcare", title: "Doctor, Clinic & Healthcare", icon: "Stethoscope", sub: "Dental, Eye, Clinic, Pharmacy ya Hospital" },
+  { id: "manufacturing", title: "Manufacturing, Factory & Wholesale", icon: "Factory", sub: "Production, B2B Supplies & Industrial Goods" },
+  { id: "education", title: "School, College & Coaching", icon: "GraduationCap", sub: "Classes, Academy, College ya Competition Coaching" },
+  { id: "realestate", title: "Real Estate, Builder & Construction", icon: "Building", sub: "Flats, Plots, Township ya Architecture Interior" },
+  { id: "food", title: "Restaurant, Cafe & Food", icon: "Coffee", sub: "Dining, Bakery, Sweet Shop ya Cloud Kitchen" },
+  { id: "services", title: "Professional Services & Agency", icon: "Briefcase", sub: "CA, Legal, Travel, Security ya Consultant Agency" },
+  { id: "startup", title: "Tech Startup / Online Brand", icon: "Rocket", sub: "Mobile App, SaaS Portal ya D2C Online Brand" },
+  { id: "other", title: "Other / Custom Business", icon: "Sparkles", sub: "Meri business category alag hai ya naya concept hai" }
+];
+
+/**
+ * What do you need? (TexWeb Solution's Core Official Services)
+ */
+export const TEXWEB_SERVICES = [
+  {
+    key: "Website Development",
+    title: "Website Development",
+    sub: "Custom Business Sites, Portals & Fast Landing Pages",
+    badge: "⚡ 7-10 Days",
+    icon: "Globe"
+  },
+  {
+    key: "App Development (iOS/Android)",
+    title: "Mobile App Development",
+    sub: "Android & iOS Native or Hybrid Mobile Apps",
+    badge: "📱 Mobile Live",
+    icon: "Smartphone"
+  },
+  {
+    key: "Website Redesign",
+    title: "Website Redesign",
+    sub: "Modern UI/UX Revamp, Mobile Speed & Conversion Fix",
+    badge: "🚀 Speed Revamp",
+    icon: "RefreshCw"
+  },
+  {
+    key: "E-Commerce + Meta Ads",
+    title: "E-Commerce + Meta Ads",
+    sub: "Online Store Setup + High-Converting Ads for Sales",
+    badge: "🔥 High Sales",
+    icon: "ShoppingBag"
+  },
+  {
+    key: "Meta Ads & Digital Marketing",
+    title: "Meta Ads & Marketing",
+    sub: "Targeted Instagram & Facebook Ads for Verified Leads",
+    badge: "🎯 High ROAS",
+    icon: "TrendingUp"
+  },
+  {
+    key: "AI Chatbot & Automation",
+    title: "AI Chatbot & Automation",
+    sub: "WhatsApp 24/7 Smart Auto-Reply & Business Workflows",
+    badge: "🤖 24/7 Bot",
+    icon: "Bot"
+  },
+  {
+    key: "ERP, CRM & Business Systems",
+    title: "ERP, CRM & Software",
+    sub: "Custom Lead Pipelines, Staff Attendance & Billing",
+    badge: "🏢 Enterprise",
+    icon: "Layers"
+  },
+  {
+    key: "Other / Custom Software Requirement",
+    title: "Other / Custom Software",
+    sub: "Custom Tech Architecture, SaaS Portal or Unique Idea",
+    badge: "✨ Custom Idea",
+    icon: "Sparkles"
+  }
+];
+
+/**
+ * Expected Project Budget (Dynamic per service helper)
+ */
+
+export function getBudgetsForService(serviceKey) {
+  const normalizedKey = serviceKey in DYNAMIC_SERVICE_CONFIGS ? serviceKey : "Website Development";
+  const cfg = DYNAMIC_SERVICE_CONFIGS[normalizedKey];
+  const list = cfg?.budgets || [];
+  return [
+    ...list,
+    { amount: "Flexible", desc: "Need Advice / Discuss Scope" }
+  ];
+}
+
+export const BUDGET_OPTIONS = [
+  { id: "under_25k", label: "Under ₹25,000", sub: "Starter / Basic" },
+  { id: "25k_50k", label: "₹25,000 - ₹50,000", sub: "Standard Business" },
+  { id: "50k_1lakh", label: "₹50,000 - ₹1,00,000", sub: "Advanced / Custom" },
+  { id: "above_1lakh", label: "₹1,00,000+", sub: "Scalable Platform" },
+  { id: "flexible", label: "Flexible", sub: "Need Advice" }
+];
+
+/**
+ * Target Project Timeline
+ */
+export const TIMELINE_OPTIONS = [
+  { id: "urgent", label: "⚡ Urgent (2 - 7 Days)", desc: "Immediate start & rapid deployment" },
+  { id: "weeks", label: "🚀 2 - 3 Weeks", desc: "Optimal pace for quality & testing" },
+  { id: "month", label: "📅 Within 1 Month", desc: "Planned launch with phased rollout" },
+  { id: "exploring", label: "💡 Exploring / Planning Stage", desc: "Need architecture & scope guidance" }
+];
+
+/**
+ * Builds formatted WhatsApp Quote direct-chat URL with all lead inputs.
+ */
+export function buildWhatsAppQuoteUrl(formData) {
+  const name = (formData.name || "").trim();
+  const phone = `${formData.country_code || "+91"} ${(formData.phone || "").replace(/\D/g, "")}`.trim();
+  const businessName = (formData.business_name || "").trim() || "Not Specified";
+  const businessType = formData.business_type || "General Business";
+  const service = formData.service || "Tech Development";
+  const budget = formData.budget || "Flexible";
+  const timeline = formData.timeline || "Exploring";
+
+  const lines = [
+    "Hi TexWeb Solution, I want a project quote & architecture roadmap!",
+    "",
+    `👤 *Name:* ${name}`,
+    `📱 *WhatsApp:* ${phone}`,
+    `🏢 *Business Name:* ${businessName}`,
+    `🏷️ *Business Type:* ${businessType}`,
+    `💻 *What I Need (Service):* ${service}`,
+    `💰 *Expected Budget:* ${budget}`,
+    `⏱️ *Target Timeline:* ${timeline}`,
+    "",
+    "Please share the project scope, timeline, and cost estimate. Thanks!"
+  ];
+
+  return `https://wa.me/+917462827259?text=${encodeURIComponent(lines.join("\n"))}`;
+}
+
+// Backward-compatible exports
+export const SERVICES_CONFIG = TEXWEB_SERVICES.map((s) => ({
+  key: s.key,
+  label: s.title,
+  sub: s.sub,
+  icon: s.icon
+}));
+
+export const DESCRIBES_YOU_OPTIONS = BUSINESS_TYPE_OPTIONS.map((b) => ({
+  title: b.title,
+  sub: b.sub,
+  icon: b.icon
+}));
+
 export const INDIAN_STATES = [
   "Madhya Pradesh",
   "Maharashtra",
@@ -83,183 +236,4 @@ export const INDIAN_STATES = [
   "Goa",
   "Himachal Pradesh",
   "Other State / Outside India"
-];
-
-export const DESCRIBES_YOU_OPTIONS = [
-  {
-    title: "Business Owner / Dukaandar",
-    sub: "Apna Retail, Shop ya Business Run Karta Hoon",
-    icon: "Briefcase"
-  },
-  {
-    title: "Factory / Manufacturer / Wholesaler",
-    sub: "B2B Production, Supply ya Bulk Wholesale",
-    icon: "Factory"
-  },
-  {
-    title: "Startup Founder / Entrepreneur",
-    sub: "Naya Business ya Tech Platform Shuru Kar Raha Hoon",
-    icon: "Rocket"
-  },
-  {
-    title: "Doctor / Clinic / Hospital Director",
-    sub: "Healthcare Clinic, Patient OPD ya Hospital Management",
-    icon: "Stethoscope"
-  },
-  {
-    title: "School / Coaching Director",
-    sub: "Student Admissions, Online Classes ya Fees Management",
-    icon: "GraduationCap"
-  },
-  {
-    title: "Online Brand / D2C Seller",
-    sub: "Website ya Social Media par Product Selling",
-    icon: "ShoppingBag"
-  },
-  {
-    title: "Service Contractor / Agency Owner",
-    sub: "Consulting, Real Estate, Repair ya Professional Service",
-    icon: "Wrench"
-  },
-  {
-    title: "Marketing / Sales Manager",
-    sub: "Company ke liye Website, App ya Ads Lead Generation",
-    icon: "Users"
-  },
-  {
-    title: "Other / Individual Profile",
-    sub: "Freelancer, Consultant, Creator ya Any Other Professional",
-    icon: "Users"
-  }
-];
-
-export const BUSINESS_TYPE_OPTIONS = [
-  {
-    title: "Retail Shop, Showroom & Products",
-    sub: "Clothing, Electronics, Grocery ya Consumer Products",
-    icon: "ShoppingCart"
-  },
-  {
-    title: "Manufacturing, Factory & Wholesale",
-    sub: "Production, B2B Supplies & Industrial Goods",
-    icon: "Factory"
-  },
-  {
-    title: "Doctor, Clinic & Healthcare",
-    sub: "Dental, Eye, Clinic, Pharmacy ya Hospital",
-    icon: "Stethoscope"
-  },
-  {
-    title: "School, College & Coaching Institute",
-    sub: "Classes, Academy, College ya Competition Coaching",
-    icon: "GraduationCap"
-  },
-  {
-    title: "Real Estate, Builders & Construction",
-    sub: "Flats, Plots, Township ya Architecture Interior",
-    icon: "Building"
-  },
-  {
-    title: "Restaurant, Cafe, Food & Grocery",
-    sub: "Dining, Bakery, Sweet Shop ya Cloud Kitchen",
-    icon: "Coffee"
-  },
-  {
-    title: "Professional Services & Agency",
-    sub: "CA, Legal, Travel, Security ya Consultant Agency",
-    icon: "Briefcase"
-  },
-  {
-    title: "Logistics, Transport & Fleet",
-    sub: "Trucking, Courier, Transport ya Vehicle Fleet",
-    icon: "Truck"
-  },
-  {
-    title: "Tech Startup / New Online Idea",
-    sub: "Mobile App, SaaS Portal ya On-Demand Service Idea",
-    icon: "Lightbulb"
-  },
-  {
-    title: "Other Business / Emerging Industry",
-    sub: "Meri business category alag hai ya naya concept/idea hai",
-    icon: "Sparkles"
-  }
-];
-
-export const TIMELINE_OPTIONS = [
-  {
-    id: "immediately",
-    label: "Immediately",
-    sub: "Next 2 - 7 Days (Urgent)",
-    icon: "Zap"
-  },
-  {
-    id: "2_3_weeks",
-    label: "In 2 - 3 Weeks",
-    sub: "Isi Mahine Shuru Karna Hai",
-    icon: "Rocket"
-  },
-  {
-    id: "1_month",
-    label: "In Next 1 Month",
-    sub: "Planning Stage",
-    icon: "Calendar"
-  },
-  {
-    id: "just_inquiring",
-    label: "Just Inquiring",
-    sub: "Pehle Price & Advice Chahiye",
-    icon: "HelpCircle"
-  }
-];
-
-export const SERVICES_CONFIG = [
-  { 
-    key: "Website Development", 
-    label: "Website Development", 
-    sub: "Nayi Business ya Brand Website Banwani Hai",
-    icon: "Globe" 
-  },
-  { 
-    key: "Website Redesign", 
-    label: "Website Redesign", 
-    sub: "Purani Website ko Fast & Modern Look Dena Hai",
-    icon: "RefreshCw" 
-  },
-  { 
-    key: "App Development (iOS/Android)", 
-    label: "Mobile App Development", 
-    sub: "Android & iOS Mobile Application Banwani Hai",
-    icon: "Smartphone" 
-  },
-  { 
-    key: "E-Commerce + Meta Ads", 
-    label: "E-Commerce + Meta Ads", 
-    sub: "Online Store Launch + Pehle Din se Sales Setup",
-    icon: "ShoppingBag" 
-  },
-  { 
-    key: "Meta Ads & Digital Marketing", 
-    label: "Meta Ads & Marketing", 
-    sub: "Instagram & Facebook Ads se Leads/Orders Chahiye",
-    icon: "TrendingUp" 
-  },
-  { 
-    key: "AI Chatbot & Automation", 
-    label: "AI Chatbot & Automation", 
-    sub: "WhatsApp 24/7 Auto-Reply & Smart Automation",
-    icon: "Bot" 
-  },
-  { 
-    key: "ERP, CRM & Business Systems", 
-    label: "ERP, CRM & Software", 
-    sub: "Lead Management, Staff Haziri & Billing System",
-    icon: "Layers" 
-  },
-  { 
-    key: "Other / Custom Software Requirement", 
-    label: "Other / Custom Software", 
-    sub: "Naya Unique Idea, Custom Software ya Koi Aur Tech Kaam",
-    icon: "Sparkles" 
-  }
 ];

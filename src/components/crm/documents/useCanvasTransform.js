@@ -127,8 +127,15 @@ export function useCanvasTransform({
         let newW = initW;
         let newH = initH;
 
-        const isDivider = block.id === "letterhead-divider" || block.type === "divider";
-        const minW = isDivider ? 20 : 50;
+        const isDivider =
+          block.id === "letterhead-divider" ||
+          block.id === "letterhead-footer-divider" ||
+          block.type === "divider";
+        const isHorizontalLine =
+          block.id === "letterhead-footer-topline" ||
+          block.orientation === "horizontal";
+
+        const minW = isDivider ? 10 : isHorizontalLine ? 40 : 50;
         const maxW = canvasWidth - 48;
 
         // Width adjustment (Right "e", Left "w")
@@ -140,8 +147,8 @@ export function useCanvasTransform({
         }
 
         // Height adjustment (Bottom "s", Top "n")
-        const minH = isDivider ? 4 : 16;
-        const maxH = isDivider ? 120 : 2000;
+        const minH = isHorizontalLine ? 1 : isDivider ? 4 : 16;
+        const maxH = isHorizontalLine ? 30 : isDivider ? 120 : 2000;
         if (handle.includes("s")) {
           newH = Math.max(minH, Math.min(maxH, initH + dy));
         }
@@ -149,9 +156,9 @@ export function useCanvasTransform({
           newH = Math.max(minH, Math.min(maxH, initH - dy));
         }
 
-        // Snapping lines when resizing (only for non-divider blocks)
+        // Snapping lines when resizing (only for non-divider and non-line blocks)
         const xGuides = [];
-        if (!isDivider) {
+        if (!isDivider && !isHorizontalLine) {
           const pageCenterX = canvasWidth / 2;
           if (Math.abs(initX + newW / 2 - pageCenterX) < 5) {
             xGuides.push(pageCenterX);

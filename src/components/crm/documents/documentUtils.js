@@ -209,6 +209,23 @@ export function normalizeDocumentBlocks(blocks = []) {
 
 export const CORPORATE_LETTERHEAD_STORAGE_KEY = "texweb_corporate_letterhead_default_brand";
 
+export function deepMergeLetterhead(baseLh = {}, overrideLh = {}) {
+  return {
+    ...baseLh,
+    ...overrideLh,
+    logo: { ...(baseLh.logo || {}), ...(overrideLh.logo || {}) },
+    tagline: { ...(baseLh.tagline || {}), ...(overrideLh.tagline || {}) },
+    divider: { ...(baseLh.divider || {}), ...(overrideLh.divider || {}) },
+    contact: { ...(baseLh.contact || {}), ...(overrideLh.contact || {}) },
+    watermark: { ...(baseLh.watermark || {}), ...(overrideLh.watermark || {}) },
+    footerCompany: { ...(baseLh.footerCompany || {}), ...(overrideLh.footerCompany || {}) },
+    footerServices: { ...(baseLh.footerServices || {}), ...(overrideLh.footerServices || {}) },
+    footerDivider: { ...(baseLh.footerDivider || {}), ...(overrideLh.footerDivider || {}) },
+    footerTopLine: { ...(baseLh.footerTopLine || {}), ...(overrideLh.footerTopLine || {}) },
+    fontFamily: overrideLh.fontFamily || baseLh.fontFamily || "Inter",
+  };
+}
+
 export function getDefaultBrand() {
   const base = {
     font: "Inter",
@@ -249,6 +266,8 @@ export function getDefaultBrand() {
         fontFamily: "Inter",
       },
       footerServices: { dx: 0, dy: 0, rotation: 0, fontFamily: "Inter" },
+      footerDivider: { visible: true, dx: 0, dy: 0, width: 1, height: 24, color: "#334155", rotation: 0 },
+      footerTopLine: { visible: true, dx: 0, dy: 0, width: 794, height: 2, color: "#D3151D", rotation: 0 },
     },
   };
 
@@ -263,11 +282,7 @@ export function getDefaultBrand() {
           ...parsed,
           font: resolvedFont,
           accent: parsed.accent || base.accent,
-          letterhead: {
-            ...base.letterhead,
-            ...(parsed.letterhead || {}),
-            fontFamily: resolvedFont,
-          },
+          letterhead: deepMergeLetterhead(base.letterhead, parsed.letterhead || {}),
         };
       }
     } catch {
@@ -281,7 +296,13 @@ export function getDefaultBrand() {
 export function saveCorporateLetterheadDefault(brand) {
   if (typeof window === "undefined" || !brand) return;
   try {
-    localStorage.setItem(CORPORATE_LETTERHEAD_STORAGE_KEY, JSON.stringify(brand));
+    const existing = getDefaultBrand();
+    const mergedBrand = {
+      ...existing,
+      ...brand,
+      letterhead: deepMergeLetterhead(existing.letterhead, brand.letterhead || {}),
+    };
+    localStorage.setItem(CORPORATE_LETTERHEAD_STORAGE_KEY, JSON.stringify(mergedBrand));
   } catch {
     // Storage quota or serialization safe
   }

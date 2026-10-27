@@ -25,6 +25,7 @@ import {
 export default function CanvasAlignmentToolbar({
   blockId = "",
   elementTitle = "Element",
+  isHorizontal = false,
   onAlignLeft,
   onAlignCenter,
   onAlignRight,
@@ -102,7 +103,7 @@ export default function CanvasAlignmentToolbar({
         </button>
       )}
 
-      {/* Divider Line Controls (Color, Thickness, Length) */}
+      {/* Divider / Line Controls (Color, Thickness, Length) */}
       {onChangeLineColor && (
         <div className="flex items-center gap-1.5 px-1 border-l border-slate-700 ml-0.5">
           {/* Color Picker & Quick Swatches */}
@@ -119,10 +120,12 @@ export default function CanvasAlignmentToolbar({
             {/* Quick Palette Swatches */}
             {[
               { color: "#e2e8f0", title: "Subtle Gray" },
+              { color: "#334155", title: "Slate 700" },
               { color: "#D3151D", title: "TexWeb Red" },
               { color: "#0F172A", title: "Navy Slate" },
               { color: "#F97316", title: "Orange" },
               { color: "#2563EB", title: "Blue" },
+              { color: "#ffffff", title: "White" },
             ].map((swatch) => (
               <button
                 key={swatch.color}
@@ -137,24 +140,34 @@ export default function CanvasAlignmentToolbar({
             ))}
           </div>
 
-          {/* Thickness / Width */}
-          {typeof lineWidth === "number" && onChangeLineWidth && (
+          {/* Thickness adjuster */}
+          {(isHorizontal
+            ? typeof lineHeight === "number" && onChangeLineHeight
+            : typeof lineWidth === "number" && onChangeLineWidth) && (
             <div className="flex items-center gap-0.5 bg-slate-800/80 px-1 py-0.5 rounded">
               <span className="text-[9px] text-slate-400">Thick:</span>
               <button
                 type="button"
-                onClick={() => onChangeLineWidth(Math.max(1, lineWidth - 1))}
+                onClick={() =>
+                  isHorizontal
+                    ? onChangeLineHeight(Math.max(1, lineHeight - 1))
+                    : onChangeLineWidth(Math.max(1, lineWidth - 1))
+                }
                 className="w-3.5 h-3.5 rounded bg-slate-700 hover:bg-slate-600 flex items-center justify-center text-[10px]"
                 title="Decrease thickness"
               >
                 <Minus className="w-2.5 h-2.5" />
               </button>
               <span className="text-[9.5px] font-mono text-orange-300 w-4 text-center">
-                {lineWidth}px
+                {isHorizontal ? lineHeight : lineWidth}px
               </span>
               <button
                 type="button"
-                onClick={() => onChangeLineWidth(Math.min(20, lineWidth + 1))}
+                onClick={() =>
+                  isHorizontal
+                    ? onChangeLineHeight(Math.min(20, lineHeight + 1))
+                    : onChangeLineWidth(Math.min(20, lineWidth + 1))
+                }
                 className="w-3.5 h-3.5 rounded bg-slate-700 hover:bg-slate-600 flex items-center justify-center text-[10px]"
                 title="Increase thickness"
               >
@@ -163,24 +176,34 @@ export default function CanvasAlignmentToolbar({
             </div>
           )}
 
-          {/* Height / Length */}
-          {typeof lineHeight === "number" && onChangeLineHeight && (
+          {/* Length adjuster */}
+          {(isHorizontal
+            ? typeof lineWidth === "number" && onChangeLineWidth
+            : typeof lineHeight === "number" && onChangeLineHeight) && (
             <div className="flex items-center gap-0.5 bg-slate-800/80 px-1 py-0.5 rounded">
               <span className="text-[9px] text-slate-400">Length:</span>
               <button
                 type="button"
-                onClick={() => onChangeLineHeight(Math.max(16, lineHeight - 10))}
+                onClick={() =>
+                  isHorizontal
+                    ? onChangeLineWidth(Math.max(50, lineWidth - 20))
+                    : onChangeLineHeight(Math.max(6, lineHeight - 10))
+                }
                 className="w-3.5 h-3.5 rounded bg-slate-700 hover:bg-slate-600 flex items-center justify-center text-[10px]"
                 title="Decrease length"
               >
                 <Minus className="w-2.5 h-2.5" />
               </button>
               <span className="text-[9.5px] font-mono text-orange-300 min-w-7 text-center">
-                {lineHeight}px
+                {isHorizontal ? lineWidth : lineHeight}px
               </span>
               <button
                 type="button"
-                onClick={() => onChangeLineHeight(Math.min(400, lineHeight + 10))}
+                onClick={() =>
+                  isHorizontal
+                    ? onChangeLineWidth(Math.min(794, lineWidth + 20))
+                    : onChangeLineHeight(Math.min(400, lineHeight + 10))
+                }
                 className="w-3.5 h-3.5 rounded bg-slate-700 hover:bg-slate-600 flex items-center justify-center text-[10px]"
                 title="Increase length"
               >

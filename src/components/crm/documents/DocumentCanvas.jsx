@@ -94,6 +94,22 @@ export default function DocumentCanvas({
         height: lh.footerServices?.height || 40,
         rotation: lh.footerServices?.rotation || 0,
       },
+      {
+        id: "letterhead-footer-divider",
+        dx: lh.footerDivider?.dx || 0,
+        dy: lh.footerDivider?.dy || 0,
+        width: lh.footerDivider?.width || 1,
+        height: lh.footerDivider?.height || 24,
+        rotation: lh.footerDivider?.rotation || 0,
+      },
+      {
+        id: "letterhead-footer-topline",
+        dx: lh.footerTopLine?.dx || 0,
+        dy: lh.footerTopLine?.dy || 0,
+        width: lh.footerTopLine?.width || 794,
+        height: lh.footerTopLine?.height || 2,
+        rotation: lh.footerTopLine?.rotation || 0,
+      },
     ];
     return [...sections, ...letterheadVirtualBlocks];
   }, [sections, brand.letterhead]);
@@ -108,6 +124,8 @@ export default function DocumentCanvas({
         "letterhead-watermark": "watermark",
         "letterhead-footer-company": "footerCompany",
         "letterhead-footer-services": "footerServices",
+        "letterhead-footer-divider": "footerDivider",
+        "letterhead-footer-topline": "footerTopLine",
       };
       const key = keyMap[id] || id.replace("letterhead-", "");
       updateBrand?.({

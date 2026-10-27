@@ -133,13 +133,13 @@ export default function DocumentPageSheet({
             font={font || brand.font || "Inter"}
           />
 
-          {/* Top Header Clearance (105px) to clear official header banner */}
-          <div className="h-[105px] w-full shrink-0 relative pointer-events-none z-10">
+          {/* Top Header Clearance (115px) to clear official header banner */}
+          <div className="h-[115px] w-full shrink-0 relative pointer-events-none z-10">
             {/* Visual Content Start Guideline sitting directly on clearance boundary (0 flow height) */}
             <div className="absolute -bottom-1 left-12 right-12 flex items-center gap-2 border-b border-dashed border-orange-400/60 print:hidden pdf-hide-on-export select-none pointer-events-none">
               <span className="text-[8.5px] font-black uppercase tracking-wider text-orange-600 bg-orange-50/95 dark:bg-orange-950/80 px-1.5 py-0.5 rounded border border-orange-200 dark:border-orange-900/60 flex items-center gap-1 shadow-2xs translate-y-1/2">
                 <span>▲ Content Start Area</span>
-                <span className="text-gray-400 font-normal">· Header Clearance 105px</span>
+                <span className="text-gray-400 font-normal">· Header Clearance 115px</span>
               </span>
               <div className="flex-1" />
             </div>
@@ -177,6 +177,7 @@ export default function DocumentPageSheet({
                   zoom={zoom}
                   pageCount={pageCount}
                   onShiftToPage={(targetPage) => onShiftBlockToPage?.(section.id, targetPage)}
+                  font={font || brand.font || "Inter"}
                 />
               ))}
             </div>
@@ -200,13 +201,13 @@ export default function DocumentPageSheet({
             )}
           </main>
 
-          {/* Bottom Footer Clearance (56px) with integrated top guideline (0 flow height) */}
-          <div className="h-[56px] w-full shrink-0 relative pointer-events-none z-10">
+          {/* Bottom Footer Clearance (70px) with integrated top guideline (0 flow height) */}
+          <div className="h-[70px] w-full shrink-0 relative pointer-events-none z-10">
             {/* Visual Content Safe Limit Guideline sitting directly on top of footer boundary */}
             <div className="absolute -top-1 left-12 right-12 flex items-center gap-2 border-t border-dashed border-orange-400/60 print:hidden pdf-hide-on-export select-none pointer-events-none">
               <span className="text-[8.5px] font-black uppercase tracking-wider text-orange-600 bg-orange-50/95 dark:bg-orange-950/80 px-1.5 py-0.5 rounded border border-orange-200 dark:border-orange-900/60 flex items-center gap-1 shadow-2xs -translate-y-1/2">
                 <span>▼ Content Safe Limit</span>
-                <span className="text-gray-400 font-normal">· Footer Clearance 56px</span>
+                <span className="text-gray-400 font-normal">· Footer Clearance 70px</span>
               </span>
               <div className="flex-1" />
             </div>

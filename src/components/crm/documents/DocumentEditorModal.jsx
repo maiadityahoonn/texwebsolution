@@ -98,10 +98,7 @@ export default function DocumentEditorModal({
         updateDraftDoc={editor.updateDraftDoc}
         onClose={onClose}
         onSave={editor.saveDocumentChanges}
-        onSaveLetterheadAsDefault={editor.saveLetterheadAsDefault}
-        onSaveTemplate={editor.saveTemplate}
         onDownload={handleDownloadPdf}
-        onPrint={handlePrint}
         isExportingPdf={isExportingPdf}
         onShare={editor.copyShareLink}
       />
