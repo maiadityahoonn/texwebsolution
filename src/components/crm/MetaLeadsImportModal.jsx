@@ -23,11 +23,12 @@ function InstagramIcon({ className = "w-4 h-4" }) {
 }
 
 export default function MetaLeadsImportModal({ isOpen, onClose, onImport, onImportBatch, isDark = false }) {
-  const [tab, setTab] = useState("paste"); // "paste" | "upload" | "webhook"
+  const [tab, setTab] = useState("paste"); // "paste" | "upload" | "webhook" | "config"
   const [rawText, setRawText] = useState("");
   const [parsedLeads, setParsedLeads] = useState([]);
   const [parseError, setParseError] = useState("");
   const [isImporting, setIsImporting] = useState(false);
+  const [verifyToken, setVerifyToken] = useState("texweb_meta_leads_secret");
 
   if (!isOpen) return null;
 
@@ -70,7 +71,6 @@ export default function MetaLeadsImportModal({ isOpen, onClose, onImport, onImpo
   const webhookUrl = typeof window !== "undefined"
     ? `${window.location.origin}/api/webhooks/meta-leads`
     : "https://texwebsolution.in/api/webhooks/meta-leads";
-  const [verifyToken, setVerifyToken] = useState("texweb_meta_leads_secret");
 
   return (
     <div
