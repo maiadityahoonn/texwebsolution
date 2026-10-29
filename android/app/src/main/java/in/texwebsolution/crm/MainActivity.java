@@ -24,7 +24,22 @@ public class MainActivity extends BridgeActivity {
             );
             getWindow().setStatusBarColor(android.graphics.Color.WHITE);
         }
+        optimizeWebView();
         requestAppPermissions();
+    }
+
+    private void optimizeWebView() {
+        try {
+            if (getBridge() != null && getBridge().getWebView() != null) {
+                android.webkit.WebView webView = getBridge().getWebView();
+                android.webkit.WebSettings settings = webView.getSettings();
+                settings.setDomStorageEnabled(true);
+                settings.setDatabaseEnabled(true);
+                settings.setCacheMode(android.webkit.WebSettings.LOAD_DEFAULT);
+                webView.setLayerType(android.view.View.LAYER_TYPE_HARDWARE, null);
+            }
+        } catch (Exception ignored) {
+        }
     }
 
     @Override

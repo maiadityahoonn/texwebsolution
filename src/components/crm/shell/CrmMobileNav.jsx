@@ -234,15 +234,11 @@ export default function CrmMobileNav({
                 const isActive = checkIsActive(item);
 
                 return (
-                  <button
+                  <Link
                     key={item.key}
-                    type="button"
-                    onClick={() => {
-                      setMobileMoreOpen(false);
-                      if (pathname !== item.href) {
-                        router.push(item.href);
-                      }
-                    }}
+                    href={item.href}
+                    prefetch={true}
+                    onClick={() => setMobileMoreOpen(false)}
                     className={`w-full flex items-center justify-between px-3.5 py-3 rounded-2xl transition-all cursor-pointer touch-manipulation select-none active:scale-[0.98] ${
                       isActive
                         ? "bg-red-50 text-red-600 dark:bg-red-500/15 dark:text-red-400 font-bold shadow-2xs"
@@ -273,7 +269,7 @@ export default function CrmMobileNav({
                           : "text-gray-400 dark:text-neutral-500"
                       }`}
                     />
-                  </button>
+                  </Link>
                 );
               })}
             </div>
@@ -297,13 +293,13 @@ export default function CrmMobileNav({
             const isActive = checkIsActive(item);
 
             return (
-              <button
+              <Link
                 key={item.key}
-                type="button"
-                onClick={() => {
-                  if (pathname !== item.href) {
-                    router.push(item.href);
-                  } else {
+                href={item.href}
+                prefetch={true}
+                onClick={(e) => {
+                  if (pathname === item.href) {
+                    e.preventDefault();
                     window.scrollTo({ top: 0, behavior: "smooth" });
                   }
                 }}
@@ -341,7 +337,7 @@ export default function CrmMobileNav({
                 >
                   {item.label}
                 </span>
-              </button>
+              </Link>
             );
           })}
 

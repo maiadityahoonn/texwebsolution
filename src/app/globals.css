@@ -1091,4 +1091,21 @@ body.modal-open #workspace-main {
   resize: none !important;
 }
 
+/* Mobile Tap Responsiveness & 0ms Tap Delay Optimization */
+html,
+body {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+button,
+a,
+input,
+select,
+textarea,
+[role="button"] {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
 

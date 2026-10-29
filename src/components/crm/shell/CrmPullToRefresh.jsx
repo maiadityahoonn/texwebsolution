@@ -17,6 +17,17 @@ export default function CrmPullToRefresh({
 
   const handleTouchStart = useCallback(
     (e) => {
+      // Don't intercept touches that start on clickable/interactive elements
+      const target = e.target;
+      if (
+        target?.closest?.(
+          "button, a, input, select, textarea, [role='button'], [data-no-pull='true']"
+        )
+      ) {
+        isEligibleRef.current = false;
+        return;
+      }
+
       // Only eligible if at the very top of the page on mobile
       const scrollTop = window.scrollY || document.documentElement.scrollTop || 0;
       if (scrollTop <= 2 && e.touches.length === 1 && !isRefreshing) {
@@ -43,9 +54,11 @@ export default function CrmPullToRefresh({
       const currentY = e.touches[0].clientY;
       const deltaY = currentY - startYRef.current;
 
-      if (deltaY > 0) {
+      // Require at least 12px pull slop so small tap tremors don't cause React re-render cycles
+      if (deltaY > 12) {
+        const pullDelta = deltaY - 12;
         // Apply diminishing resistance curve
-        const distance = Math.min(Math.pow(deltaY, 0.82) * 1.6, 95);
+        const distance = Math.min(Math.pow(pullDelta, 0.82) * 1.6, 95);
         setPullDistance(distance);
         setIsPulling(true);
       } else {

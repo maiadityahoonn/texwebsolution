@@ -53,7 +53,7 @@ export default function CrmActionButtons({
           <button
             type="button"
             onClick={onAddLead}
-            className="h-9 min-w-[36px] sm:min-w-[36px] md:min-w-0 px-2 sm:px-2.5 md:px-3.5 rounded-xl bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 text-white inline-flex items-center justify-center md:gap-1.5 text-xs font-bold transition-all shadow-2xs active:scale-90 active:opacity-85 touch-manipulation select-none cursor-pointer shrink-0 whitespace-nowrap"
+            className="h-9 min-w-[38px] sm:min-w-[38px] md:min-w-0 px-2.5 sm:px-2.5 md:px-3.5 rounded-xl bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 text-white inline-flex items-center justify-center md:gap-1.5 text-xs font-bold transition-all shadow-2xs active:scale-90 active:opacity-85 touch-manipulation select-none cursor-pointer shrink-0 whitespace-nowrap"
             title="Add Lead"
             aria-label="Add Lead"
           >
@@ -63,7 +63,7 @@ export default function CrmActionButtons({
           <button
             type="button"
             onClick={onAddDeal}
-            className="h-9 min-w-[36px] sm:min-w-[36px] md:min-w-0 px-2 sm:px-2.5 md:px-3.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white inline-flex items-center justify-center md:gap-1.5 text-xs font-bold transition-all shadow-2xs active:scale-90 active:opacity-85 touch-manipulation select-none cursor-pointer shrink-0 whitespace-nowrap"
+            className="h-9 min-w-[38px] sm:min-w-[38px] md:min-w-0 px-2.5 sm:px-2.5 md:px-3.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white inline-flex items-center justify-center md:gap-1.5 text-xs font-bold transition-all shadow-2xs active:scale-90 active:opacity-85 touch-manipulation select-none cursor-pointer shrink-0 whitespace-nowrap"
             title="Add Deal"
             aria-label="Add Deal"
           >
@@ -89,7 +89,7 @@ export default function CrmActionButtons({
           <button
             type="button"
             onClick={onAddDeal}
-            className="h-9 min-w-[36px] sm:min-w-[36px] md:min-w-0 px-2 sm:px-2.5 md:px-3.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white inline-flex items-center justify-center md:gap-1.5 text-xs font-bold transition-all shadow-2xs active:scale-90 active:opacity-85 touch-manipulation select-none cursor-pointer shrink-0 whitespace-nowrap"
+            className="h-9 min-w-[38px] sm:min-w-[38px] md:min-w-0 px-2.5 sm:px-2.5 md:px-3.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white inline-flex items-center justify-center md:gap-1.5 text-xs font-bold transition-all shadow-2xs active:scale-90 active:opacity-85 touch-manipulation select-none cursor-pointer shrink-0 whitespace-nowrap"
             title="Add Deal"
             aria-label="Add Deal"
           >
@@ -99,7 +99,7 @@ export default function CrmActionButtons({
           <button
             type="button"
             onClick={onAddLead}
-            className="h-9 min-w-[36px] sm:min-w-[36px] md:min-w-0 px-2 sm:px-2.5 md:px-3.5 rounded-xl border border-rose-200 dark:border-rose-900/60 bg-white dark:bg-slate-900 hover:bg-rose-50/70 dark:hover:bg-rose-950/40 text-rose-700 dark:text-rose-300 inline-flex items-center justify-center md:gap-1.5 text-xs font-bold transition-all shadow-2xs active:scale-90 active:opacity-85 touch-manipulation select-none cursor-pointer shrink-0 whitespace-nowrap"
+            className="h-9 min-w-[38px] sm:min-w-[38px] md:min-w-0 px-2.5 sm:px-2.5 md:px-3.5 rounded-xl border border-rose-200 dark:border-rose-900/60 bg-white dark:bg-slate-900 hover:bg-rose-50/70 dark:hover:bg-rose-950/40 text-rose-700 dark:text-rose-300 inline-flex items-center justify-center md:gap-1.5 text-xs font-bold transition-all shadow-2xs active:scale-90 active:opacity-85 touch-manipulation select-none cursor-pointer shrink-0 whitespace-nowrap"
             title="Add Lead"
             aria-label="Add Lead"
           >
@@ -114,7 +114,7 @@ export default function CrmActionButtons({
         <button
           type="button"
           onClick={onFollowUp}
-          className="h-9 min-w-[36px] sm:min-w-[36px] md:min-w-0 px-2 sm:px-2.5 md:px-3.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white inline-flex items-center justify-center md:gap-1.5 text-xs font-bold transition-all shadow-2xs active:scale-90 active:opacity-85 touch-manipulation select-none cursor-pointer shrink-0 whitespace-nowrap"
+          className="h-9 min-w-[38px] sm:min-w-[38px] md:min-w-0 px-2.5 sm:px-2.5 md:px-3.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white inline-flex items-center justify-center md:gap-1.5 text-xs font-bold transition-all shadow-2xs active:scale-90 active:opacity-85 touch-manipulation select-none cursor-pointer shrink-0 whitespace-nowrap"
           title="Schedule Follow-up"
           aria-label="Schedule Follow-up"
         >
@@ -129,7 +129,7 @@ export default function CrmActionButtons({
           <button
             type="button"
             onClick={onMeeting}
-            className="h-9 min-w-[36px] sm:min-w-[36px] md:min-w-0 px-2 sm:px-2.5 md:px-3.5 rounded-xl bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-700 hover:to-blue-700 text-white inline-flex items-center justify-center md:gap-1.5 text-xs font-bold transition-all shadow-2xs active:scale-90 active:opacity-85 touch-manipulation select-none cursor-pointer shrink-0 whitespace-nowrap"
+            className="h-9 min-w-[38px] sm:min-w-[38px] md:min-w-0 px-2.5 sm:px-2.5 md:px-3.5 rounded-xl bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-700 hover:to-blue-700 text-white inline-flex items-center justify-center md:gap-1.5 text-xs font-bold transition-all shadow-2xs active:scale-90 active:opacity-85 touch-manipulation select-none cursor-pointer shrink-0 whitespace-nowrap"
             title="Schedule Meeting"
             aria-label="Schedule Meeting"
           >
@@ -154,7 +154,7 @@ export default function CrmActionButtons({
         <button
           type="button"
           onClick={onCommercial}
-          className={`h-9 min-w-[36px] sm:min-w-[36px] md:min-w-0 px-2 sm:px-2.5 md:px-3.5 rounded-xl text-white inline-flex items-center justify-center md:gap-1.5 text-xs font-bold transition-all shadow-2xs active:scale-90 active:opacity-85 touch-manipulation select-none cursor-pointer shrink-0 whitespace-nowrap ${
+          className={`h-9 min-w-[38px] sm:min-w-[38px] md:min-w-0 px-2.5 sm:px-2.5 md:px-3.5 rounded-xl text-white inline-flex items-center justify-center md:gap-1.5 text-xs font-bold transition-all shadow-2xs active:scale-90 active:opacity-85 touch-manipulation select-none cursor-pointer shrink-0 whitespace-nowrap ${
             commercialScope === "agreement"
               ? "bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700"
               : "bg-gradient-to-r from-orange-600 to-amber-600 hover:from-orange-700 hover:to-amber-700"
@@ -172,7 +172,7 @@ export default function CrmActionButtons({
         <button
           type="button"
           onClick={onInvoice}
-          className="h-9 min-w-[36px] sm:min-w-[36px] md:min-w-0 px-2 sm:px-2.5 md:px-3.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white inline-flex items-center justify-center md:gap-1.5 text-xs font-bold transition-all shadow-2xs active:scale-90 active:opacity-85 touch-manipulation select-none cursor-pointer shrink-0 whitespace-nowrap"
+          className="h-9 min-w-[38px] sm:min-w-[38px] md:min-w-0 px-2.5 sm:px-2.5 md:px-3.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white inline-flex items-center justify-center md:gap-1.5 text-xs font-bold transition-all shadow-2xs active:scale-90 active:opacity-85 touch-manipulation select-none cursor-pointer shrink-0 whitespace-nowrap"
           title="Create Invoice"
           aria-label="Create Invoice"
         >
@@ -186,7 +186,7 @@ export default function CrmActionButtons({
         <button
           type="button"
           onClick={onAddDeal}
-          className="h-9 min-w-[36px] sm:min-w-[36px] md:min-w-0 px-2 sm:px-2.5 md:px-3.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white inline-flex items-center justify-center md:gap-1.5 text-xs font-bold transition-all shadow-2xs active:scale-90 active:opacity-85 touch-manipulation select-none cursor-pointer shrink-0 whitespace-nowrap"
+          className="h-9 min-w-[38px] sm:min-w-[38px] md:min-w-0 px-2.5 sm:px-2.5 md:px-3.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white inline-flex items-center justify-center md:gap-1.5 text-xs font-bold transition-all shadow-2xs active:scale-90 active:opacity-85 touch-manipulation select-none cursor-pointer shrink-0 whitespace-nowrap"
           title="Add Deal"
           aria-label="Add Deal"
         >
@@ -201,7 +201,7 @@ export default function CrmActionButtons({
           <button
             type="button"
             onClick={onAddLead}
-            className="h-9 min-w-[36px] sm:min-w-[36px] md:min-w-0 px-2 sm:px-2.5 md:px-3.5 rounded-xl bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 text-white inline-flex items-center justify-center md:gap-1.5 text-xs font-bold transition-all shadow-2xs active:scale-90 active:opacity-85 touch-manipulation select-none cursor-pointer shrink-0 whitespace-nowrap"
+            className="h-9 min-w-[38px] sm:min-w-[38px] md:min-w-0 px-2.5 sm:px-2.5 md:px-3.5 rounded-xl bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 text-white inline-flex items-center justify-center md:gap-1.5 text-xs font-bold transition-all shadow-2xs active:scale-90 active:opacity-85 touch-manipulation select-none cursor-pointer shrink-0 whitespace-nowrap"
             title="Add Lead"
             aria-label="Add Lead"
           >
@@ -211,7 +211,7 @@ export default function CrmActionButtons({
           <button
             type="button"
             onClick={onAddDeal}
-            className="h-9 min-w-[36px] sm:min-w-[36px] md:min-w-0 px-2 sm:px-2.5 md:px-3.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white inline-flex items-center justify-center md:gap-1.5 text-xs font-bold transition-all shadow-2xs active:scale-90 active:opacity-85 touch-manipulation select-none cursor-pointer shrink-0 whitespace-nowrap"
+            className="h-9 min-w-[38px] sm:min-w-[38px] md:min-w-0 px-2.5 sm:px-2.5 md:px-3.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white inline-flex items-center justify-center md:gap-1.5 text-xs font-bold transition-all shadow-2xs active:scale-90 active:opacity-85 touch-manipulation select-none cursor-pointer shrink-0 whitespace-nowrap"
             title="Add Deal"
             aria-label="Add Deal"
           >
