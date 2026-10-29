@@ -221,6 +221,16 @@ export async function updateDeal(dealId, updates = {}) {
 
 export async function deleteDeal(dealId) {
   try {
+    // Cascade delete any documents, meetings, followups linked to this deal
+    await Promise.allSettled([
+      supabase.from('proposals').delete().eq('deal_id', dealId),
+      supabase.from('quotations').delete().eq('deal_id', dealId),
+      supabase.from('agreements').delete().eq('deal_id', dealId),
+      supabase.from('invoices').delete().eq('deal_id', dealId),
+      supabase.from('sales_meetings').delete().eq('deal_id', dealId),
+      supabase.from('sales_followups').delete().eq('deal_id', dealId),
+    ]);
+
     const { error } = await supabase
       .from('deals')
       .delete()

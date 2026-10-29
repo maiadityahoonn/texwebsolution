@@ -287,7 +287,8 @@ export function useCrmLayoutActions({
       setLeads((prev) => prev.filter((lead) => lead.id !== id));
       setLeadPagination?.((prev) => ({ ...prev, count: Math.max((prev?.count || 0) - 1, 0) }));
 
-      // 2. Optimistic Deals table & pagination update (Remove linked deal immediately!)
+      // 2. Optimistic Deals, Meetings, Follow-ups & Documents cleanup (Immediate UI removal)
+      const dealIdsSet = new Set(linkedDeals.map((d) => d.id));
       if (linkedDeals.length > 0) {
         setDeals((prev) => prev.filter((deal) => deal.lead_id !== id));
         setDealPagination?.((prev) => ({ ...prev, count: Math.max((prev?.count || 0) - linkedDeals.length, 0) }));
@@ -298,6 +299,16 @@ export function useCrmLayoutActions({
           activeValue: Math.max((prev?.activeValue || 0) - deletedActiveDealVal, 0),
           totalValue: Math.max((prev?.totalValue || 0) - deletedActiveDealVal, 0),
         }));
+      }
+
+      setSalesMeetings?.((prev) => prev.filter((m) => m.lead_id !== id && !dealIdsSet.has(m.deal_id)));
+      setSalesFollowUps?.((prev) => prev.filter((f) => f.lead_id !== id && !dealIdsSet.has(f.deal_id)));
+      setEngagementFollowUps?.((prev) => prev.filter((f) => f.lead_id !== id && !dealIdsSet.has(f.deal_id)));
+      if (dealIdsSet.size > 0) {
+        setProposals?.((prev) => prev.filter((p) => !dealIdsSet.has(p.deal_id)));
+        setQuotations?.((prev) => prev.filter((q) => !dealIdsSet.has(q.deal_id)));
+        setAgreements?.((prev) => prev.filter((a) => !dealIdsSet.has(a.deal_id)));
+        setInvoicesList?.((prev) => prev.filter((inv) => !dealIdsSet.has(inv.deal_id)));
       }
 
       // 3. Optimistic Leads Summary Cards update (Live update cards without refresh!)
@@ -314,7 +325,10 @@ export function useCrmLayoutActions({
       if (ok) {
         refreshLeadSummary?.();
         refreshDealSummary?.();
-        setToast("Lead aur linked pipeline deal deleted.");
+        refreshMeetingSummary?.();
+        refreshFollowUpSummary?.();
+        refreshCommercialSummary?.();
+        setToast("Lead aur sabhi linked records (deal, meetings, documents) delete ho gaye.");
       } else {
         if (targetLead) {
           setLeads((prev) => [targetLead, ...prev]);

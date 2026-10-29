@@ -501,12 +501,36 @@ export async function updateCloudLead(leadId, updates) {
 
 export async function deleteCloudLead(leadId) {
   try {
-    // Always cascade delete any linked pipeline deals so no orphaned cards remain
-    await supabase
+    // 1. Fetch linked deals to cascade delete linked documents
+    const { data: linkedDeals } = await supabase
       .from('deals')
-      .delete()
+      .select('id')
       .eq('lead_id', leadId);
 
+    const dealIds = (linkedDeals || []).map((d) => d.id).filter(Boolean);
+
+    // 2. Cascade delete documents linked to deals
+    if (dealIds.length > 0) {
+      await Promise.allSettled([
+        supabase.from('proposals').delete().in('deal_id', dealIds),
+        supabase.from('quotations').delete().in('deal_id', dealIds),
+        supabase.from('agreements').delete().in('deal_id', dealIds),
+        supabase.from('invoices').delete().in('deal_id', dealIds),
+        supabase.from('sales_meetings').delete().in('deal_id', dealIds),
+        supabase.from('sales_followups').delete().in('deal_id', dealIds),
+      ]);
+    }
+
+    // 3. Cascade delete meetings and followups linked directly to lead
+    await Promise.allSettled([
+      supabase.from('sales_meetings').delete().eq('lead_id', leadId),
+      supabase.from('sales_followups').delete().eq('lead_id', leadId),
+    ]);
+
+    // 4. Cascade delete linked pipeline deals
+    await supabase.from('deals').delete().eq('lead_id', leadId);
+
+    // 5. Delete the lead
     const { error } = await supabase
       .from('leads')
       .delete()
@@ -515,7 +539,7 @@ export async function deleteCloudLead(leadId) {
     if (error) throw error;
     return true;
   } catch (err) {
-    console.error('Error deleting lead:', err.message);
+    console.error('Error deleting lead and related records:', err.message);
     return false;
   }
 }
