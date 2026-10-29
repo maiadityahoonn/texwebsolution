@@ -2,7 +2,7 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import {
   Activity,
   Building2,
@@ -164,6 +164,7 @@ export default function CrmMobileNav({
   isDark = false,
   unreadCount = 0,
 }) {
+  const router = useRouter();
   const pathname = usePathname() || "";
   const [mobileMoreOpen, setMobileMoreOpen] = useState(false);
   const isChatOpen = activeSection === "chat" && chatMobilePane === "chat";
@@ -185,7 +186,7 @@ export default function CrmMobileNav({
     <>
       {/* "More" Slide-up Modal Drawer */}
       {mobileMoreOpen && (
-        <div className="fixed inset-0 z-50 md:hidden flex flex-col justify-end">
+        <div className="fixed inset-0 z-[90] md:hidden flex flex-col justify-end">
           {/* Backdrop Overlay */}
           <div
             className="fixed inset-0 bg-black/60 backdrop-blur-xs transition-opacity animate-in fade-in duration-200"
@@ -233,14 +234,19 @@ export default function CrmMobileNav({
                 const isActive = checkIsActive(item);
 
                 return (
-                  <Link
+                  <button
                     key={item.key}
-                    href={item.href}
-                    onClick={() => setMobileMoreOpen(false)}
-                    className={`w-full flex items-center justify-between px-3.5 py-3 rounded-2xl transition-all cursor-pointer ${
+                    type="button"
+                    onClick={() => {
+                      setMobileMoreOpen(false);
+                      if (pathname !== item.href) {
+                        router.push(item.href);
+                      }
+                    }}
+                    className={`w-full flex items-center justify-between px-3.5 py-3 rounded-2xl transition-all cursor-pointer touch-manipulation select-none active:scale-[0.98] ${
                       isActive
                         ? "bg-red-50 text-red-600 dark:bg-red-500/15 dark:text-red-400 font-bold shadow-2xs"
-                        : "text-gray-800 dark:text-neutral-200 hover:bg-gray-50 dark:hover:bg-neutral-800/60 active:scale-[0.99]"
+                        : "text-gray-800 dark:text-neutral-200 hover:bg-gray-50 dark:hover:bg-neutral-800/60"
                     }`}
                   >
                     <div className="flex items-center gap-3 min-w-0">
@@ -267,7 +273,7 @@ export default function CrmMobileNav({
                           : "text-gray-400 dark:text-neutral-500"
                       }`}
                     />
-                  </Link>
+                  </button>
                 );
               })}
             </div>
@@ -279,7 +285,7 @@ export default function CrmMobileNav({
       <nav
         className={`${
           isChatOpen ? "!hidden" : "block"
-        } fixed left-0 right-0 bottom-0 z-40 md:hidden border-t px-1 pt-1 pb-[calc(env(safe-area-inset-bottom)+0.35rem)] transition-colors duration-200 select-none touch-manipulation ${
+        } fixed left-0 right-0 bottom-0 z-[80] md:hidden border-t px-1 pt-1 pb-[calc(env(safe-area-inset-bottom)+0.35rem)] transition-colors duration-200 select-none touch-manipulation ${
           isDark
             ? "bg-[#0b0b0c]/95 backdrop-blur-md border-neutral-800 text-neutral-400"
             : "bg-white/95 backdrop-blur-md border-gray-200/90 text-gray-600 shadow-lg shadow-black/5"
@@ -291,10 +297,17 @@ export default function CrmMobileNav({
             const isActive = checkIsActive(item);
 
             return (
-              <Link
+              <button
                 key={item.key}
-                href={item.href}
-                className="relative min-w-0 h-13 flex flex-col items-center justify-center gap-0.5 transition cursor-pointer group touch-manipulation select-none active:scale-95"
+                type="button"
+                onClick={() => {
+                  if (pathname !== item.href) {
+                    router.push(item.href);
+                  } else {
+                    window.scrollTo({ top: 0, behavior: "smooth" });
+                  }
+                }}
+                className="relative min-w-0 h-13 w-full flex flex-col items-center justify-center gap-0.5 transition cursor-pointer group touch-manipulation select-none active:scale-95"
                 aria-label={item.label}
                 title={item.label}
               >
@@ -328,7 +341,7 @@ export default function CrmMobileNav({
                 >
                   {item.label}
                 </span>
-              </Link>
+              </button>
             );
           })}
 
@@ -336,7 +349,7 @@ export default function CrmMobileNav({
           <button
             type="button"
             onClick={() => setMobileMoreOpen((prev) => !prev)}
-            className="relative min-w-0 h-13 flex flex-col items-center justify-center gap-0.5 transition cursor-pointer group touch-manipulation select-none active:scale-95"
+            className="relative min-w-0 h-13 w-full flex flex-col items-center justify-center gap-0.5 transition cursor-pointer group touch-manipulation select-none active:scale-95"
             aria-label="More Modules"
             title="More Modules"
           >

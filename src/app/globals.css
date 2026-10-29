@@ -819,67 +819,7 @@ html body div.texapp-message-scroll,
   -webkit-overflow-scrolling: touch !important;
 }
 
-/* Desktop-only styled chat message scrollbar */
-@media (min-width: 1025px) and (hover: hover) and (pointer: fine) {
-  html:not(.is-app-mode) body:not(.is-app-mode) .texapp-message-scroll {
-    scrollbar-width: thin !important;
-    scrollbar-color: rgba(148, 163, 184, 0.55) transparent !important;
-    -ms-overflow-style: auto !important;
-  }
 
-  html:not(.is-app-mode) body:not(.is-app-mode) .texapp-message-scroll::-webkit-scrollbar {
-    display: block !important;
-    width: 4px !important;
-    background: transparent !important;
-  }
-
-  html:not(.is-app-mode) body:not(.is-app-mode) .texapp-message-scroll::-webkit-scrollbar-track {
-    display: block !important;
-    background: transparent !important;
-    border-radius: 9999px !important;
-    margin-top: 12px !important;
-    margin-bottom: 12px !important;
-  }
-
-  html:not(.is-app-mode) body:not(.is-app-mode) .texapp-message-scroll::-webkit-scrollbar-thumb {
-    display: block !important;
-    background: rgba(148, 163, 184, 0.6) !important;
-    border-radius: 9999px !important;
-    border-top: 8px solid transparent !important;
-    border-bottom: 8px solid transparent !important;
-    background-clip: padding-box !important;
-  }
-
-  html:not(.is-app-mode) body:not(.is-app-mode) .texapp-message-scroll::-webkit-scrollbar-thumb:hover {
-    background: rgba(100, 116, 139, 0.9) !important;
-    background-clip: padding-box !important;
-  }
-
-  html.dark:not(.is-app-mode) body:not(.is-app-mode) .texapp-message-scroll,
-  .dark:not(.is-app-mode) .texapp-message-scroll {
-    scrollbar-color: rgba(255, 255, 255, 0.35) transparent !important;
-  }
-
-  html.dark:not(.is-app-mode) body:not(.is-app-mode) .texapp-message-scroll::-webkit-scrollbar-track,
-  .dark:not(.is-app-mode) .texapp-message-scroll::-webkit-scrollbar-track {
-    background: transparent !important;
-  }
-
-  html.dark:not(.is-app-mode) body:not(.is-app-mode) .texapp-message-scroll::-webkit-scrollbar-thumb,
-  .dark:not(.is-app-mode) .texapp-message-scroll::-webkit-scrollbar-thumb {
-    background: rgba(255, 255, 255, 0.4) !important;
-    border-radius: 9999px !important;
-    border-top: 8px solid transparent !important;
-    border-bottom: 8px solid transparent !important;
-    background-clip: padding-box !important;
-  }
-
-  html.dark:not(.is-app-mode) body:not(.is-app-mode) .texapp-message-scroll::-webkit-scrollbar-thumb:hover,
-  .dark:not(.is-app-mode) .texapp-message-scroll::-webkit-scrollbar-thumb:hover {
-    background: rgba(255, 255, 255, 0.7) !important;
-    background-clip: padding-box !important;
-  }
-}
 
 
 /* TexApp Apple Emoji Support */
@@ -936,134 +876,73 @@ nav,
 }
 
 /* ==========================================================================
-   MOBILE APP & MOBILE SCREENS: COMPLETE SCROLLBAR SUPPRESSION
-   Zero visible scrollbars in both Dark Mode and Light Theme across all components,
-   tables, modals, drawers, and chat panes, while preserving full touch scrolling.
+   GLOBAL SCROLLBAR SUPPRESSION (DESKTOP, MOBILE, APK, WEBVIEW, PWA)
+   Zero visible scrollbars across all components, tables, modals, drawers,
+   chat panes, and pages in both Dark Mode and Light Theme, while preserving
+   100% full touch and mouse scrolling functionality.
    ========================================================================== */
-
-/* 1. Global Touch Screens & Mobile Viewports */
-@media (max-width: 1024px), (pointer: coarse), (hover: none) {
-  html,
-  body,
-  *,
-  *::before,
-  *::after {
-    scrollbar-width: none !important;
-    -ms-overflow-style: none !important;
-  }
-
-  ::-webkit-scrollbar,
-  *::-webkit-scrollbar,
-  html::-webkit-scrollbar,
-  body::-webkit-scrollbar,
-  div::-webkit-scrollbar,
-  main::-webkit-scrollbar,
-  section::-webkit-scrollbar,
-  article::-webkit-scrollbar,
-  aside::-webkit-scrollbar,
-  nav::-webkit-scrollbar,
-  ul::-webkit-scrollbar,
-  ol::-webkit-scrollbar,
-  table::-webkit-scrollbar,
-  tbody::-webkit-scrollbar,
-  .table-scroll::-webkit-scrollbar,
-  .texapp-message-scroll::-webkit-scrollbar,
-  .custom-scrollbar::-webkit-scrollbar,
-  .crm-modal-scroll::-webkit-scrollbar,
-  [class*="overflow"]::-webkit-scrollbar,
-  [class*="scroll"]::-webkit-scrollbar {
-    display: none !important;
-    width: 0 !important;
-    height: 0 !important;
-    max-width: 0 !important;
-    max-height: 0 !important;
-    background: transparent !important;
-    opacity: 0 !important;
-    visibility: hidden !important;
-  }
-
-  ::-webkit-scrollbar-thumb,
-  *::-webkit-scrollbar-thumb,
-  .table-scroll::-webkit-scrollbar-thumb,
-  .texapp-message-scroll::-webkit-scrollbar-thumb {
-    display: none !important;
-    background: transparent !important;
-    opacity: 0 !important;
-  }
-
-  ::-webkit-scrollbar-track,
-  *::-webkit-scrollbar-track,
-  .table-scroll::-webkit-scrollbar-track,
-  .texapp-message-scroll::-webkit-scrollbar-track {
-    display: none !important;
-    background: transparent !important;
-    opacity: 0 !important;
-  }
-
-  ::-webkit-scrollbar-corner,
-  ::-webkit-scrollbar-button {
-    display: none !important;
-    background: transparent !important;
-  }
-}
-
-/* 2. Standalone Mobile App / APK / Capacitor / PWA Mode (Dark & Light) */
-.is-app-mode,
-.is-app-mode *,
-.is-app-mode *::before,
-.is-app-mode *::after,
-body.is-app-mode,
-body.is-app-mode *,
-html.dark.is-app-mode *,
-html.dark .is-app-mode *,
-.dark.is-app-mode *,
-html:not(.dark).is-app-mode *,
-html:not(.dark) .is-app-mode * {
+html,
+body,
+*,
+*::before,
+*::after {
   scrollbar-width: none !important;
   -ms-overflow-style: none !important;
 }
 
-.is-app-mode ::-webkit-scrollbar,
-.is-app-mode *::-webkit-scrollbar,
-body.is-app-mode ::-webkit-scrollbar,
-body.is-app-mode *::-webkit-scrollbar,
-html.dark.is-app-mode *::-webkit-scrollbar,
-.dark .is-app-mode *::-webkit-scrollbar,
-html:not(.dark).is-app-mode *::-webkit-scrollbar {
+::-webkit-scrollbar,
+*::-webkit-scrollbar,
+html::-webkit-scrollbar,
+body::-webkit-scrollbar,
+div::-webkit-scrollbar,
+main::-webkit-scrollbar,
+section::-webkit-scrollbar,
+article::-webkit-scrollbar,
+aside::-webkit-scrollbar,
+nav::-webkit-scrollbar,
+ul::-webkit-scrollbar,
+ol::-webkit-scrollbar,
+table::-webkit-scrollbar,
+tbody::-webkit-scrollbar,
+.table-scroll::-webkit-scrollbar,
+.texapp-message-scroll::-webkit-scrollbar,
+.custom-scrollbar::-webkit-scrollbar,
+.crm-modal-scroll::-webkit-scrollbar,
+.no-scrollbar::-webkit-scrollbar,
+.scrollbar-none::-webkit-scrollbar,
+[class*="overflow"]::-webkit-scrollbar,
+[class*="scroll"]::-webkit-scrollbar {
   display: none !important;
   width: 0 !important;
   height: 0 !important;
+  max-width: 0 !important;
+  max-height: 0 !important;
   background: transparent !important;
+  -webkit-appearance: none !important;
   opacity: 0 !important;
   visibility: hidden !important;
 }
 
-.is-app-mode ::-webkit-scrollbar-thumb,
-.is-app-mode *::-webkit-scrollbar-thumb,
-body.is-app-mode ::-webkit-scrollbar-thumb,
-body.is-app-mode *::-webkit-scrollbar-thumb,
-html.dark.is-app-mode *::-webkit-scrollbar-thumb,
-.dark .is-app-mode *::-webkit-scrollbar-thumb,
-html:not(.dark).is-app-mode *::-webkit-scrollbar-thumb {
+::-webkit-scrollbar-thumb,
+*::-webkit-scrollbar-thumb,
+.table-scroll::-webkit-scrollbar-thumb,
+.texapp-message-scroll::-webkit-scrollbar-thumb {
   display: none !important;
   background: transparent !important;
   opacity: 0 !important;
 }
 
-.is-app-mode ::-webkit-scrollbar-track,
-.is-app-mode *::-webkit-scrollbar-track,
-body.is-app-mode ::-webkit-scrollbar-track,
-body.is-app-mode *::-webkit-scrollbar-track,
-html.dark.is-app-mode *::-webkit-scrollbar-track,
-.dark .is-app-mode *::-webkit-scrollbar-track,
-html:not(.dark).is-app-mode *::-webkit-scrollbar-track {
+::-webkit-scrollbar-track,
+*::-webkit-scrollbar-track,
+.table-scroll::-webkit-scrollbar-track,
+.texapp-message-scroll::-webkit-scrollbar-track {
   display: none !important;
   background: transparent !important;
   opacity: 0 !important;
 }
 
-.is-app-mode ::-webkit-scrollbar-corner,
-.is-app-mode ::-webkit-scrollbar-button {
+::-webkit-scrollbar-corner,
+::-webkit-scrollbar-button {
   display: none !important;
   background: transparent !important;
 }
