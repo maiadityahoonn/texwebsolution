@@ -427,14 +427,8 @@ export default function NotificationCenterModal({
               </div>
             </div>
 
-            {/* Notification Card List - Perfectly Scrollable with visible clean scrollbar */}
-            <div
-              className="flex-1 min-h-0 overflow-y-auto p-3 min-[360px]:p-4 sm:p-5 space-y-2.5 sm:space-y-3"
-              style={{
-                scrollbarWidth: "thin",
-                scrollbarColor: "rgba(249, 115, 22, 0.45) transparent",
-              }}
-            >
+            {/* Notification Card List - Perfectly Scrollable without visible scrollbar */}
+            <div className="flex-1 min-h-0 overflow-y-auto p-3 min-[360px]:p-4 sm:p-5 space-y-2.5 sm:space-y-3 no-scrollbar">
               {filteredNotifications.length === 0 ? (
                 <div className="py-16 text-center text-xs text-gray-400 dark:text-neutral-500 flex flex-col items-center justify-center gap-2">
                   <div className="w-12 h-12 rounded-2xl bg-gray-100 dark:bg-[#211d14] flex items-center justify-center text-gray-400">

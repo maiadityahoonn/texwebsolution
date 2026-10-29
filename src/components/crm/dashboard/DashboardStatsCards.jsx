@@ -123,7 +123,7 @@ export default function DashboardStatsCards({
                 card.action();
               }
             }}
-            className={`group p-2.5 min-[360px]:p-3.5 sm:p-4 rounded-xl sm:rounded-2xl bg-white dark:bg-[#18150f] border border-gray-100 dark:border-[#3a3020] shadow-2xs hover:shadow-md transition-all duration-200 flex flex-col justify-between cursor-pointer ${card.accentBorder}`}
+            className={`group p-2.5 min-[360px]:p-3.5 sm:p-4 rounded-xl sm:rounded-2xl bg-white dark:bg-[#18150f] border border-gray-100 dark:border-[#3a3020] shadow-2xs hover:shadow-md transition-all duration-200 flex flex-col justify-between cursor-pointer touch-manipulation select-none active:scale-[0.98] ${card.accentBorder}`}
           >
             <div>
               <div className="flex items-center justify-between gap-1 sm:gap-1.5 mb-1.5 sm:mb-2">

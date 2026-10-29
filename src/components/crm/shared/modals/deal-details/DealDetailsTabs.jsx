@@ -25,7 +25,7 @@ export default function DealDetailsTabs({ tabs = [], activeTab, onChange }) {
       </button>
       <div
         ref={scrollerRef}
-        className="flex min-w-0 max-w-full touch-pan-x snap-x items-center gap-1 min-[360px]:gap-1.5 overflow-x-scroll overflow-y-hidden scroll-smooth overscroll-x-contain px-1.5 min-[360px]:px-4 py-1.5 min-[360px]:py-2 pb-2.5 [scrollbar-width:thin] [scrollbar-color:#fb923c_transparent] dark:[scrollbar-color:#7c2d12_transparent] sm:px-9"
+        className="flex min-w-0 max-w-full touch-pan-x snap-x items-center gap-1 min-[360px]:gap-1.5 overflow-x-scroll overflow-y-hidden scroll-smooth overscroll-x-contain px-1.5 min-[360px]:px-4 py-1.5 min-[360px]:py-2 pb-2.5 no-scrollbar sm:px-9"
         onWheel={(event) => {
           if (Math.abs(event.deltaY) > Math.abs(event.deltaX)) {
             event.currentTarget.scrollLeft += event.deltaY;

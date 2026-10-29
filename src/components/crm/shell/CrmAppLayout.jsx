@@ -22,6 +22,7 @@ import { useCrmNotifications } from "@/components/crm/hooks/useCrmNotifications"
 import NotificationCenterModal from "@/components/crm/notifications/NotificationCenterModal";
 import MandatoryNotificationModal from "@/components/crm/shared/modals/MandatoryNotificationModal";
 import { useCrmData } from "@/components/crm/hooks/useCrmData";
+import { isAppMode } from "@/lib/isAppMode";
 import { useCrmRelationshipLeads } from "@/components/crm/hooks/useCrmRelationshipLeads";
 import { CrmShellContext } from "./CrmShellContext";
 import {
@@ -121,6 +122,10 @@ export default function CrmAppLayout({ children }) {
   useEffect(() => {
     document.documentElement.classList.toggle("dark", isDark);
     document.documentElement.style.colorScheme = isDark ? "dark" : "light";
+    if (typeof window !== "undefined" && isAppMode()) {
+      document.documentElement.classList.add("is-app-mode");
+      document.body.classList.add("is-app-mode");
+    }
   }, [isDark]);
 
   useEffect(() => {

@@ -422,17 +422,25 @@ export default function CrmWorkspaceView({
         </div>
       )}
 
-      {/* Metric summary status cards */}
-      <CrmStatusCards
-        pageStatusCards={pageStatusCards}
-        isLoading={isReportsLoading || isLeadsLoading || isPipelineLoading || isFollowUpsLoading || isMeetingsLoading || isCommercialsLoading}
-        viewMode={viewMode}
-        statusFilter={statusFilter}
-        setStatusFilter={setStatusFilter}
-        setLeadPage={setLeadPage}
-        setFollowUpPage={setFollowUpPage}
-        setMeetingPage={setMeetingPage}
-      />
+      {/* Metric summary status cards (only for transactional list views) */}
+      {["leads", "pipeline", "followups", "sales_meetings", "commercials"].includes(viewMode) && (
+        <CrmStatusCards
+          pageStatusCards={pageStatusCards}
+          isLoading={
+            (viewMode === "leads" && isLeadsLoading) ||
+            (viewMode === "pipeline" && isPipelineLoading) ||
+            (viewMode === "followups" && isFollowUpsLoading) ||
+            (viewMode === "sales_meetings" && isMeetingsLoading) ||
+            (viewMode === "commercials" && isCommercialsLoading)
+          }
+          viewMode={viewMode}
+          statusFilter={statusFilter}
+          setStatusFilter={setStatusFilter}
+          setLeadPage={setLeadPage}
+          setFollowUpPage={setFollowUpPage}
+          setMeetingPage={setMeetingPage}
+        />
+      )}
 
       {/* Search and Date filter bar */}
       <CrmDateFilterBar

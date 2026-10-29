@@ -99,7 +99,7 @@ export default function LeadTableRow({
           <button
             type="button"
             onClick={() => setSelectedLead(lead)}
-            className="font-semibold text-gray-900 dark:text-white hover:text-orange-600 dark:hover:text-orange-400 transition text-left cursor-pointer"
+            className="font-semibold text-gray-900 dark:text-white hover:text-orange-600 dark:hover:text-orange-400 transition text-left cursor-pointer touch-manipulation select-none active:opacity-75"
             title="Click to view Lead details & timeline"
           >
             {lead.name}

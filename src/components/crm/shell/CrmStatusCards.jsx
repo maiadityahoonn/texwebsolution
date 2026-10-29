@@ -25,6 +25,8 @@ function isCardFilterActive({ viewMode, statusFilter, filterKey }) {
   );
 }
 
+const STATUS_CARD_VIEWS = ["leads", "pipeline", "followups", "sales_meetings", "commercials"];
+
 export default function CrmStatusCards({
   pageStatusCards = [],
   isLoading = false,
@@ -35,11 +37,15 @@ export default function CrmStatusCards({
   setFollowUpPage = () => {},
   setMeetingPage = () => {},
 }) {
-  if (isLoading && (pageStatusCards.length === 0 || pageStatusCards.every((c) => !c.value || c.value === 0))) {
-    return <StatusCardsSkeleton cards={pageStatusCards.length || 4} />;
+  // Never render status cards (or their skeletons) for views that do not support status cards
+  if (!STATUS_CARD_VIEWS.includes(viewMode) || !Array.isArray(pageStatusCards) || pageStatusCards.length === 0) {
+    return null;
   }
 
-  if (pageStatusCards.length === 0) return null;
+  // Only render skeleton if this specific view's status cards are loading and have no values yet
+  if (isLoading && pageStatusCards.every((c) => !c.value || c.value === 0)) {
+    return <StatusCardsSkeleton cards={pageStatusCards.length || 4} />;
+  }
 
   return (
     <div
@@ -69,11 +75,11 @@ export default function CrmStatusCards({
                 setMeetingPage(1);
               }
             }}
-            className={`p-2.5 min-[360px]:p-3.5 sm:p-4 rounded-xl sm:rounded-2xl bg-white dark:bg-[#18150f] border shadow-2xs min-w-0 transition-all ${
+            className={`p-2.5 min-[360px]:p-3.5 sm:p-4 rounded-xl sm:rounded-2xl bg-white dark:bg-[#18150f] border shadow-2xs min-w-0 transition-all select-none ${
               isFilterActive
                 ? "border-orange-500 ring-2 ring-orange-500/20 shadow-md bg-orange-50/20 dark:bg-orange-950/20"
                 : "border-gray-100 dark:border-[#3a3020]"
-            } ${isClickable ? "cursor-pointer hover:border-orange-300 dark:hover:border-orange-900/40" : ""}`}
+            } ${isClickable ? "cursor-pointer touch-manipulation active:scale-[0.98] hover:border-orange-300 dark:hover:border-orange-900/40" : ""}`}
           >
             <div className="flex items-center justify-between gap-1.5 sm:gap-2">
               <span className="text-gray-500 dark:text-neutral-400 text-[11px] sm:text-xs font-medium truncate">{card.label}</span>

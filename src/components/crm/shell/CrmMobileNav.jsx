@@ -279,7 +279,7 @@ export default function CrmMobileNav({
       <nav
         className={`${
           isChatOpen ? "!hidden" : "block"
-        } fixed left-0 right-0 bottom-0 z-40 md:hidden border-t px-1 pt-1 pb-[calc(env(safe-area-inset-bottom)+0.35rem)] transition-colors duration-200 select-none ${
+        } fixed left-0 right-0 bottom-0 z-40 md:hidden border-t px-1 pt-1 pb-[calc(env(safe-area-inset-bottom)+0.35rem)] transition-colors duration-200 select-none touch-manipulation ${
           isDark
             ? "bg-[#0b0b0c]/95 backdrop-blur-md border-neutral-800 text-neutral-400"
             : "bg-white/95 backdrop-blur-md border-gray-200/90 text-gray-600 shadow-lg shadow-black/5"
@@ -294,12 +294,12 @@ export default function CrmMobileNav({
               <Link
                 key={item.key}
                 href={item.href}
-                className="relative min-w-0 h-13 flex flex-col items-center justify-center gap-0.5 transition cursor-pointer group"
+                className="relative min-w-0 h-13 flex flex-col items-center justify-center gap-0.5 transition cursor-pointer group touch-manipulation select-none active:scale-95"
                 aria-label={item.label}
                 title={item.label}
               >
                 <div
-                  className={`relative px-2 min-[360px]:px-3 py-1 rounded-full transition-all duration-200 flex items-center justify-center ${
+                  className={`pointer-events-none relative px-2 min-[360px]:px-3 py-1 rounded-full transition-all duration-200 flex items-center justify-center ${
                     isActive
                       ? isDark
                         ? "bg-red-500/15 text-red-400 scale-105"
@@ -316,7 +316,7 @@ export default function CrmMobileNav({
                   />
                 </div>
                 <span
-                  className={`w-full px-0.5 text-[10px] truncate text-center transition-colors leading-normal pb-0.5 ${
+                  className={`pointer-events-none w-full px-0.5 text-[10px] truncate text-center transition-colors leading-normal pb-0.5 ${
                     isActive
                       ? isDark
                         ? "font-extrabold text-red-400"
@@ -336,12 +336,12 @@ export default function CrmMobileNav({
           <button
             type="button"
             onClick={() => setMobileMoreOpen((prev) => !prev)}
-            className="relative min-w-0 h-13 flex flex-col items-center justify-center gap-0.5 transition cursor-pointer group"
+            className="relative min-w-0 h-13 flex flex-col items-center justify-center gap-0.5 transition cursor-pointer group touch-manipulation select-none active:scale-95"
             aria-label="More Modules"
             title="More Modules"
           >
             <div
-              className={`relative px-2 min-[360px]:px-3 py-1 rounded-full transition-all duration-200 flex items-center justify-center ${
+              className={`pointer-events-none relative px-2 min-[360px]:px-3 py-1 rounded-full transition-all duration-200 flex items-center justify-center ${
                 isMoreActive
                   ? isDark
                     ? "bg-red-500/15 text-red-400 scale-105"
@@ -354,7 +354,7 @@ export default function CrmMobileNav({
               <MoreHorizontal className="w-5 h-5 stroke-[2]" />
             </div>
             <span
-              className={`w-full px-0.5 text-[10px] truncate text-center transition-colors leading-normal pb-0.5 ${
+              className={`pointer-events-none w-full px-0.5 text-[10px] truncate text-center transition-colors leading-normal pb-0.5 ${
                 isMoreActive
                   ? isDark
                     ? "font-extrabold text-red-400"

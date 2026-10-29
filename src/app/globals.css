@@ -301,7 +301,7 @@ body,
   backface-visibility: hidden;
 }
 
-/* Highly visible, interactive horizontal scrollbar for all data tables */
+/* Responsive horizontal scroll for data tables */
 html body .table-scroll,
 html body div.table-scroll,
 .table-scroll {
@@ -309,62 +309,66 @@ html body div.table-scroll,
   max-width: 100% !important;
   display: block !important;
   -webkit-overflow-scrolling: touch !important;
-  scrollbar-width: thin !important;
-  scrollbar-color: #f97316 #f1f5f9 !important;
-  -ms-overflow-style: auto !important;
   overscroll-behavior-x: contain !important;
 }
 
-html body .table-scroll::-webkit-scrollbar,
-html body div.table-scroll::-webkit-scrollbar,
-.table-scroll::-webkit-scrollbar {
-  display: block !important;
-  height: 7px !important;
-  width: 7px !important;
-  background: #f1f5f9 !important;
+/* Desktop-only styled scrollbar for tables (Hidden on mobile & app mode) */
+@media (min-width: 1025px) and (hover: hover) and (pointer: fine) {
+  html:not(.is-app-mode) body:not(.is-app-mode) .table-scroll,
+  html:not(.is-app-mode) body:not(.is-app-mode) div.table-scroll {
+    scrollbar-width: thin !important;
+    scrollbar-color: #f97316 #f1f5f9 !important;
+    -ms-overflow-style: auto !important;
+  }
+
+  html:not(.is-app-mode) body:not(.is-app-mode) .table-scroll::-webkit-scrollbar,
+  html:not(.is-app-mode) body:not(.is-app-mode) div.table-scroll::-webkit-scrollbar {
+    display: block !important;
+    height: 7px !important;
+    width: 7px !important;
+    background: #f1f5f9 !important;
+  }
+
+  html:not(.is-app-mode) body:not(.is-app-mode) .table-scroll::-webkit-scrollbar-track,
+  html:not(.is-app-mode) body:not(.is-app-mode) div.table-scroll::-webkit-scrollbar-track {
+    display: block !important;
+    background: #f1f5f9 !important;
+    border-radius: 9999px !important;
+  }
+
+  html:not(.is-app-mode) body:not(.is-app-mode) .table-scroll::-webkit-scrollbar-thumb,
+  html:not(.is-app-mode) body:not(.is-app-mode) div.table-scroll::-webkit-scrollbar-thumb {
+    display: block !important;
+    background: #f97316 !important;
+    border-radius: 9999px !important;
+  }
+
+  html:not(.is-app-mode) body:not(.is-app-mode) .table-scroll::-webkit-scrollbar-thumb:hover,
+  html:not(.is-app-mode) body:not(.is-app-mode) div.table-scroll::-webkit-scrollbar-thumb:hover {
+    background: #ea580c !important;
+  }
+
+  html.dark:not(.is-app-mode) body:not(.is-app-mode) .table-scroll,
+  .dark:not(.is-app-mode) .table-scroll {
+    scrollbar-color: #f97316 var(--dark-eye-panel-soft) !important;
+  }
+
+  html.dark:not(.is-app-mode) body:not(.is-app-mode) .table-scroll::-webkit-scrollbar,
+  .dark:not(.is-app-mode) .table-scroll::-webkit-scrollbar {
+    background: var(--dark-eye-panel-soft) !important;
+  }
+
+  html.dark:not(.is-app-mode) body:not(.is-app-mode) .table-scroll::-webkit-scrollbar-track,
+  .dark:not(.is-app-mode) .table-scroll::-webkit-scrollbar-track {
+    background: var(--dark-eye-panel-soft) !important;
+  }
+
+  html.dark:not(.is-app-mode) body:not(.is-app-mode) .table-scroll::-webkit-scrollbar-thumb,
+  .dark:not(.is-app-mode) .table-scroll::-webkit-scrollbar-thumb {
+    background: #f97316 !important;
+  }
 }
 
-html body .table-scroll::-webkit-scrollbar-track,
-html body div.table-scroll::-webkit-scrollbar-track,
-.table-scroll::-webkit-scrollbar-track {
-  display: block !important;
-  background: #f1f5f9 !important;
-  border-radius: 9999px !important;
-}
-
-html body .table-scroll::-webkit-scrollbar-thumb,
-html body div.table-scroll::-webkit-scrollbar-thumb,
-.table-scroll::-webkit-scrollbar-thumb {
-  display: block !important;
-  background: #f97316 !important;
-  border-radius: 9999px !important;
-}
-
-html body .table-scroll::-webkit-scrollbar-thumb:hover,
-html body div.table-scroll::-webkit-scrollbar-thumb:hover,
-.table-scroll::-webkit-scrollbar-thumb:hover {
-  background: #ea580c !important;
-}
-
-html.dark body .table-scroll,
-.dark .table-scroll {
-  scrollbar-color: #f97316 var(--dark-eye-panel-soft) !important;
-}
-
-html.dark body .table-scroll::-webkit-scrollbar,
-.dark .table-scroll::-webkit-scrollbar {
-  background: var(--dark-eye-panel-soft) !important;
-}
-
-html.dark body .table-scroll::-webkit-scrollbar-track,
-.dark .table-scroll::-webkit-scrollbar-track {
-  background: var(--dark-eye-panel-soft) !important;
-}
-
-html.dark body .table-scroll::-webkit-scrollbar-thumb,
-.dark .table-scroll::-webkit-scrollbar-thumb {
-  background: #f97316 !important;
-}
 
 /* Admin sidebar active link: branded red highlight instead of flat gray. */
 .admin-sidebar button.bg-gray-100\/90.dark\:bg-slate-800,
@@ -802,7 +806,7 @@ html.dark body .table-scroll::-webkit-scrollbar-thumb,
   }
 }
 
-/* Highly visible, clean WhatsApp-style TexApp chat message scrollbar (transparent track) */
+/* Responsive WhatsApp-style TexApp chat message scroll */
 html body .texapp-message-scroll,
 html body div.texapp-message-scroll,
 .texapp-message-scroll {
@@ -813,90 +817,70 @@ html body div.texapp-message-scroll,
   overscroll-behavior-y: contain !important;
   touch-action: pan-y !important;
   -webkit-overflow-scrolling: touch !important;
-  scrollbar-width: thin !important;
-  scrollbar-color: rgba(148, 163, 184, 0.55) transparent !important;
-  -ms-overflow-style: auto !important;
 }
 
-html body .texapp-message-scroll::-webkit-scrollbar,
-html body div.texapp-message-scroll::-webkit-scrollbar,
-.texapp-message-scroll::-webkit-scrollbar {
-  display: block !important;
-  width: 4px !important;
-  background: transparent !important;
+/* Desktop-only styled chat message scrollbar */
+@media (min-width: 1025px) and (hover: hover) and (pointer: fine) {
+  html:not(.is-app-mode) body:not(.is-app-mode) .texapp-message-scroll {
+    scrollbar-width: thin !important;
+    scrollbar-color: rgba(148, 163, 184, 0.55) transparent !important;
+    -ms-overflow-style: auto !important;
+  }
+
+  html:not(.is-app-mode) body:not(.is-app-mode) .texapp-message-scroll::-webkit-scrollbar {
+    display: block !important;
+    width: 4px !important;
+    background: transparent !important;
+  }
+
+  html:not(.is-app-mode) body:not(.is-app-mode) .texapp-message-scroll::-webkit-scrollbar-track {
+    display: block !important;
+    background: transparent !important;
+    border-radius: 9999px !important;
+    margin-top: 12px !important;
+    margin-bottom: 12px !important;
+  }
+
+  html:not(.is-app-mode) body:not(.is-app-mode) .texapp-message-scroll::-webkit-scrollbar-thumb {
+    display: block !important;
+    background: rgba(148, 163, 184, 0.6) !important;
+    border-radius: 9999px !important;
+    border-top: 8px solid transparent !important;
+    border-bottom: 8px solid transparent !important;
+    background-clip: padding-box !important;
+  }
+
+  html:not(.is-app-mode) body:not(.is-app-mode) .texapp-message-scroll::-webkit-scrollbar-thumb:hover {
+    background: rgba(100, 116, 139, 0.9) !important;
+    background-clip: padding-box !important;
+  }
+
+  html.dark:not(.is-app-mode) body:not(.is-app-mode) .texapp-message-scroll,
+  .dark:not(.is-app-mode) .texapp-message-scroll {
+    scrollbar-color: rgba(255, 255, 255, 0.35) transparent !important;
+  }
+
+  html.dark:not(.is-app-mode) body:not(.is-app-mode) .texapp-message-scroll::-webkit-scrollbar-track,
+  .dark:not(.is-app-mode) .texapp-message-scroll::-webkit-scrollbar-track {
+    background: transparent !important;
+  }
+
+  html.dark:not(.is-app-mode) body:not(.is-app-mode) .texapp-message-scroll::-webkit-scrollbar-thumb,
+  .dark:not(.is-app-mode) .texapp-message-scroll::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.4) !important;
+    border-radius: 9999px !important;
+    border-top: 8px solid transparent !important;
+    border-bottom: 8px solid transparent !important;
+    background-clip: padding-box !important;
+  }
+
+  html.dark:not(.is-app-mode) body:not(.is-app-mode) .texapp-message-scroll::-webkit-scrollbar-thumb:hover,
+  .dark:not(.is-app-mode) .texapp-message-scroll::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.7) !important;
+    background-clip: padding-box !important;
+  }
 }
 
-html body .texapp-message-scroll::-webkit-scrollbar-track,
-html body div.texapp-message-scroll::-webkit-scrollbar-track,
-.texapp-message-scroll::-webkit-scrollbar-track {
-  display: block !important;
-  background: transparent !important;
-  border-radius: 9999px !important;
-  margin-top: 12px !important;
-  margin-bottom: 12px !important;
-}
-
-html body .texapp-message-scroll::-webkit-scrollbar-thumb,
-html body div.texapp-message-scroll::-webkit-scrollbar-thumb,
-.texapp-message-scroll::-webkit-scrollbar-thumb {
-  display: block !important;
-  background: rgba(148, 163, 184, 0.6) !important;
-  border-radius: 9999px !important;
-  border-top: 8px solid transparent !important;
-  border-bottom: 8px solid transparent !important;
-  background-clip: padding-box !important;
-}
-
-html body .texapp-message-scroll::-webkit-scrollbar-thumb:hover,
-html body div.texapp-message-scroll::-webkit-scrollbar-thumb:hover,
-.texapp-message-scroll::-webkit-scrollbar-thumb:hover {
-  background: rgba(100, 116, 139, 0.9) !important;
-  background-clip: padding-box !important;
-}
-
-html body .texapp-message-scroll::-webkit-scrollbar-button,
-html body div.texapp-message-scroll::-webkit-scrollbar-button,
-.texapp-message-scroll::-webkit-scrollbar-button {
-  display: none !important;
-  width: 0 !important;
-  height: 0 !important;
-}
-
-html body .texapp-message-scroll::-webkit-scrollbar-corner,
-html body div.texapp-message-scroll::-webkit-scrollbar-corner,
-.texapp-message-scroll::-webkit-scrollbar-corner {
-  display: none !important;
-  background: transparent !important;
-}
-
-.dark html body .texapp-message-scroll,
-.dark html body div.texapp-message-scroll,
-.dark .texapp-message-scroll {
-  scrollbar-color: rgba(255, 255, 255, 0.35) transparent !important;
-}
-
-.dark html body .texapp-message-scroll::-webkit-scrollbar-track,
-.dark html body div.texapp-message-scroll::-webkit-scrollbar-track,
-.dark .texapp-message-scroll::-webkit-scrollbar-track {
-  background: transparent !important;
-}
-
-.dark html body .texapp-message-scroll::-webkit-scrollbar-thumb,
-.dark html body div.texapp-message-scroll::-webkit-scrollbar-thumb,
-.dark .texapp-message-scroll::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.4) !important;
-  border-radius: 9999px !important;
-  border-top: 8px solid transparent !important;
-  border-bottom: 8px solid transparent !important;
-  background-clip: padding-box !important;
-}
-
-.dark html body .texapp-message-scroll::-webkit-scrollbar-thumb:hover,
-.dark html body div.texapp-message-scroll::-webkit-scrollbar-thumb:hover,
-.dark .texapp-message-scroll::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.7) !important;
-  background-clip: padding-box !important;
-}
 
 /* TexApp Apple Emoji Support */
 .apple-emoji-inline {
@@ -951,36 +935,135 @@ nav,
   }
 }
 
-/* Hide scrollbar globally across the entire website while preserving full scroll functionality */
-html,
-body,
-*,
-*::before,
-*::after {
+/* ==========================================================================
+   MOBILE APP & MOBILE SCREENS: COMPLETE SCROLLBAR SUPPRESSION
+   Zero visible scrollbars in both Dark Mode and Light Theme across all components,
+   tables, modals, drawers, and chat panes, while preserving full touch scrolling.
+   ========================================================================== */
+
+/* 1. Global Touch Screens & Mobile Viewports */
+@media (max-width: 1024px), (pointer: coarse), (hover: none) {
+  html,
+  body,
+  *,
+  *::before,
+  *::after {
+    scrollbar-width: none !important;
+    -ms-overflow-style: none !important;
+  }
+
+  ::-webkit-scrollbar,
+  *::-webkit-scrollbar,
+  html::-webkit-scrollbar,
+  body::-webkit-scrollbar,
+  div::-webkit-scrollbar,
+  main::-webkit-scrollbar,
+  section::-webkit-scrollbar,
+  article::-webkit-scrollbar,
+  aside::-webkit-scrollbar,
+  nav::-webkit-scrollbar,
+  ul::-webkit-scrollbar,
+  ol::-webkit-scrollbar,
+  table::-webkit-scrollbar,
+  tbody::-webkit-scrollbar,
+  .table-scroll::-webkit-scrollbar,
+  .texapp-message-scroll::-webkit-scrollbar,
+  .custom-scrollbar::-webkit-scrollbar,
+  .crm-modal-scroll::-webkit-scrollbar,
+  [class*="overflow"]::-webkit-scrollbar,
+  [class*="scroll"]::-webkit-scrollbar {
+    display: none !important;
+    width: 0 !important;
+    height: 0 !important;
+    max-width: 0 !important;
+    max-height: 0 !important;
+    background: transparent !important;
+    opacity: 0 !important;
+    visibility: hidden !important;
+  }
+
+  ::-webkit-scrollbar-thumb,
+  *::-webkit-scrollbar-thumb,
+  .table-scroll::-webkit-scrollbar-thumb,
+  .texapp-message-scroll::-webkit-scrollbar-thumb {
+    display: none !important;
+    background: transparent !important;
+    opacity: 0 !important;
+  }
+
+  ::-webkit-scrollbar-track,
+  *::-webkit-scrollbar-track,
+  .table-scroll::-webkit-scrollbar-track,
+  .texapp-message-scroll::-webkit-scrollbar-track {
+    display: none !important;
+    background: transparent !important;
+    opacity: 0 !important;
+  }
+
+  ::-webkit-scrollbar-corner,
+  ::-webkit-scrollbar-button {
+    display: none !important;
+    background: transparent !important;
+  }
+}
+
+/* 2. Standalone Mobile App / APK / Capacitor / PWA Mode (Dark & Light) */
+.is-app-mode,
+.is-app-mode *,
+.is-app-mode *::before,
+.is-app-mode *::after,
+body.is-app-mode,
+body.is-app-mode *,
+html.dark.is-app-mode *,
+html.dark .is-app-mode *,
+.dark.is-app-mode *,
+html:not(.dark).is-app-mode *,
+html:not(.dark) .is-app-mode * {
   scrollbar-width: none !important;
   -ms-overflow-style: none !important;
 }
 
-::-webkit-scrollbar,
-*::-webkit-scrollbar,
-html::-webkit-scrollbar,
-body::-webkit-scrollbar,
-.no-scrollbar::-webkit-scrollbar,
-.scrollbar-none::-webkit-scrollbar {
+.is-app-mode ::-webkit-scrollbar,
+.is-app-mode *::-webkit-scrollbar,
+body.is-app-mode ::-webkit-scrollbar,
+body.is-app-mode *::-webkit-scrollbar,
+html.dark.is-app-mode *::-webkit-scrollbar,
+.dark .is-app-mode *::-webkit-scrollbar,
+html:not(.dark).is-app-mode *::-webkit-scrollbar {
   display: none !important;
   width: 0 !important;
   height: 0 !important;
   background: transparent !important;
+  opacity: 0 !important;
+  visibility: hidden !important;
 }
 
-::-webkit-scrollbar-thumb,
-*::-webkit-scrollbar-thumb {
+.is-app-mode ::-webkit-scrollbar-thumb,
+.is-app-mode *::-webkit-scrollbar-thumb,
+body.is-app-mode ::-webkit-scrollbar-thumb,
+body.is-app-mode *::-webkit-scrollbar-thumb,
+html.dark.is-app-mode *::-webkit-scrollbar-thumb,
+.dark .is-app-mode *::-webkit-scrollbar-thumb,
+html:not(.dark).is-app-mode *::-webkit-scrollbar-thumb {
   display: none !important;
   background: transparent !important;
+  opacity: 0 !important;
 }
 
-::-webkit-scrollbar-track,
-*::-webkit-scrollbar-track {
+.is-app-mode ::-webkit-scrollbar-track,
+.is-app-mode *::-webkit-scrollbar-track,
+body.is-app-mode ::-webkit-scrollbar-track,
+body.is-app-mode *::-webkit-scrollbar-track,
+html.dark.is-app-mode *::-webkit-scrollbar-track,
+.dark .is-app-mode *::-webkit-scrollbar-track,
+html:not(.dark).is-app-mode *::-webkit-scrollbar-track {
+  display: none !important;
+  background: transparent !important;
+  opacity: 0 !important;
+}
+
+.is-app-mode ::-webkit-scrollbar-corner,
+.is-app-mode ::-webkit-scrollbar-button {
   display: none !important;
   background: transparent !important;
 }

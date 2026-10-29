@@ -6342,8 +6342,8 @@ export default function TexAppBatchChat({
           overflowY: "auto",
           overflowX: "hidden",
           WebkitOverflowScrolling: "touch",
-          scrollbarWidth: "thin",
-          scrollbarColor: isDark ? "rgba(255, 255, 255, 0.35) transparent" : "rgba(148, 163, 184, 0.55) transparent",
+          scrollbarWidth: typeof window !== "undefined" && (window.innerWidth <= 1024 || window.Capacitor?.isNativePlatform?.()) ? "none" : "thin",
+          scrollbarColor: typeof window !== "undefined" && (window.innerWidth <= 1024 || window.Capacitor?.isNativePlatform?.()) ? "transparent transparent" : (isDark ? "rgba(255, 255, 255, 0.35) transparent" : "rgba(148, 163, 184, 0.55) transparent"),
         }}
         className="texapp-message-scroll flex-1 min-h-0 p-3 sm:p-4 space-y-1 sm:space-y-1.5 relative z-10"
       >
