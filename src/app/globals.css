@@ -1108,4 +1108,109 @@ textarea,
   -webkit-tap-highlight-color: transparent;
 }
 
+/* =========================================================================
+   Complete Scrollbar Elimination for Mobile Devices, WebViews & Dark Mode
+   ========================================================================= */
+
+/* 1. Global utility class .no-scrollbar */
+.no-scrollbar,
+.no-scrollbar *,
+[data-no-scrollbar="true"] {
+  scrollbar-width: none !important;
+  -ms-overflow-style: none !important;
+}
+
+.no-scrollbar::-webkit-scrollbar,
+.no-scrollbar *::-webkit-scrollbar,
+[data-no-scrollbar="true"]::-webkit-scrollbar {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+  background: transparent !important;
+  opacity: 0 !important;
+}
+
+/* 2. Dark Mode Scrollbar Elimination (Mobile, Desktop, and WebViews) */
+.dark,
+.dark body,
+.dark [data-theme="dark"],
+.dark html,
+html.dark,
+body.dark {
+  scrollbar-color: transparent transparent !important;
+  scrollbar-width: none !important;
+  -ms-overflow-style: none !important;
+}
+
+.dark ::-webkit-scrollbar,
+html.dark ::-webkit-scrollbar,
+body.dark ::-webkit-scrollbar,
+.dark::-webkit-scrollbar,
+html.dark::-webkit-scrollbar,
+body.dark::-webkit-scrollbar {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+  background: transparent !important;
+  opacity: 0 !important;
+}
+
+.dark ::-webkit-scrollbar-thumb,
+html.dark ::-webkit-scrollbar-thumb,
+body.dark ::-webkit-scrollbar-thumb {
+  background: transparent !important;
+  display: none !important;
+}
+
+.dark ::-webkit-scrollbar-track,
+html.dark ::-webkit-scrollbar-track,
+body.dark ::-webkit-scrollbar-track {
+  background: transparent !important;
+  display: none !important;
+}
+
+/* 3. Mobile Viewport & Touch Devices (Mobile App / Capacitor / WebViews) */
+@media (max-width: 1024px), (pointer: coarse) {
+  html,
+  body,
+  #root,
+  #__next,
+  main,
+  div,
+  section,
+  nav,
+  aside,
+  article,
+  * {
+    scrollbar-width: none !important;
+    -ms-overflow-style: none !important;
+  }
+
+  html::-webkit-scrollbar,
+  body::-webkit-scrollbar,
+  #root::-webkit-scrollbar,
+  #__next::-webkit-scrollbar,
+  main::-webkit-scrollbar,
+  div::-webkit-scrollbar,
+  section::-webkit-scrollbar,
+  nav::-webkit-scrollbar,
+  aside::-webkit-scrollbar,
+  article::-webkit-scrollbar,
+  *::-webkit-scrollbar {
+    display: none !important;
+    width: 0 !important;
+    height: 0 !important;
+    background: transparent !important;
+    opacity: 0 !important;
+  }
+
+  ::-webkit-scrollbar-thumb,
+  ::-webkit-scrollbar-track,
+  ::-webkit-scrollbar-corner {
+    display: none !important;
+    background: transparent !important;
+  }
+}
+
+
 

@@ -32,6 +32,11 @@ public class MainActivity extends BridgeActivity {
         try {
             if (getBridge() != null && getBridge().getWebView() != null) {
                 android.webkit.WebView webView = getBridge().getWebView();
+                webView.setVerticalScrollBarEnabled(false);
+                webView.setHorizontalScrollBarEnabled(false);
+                webView.setOverScrollMode(android.view.View.OVER_SCROLL_NEVER);
+                webView.setScrollBarStyle(android.view.View.SCROLLBARS_INSIDE_OVERLAY);
+
                 android.webkit.WebSettings settings = webView.getSettings();
                 settings.setDomStorageEnabled(true);
                 settings.setDatabaseEnabled(true);
@@ -40,6 +45,12 @@ public class MainActivity extends BridgeActivity {
             }
         } catch (Exception ignored) {
         }
+    }
+
+    @Override
+    public void onResume() {
+        super.onResume();
+        optimizeWebView();
     }
 
     @Override
