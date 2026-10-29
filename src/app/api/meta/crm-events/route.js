@@ -46,11 +46,10 @@ function getMetaCookies(request) {
 function mapEventName(status) {
   const value = cleanText(status || "Lead", 80).toLowerCase();
   if (value.includes("lost")) return "LeadLost";
-  if (value.includes("won") || value.includes("converted")) return "LeadWon";
-  if (value.includes("negotiation")) return "LeadNegotiation";
-  if (value.includes("proposal") || value.includes("quotation")) return "LeadQuotation";
-  if (value.includes("meeting")) return "LeadMeeting";
-  if (value.includes("contacted") || value.includes("qualified") || value.includes("requirement")) return "QualifiedLead";
+  if (value.includes("won") || value.includes("converted") || value.includes("closed won")) return "Purchase";
+  if (value.includes("negotiation") || value.includes("proposal") || value.includes("quotation")) return "SubmitApplication";
+  if (value.includes("meeting")) return "Schedule";
+  if (value.includes("contacted") || value.includes("qualified") || value.includes("requirement")) return "Contact";
   return "Lead";
 }
 
@@ -121,6 +120,7 @@ export async function POST(request) {
       crm_status: cleanText(body.status || lead.status || "New", 80),
       service: cleanText(lead.service || "", 120),
       source: cleanText(lead.source || "", 120),
+      ...(eventName === "Purchase" ? { currency: "INR", value: Number(lead.amount || lead.budget || lead.deal_value || 1) } : {}),
     },
     user_data: userData,
   };
