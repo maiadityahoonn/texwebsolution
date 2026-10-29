@@ -501,6 +501,12 @@ export async function updateCloudLead(leadId, updates) {
 
 export async function deleteCloudLead(leadId) {
   try {
+    // Always cascade delete any linked pipeline deals so no orphaned cards remain
+    await supabase
+      .from('deals')
+      .delete()
+      .eq('lead_id', leadId);
+
     const { error } = await supabase
       .from('leads')
       .delete()

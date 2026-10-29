@@ -267,19 +267,62 @@ export function useCrmLayoutActions({
     },
     onDeleteLead: async (id) => {
       const targetLead = leads.find((l) => l.id === id);
+      const linkedDeals = deals.filter((d) => d.lead_id === id);
+      const activeLinkedDeals = linkedDeals.filter((d) => !CLOSED_DEAL_STAGES.has(d.pipeline_stage || d.stage));
+      const deletedActiveDealVal = activeLinkedDeals.reduce((sum, d) => sum + (Number(d.deal_value || d.value) || 0), 0);
+
+      // Determine category of lead before deletion for instant card update
+      let cat = "active";
+      if (targetLead) {
+        if (targetLead.status === "Converted" || targetLead.status === "Closed Won" || linkedDeals.some((d) => (d.pipeline_stage || d.stage) === "closed_won")) {
+          cat = "converted";
+        } else if (targetLead.status === "Lost" || linkedDeals.some((d) => (d.pipeline_stage || d.stage) === "closed_lost")) {
+          cat = "lost";
+        } else if (activeLinkedDeals.length > 0 || ["Contacted", "Qualified", "Proposal Sent", "In Pipeline", "Negotiation", "In Progress"].includes(targetLead.status)) {
+          cat = "pipeline";
+        }
+      }
+
+      // 1. Optimistic Leads table & pagination update
       setLeads((prev) => prev.filter((lead) => lead.id !== id));
       setLeadPagination?.((prev) => ({ ...prev, count: Math.max((prev?.count || 0) - 1, 0) }));
-      setLeadSummary?.((prev) => ({ ...prev, total: Math.max((prev?.total || 0) - 1, 0) }));
+
+      // 2. Optimistic Deals table & pagination update (Remove linked deal immediately!)
+      if (linkedDeals.length > 0) {
+        setDeals((prev) => prev.filter((deal) => deal.lead_id !== id));
+        setDealPagination?.((prev) => ({ ...prev, count: Math.max((prev?.count || 0) - linkedDeals.length, 0) }));
+        setDealSummary?.((prev) => ({
+          ...prev,
+          total: Math.max((prev?.total || 0) - linkedDeals.length, 0),
+          active: Math.max((prev?.active || 0) - activeLinkedDeals.length, 0),
+          activeValue: Math.max((prev?.activeValue || 0) - deletedActiveDealVal, 0),
+          totalValue: Math.max((prev?.totalValue || 0) - deletedActiveDealVal, 0),
+        }));
+      }
+
+      // 3. Optimistic Leads Summary Cards update (Live update cards without refresh!)
+      setLeadSummary?.((prev) => ({
+        ...prev,
+        total: Math.max((prev?.total || 0) - 1, 0),
+        active: cat === "active" ? Math.max((prev?.active || 0) - 1, 0) : (prev?.active || 0),
+        pipeline: cat === "pipeline" ? Math.max((prev?.pipeline || 0) - 1, 0) : (prev?.pipeline || 0),
+        converted: cat === "converted" ? Math.max((prev?.converted || 0) - 1, 0) : (prev?.converted || 0),
+        lost: cat === "lost" ? Math.max((prev?.lost || 0) - 1, 0) : (prev?.lost || 0),
+      }));
 
       const ok = await deleteCloudLead(id);
       if (ok) {
         refreshLeadSummary?.();
-        setToast("Lead deleted successfully.");
+        refreshDealSummary?.();
+        setToast("Lead aur linked pipeline deal deleted.");
       } else {
         if (targetLead) {
           setLeads((prev) => [targetLead, ...prev]);
-          setLeadPagination?.((prev) => ({ ...prev, count: (prev?.count || 0) + 1 }));
-          setLeadSummary?.((prev) => ({ ...prev, total: (prev?.total || 0) + 1 }));
+          if (linkedDeals.length > 0) {
+            setDeals((prev) => [...linkedDeals, ...prev]);
+          }
+          refreshLeadSummary?.();
+          refreshDealSummary?.();
         }
         setToast("Lead delete nahi ho payi. Please try again.");
       }
@@ -302,12 +345,26 @@ export function useCrmLayoutActions({
       }
       const res = await createDeal({ ...deal, created_by: sessionUser?.id || null });
       if (res) {
+        const val = Number(res.deal_value || res.value) || 0;
         setDeals((prev) => [res, ...prev.filter((item) => item.id !== res.id)]);
         setDealPagination?.((prev) => ({ ...prev, count: (prev?.count || 0) + 1 }));
         if (deal.lead_id) {
           setLeads((prev) => prev.map((l) => (l.id === deal.lead_id ? { ...l, status: "In Pipeline" } : l)));
           updateCloudLeadStatus(deal.lead_id, "In Pipeline").catch(() => {});
         }
+        // Live optimistic card updates
+        setLeadSummary?.((prev) => ({
+          ...prev,
+          active: Math.max((prev?.active || 0) - 1, 0),
+          pipeline: (prev?.pipeline || 0) + 1,
+        }));
+        setDealSummary?.((prev) => ({
+          ...prev,
+          total: (prev?.total || 0) + 1,
+          active: (prev?.active || 0) + 1,
+          totalValue: (prev?.totalValue || 0) + val,
+          activeValue: (prev?.activeValue || 0) + val,
+        }));
         refreshLeadSummary?.();
         refreshDealSummary?.();
         setToast("Pipeline deal created.");
@@ -315,10 +372,57 @@ export function useCrmLayoutActions({
       return res;
     },
     onUpdateDealStage: async (id, stage, extra = {}) => {
+      const currentDeal = deals.find((d) => d.id === id);
+      const oldStage = currentDeal?.pipeline_stage || currentDeal?.stage || "contacted";
+      const val = Number(currentDeal?.deal_value || currentDeal?.value) || 0;
+      const wasActive = !CLOSED_DEAL_STAGES.has(oldStage);
+      const nowActive = !CLOSED_DEAL_STAGES.has(stage);
+      const wasWon = oldStage === "closed_won";
+      const nowWon = stage === "closed_won";
+      const wasLost = oldStage === "closed_lost" || oldStage === "lost";
+      const nowLost = stage === "closed_lost" || stage === "lost";
+
+      // Live optimistic deal summary card update without waiting for refresh!
+      setDealSummary?.((prev) => {
+        let active = prev?.active || 0;
+        let won = prev?.won || 0;
+        let lost = prev?.lost || 0;
+        let activeVal = prev?.activeValue || 0;
+        let wonVal = prev?.wonValue || 0;
+        let lostVal = prev?.lostValue || 0;
+
+        if (wasActive && !nowActive) {
+          active = Math.max(0, active - 1);
+          activeVal = Math.max(0, activeVal - val);
+        } else if (!wasActive && nowActive) {
+          active = active + 1;
+          activeVal = activeVal + val;
+        }
+
+        if (!wasWon && nowWon) {
+          won = won + 1;
+          wonVal = wonVal + val;
+        } else if (wasWon && !nowWon) {
+          won = Math.max(0, won - 1);
+          wonVal = Math.max(0, wonVal - val);
+        }
+
+        if (!wasLost && nowLost) {
+          lost = lost + 1;
+          lostVal = lostVal + val;
+        } else if (wasLost && !nowLost) {
+          lost = Math.max(0, lost - 1);
+          lostVal = Math.max(0, lostVal - val);
+        }
+
+        return { ...prev, active, won, lost, activeValue: activeVal, wonValue: wonVal, lostValue: lostVal };
+      });
+
       const res = await updateDealStage(id, stage, extra);
       if (res) {
         setDeals((prev) => prev.map((deal) => (deal.id === id ? { ...deal, ...res } : deal)));
         refreshDealSummary?.();
+        refreshLeadSummary?.();
       }
       if (CLOSED_DEAL_STAGES.has(stage) && stage !== "closed_won") {
         await completeLostEngagements({ dealId: id });

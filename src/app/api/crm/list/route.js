@@ -251,11 +251,11 @@ export async function GET(request) {
       { count: openDeals },
       { data: valueRows },
     ] = await Promise.all([
-      applyDealDates(admin.from("deals").select("*", { count: "exact", head: true })),
-      applyDealDates(admin.from("deals").select("*", { count: "exact", head: true }).eq("pipeline_stage", "closed_won")),
-      applyDealDates(admin.from("deals").select("*", { count: "exact", head: true }).eq("pipeline_stage", "closed_lost")),
-      applyDealDates(admin.from("deals").select("*", { count: "exact", head: true }).not("pipeline_stage", "in", toPostgrestInList(CLOSED_PIPELINE_STAGES))),
-      applyDealDates(admin.from("deals").select("deal_value, pipeline_stage")),
+      applyDealDates(admin.from("deals").select("*", { count: "exact", head: true }).not("lead_id", "is", null)),
+      applyDealDates(admin.from("deals").select("*", { count: "exact", head: true }).not("lead_id", "is", null).eq("pipeline_stage", "closed_won")),
+      applyDealDates(admin.from("deals").select("*", { count: "exact", head: true }).not("lead_id", "is", null).eq("pipeline_stage", "closed_lost")),
+      applyDealDates(admin.from("deals").select("*", { count: "exact", head: true }).not("lead_id", "is", null).not("pipeline_stage", "in", toPostgrestInList(CLOSED_PIPELINE_STAGES))),
+      applyDealDates(admin.from("deals").select("deal_value, pipeline_stage").not("lead_id", "is", null)),
     ]);
 
     let totalValue = 0;

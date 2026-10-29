@@ -219,6 +219,31 @@ export async function updateDeal(dealId, updates = {}) {
   }
 }
 
+export async function deleteDeal(dealId) {
+  try {
+    const { error } = await supabase
+      .from('deals')
+      .delete()
+      .eq('id', dealId);
+
+    if (error) throw error;
+    const current = readLocalCache(LOCAL_DEALS_KEY, []);
+    writeLocalCache(
+      LOCAL_DEALS_KEY,
+      current.filter((d) => d.id !== dealId)
+    );
+    return true;
+  } catch (err) {
+    console.warn('Fallback: deleteDeal in cache:', err.message);
+    const current = readLocalCache(LOCAL_DEALS_KEY, []);
+    writeLocalCache(
+      LOCAL_DEALS_KEY,
+      current.filter((d) => d.id !== dealId)
+    );
+    return true;
+  }
+}
+
 export async function getCloudDealsSummary(options = {}) {
   try {
     const apiResult = await fetchCrmListFromApi('deals_summary', options);

@@ -50,7 +50,7 @@ export function useCrmData({ sessionUserId = "", pushLiveSalesNotification } = {
 
 
   const refreshLeadSummary = useCallback(async function refreshLeadSummary(params = {}) {
-    const summary = await getCloudLeadsSummary(params);
+    const summary = await getCloudLeadsSummary({ fresh: true, ...params });
     if (summary && typeof summary.total === "number") {
       setLeadSummary(summary);
     }
@@ -58,7 +58,7 @@ export function useCrmData({ sessionUserId = "", pushLiveSalesNotification } = {
   }, []);
 
   const refreshDealSummary = useCallback(async function refreshDealSummary(params = {}) {
-    const summary = await getCloudDealsSummary(params);
+    const summary = await getCloudDealsSummary({ fresh: true, ...params });
     if (summary && typeof summary.total === "number") {
       setDealSummary(summary);
     }
