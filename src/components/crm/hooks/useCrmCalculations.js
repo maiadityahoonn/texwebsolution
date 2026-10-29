@@ -108,29 +108,39 @@ export function useCrmCalculations({
     [dedupedLeads, deals, query, sourceFilter, statusFilter, leadAlphabetFilter, leadSortOrder, matchesDateFilter]
   );
 
+  const dateFilteredLeadsForStats = useMemo(() => {
+    return dedupedLeads.filter((lead) => matchesDateFilter(lead, "created_at"));
+  }, [dedupedLeads, matchesDateFilter]);
+
+  const leadSummaryMetrics = useMemo(
+    () =>
+      calculateLeadSummaryMetrics({
+        dateFilter,
+        dateFilteredLeadsForStats,
+        deals,
+        leadPagination,
+        leadSummary,
+      }),
+    [dateFilter, dateFilteredLeadsForStats, deals, leadPagination, leadSummary]
+  );
+
   const leadTotalForPagination = useMemo(() => {
-    if (viewMode === "leads" && typeof leadPagination?.count === "number" && leadPagination.count > filteredLeads.length) {
-      return leadPagination.count;
-    }
     if (dateFilter !== "all" || query || leadAlphabetFilter !== "all") {
       return filteredLeads.length;
     }
-    if (statusFilter === "all") {
-      const total = leadSummary?.total ?? leadPagination?.count ?? 0;
-      return total > filteredLeads.length ? total : filteredLeads.length;
-    }
     const statusTotalMap = {
-      active: leadSummary?.active,
-      pipeline: leadSummary?.pipeline,
-      converted: leadSummary?.converted,
-      lost: leadSummary?.lost,
+      all: leadSummaryMetrics.totalLeads,
+      active: leadSummaryMetrics.activeCount,
+      pipeline: leadSummaryMetrics.pipelineCount,
+      converted: leadSummaryMetrics.convertedCount,
+      lost: leadSummaryMetrics.lostCount,
     };
-    const expectedServerCount = statusTotalMap[statusFilter];
-    if (typeof expectedServerCount === "number" && expectedServerCount > filteredLeads.length) {
-      return expectedServerCount;
+    const expected = statusTotalMap[statusFilter];
+    if (typeof expected === "number") {
+      return Math.max(expected, filteredLeads.length);
     }
     return filteredLeads.length;
-  }, [dateFilter, query, leadAlphabetFilter, statusFilter, leadSummary, leadPagination?.count, filteredLeads.length, viewMode]);
+  }, [dateFilter, query, leadAlphabetFilter, statusFilter, leadSummaryMetrics, filteredLeads.length]);
   const leadPageCount = Math.max(1, Math.ceil(leadTotalForPagination / leadsPerPage));
   const safeLeadPage = Math.min(Math.max(1, leadPage), leadPageCount);
   const paginatedLeads = useMemo(() => {
@@ -240,8 +250,8 @@ export function useCrmCalculations({
         if (statusFilter === "completed" || statusFilter === "done") {
           return isMeetingCompleted(item.status);
         }
-        if (statusFilter === "no_show" || statusFilter === "cancelled" || statusFilter === "missed") {
-          return isMeetingNoShow(item.status);
+        if (statusFilter === "cancelled") {
+          return item.status === "cancelled";
         }
         if (statusFilter === "overdue" || statusFilter === "passed") {
           return isMeetingOverdue(item, now);
@@ -256,7 +266,7 @@ export function useCrmCalculations({
           return true;
         }
 
-        // Default 'all' or empty: Show upcoming active meetings, strictly exclude completed and no_show
+        // Default 'all' or empty: Show upcoming active meetings, strictly exclude completed and cancelled
         return isMeetingActive(item.status);
       })
       .sort((a, b) => {
@@ -333,31 +343,26 @@ export function useCrmCalculations({
   }, [allPipelineDeals, dateFilter, dedupedRelationshipLeads, matchesDateFilter, query, statusFilter]);
 
   const followUpTotal = useMemo(() => {
-    if (viewMode === "followups" && typeof followUpPagination?.count === "number" && followUpPagination.count > filteredFollowUps.length) {
-      return followUpPagination.count;
-    }
     if (dateFilter !== "all" || query || (followUpScope && followUpScope !== "all")) {
       return filteredFollowUps.length;
     }
     const scopedFollowUpSummary = followUpSummary?.scope === followUpScope ? followUpSummary : null;
-    if (statusFilter === "all") {
-      const total = scopedFollowUpSummary?.total ?? followUpPagination?.count ?? 0;
-      return total > filteredFollowUps.length ? total : filteredFollowUps.length;
-    }
     const statusTotalMap = {
-      pending: scopedFollowUpSummary?.active,
+      all: scopedFollowUpSummary?.active,
+      pending: scopedFollowUpSummary?.pending,
       active: scopedFollowUpSummary?.active,
       overdue: scopedFollowUpSummary?.overdue,
       done: scopedFollowUpSummary?.completed,
       completed: scopedFollowUpSummary?.completed,
       missed: scopedFollowUpSummary?.missed,
+      all_with_completed: scopedFollowUpSummary?.total,
     };
     const expected = statusTotalMap[statusFilter];
-    if (typeof expected === "number" && expected > filteredFollowUps.length) {
-      return expected;
+    if (typeof expected === "number") {
+      return Math.max(expected, filteredFollowUps.length);
     }
     return filteredFollowUps.length;
-  }, [dateFilter, query, statusFilter, followUpSummary, followUpPagination?.count, filteredFollowUps.length, followUpScope, viewMode]);
+  }, [dateFilter, query, statusFilter, followUpSummary, filteredFollowUps.length, followUpScope]);
   const followUpPageCount = Math.max(1, Math.ceil(followUpTotal / followUpPageSize));
   const safeFollowUpPage = Math.min(Math.max(1, followUpPage), followUpPageCount);
   const paginatedFollowUps = useMemo(() => {
@@ -367,30 +372,27 @@ export function useCrmCalculations({
   }, [filteredFollowUps, followUpPageSize, safeFollowUpPage, viewMode]);
 
   const meetingTotal = useMemo(() => {
-    if (viewMode === "sales_meetings" && typeof meetingPagination?.count === "number" && meetingPagination.count > filteredSalesMeetings.length) {
-      return meetingPagination.count;
-    }
     if (dateFilter !== "all" || query) {
       return filteredSalesMeetings.length;
     }
-    if (statusFilter === "all") {
-      const total = meetingSummary?.total ?? meetingPagination?.count ?? 0;
-      return total > filteredSalesMeetings.length ? total : filteredSalesMeetings.length;
-    }
     const statusTotalMap = {
+      all: meetingSummary?.active,
       active: meetingSummary?.active,
       scheduled: meetingSummary?.active,
       today: meetingSummary?.today,
       overdue: meetingSummary?.overdue,
+      passed: meetingSummary?.overdue,
       completed: meetingSummary?.completed,
-      no_show: meetingSummary?.no_show,
+      done: meetingSummary?.completed,
+      cancelled: meetingSummary?.cancelled,
+      all_with_completed: meetingSummary?.total,
     };
     const expected = statusTotalMap[statusFilter];
-    if (typeof expected === "number" && expected > filteredSalesMeetings.length) {
-      return expected;
+    if (typeof expected === "number") {
+      return Math.max(expected, filteredSalesMeetings.length);
     }
     return filteredSalesMeetings.length;
-  }, [dateFilter, query, statusFilter, meetingSummary, meetingPagination?.count, filteredSalesMeetings.length, viewMode]);
+  }, [dateFilter, query, statusFilter, meetingSummary, filteredSalesMeetings.length]);
   const meetingPageCount = Math.max(1, Math.ceil(meetingTotal / meetingPageSize));
   const safeMeetingPage = Math.min(Math.max(1, meetingPage), meetingPageCount);
   const paginatedSalesMeetings = useMemo(() => {
@@ -408,9 +410,6 @@ export function useCrmCalculations({
     isLoading && proposals.length === 0 && quotations.length === 0 && agreements.length === 0
   );
 
-  const dateFilteredLeadsForStats = useMemo(() => {
-    return dedupedLeads.filter((lead) => matchesDateFilter(lead, "created_at"));
-  }, [dedupedLeads, matchesDateFilter]);
 
   const dateFilteredPipelineDealsForStats = useMemo(() => {
     return allPipelineDeals.filter(
@@ -442,17 +441,6 @@ export function useCrmCalculations({
     [dateFilter, dateFilteredLeadsForStats, dateFilteredPipelineDealsForStats, deals, leadSummary, leadPagination, dedupedLeads]
   );
 
-  const leadSummaryMetrics = useMemo(
-    () =>
-      calculateLeadSummaryMetrics({
-        dateFilter,
-        dateFilteredLeadsForStats,
-        deals,
-        leadPagination,
-        leadSummary,
-      }),
-    [dateFilter, dateFilteredLeadsForStats, deals, leadPagination, leadSummary]
-  );
 
   const pageStatusCards = useMemo(
     () =>

@@ -261,7 +261,13 @@ export function useCrmLayoutActions({
     },
     onUpdateLead: async (id, updates) => {
       const res = await updateCloudLead(id, updates);
-      if (res) setLeads((prev) => prev.map((lead) => (lead.id === id ? { ...lead, ...updates, ...res } : lead)));
+      if (res) {
+        setLeads((prev) => prev.map((lead) => (lead.id === id ? { ...lead, ...updates, ...res } : lead)));
+        if (updates?.status) {
+          refreshLeadSummary?.();
+          refreshDealSummary?.();
+        }
+      }
       setToast("Lead updated successfully.");
       return res;
     },

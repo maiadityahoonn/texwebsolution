@@ -2,11 +2,11 @@
 
 import React, { useEffect } from "react";
 import { useSearchParams } from "next/navigation";
-import { Calendar, Check, History, RotateCcw, Trash2, Video, X } from "lucide-react";
+import { Calendar, Check, History, RotateCcw, Trash2, Video } from "lucide-react";
 import TablePagination from "../shared/TablePagination";
 import { TableSkeleton as DefaultTableSkeleton } from "../shared/CrmSkeletons";
 import DefaultResponsiveTableContainer from "../shared/ResponsiveTableContainer";
-import { resolveLinkedContact, isMeetingActive, isMeetingNoShow, isMeetingOverdue } from "../shared/meetingUtils";
+import { resolveLinkedContact, isMeetingActive, isMeetingOverdue } from "../shared/meetingUtils";
 import { buildCommunicationTemplate, getEmailHref, openWhatsAppMessage } from "../shared/communicationTemplates";
 
 function WhatsAppIcon({ className = "w-4 h-4" }) {
@@ -178,11 +178,11 @@ export default function MeetingsTable({
                         <button
                           type="button"
                           onClick={() => openStageModal(item, "meeting")}
-                          title={`Stage: ${item.status === "no_show" ? "No Show" : formatStatusLabel(item.status)}${getLatestMeetingSnippet(item) ? ` - ${getLatestMeetingSnippet(item)}` : ""}`}
+                          title={`Stage: ${formatStatusLabel(item.status)}${getLatestMeetingSnippet(item) ? ` - ${getLatestMeetingSnippet(item)}` : ""}`}
                           className="text-[11px] text-gray-500 dark:text-neutral-400 truncate mt-0.5 flex items-center gap-1.5 hover:text-gray-700 dark:hover:text-neutral-200 transition text-left cursor-pointer w-full"
                         >
                           <span className="font-semibold text-gray-700 dark:text-neutral-300 shrink-0">
-                            [{item.status === "no_show" ? "No Show" : formatStatusLabel(item.status)}]:
+                            [{formatStatusLabel(item.status)}]:
                           </span>
                           <span className="truncate">
                             {getLatestMeetingSnippet(item) || "Sales meeting (Click to view timeline)"}
@@ -224,13 +224,13 @@ export default function MeetingsTable({
                           className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase cursor-pointer hover:opacity-85 transition ${
                           item.status === "completed"
                             ? "bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-300"
-                            : item.status === "cancelled" || item.status === "no_show"
+                            : item.status === "cancelled"
                             ? "bg-red-50 text-red-600 dark:bg-red-950/40 dark:text-red-300"
                             : isOverdue
                             ? "bg-red-50 text-red-600 dark:bg-red-950/40 dark:text-red-300"
                             : "bg-blue-50 text-blue-600 dark:bg-blue-950/40 dark:text-blue-300"
                         }`}>
-                          {item.status === "no_show" ? "No Show" : isOverdue ? "Passed" : formatStatusLabel(item.status)}
+                          {isOverdue ? "Passed" : formatStatusLabel(item.status)}
                         </button>
                       </td>
                       <td className="py-3.5 px-4 text-right whitespace-nowrap min-w-[280px]">
@@ -248,7 +248,7 @@ export default function MeetingsTable({
                               <WhatsAppIcon className="w-3.5 h-3.5" />
                             </button>
                           )}
-                          {effectiveMeetLink && item.status !== "completed" && item.status !== "no_show" && item.status !== "cancelled" && (
+                          {effectiveMeetLink && item.status !== "completed" && item.status !== "cancelled" && (
                             <a
                               href={effectiveMeetLink.startsWith("http") ? effectiveMeetLink : `https://${effectiveMeetLink}`}
                               target="_blank"
@@ -289,27 +289,7 @@ export default function MeetingsTable({
                               >
                                 <Check className="w-3.5 h-3.5" />
                               </button>
-                              <button
-                                type="button"
-                                onClick={() => openStageModal(item, "meeting", "no_show")}
-                                className="p-1.5 rounded-lg text-red-600 bg-red-50 dark:bg-red-950/40 hover:bg-red-100 transition shrink-0 cursor-pointer"
-                                title="Mark as No Show"
-                                aria-label="Mark as No Show"
-                              >
-                                <X className="w-3.5 h-3.5" />
-                              </button>
                             </>
-                          )}
-                          {isMeetingNoShow(item.status) && (
-                            <button
-                              type="button"
-                              onClick={() => openSalesMeetingRescheduleModal(item)}
-                              className="p-1.5 rounded-lg text-amber-700 bg-amber-50 dark:bg-amber-950/40 hover:bg-amber-100 transition shrink-0 cursor-pointer"
-                              title="Reschedule No Show Meeting"
-                              aria-label="Reschedule Meeting"
-                            >
-                              <RotateCcw className="w-3.5 h-3.5" />
-                            </button>
                           )}
                           <button
                             type="button"

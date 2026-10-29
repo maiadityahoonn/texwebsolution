@@ -91,7 +91,7 @@ export function useCrmMeetingFollowUpModals({
   async function scheduleAutoMeetingForDeal(deal) {
     if (!deal?.id) return;
     const alreadyScheduled = salesMeetings.some(
-      (item) => item.deal_id === deal.id && !["cancelled", "completed", "no_show"].includes(item.status)
+      (item) => item.deal_id === deal.id && !["cancelled", "completed"].includes(item.status)
     );
     if (alreadyScheduled) return;
     const lead = getDealLead(deal);

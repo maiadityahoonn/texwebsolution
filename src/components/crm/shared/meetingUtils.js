@@ -10,7 +10,6 @@ export const FOLLOWUP_STAGES = [
 export const MEETING_STAGES = [
   { id: "scheduled", label: "Scheduled" },
   { id: "completed", label: "Completed (Conducted)" },
-  { id: "no_show", label: "No Show" },
   { id: "rescheduled", label: "Rescheduled" },
   { id: "cancelled", label: "Cancelled" },
 ];

@@ -14,7 +14,6 @@ function isCardFilterActive({ viewMode, statusFilter, filterKey }) {
     (filterKey === "scheduled" && ["scheduled", "pending", "active"].includes(statusFilter)) ||
     (filterKey === "today" && statusFilter === "today") ||
     (filterKey === "completed" && ["completed", "done"].includes(statusFilter)) ||
-    (filterKey === "no_show" && ["no_show", "cancelled", "missed"].includes(statusFilter)) ||
     (filterKey === "pending" && ["pending", "active"].includes(statusFilter)) ||
     (filterKey === "overdue" && ["overdue", "passed"].includes(statusFilter)) ||
     (filterKey === "done" && ["done", "completed"].includes(statusFilter)) ||

@@ -39,9 +39,9 @@ export async function getProposals(options = null) {
       .limit(pageSize);
 
     if (error) throw error;
-    const merged = mergeCloudAndLocal(data || [], readLocalCache(LOCAL_PROPOSALS_KEY, []));
-    writeLocalCache(LOCAL_PROPOSALS_KEY, merged);
-    return merged;
+    const list = data || [];
+    writeLocalCache(LOCAL_PROPOSALS_KEY, list);
+    return list;
   } catch (err) {
     console.warn('Fallback: getProposals from cache:', err.message);
     return readLocalCache(LOCAL_PROPOSALS_KEY, []);
@@ -124,9 +124,9 @@ export async function getQuotations(options = null) {
       .limit(pageSize);
 
     if (error) throw error;
-    const merged = mergeCloudAndLocal(data || [], readLocalCache(LOCAL_QUOTATIONS_KEY, []));
-    writeLocalCache(LOCAL_QUOTATIONS_KEY, merged);
-    return merged;
+    const list = data || [];
+    writeLocalCache(LOCAL_QUOTATIONS_KEY, list);
+    return list;
   } catch (err) {
     console.warn('Fallback: getQuotations from cache:', err.message);
     return readLocalCache(LOCAL_QUOTATIONS_KEY, []);
@@ -224,9 +224,9 @@ export async function getAgreements(options = null) {
       .limit(pageSize);
 
     if (error) throw error;
-    const merged = mergeCloudAndLocal(data || [], readLocalCache(LOCAL_AGREEMENTS_KEY, []));
-    writeLocalCache(LOCAL_AGREEMENTS_KEY, merged);
-    return merged;
+    const list = data || [];
+    writeLocalCache(LOCAL_AGREEMENTS_KEY, list);
+    return list;
   } catch (err) {
     console.warn('Fallback: getAgreements from cache:', err.message);
     return readLocalCache(LOCAL_AGREEMENTS_KEY, []);
@@ -309,9 +309,9 @@ export async function getInvoices(options = null) {
       .limit(pageSize);
 
     if (error) throw error;
-    const merged = mergeCloudAndLocal(data || [], readLocalCache(LOCAL_INVOICES_KEY, []));
-    writeLocalCache(LOCAL_INVOICES_KEY, merged);
-    return merged;
+    const list = data || [];
+    writeLocalCache(LOCAL_INVOICES_KEY, list);
+    return list;
   } catch (err) {
     console.warn('Fallback: getInvoices from cache:', err.message);
     return readLocalCache(LOCAL_INVOICES_KEY, [

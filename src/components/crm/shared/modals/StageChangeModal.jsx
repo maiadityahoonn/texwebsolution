@@ -49,7 +49,7 @@ export default function StageChangeModal({
                 <span className={`px-2 py-0.5 rounded-full text-[9px] min-[360px]:text-[10px] font-bold uppercase whitespace-nowrap shrink-0 ${
                   ["done", "completed"].includes(target.item?.status)
                     ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300"
-                    : ["missed", "no_show"].includes(target.item?.status)
+                    : target.item?.status === "missed"
                     ? "bg-rose-100 text-rose-700 dark:bg-rose-950/40 dark:text-rose-300"
                     : "bg-blue-100 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300"
                 }`}>

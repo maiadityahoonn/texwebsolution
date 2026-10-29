@@ -4,6 +4,15 @@ import {
   clampPageSize,
   toPostgrestInList,
   fetchCrmListFromApi,
+  readLocalCache,
+  writeLocalCache,
+  LOCAL_DEALS_KEY,
+  LOCAL_SALES_MEETINGS_KEY,
+  LOCAL_SALES_FOLLOWUPS_KEY,
+  LOCAL_PROPOSALS_KEY,
+  LOCAL_QUOTATIONS_KEY,
+  LOCAL_AGREEMENTS_KEY,
+  LOCAL_INVOICES_KEY,
 } from '../supabase/client';
 import { applyLeadCategoryFilter, buildLeadDealScopes } from './leadCategoryFilters';
 
@@ -296,7 +305,28 @@ export async function createCloudLead(leadData) {
       status: leadData.status || 'New',
       notes: leadData.notes || '',
     };
-    // Direct Supabase insert first
+
+    // Primary: API route creates lead, triggers Meta CAPI, DB notification, and dispatches FCM/Web push
+    if (typeof fetch !== 'undefined') {
+      try {
+        const response = await fetch('/api/leads/create', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+        if (response.ok) {
+          const result = await response.json().catch(() => ({}));
+          if (result.lead) {
+            sendMetaCrmEvent(result.lead, result.lead.status);
+            return result.lead;
+          }
+        }
+      } catch (apiErr) {
+        console.warn('API lead create error, falling back to direct DB:', apiErr?.message);
+      }
+    }
+
+    // Direct Supabase insert fallback
     const { data, error } = await supabase
       .from('leads')
       .insert([payload])
@@ -307,16 +337,6 @@ export async function createCloudLead(leadData) {
       return data[0];
     }
 
-    // Fallback to API route
-    const response = await fetch('/api/leads/create', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-    });
-    if (!response.ok) {
-      const result = await response.json().catch(() => ({}));
-      throw new Error(result.error || 'Lead submission failed');
-    }
     const fallbackLead = { ...payload, id: `local-${Date.now()}`, created_at: new Date().toISOString() };
     sendMetaCrmEvent(fallbackLead, fallbackLead.status);
     return fallbackLead;
@@ -537,6 +557,25 @@ export async function deleteCloudLead(leadId) {
       .eq('id', leadId);
 
     if (error) throw error;
+
+    // 6. Clean local browser cache if present
+    if (typeof window !== 'undefined') {
+      const dealIdSet = new Set(dealIds);
+      const cleanCache = (key, filterFn) => {
+        const items = readLocalCache(key, []);
+        if (items && items.length > 0) {
+          writeLocalCache(key, items.filter(filterFn));
+        }
+      };
+      cleanCache(LOCAL_SALES_MEETINGS_KEY, (m) => m.lead_id !== leadId && !dealIdSet.has(m.deal_id));
+      cleanCache(LOCAL_SALES_FOLLOWUPS_KEY, (f) => f.lead_id !== leadId && !dealIdSet.has(f.deal_id));
+      cleanCache(LOCAL_DEALS_KEY, (d) => d.lead_id !== leadId);
+      cleanCache(LOCAL_PROPOSALS_KEY, (p) => !dealIdSet.has(p.deal_id));
+      cleanCache(LOCAL_QUOTATIONS_KEY, (q) => !dealIdSet.has(q.deal_id));
+      cleanCache(LOCAL_AGREEMENTS_KEY, (a) => !dealIdSet.has(a.deal_id));
+      cleanCache(LOCAL_INVOICES_KEY, (i) => !dealIdSet.has(i.deal_id));
+    }
+
     return true;
   } catch (err) {
     console.error('Error deleting lead and related records:', err.message);

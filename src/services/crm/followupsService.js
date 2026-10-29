@@ -41,6 +41,7 @@ export async function getSalesFollowUps(options = null) {
     let query = supabase
       .from('sales_followups')
       .select('*', withCount ? { count: 'exact' } : undefined)
+      .not('lead_id', 'is', null)
       .order('status', { ascending: false })
       .order('due_at', { ascending: true });
 

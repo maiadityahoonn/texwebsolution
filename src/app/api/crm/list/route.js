@@ -318,8 +318,9 @@ export async function GET(request) {
       return q;
     };
     const applyFollowupScope = (q) => {
+      q = q.not("lead_id", "is", null);
       if (scope === "pipeline") return q.not("deal_id", "is", null);
-      if (scope === "leads") return q.not("lead_id", "is", null).is("deal_id", null);
+      if (scope === "leads") return q.is("deal_id", null);
       return q;
     };
     const engagementScopes = await getActiveEngagementScopes(admin);
@@ -376,6 +377,7 @@ export async function GET(request) {
     todayEnd.setHours(23, 59, 59, 999);
 
     const applyMeetingDates = (q) => {
+      q = q.not("lead_id", "is", null);
       if (dateFrom) q = q.gte("scheduled_at", dateFrom);
       if (dateTo) q = q.lte("scheduled_at", dateTo);
       return q;
@@ -387,14 +389,12 @@ export async function GET(request) {
       { count: todayCount },
       { count: overdueCount },
       { count: completedCount },
-      { count: noShowCount },
     ] = await Promise.all([
       applyMeetingDates(admin.from("sales_meetings").select("*", { count: "exact", head: true })),
       applyMeetingDates(admin.from("sales_meetings").select("*", { count: "exact", head: true }).in("status", ["scheduled", "confirmed"])),
       applyMeetingDates(admin.from("sales_meetings").select("*", { count: "exact", head: true }).in("status", ["scheduled", "confirmed"]).gte("scheduled_at", todayStart.toISOString()).lte("scheduled_at", todayEnd.toISOString())),
       applyMeetingDates(admin.from("sales_meetings").select("*", { count: "exact", head: true }).in("status", ["scheduled", "confirmed"]).lt("scheduled_at", nowIso)),
       applyMeetingDates(admin.from("sales_meetings").select("*", { count: "exact", head: true }).eq("status", "completed")),
-      applyMeetingDates(admin.from("sales_meetings").select("*", { count: "exact", head: true }).in("status", ["no_show", "cancelled"])),
     ]);
 
     const summary = {
@@ -403,7 +403,6 @@ export async function GET(request) {
       today: todayCount || 0,
       overdue: overdueCount || 0,
       completed: completedCount || 0,
-      no_show: noShowCount || 0,
     };
     await cacheSetJson(cacheKey, summary, 60);
     return NextResponse.json(summary);
@@ -480,6 +479,10 @@ export async function GET(request) {
     .from(config.table)
     .select("*", { count: "exact" });
 
+  if (resource === "sales_meetings" || resource === "sales_followups") {
+    query = query.not("lead_id", "is", null);
+  }
+
   const sort = searchParams.get("sort") || "";
   if (resource === "leads" && (sort === "a-z" || sort === "z-a")) {
     query = query
@@ -536,8 +539,8 @@ export async function GET(request) {
       const todayEnd = new Date();
       todayEnd.setHours(23, 59, 59, 999);
       query = query.gte("scheduled_at", todayStart.toISOString()).lte("scheduled_at", todayEnd.toISOString());
-    } else if (status === "no_show") {
-      query = query.in("status", ["no_show", "cancelled"]);
+    } else if (status === "cancelled") {
+      query = query.eq("status", "cancelled");
     } else if (status === "overdue") {
       query = query.in("status", ["scheduled", "confirmed"]).lt("scheduled_at", new Date().toISOString());
     } else if (status === "completed") {

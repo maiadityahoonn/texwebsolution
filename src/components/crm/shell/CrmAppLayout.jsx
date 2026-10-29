@@ -20,6 +20,7 @@ import { getProfiles } from "@/services/supabaseService";
 import { useAuth } from "@/components/auth/useAuth";
 import { useCrmNotifications } from "@/components/crm/hooks/useCrmNotifications";
 import NotificationCenterModal from "@/components/crm/notifications/NotificationCenterModal";
+import MandatoryNotificationModal from "@/components/crm/shared/modals/MandatoryNotificationModal";
 import { useCrmData } from "@/components/crm/hooks/useCrmData";
 import { useCrmRelationshipLeads } from "@/components/crm/hooks/useCrmRelationshipLeads";
 import { CrmShellContext } from "./CrmShellContext";
@@ -111,6 +112,11 @@ export default function CrmAppLayout({ children }) {
     onNavigateNotification: handleNotificationNavigation,
     setToast,
   });
+
+  const unreadNotifications = useMemo(
+    () => (Array.isArray(notifications) ? notifications.filter((n) => !n.is_read) : []),
+    [notifications]
+  );
 
   useEffect(() => {
     document.documentElement.classList.toggle("dark", isDark);
@@ -476,6 +482,15 @@ export default function CrmAppLayout({ children }) {
             leads={leads}
           />
         )}
+
+        {/* Blocking Mandatory Notification Modal */}
+        <MandatoryNotificationModal
+          unreadNotifications={unreadNotifications}
+          onMarkRead={handleReadNotification}
+          onMarkAllRead={handleMarkAllAsRead}
+          onNavigate={handleNotificationNavigation}
+          isDark={isDark}
+        />
 
         {toast && (
           <div className="fixed bottom-5 right-5 z-[120] max-w-sm rounded-2xl bg-gray-900 text-white px-4 py-3 text-sm font-semibold shadow-2xl">

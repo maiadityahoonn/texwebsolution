@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { checkApiRateLimit, rateLimitResponse } from "@/lib/rateLimit";
 import { cleanPhone, cleanText, getClientIp, isBodyTooLarge, isJsonRequest, isValidEmail, normalizeEmail } from "@/lib/apiSecurity";
 import { cacheDel } from "@/lib/upstashCache";
+import { dispatchPushToUsers } from "@/lib/pushDispatcher";
 
 function getAdminClient() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -131,7 +132,7 @@ export async function POST(request) {
     email: normalizeEmail(body.email),
     service: cleanText(body.service || "General Inquiry", 160),
     source,
-    status: "New",
+    status: cleanText(body.status || "New", 50),
     notes: cleanText(body.notes, 1000),
   };
   const isNewsletter = payload.service === "Newsletter Subscription" || payload.source === "Footer Newsletter";
@@ -166,8 +167,7 @@ export async function POST(request) {
         .limit(20);
 
       if (crmProfiles && crmProfiles.length > 0) {
-        const notifRows = crmProfiles.map((p) => ({
-          user_id: p.id,
+        const notifPayload = {
           title: `New Lead: ${data.name || "New Client"}`,
           message: `${data.name || "Client"} submitted inquiry for ${data.service || "Tech Development"}${data.source ? ` via ${data.source}` : ""}${data.phone ? ` (${data.phone})` : ""}`,
           type: "lead",
@@ -178,8 +178,18 @@ export async function POST(request) {
             source_type: "lead",
             source: data.source || "website",
           },
+        };
+        const notifRows = crmProfiles.map((p) => ({
+          ...notifPayload,
+          user_id: p.id,
         }));
         await admin.from("notifications").insert(notifRows);
+
+        // Dispatch push notification to all mobile devices and web browsers
+        const profileIds = crmProfiles.map((p) => p.id);
+        dispatchPushToUsers(admin, profileIds, notifPayload).catch((pushErr) => {
+          console.warn("Lead push notification dispatch error:", pushErr?.message);
+        });
       }
     } catch (notifErr) {
       console.warn("Error creating lead notification:", notifErr?.message);
@@ -188,5 +198,5 @@ export async function POST(request) {
 
   await cacheDel("crm:leads-summary:all");
   await cacheDel("crm:leads-summary:start:end:meta");
-  return NextResponse.json({ ok: true });
+  return NextResponse.json({ ok: true, lead: data });
 }

@@ -28,23 +28,7 @@ function isPersistedId(id) {
 }
 
 function isCrmReminderNotification(item) {
-  const metadata = item?.metadata || {};
-  const sourceType = metadata.source_type || metadata.sourceType || item?.source_type || "";
-  const itemType = String(item?.type || "").toLowerCase();
-  const linkUrl = String(item?.link_url || "");
-  return Boolean(
-    itemType === "lead" ||
-      sourceType === "lead" ||
-      metadata.reminder === true ||
-      metadata.requires_ack === true ||
-      ["sales_followup", "sales_meeting", "lead"].includes(sourceType) ||
-      linkUrl.includes("sales_followups") ||
-      linkUrl.includes("sales_meetings") ||
-      linkUrl.includes("/crm/followups") ||
-      linkUrl.includes("/crm/meetings") ||
-      linkUrl.includes("/crm/leads") ||
-      linkUrl.includes("leads")
-  );
+  return Boolean(item && (item.title || item.message));
 }
 
 function normalizeNotifications(rows = []) {

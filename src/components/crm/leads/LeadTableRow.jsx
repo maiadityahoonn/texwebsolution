@@ -64,7 +64,7 @@ export default function LeadTableRow({
     ? (stageOptions.find((stage) => stage.id === (linkedDeal.pipeline_stage || linkedDeal.stage))?.label || "Pipeline")
     : null;
   const nextLeadMeeting = salesMeetings
-    .filter((meeting) => (meeting.lead_id === lead.id || (linkedDeal && meeting.deal_id === linkedDeal.id)) && !["cancelled", "completed", "no_show"].includes(meeting.status))
+    .filter((meeting) => (meeting.lead_id === lead.id || (linkedDeal && meeting.deal_id === linkedDeal.id)) && !["cancelled", "completed"].includes(meeting.status))
     .sort((a, b) => new Date(a.scheduled_at || 0).getTime() - new Date(b.scheduled_at || 0).getTime())[0];
   const nextLeadFollowUp = followUps
     .filter((followUp) => (followUp.lead_id === lead.id || (linkedDeal && followUp.deal_id === linkedDeal.id)) && followUp.status === "pending")

@@ -35,7 +35,7 @@ export function useCrmData({ sessionUserId = "", pushLiveSalesNotification } = {
   const [followUpSummary, setFollowUpSummary] = useState({ total: 0, active: 0, pending: 0, overdue: 0, completed: 0, missed: 0 });
   const [salesMeetings, setSalesMeetings] = useState([]);
   const [meetingPagination, setMeetingPagination] = useState({ count: 0, page: 1, pageSize: 50, loading: false });
-  const [meetingSummary, setMeetingSummary] = useState({ total: 0, active: 0, today: 0, overdue: 0, completed: 0, no_show: 0 });
+  const [meetingSummary, setMeetingSummary] = useState({ total: 0, active: 0, today: 0, overdue: 0, completed: 0 });
   const [invoicesList, setInvoicesList] = useState([]);
   const [crmLoading, setCrmLoading] = useState(false);
   const leadsRef = useRef([]);
@@ -66,7 +66,7 @@ export function useCrmData({ sessionUserId = "", pushLiveSalesNotification } = {
   }, []);
 
   const refreshFollowUpSummary = useCallback(async function refreshFollowUpSummary(params = {}) {
-    const summary = await getCloudFollowUpsSummary(params);
+    const summary = await getCloudFollowUpsSummary({ fresh: true, ...params });
     if (summary && typeof summary.total === "number") {
       setFollowUpSummary(summary);
     }
@@ -74,7 +74,7 @@ export function useCrmData({ sessionUserId = "", pushLiveSalesNotification } = {
   }, []);
 
   const refreshMeetingSummary = useCallback(async function refreshMeetingSummary(params = {}) {
-    const summary = await getCloudMeetingsSummary(params);
+    const summary = await getCloudMeetingsSummary({ fresh: true, ...params });
     if (summary && typeof summary.total === "number") {
       setMeetingSummary(summary);
     }
@@ -82,7 +82,7 @@ export function useCrmData({ sessionUserId = "", pushLiveSalesNotification } = {
   }, []);
 
   const refreshCommercialSummary = useCallback(async function refreshCommercialSummary(params = {}) {
-    const summary = await getCloudCommercialsSummary(params);
+    const summary = await getCloudCommercialsSummary({ fresh: true, ...params });
     if (summary && typeof summary.quotations === "number") {
       setCommercialSummary(summary);
     }

@@ -4,6 +4,7 @@ import { cleanPhone, cleanText, getClientIp, normalizeEmail } from "@/lib/apiSec
 import { checkApiRateLimit, rateLimitResponse } from "@/lib/rateLimit";
 import { cacheDel, cacheSetNx, pushQueue } from "@/lib/upstashCache";
 import { getMetaAdsConfig } from "@/lib/metaAdsConfig";
+import { dispatchPushToUsers } from "@/lib/pushDispatcher";
 
 const META_LEAD_DEDUP_TTL_SECONDS = 60 * 60 * 24 * 30;
 
@@ -49,8 +50,7 @@ async function afterLeadInserted(request, lead, status = "New") {
         .limit(20);
 
       if (crmProfiles && crmProfiles.length > 0) {
-        const notifRows = crmProfiles.map((p) => ({
-          user_id: p.id,
+        const notifPayload = {
           title: `New Meta Lead: ${lead.name || "New Client"}`,
           message: `${lead.name || "Client"} inquired via ${lead.source || "Meta Ads"} for ${lead.service || "Tech Development"}${lead.phone ? ` (${lead.phone})` : ""}`,
           type: "lead",
@@ -61,8 +61,18 @@ async function afterLeadInserted(request, lead, status = "New") {
             source_type: "lead",
             source: lead.source || "meta_ads",
           },
+        };
+        const notifRows = crmProfiles.map((p) => ({
+          ...notifPayload,
+          user_id: p.id,
         }));
         await admin.from("notifications").insert(notifRows);
+
+        // Dispatch push notification to all mobile devices and web browsers
+        const profileIds = crmProfiles.map((p) => p.id);
+        dispatchPushToUsers(admin, profileIds, notifPayload).catch((pushErr) => {
+          console.warn("Meta lead push dispatch error:", pushErr?.message);
+        });
       }
     }
   } catch (notifErr) {

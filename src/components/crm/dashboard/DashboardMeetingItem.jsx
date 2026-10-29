@@ -7,7 +7,6 @@ import {
   Video,
   History,
   Check,
-  X,
   RotateCcw,
 } from "lucide-react";
 import WhatsAppIcon from "../shared/WhatsAppIcon";
@@ -47,8 +46,7 @@ export default function DashboardMeetingItem({
     item.scheduled_at &&
     new Date(item.scheduled_at).toDateString() === new Date().toDateString();
 
-  const stageLabel =
-    item.status === "no_show" ? "No Show" : formatStatusLabel(item.status);
+  const stageLabel = formatStatusLabel(item.status);
   const meetDateStr = item.scheduled_at
     ? new Date(item.scheduled_at).toLocaleDateString("en-IN", {
         day: "numeric",
@@ -85,7 +83,6 @@ export default function DashboardMeetingItem({
 
           {effectiveMeetLink &&
             item.status !== "completed" &&
-            item.status !== "no_show" &&
             item.status !== "cancelled" && (
               <a
                 href={effectiveMeetLink.startsWith("http") ? effectiveMeetLink : `https://${effectiveMeetLink}`}
@@ -130,15 +127,6 @@ export default function DashboardMeetingItem({
               >
                 <Check className="w-3.5 h-3.5" />
               </button>
-              <button
-                type="button"
-                onClick={() => openStageModal(item, "meeting", "no_show")}
-                className="p-1.5 rounded-lg text-red-600 bg-red-50 dark:bg-red-950/40 hover:bg-red-100 transition shrink-0 cursor-pointer"
-                title="Mark as No Show"
-                aria-label="Mark as No Show"
-              >
-                <X className="w-3.5 h-3.5" />
-              </button>
             </>
           )}
         </div>
@@ -156,7 +144,7 @@ export default function DashboardMeetingItem({
             className={`px-1.5 py-0.5 rounded-md text-[9px] font-black uppercase tracking-wider shrink-0 border ${
               item.status === "completed"
                 ? "bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-400 border-emerald-200/50"
-                : item.status === "no_show" || item.status === "cancelled"
+                : item.status === "cancelled"
                 ? "bg-rose-50 text-rose-600 dark:bg-rose-950/40 dark:text-rose-400 border-rose-200/50"
                 : "bg-indigo-50 text-indigo-600 dark:bg-indigo-950/40 dark:text-indigo-400 border-indigo-200/50"
             }`}

@@ -73,7 +73,6 @@ export function useNativePushNotifications({ userId, onNavigate, setToast } = {}
       );
       if (cancelled) return false;
       if (result.ok) {
-        if (attempt === 0) toastRef.current?.("Mobile notifications enabled.");
         return true;
       }
       if (attempt < RETRY_DELAYS_MS.length) {
@@ -84,7 +83,6 @@ export function useNativePushNotifications({ userId, onNavigate, setToast } = {}
         retryTimers.push(timer);
       } else {
         console.warn("Native push token could not be saved:", result.error || result.status);
-        toastRef.current?.("Notification setup failed. Keep internet on and reopen the app.");
       }
       return false;
     };
@@ -99,14 +97,12 @@ export function useNativePushNotifications({ userId, onNavigate, setToast } = {}
         }
         if (cancelled) return;
         if (permission.receive !== "granted") {
-          toastRef.current?.("Notification permission is disabled in phone settings.");
           return;
         }
         if (latestToken) await syncToken(latestToken);
         await PushNotifications.register();
       } catch (error) {
         console.warn("Native push registration failed:", error?.message || error);
-        toastRef.current?.("Notification registration failed. Reopen the app and try again.");
       } finally {
         registrationInProgress = false;
       }
@@ -121,7 +117,6 @@ export function useNativePushNotifications({ userId, onNavigate, setToast } = {}
         });
         await safeListener("registration-error", () => PushNotifications.addListener("registrationError", (error) => {
           console.warn("Native push registration failed:", error?.error || "unknown_error");
-          if (!cancelled) toastRef.current?.("Firebase notification registration failed on this phone.");
         }));
         await safeListener("foreground", () => PushNotifications.addListener("pushNotificationReceived", (notification) => {
           if (!cancelled) toastRef.current?.(notification?.title || "New CRM notification");

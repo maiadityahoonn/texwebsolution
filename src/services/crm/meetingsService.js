@@ -45,6 +45,7 @@ export async function getSalesMeetings(options = null) {
     let query = supabase
       .from('sales_meetings')
       .select('*', withCount ? { count: 'exact' } : undefined)
+      .not('lead_id', 'is', null)
       .order('scheduled_at', { ascending: true });
 
     if (options?.status && options.status !== 'all') {
@@ -54,8 +55,8 @@ export async function getSalesMeetings(options = null) {
         const todayEnd = new Date();
         todayEnd.setHours(23, 59, 59, 999);
         query = query.gte('scheduled_at', todayStart.toISOString()).lte('scheduled_at', todayEnd.toISOString());
-      } else if (options.status === 'no_show') {
-        query = query.in('status', ['no_show', 'cancelled']);
+      } else if (options.status === 'cancelled') {
+        query = query.eq('status', 'cancelled');
       } else if (options.status === 'overdue') {
         query = query.in('status', ['scheduled', 'confirmed']).lt('scheduled_at', new Date().toISOString());
       } else if (options.status === 'completed') {
@@ -86,14 +87,12 @@ export async function getSalesMeetings(options = null) {
     const { data, error, count } = await query;
 
     if (error) throw error;
+    const sorted = (data || []).sort((a, b) => new Date(a.scheduled_at || a.created_at || 0).getTime() - new Date(b.scheduled_at || b.created_at || 0).getTime());
+    writeLocalCache(LOCAL_SALES_MEETINGS_KEY, sorted);
     if (withCount) {
-      writeLocalCache(LOCAL_SALES_MEETINGS_KEY, mergeCloudAndLocal(data || [], readLocalCache(LOCAL_SALES_MEETINGS_KEY, [])));
-      return { data: data || [], count: count || 0, page, pageSize };
+      return { data: sorted, count: count || 0, page, pageSize };
     }
-    const merged = mergeCloudAndLocal(data || [], readLocalCache(LOCAL_SALES_MEETINGS_KEY, []))
-      .sort((a, b) => new Date(a.scheduled_at || a.created_at || 0).getTime() - new Date(b.scheduled_at || b.created_at || 0).getTime());
-    writeLocalCache(LOCAL_SALES_MEETINGS_KEY, merged);
-    return merged;
+    return sorted;
   } catch (err) {
     console.warn('Fallback: getSalesMeetings from cache:', err.message);
     if (options?.withCount) {

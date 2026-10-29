@@ -3,7 +3,6 @@ import {
   TrendingUp,
   DollarSign,
   CheckCircle2,
-  XCircle,
   HelpCircle,
   Calendar,
   Phone,
@@ -18,7 +17,6 @@ import { CLOSED_PIPELINE_STAGES, getLeadNextAction } from "../shared/leadUtils";
 import {
   isMeetingActive,
   isMeetingCompleted,
-  isMeetingNoShow,
   isMeetingOverdue,
   isFollowUpActive,
   isFollowUpCompleted,
@@ -259,14 +257,12 @@ export function buildPageStatusCards({
     let overdueCount = 0;
     let todayCount = 0;
     let completedCount = 0;
-    let noShowCount = 0;
 
     if (useServerSummary) {
       activeCount = meetingSummary.active || 0;
       overdueCount = meetingSummary.overdue || 0;
       todayCount = meetingSummary.today || 0;
       completedCount = meetingSummary.completed || 0;
-      noShowCount = meetingSummary.no_show || 0;
     } else {
       const now = Date.now();
       const allMeetings = dateFilteredMeetingsForStats;
@@ -277,7 +273,6 @@ export function buildPageStatusCards({
         (item) => isMeetingActive(item.status) && item.scheduled_at && new Date(item.scheduled_at).toDateString() === todayStr
       ).length;
       completedCount = allMeetings.filter((item) => isMeetingCompleted(item.status)).length;
-      noShowCount = allMeetings.filter((item) => isMeetingNoShow(item.status)).length;
     }
 
     return [
@@ -312,7 +307,7 @@ export function buildPageStatusCards({
         icon: AlertCircle,
         tone: "text-red-600 bg-red-50 dark:bg-red-950/30",
         filterKey: "overdue",
-        helpText: "Active meetings whose scheduled time has passed without completion or no-show.",
+        helpText: "Active meetings whose scheduled time has passed without completion.",
       },
       {
         id: "completed_meetings",
@@ -324,17 +319,6 @@ export function buildPageStatusCards({
         tone: "text-emerald-600 bg-emerald-50 dark:bg-emerald-950/30",
         filterKey: "completed",
         helpText: "Conducted meetings safely saved in database and client timelines.",
-      },
-      {
-        id: "no_show_meetings",
-        label: "No Show / Missed",
-        value: noShowCount,
-        sub: "Client missed or cancelled",
-        badge: noShowCount > 0 ? "Reschedule" : null,
-        icon: XCircle,
-        tone: "text-rose-600 bg-rose-50 dark:bg-rose-950/30",
-        filterKey: "no_show",
-        helpText: "Meetings where client did not attend or cancelled; follow up to reschedule.",
       },
     ];
   }

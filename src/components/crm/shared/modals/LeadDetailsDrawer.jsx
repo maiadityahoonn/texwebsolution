@@ -278,7 +278,7 @@ export default function LeadDetailsDrawer({
                 {selectedLeadActivity.meetings.slice(0, 2).map((m) => (
                   <div
                     key={m.id}
-                    title={`Stage: ${m.status === "no_show" ? "No Show" : formatStatusLabel(m.status)}${getLatestMeetingSnippet(m) ? ` - ${getLatestMeetingSnippet(m)}` : ""}`}
+                    title={`Stage: ${formatStatusLabel(m.status)}${getLatestMeetingSnippet(m) ? ` - ${getLatestMeetingSnippet(m)}` : ""}`}
                     className="p-2.5 min-[360px]:p-3 rounded-xl border border-blue-100 dark:border-blue-900/40 bg-blue-50/50 dark:bg-blue-950/20 text-xs space-y-1.5"
                   >
                     <div className="flex items-center justify-between gap-1.5">

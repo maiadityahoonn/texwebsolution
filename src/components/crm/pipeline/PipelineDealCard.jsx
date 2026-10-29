@@ -66,7 +66,7 @@ export default function PipelineDealCard({
   });
 
   const nextMeeting = allDealMeetings
-    .filter((item) => !["cancelled", "completed", "no_show"].includes(item.status))
+    .filter((item) => !["cancelled", "completed"].includes(item.status))
     .sort(
       (a, b) => new Date(a.scheduled_at || 0).getTime() - new Date(b.scheduled_at || 0).getTime()
     )[0];

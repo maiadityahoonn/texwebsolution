@@ -13,7 +13,7 @@ function getMeetingServerStatus(status) {
   if (status === "all_with_completed") return "";
   if (["pending", "scheduled"].includes(status)) return "active";
   if (status === "done") return "completed";
-  if (["missed", "cancelled"].includes(status)) return "no_show";
+  if (status === "cancelled") return "cancelled";
   return status;
 }
 
