@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { cleanPhone, cleanText, getClientIp, normalizeEmail } from "@/lib/apiSecurity";
 import { checkApiRateLimit, rateLimitResponse } from "@/lib/rateLimit";
 import { cacheDel, cacheSetNx, pushQueue } from "@/lib/upstashCache";
+import { getMetaAdsConfig } from "@/lib/metaAdsConfig";
 
 const META_LEAD_DEDUP_TTL_SECONDS = 60 * 60 * 24 * 30;
 
@@ -200,7 +201,8 @@ export async function GET(request) {
   const token = searchParams.get("hub.verify_token");
   const challenge = searchParams.get("hub.challenge");
 
-  const expectedToken = process.env.META_WEBHOOK_VERIFY_TOKEN || "texweb_meta_leads_secret";
+  const config = await getMetaAdsConfig();
+  const expectedToken = config.webhookVerifyToken;
 
   if (mode === "subscribe" && token === expectedToken) {
     return new Response(challenge, { status: 200 });
@@ -355,7 +357,8 @@ export async function POST(request) {
 
     // Option B: Standard Meta Leadgen Webhook
     if (body.object === "page" && Array.isArray(body.entry)) {
-      const pageAccessToken = process.env.META_PAGE_ACCESS_TOKEN;
+      const config = await getMetaAdsConfig();
+      const pageAccessToken = config.pageAccessToken;
 
       for (const entry of body.entry) {
         for (const change of entry.changes || []) {
@@ -369,7 +372,7 @@ export async function POST(request) {
               if (!claim.claimed) continue;
               try {
                 // Fetch lead details from Meta Graph API
-                const apiVersion = process.env.META_CAPI_API_VERSION || "v26.0";
+                const apiVersion = config.apiVersion || "v26.0";
                 const graphFields = "id,created_time,field_data,ad_id,form_id,ad_name,campaign_name";
                 const metaRes = await fetch(
                   `https://graph.facebook.com/${apiVersion}/${leadgenId}?fields=${encodeURIComponent(graphFields)}&access_token=${encodeURIComponent(pageAccessToken)}`

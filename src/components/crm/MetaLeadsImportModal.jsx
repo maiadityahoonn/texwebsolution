@@ -7,10 +7,12 @@ import {
   FileSpreadsheet,
   AlertCircle,
   Sparkles,
+  Sliders,
 } from "lucide-react";
 import { parseDelimitedData, decodeLeadFile } from "./shared/metaLeadsImportUtils";
 import MetaLeadsPreviewTable from "./shared/MetaLeadsPreviewTable";
 import MetaLeadsWebhookTab from "./shared/MetaLeadsWebhookTab";
+import MetaConfigTab from "./shared/MetaConfigTab";
 
 function InstagramIcon({ className = "w-4 h-4" }) {
   return (
@@ -68,7 +70,7 @@ export default function MetaLeadsImportModal({ isOpen, onClose, onImport, onImpo
   const webhookUrl = typeof window !== "undefined"
     ? `${window.location.origin}/api/webhooks/meta-leads`
     : "https://texwebsolution.in/api/webhooks/meta-leads";
-  const verifyToken = "texweb_meta_leads_secret";
+  const [verifyToken, setVerifyToken] = useState("texweb_meta_leads_secret");
 
   return (
     <div
@@ -140,6 +142,17 @@ export default function MetaLeadsImportModal({ isOpen, onClose, onImport, onImpo
             <Sparkles className="w-4 h-4 text-amber-500 shrink-0" />
             <span className="truncate">Automated Live Webhook</span>
           </button>
+          <button
+            onClick={() => setTab("config")}
+            className={`py-2.5 min-[360px]:py-3 px-2.5 min-[360px]:px-4 font-bold text-xs border-b-2 transition flex items-center gap-1.5 cursor-pointer whitespace-nowrap shrink-0 min-w-0 ${
+              tab === "config"
+                ? "border-pink-600 text-pink-600 dark:text-pink-400"
+                : "border-transparent text-gray-500 hover:text-gray-900 dark:text-slate-400"
+            }`}
+          >
+            <Sliders className="w-4 h-4 text-purple-500 shrink-0" />
+            <span className="truncate">Meta Ads & Dataset Setup</span>
+          </button>
         </div>
 
         {/* Content Body */}
@@ -210,6 +223,14 @@ export default function MetaLeadsImportModal({ isOpen, onClose, onImport, onImpo
             <MetaLeadsWebhookTab
               webhookUrl={webhookUrl}
               verifyToken={verifyToken}
+            />
+          )}
+
+          {tab === "config" && (
+            <MetaConfigTab
+              onConfigSaved={(cfg) => {
+                if (cfg?.webhook_verify_token) setVerifyToken(cfg.webhook_verify_token);
+              }}
             />
           )}
         </div>

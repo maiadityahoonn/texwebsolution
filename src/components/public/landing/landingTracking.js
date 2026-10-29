@@ -1,6 +1,18 @@
 "use client";
 
-export const META_PIXEL_ID = process.env.NEXT_PUBLIC_META_PIXEL_ID || "1117053014586521";
+let dynamicMetaPixelId = process.env.NEXT_PUBLIC_META_PIXEL_ID || "";
+
+export function getMetaPixelId() {
+  return dynamicMetaPixelId;
+}
+
+export function setMetaPixelId(pixelId) {
+  if (pixelId) {
+    dynamicMetaPixelId = String(pixelId).trim();
+  }
+}
+
+export const META_PIXEL_ID = process.env.NEXT_PUBLIC_META_PIXEL_ID || "";
 const PENDING_META_LEAD_KEY = "texweb_pending_meta_lead_conversion";
 const PENDING_META_LEAD_MAX_AGE_MS = 30 * 60 * 1000;
 

@@ -2,10 +2,8 @@ import crypto from "crypto";
 import { createClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
 import { cleanPhone, cleanText, getBearerToken, isBodyTooLarge, isJsonRequest, normalizeEmail } from "@/lib/apiSecurity";
+import { getMetaAdsConfig } from "@/lib/metaAdsConfig";
 
-const DATASET_ID = process.env.META_CAPI_DATASET_ID || "1117053014586521";
-const API_VERSION = process.env.META_CAPI_API_VERSION || "v26.0";
-const CRM_NAME = process.env.META_CAPI_CRM_NAME || "TexWeb CRM";
 const CRM_ROLES = new Set(["super_admin", "admin", "hr", "sales_head", "sales_executive", "telecaller"]);
 
 function getAdminClient() {
@@ -62,9 +60,12 @@ function eventNameForStatus(status) {
 }
 
 async function sendCapiEvent({ lead, status }) {
-  const accessToken = process.env.META_CAPI_ACCESS_TOKEN;
-  if (!accessToken) {
-    return { ok: true, skipped: true, reason: "META_CAPI_ACCESS_TOKEN is not configured." };
+  const config = await getMetaAdsConfig();
+  const accessToken = config.capiAccessToken;
+  const datasetId = config.datasetId;
+
+  if (!accessToken || !datasetId) {
+    return { ok: true, skipped: true, reason: "Meta Dataset ID or CAPI Access Token is not configured." };
   }
 
   const email = normalizeEmail(lead.email);
@@ -87,7 +88,7 @@ async function sendCapiEvent({ lead, status }) {
         event_time: Math.floor(Date.now() / 1000),
         custom_data: {
           event_source: "crm",
-          lead_event_source: CRM_NAME,
+          lead_event_source: config.crmName || "TexWeb CRM",
           crm_status: cleanText(status || "Qualified", 80),
           source: "Meta verification lead",
         },
@@ -96,7 +97,7 @@ async function sendCapiEvent({ lead, status }) {
     ],
   };
 
-  const url = `https://graph.facebook.com/${API_VERSION}/${DATASET_ID}/events?access_token=${encodeURIComponent(accessToken)}`;
+  const url = `https://graph.facebook.com/${config.apiVersion}/${datasetId}/events?access_token=${encodeURIComponent(accessToken)}`;
   const response = await fetch(url, {
     method: "POST",
     headers: { "Content-Type": "application/json" },

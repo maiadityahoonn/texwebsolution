@@ -1,14 +1,38 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import Script from "next/script";
-import { META_PIXEL_ID, getTrackingParams, trackMetaEvent } from "./landingTracking";
+import { META_PIXEL_ID, getTrackingParams, setMetaPixelId, trackMetaEvent } from "./landingTracking";
 import { OPENAI_ADS_PIXEL_ID } from "./openAiAdsTracking";
 
 export default function MetaPixelTracker() {
   const pathname = usePathname();
   const isCrmRoute = pathname?.startsWith("/crm") || pathname?.startsWith("/workspace");
+  const [activePixelId, setActivePixelId] = useState(META_PIXEL_ID || "");
+
+  // Real-time fetch of active Meta Pixel/Dataset ID from database/cache
+  useEffect(() => {
+    if (isCrmRoute) return;
+
+    let isMounted = true;
+    fetch("/api/meta/config")
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (!isMounted || !data?.pixel_id) return;
+        setMetaPixelId(data.pixel_id);
+        setActivePixelId(data.pixel_id);
+
+        if (typeof window !== "undefined" && window.fbq) {
+          window.fbq("init", data.pixel_id);
+        }
+      })
+      .catch(() => {});
+
+    return () => {
+      isMounted = false;
+    };
+  }, [isCrmRoute]);
 
   useEffect(() => {
     if (isCrmRoute) return;
@@ -24,30 +48,43 @@ export default function MetaPixelTracker() {
         content_category: "Lead Generation",
       });
     }
-  }, [pathname, isCrmRoute]);
+  }, [pathname, isCrmRoute, activePixelId]);
 
   if (isCrmRoute) return null;
 
   return (
     <>
       {/* Client-side Meta Pixel Initialization */}
-      <Script
-        id="meta-pixel-init"
-        strategy="afterInteractive"
-        dangerouslySetInnerHTML={{
-          __html: `
-            !function(f,b,e,v,n,t,s)
-            {if(f.fbq)return;n=f.fbq=function(){n.callMethod?
-            n.callMethod.apply(n,arguments):n.queue.push(arguments)};
-            if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
-            n.queue=[];t=b.createElement(e);t.async=!0;
-            t.src=v;s=b.getElementsByTagName(e)[0];
-            s.parentNode.insertBefore(t,s)}(window, document,'script',
-            'https://connect.facebook.net/en_US/fbevents.js');
-            fbq('init', '${META_PIXEL_ID}');
-          `
-        }}
-      />
+      {activePixelId && (
+        <>
+          <Script
+            id="meta-pixel-init"
+            strategy="afterInteractive"
+            dangerouslySetInnerHTML={{
+              __html: `
+                !function(f,b,e,v,n,t,s)
+                {if(f.fbq)return;n=f.fbq=function(){n.callMethod?
+                n.callMethod.apply(n,arguments):n.queue.push(arguments)};
+                if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
+                n.queue=[];t=b.createElement(e);t.async=!0;
+                t.src=v;s=b.getElementsByTagName(e)[0];
+                s.parentNode.insertBefore(t,s)}(window, document,'script',
+                'https://connect.facebook.net/en_US/fbevents.js');
+                fbq('init', '${activePixelId}');
+              `
+            }}
+          />
+          <noscript>
+            <img
+              height="1"
+              width="1"
+              style={{ display: "none" }}
+              src={`https://www.facebook.com/tr?id=${activePixelId}&ev=PageView&noscript=1`}
+              alt=""
+            />
+          </noscript>
+        </>
+      )}
       {OPENAI_ADS_PIXEL_ID && (
         <Script
           id="openai-ads-pixel-init"
@@ -60,15 +97,6 @@ export default function MetaPixelTracker() {
           }}
         />
       )}
-      <noscript>
-        <img
-          height="1"
-          width="1"
-          style={{ display: "none" }}
-          src={`https://www.facebook.com/tr?id=${META_PIXEL_ID}&ev=PageView&noscript=1`}
-          alt=""
-        />
-      </noscript>
     </>
   );
 }

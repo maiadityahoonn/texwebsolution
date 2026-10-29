@@ -3,9 +3,7 @@ import { NextResponse } from "next/server";
 import { cleanPhone, cleanText, getClientIp, isBodyTooLarge, isJsonRequest, normalizeEmail } from "@/lib/apiSecurity";
 import { cacheDel, cacheSetNx } from "@/lib/upstashCache";
 
-const DATASET_ID = process.env.META_CAPI_DATASET_ID || "1117053014586521";
-const API_VERSION = process.env.META_CAPI_API_VERSION || "v26.0";
-const CRM_NAME = process.env.META_CAPI_CRM_NAME || "TexWeb CRM";
+import { getMetaAdsConfig } from "@/lib/metaAdsConfig";
 
 function sha256(value) {
   const cleaned = String(value || "").trim().toLowerCase();
@@ -64,9 +62,16 @@ export async function POST(request) {
     return NextResponse.json({ error: "Request body is too large." }, { status: 413 });
   }
 
-  const accessToken = process.env.META_CAPI_ACCESS_TOKEN;
-  if (!accessToken) {
-    return NextResponse.json({ ok: true, skipped: true, reason: "META_CAPI_ACCESS_TOKEN is not configured." });
+  const config = await getMetaAdsConfig();
+  const accessToken = config.capiAccessToken;
+  const datasetId = config.datasetId;
+
+  if (!accessToken || !datasetId) {
+    return NextResponse.json({
+      ok: true,
+      skipped: true,
+      reason: "Meta Dataset ID or CAPI Access Token is not configured.",
+    });
   }
 
   const body = await request.json().catch(() => ({}));
@@ -112,7 +117,7 @@ export async function POST(request) {
     event_time: Number.isFinite(eventTime) ? eventTime : Math.floor(Date.now() / 1000),
     custom_data: {
       event_source: actionSource === "website" ? "website" : "crm",
-      lead_event_source: CRM_NAME,
+      lead_event_source: config.crmName || "TexWeb CRM",
       crm_status: cleanText(body.status || lead.status || "New", 80),
       service: cleanText(lead.service || "", 120),
       source: cleanText(lead.source || "", 120),
@@ -131,8 +136,8 @@ export async function POST(request) {
     data: [eventItem],
   };
 
-  if (process.env.META_CAPI_TEST_EVENT_CODE) {
-    payload.test_event_code = process.env.META_CAPI_TEST_EVENT_CODE;
+  if (config.testEventCode) {
+    payload.test_event_code = config.testEventCode;
   }
 
   const idempotencySubject = eventId || metaLeadId || email || phone || lead.id || "";
@@ -146,7 +151,7 @@ export async function POST(request) {
     }
   }
 
-  const url = `https://graph.facebook.com/${API_VERSION}/${DATASET_ID}/events?access_token=${encodeURIComponent(accessToken)}`;
+  const url = `https://graph.facebook.com/${config.apiVersion}/${datasetId}/events?access_token=${encodeURIComponent(accessToken)}`;
   const response = await fetch(url, {
     method: "POST",
     headers: { "Content-Type": "application/json" },

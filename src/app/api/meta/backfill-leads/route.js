@@ -2,6 +2,7 @@ import { createClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
 import { cleanPhone, cleanText, getBearerToken, isBodyTooLarge, isJsonRequest, normalizeEmail } from "@/lib/apiSecurity";
 import { cacheDel } from "@/lib/upstashCache";
+import { getMetaAdsConfig } from "@/lib/metaAdsConfig";
 
 const CRM_ROLES = new Set(["super_admin", "admin", "hr", "sales_head", "sales_executive", "telecaller"]);
 
@@ -143,9 +144,10 @@ export async function POST(request) {
   const requester = await getRequester(admin, request);
   if (!requester) return NextResponse.json({ error: "Unauthorized backfill request." }, { status: 401 });
 
-  const pageAccessToken = process.env.META_PAGE_ACCESS_TOKEN;
+  const config = await getMetaAdsConfig();
+  const pageAccessToken = config.pageAccessToken;
   if (!pageAccessToken) {
-    return NextResponse.json({ error: "META_PAGE_ACCESS_TOKEN is not configured." }, { status: 500 });
+    return NextResponse.json({ error: "Page Access Token is not configured in Meta Settings or Environment." }, { status: 500 });
   }
 
   const body = await request.json().catch(() => ({}));
@@ -181,7 +183,7 @@ export async function POST(request) {
     .slice(0, requestedIds.length ? requestedIds.length : limit);
   const missingRequestedIds = requestedIds.filter((id) => !matchedByRequestedId.has(id));
 
-  const apiVersion = process.env.META_CAPI_API_VERSION || "v26.0";
+  const apiVersion = config.apiVersion || "v26.0";
   const results = [];
 
   for (const { lead, metaLeadId } of candidates) {
