@@ -28,7 +28,7 @@ export function mapDealStageToLeadStatus(stage) {
   if (value === 'closed_lost') return 'Lost';
   if (value === 'closed_won') return 'Closed Won';
   if (value.includes('negotiation')) return 'Negotiation';
-  if (value.includes('proposal')) return 'Proposal Sent';
+  if (value.includes('proposal') || value.includes('quotation') || value.includes('quote')) return 'Proposal Sent';
   if (value.includes('qualified') || value.includes('requirement')) return 'Qualified';
   if (value.includes('contacted')) return 'Qualified';
   if (value.includes('meeting')) return 'Meeting';
