@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
@@ -20,6 +20,7 @@ import {
   Wallet,
   X,
   ChevronRight,
+  Loader2,
 } from "lucide-react";
 
 /**
@@ -167,7 +168,32 @@ export default function CrmMobileNav({
   const router = useRouter();
   const pathname = usePathname() || "";
   const [mobileMoreOpen, setMobileMoreOpen] = useState(false);
+  const [navigatingHref, setNavigatingHref] = useState(null);
   const isChatOpen = activeSection === "chat" && chatMobilePane === "chat";
+
+  // Proactively prefetch all primary and drawer routes on mount
+  useEffect(() => {
+    PRIMARY_BOTTOM_NAV.forEach((item) => {
+      if (item.href) {
+        try {
+          router.prefetch(item.href);
+        } catch (_) {}
+      }
+    });
+    MORE_BOTTOM_NAV.forEach((item) => {
+      if (item.href) {
+        try {
+          router.prefetch(item.href);
+        } catch (_) {}
+      }
+    });
+  }, [router]);
+
+  // When pathname changes, clear navigating indicator and close drawer
+  useEffect(() => {
+    setNavigatingHref(null);
+    setMobileMoreOpen(false);
+  }, [pathname]);
 
   function checkIsActive(item) {
     if (!item?.href) return false;
@@ -184,84 +210,104 @@ export default function CrmMobileNav({
 
   return (
     <>
-      {/* "More" Slide-up Modal Drawer */}
-      {mobileMoreOpen && (
-        <div className="fixed inset-0 z-[90] md:hidden flex flex-col justify-end">
-          {/* Backdrop Overlay */}
-          <div
-            className="fixed inset-0 bg-black/60 backdrop-blur-xs transition-opacity animate-in fade-in duration-200"
-            onClick={() => setMobileMoreOpen(false)}
-            aria-hidden="true"
-          />
+      {/* "More" Slide-up Modal Drawer (Persistently mounted in DOM for instant route prefetching & 60fps transitions) */}
+      <div
+        className={`fixed inset-0 z-[90] md:hidden flex flex-col justify-end transition-all duration-200 ${
+          mobileMoreOpen
+            ? "opacity-100 pointer-events-auto"
+            : "opacity-0 pointer-events-none"
+        }`}
+        aria-hidden={!mobileMoreOpen}
+      >
+        {/* Backdrop Overlay */}
+        <div
+          className={`fixed inset-0 bg-black/60 backdrop-blur-xs transition-opacity duration-200 ${
+            mobileMoreOpen ? "opacity-100" : "opacity-0"
+          }`}
+          onClick={() => setMobileMoreOpen(false)}
+          aria-hidden="true"
+        />
 
-          {/* Drawer Sheet */}
-          <div
-            className={`relative z-10 w-full max-h-[82vh] flex flex-col rounded-t-3xl shadow-2xl transition-all border-t ${
-              isDark
-                ? "bg-[#111113] border-neutral-800 text-neutral-100"
-                : "bg-white border-gray-200 text-gray-900"
-            }`}
-          >
-            {/* Grab Handle */}
-            <div className="w-full flex items-center justify-center pt-3 pb-1">
-              <span className="w-10 h-1 rounded-full bg-gray-300 dark:bg-neutral-700" />
+        {/* Drawer Sheet */}
+        <div
+          className={`relative z-10 w-full max-h-[82vh] flex flex-col rounded-t-3xl shadow-2xl transition-transform duration-200 ease-out border-t ${
+            mobileMoreOpen ? "translate-y-0" : "translate-y-full"
+          } ${
+            isDark
+              ? "bg-[#111113] border-neutral-800 text-neutral-100"
+              : "bg-white border-gray-200 text-gray-900"
+          }`}
+        >
+          {/* Grab Handle */}
+          <div className="w-full flex items-center justify-center pt-3 pb-1">
+            <span className="w-10 h-1 rounded-full bg-gray-300 dark:bg-neutral-700" />
+          </div>
+
+          {/* Header */}
+          <div className="flex items-center justify-between px-5 py-3 border-b border-gray-100 dark:border-neutral-800/80">
+            <div>
+              <h3 className="text-base font-black tracking-tight text-gray-900 dark:text-white font-[Matter]">
+                More Modules
+              </h3>
+              <p className="text-[11px] text-gray-500 dark:text-neutral-400 mt-0.5">
+                All modules, tools & settings
+              </p>
             </div>
+            <button
+              type="button"
+              onClick={() => setMobileMoreOpen(false)}
+              className="w-8 h-8 rounded-full flex items-center justify-center border border-gray-200 dark:border-neutral-700 hover:bg-gray-100 dark:hover:bg-neutral-800 transition active:scale-95 cursor-pointer text-gray-500 dark:text-neutral-400"
+              aria-label="Close"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
 
-            {/* Header */}
-            <div className="flex items-center justify-between px-5 py-3 border-b border-gray-100 dark:border-neutral-800/80">
-              <div>
-                <h3 className="text-base font-black tracking-tight text-gray-900 dark:text-white font-[Matter]">
-                  More Modules
-                </h3>
-                <p className="text-[11px] text-gray-500 dark:text-neutral-400 mt-0.5">
-                  All modules, tools & settings
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setMobileMoreOpen(false)}
-                className="w-8 h-8 rounded-full flex items-center justify-center border border-gray-200 dark:border-neutral-700 hover:bg-gray-100 dark:hover:bg-neutral-800 transition active:scale-95 cursor-pointer text-gray-500 dark:text-neutral-400"
-                aria-label="Close"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
+          {/* Modules List */}
+          <div className="overflow-y-auto px-3 py-3 space-y-1 pb-[calc(env(safe-area-inset-bottom)+1.25rem)] no-scrollbar">
+            {MORE_BOTTOM_NAV.map((item) => {
+              const Icon = item.icon;
+              const isActive = checkIsActive(item);
+              const isNavigating = navigatingHref === item.href;
 
-            {/* Modules List */}
-            <div className="overflow-y-auto px-3 py-3 space-y-1 pb-[calc(env(safe-area-inset-bottom)+1.25rem)]">
-              {MORE_BOTTOM_NAV.map((item) => {
-                const Icon = item.icon;
-                const isActive = checkIsActive(item);
-
-                return (
-                  <Link
-                    key={item.key}
-                    href={item.href}
-                    prefetch={true}
-                    onClick={() => setMobileMoreOpen(false)}
-                    className={`w-full flex items-center justify-between px-3.5 py-3 rounded-2xl transition-all cursor-pointer touch-manipulation select-none active:scale-[0.98] ${
-                      isActive
-                        ? "bg-red-50 text-red-600 dark:bg-red-500/15 dark:text-red-400 font-bold shadow-2xs"
-                        : "text-gray-800 dark:text-neutral-200 hover:bg-gray-50 dark:hover:bg-neutral-800/60"
-                    }`}
-                  >
-                    <div className="flex items-center gap-3 min-w-0">
-                      <div
-                        className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${
-                          isActive
-                            ? "bg-red-600 text-white shadow-xs"
-                            : isDark
-                            ? "bg-neutral-800/90 text-neutral-300"
-                            : "bg-gray-100 text-gray-700"
-                        }`}
-                      >
-                        <Icon className="w-4.5 h-4.5 stroke-[2]" />
-                      </div>
-                      <span className="text-sm font-semibold truncate font-[Matter]">
-                        {item.label}
-                      </span>
+              return (
+                <Link
+                  key={item.key}
+                  href={item.href}
+                  prefetch={true}
+                  onClick={() => {
+                    if (pathname !== item.href) {
+                      setNavigatingHref(item.href);
+                    } else {
+                      setMobileMoreOpen(false);
+                    }
+                  }}
+                  className={`w-full flex items-center justify-between px-3.5 py-3 rounded-2xl transition-all cursor-pointer touch-manipulation select-none active:scale-[0.98] ${
+                    isActive
+                      ? "bg-red-50 text-red-600 dark:bg-red-500/15 dark:text-red-400 font-bold shadow-2xs"
+                      : "text-gray-800 dark:text-neutral-200 hover:bg-gray-50 dark:hover:bg-neutral-800/60"
+                  }`}
+                >
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div
+                      className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${
+                        isActive
+                          ? "bg-red-600 text-white shadow-xs"
+                          : isDark
+                          ? "bg-neutral-800/90 text-neutral-300"
+                          : "bg-gray-100 text-gray-700"
+                      }`}
+                    >
+                      <Icon className="w-4.5 h-4.5 stroke-[2]" />
                     </div>
+                    <span className="text-sm font-semibold truncate font-[Matter]">
+                      {item.label}
+                    </span>
+                  </div>
 
+                  {isNavigating ? (
+                    <Loader2 className="w-4 h-4 shrink-0 animate-spin text-red-600 dark:text-red-400" />
+                  ) : (
                     <ChevronRight
                       className={`w-4 h-4 shrink-0 transition-transform ${
                         isActive
@@ -269,13 +315,13 @@ export default function CrmMobileNav({
                           : "text-gray-400 dark:text-neutral-500"
                       }`}
                     />
-                  </Link>
-                );
-              })}
-            </div>
+                  )}
+                </Link>
+              );
+            })}
           </div>
         </div>
-      )}
+      </div>
 
       {/* Primary Fixed Bottom Navigation (Classic 5-column design) */}
       <nav
