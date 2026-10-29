@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import { addLeadConfirmed } from "@/utils/leadStorage";
 import { safeExternalUrl } from "@/lib/safeUrl";
+import { trackMetaEvent } from "./landing/landingTracking";
 
 // Helper function to format **bold** markdown cleanly without showing raw ** asterisks
 function formatChatMessage(text) {
@@ -453,6 +454,13 @@ export default function AiChatbotWidget() {
       source: "Chatbot (Ananya)",
       notes: `Inquired via Ananya Chatbot for ${leadInfo.service}.`
     });
+
+    try {
+      trackMetaEvent("Lead", {
+        content_name: leadInfo.service,
+        content_category: "Chatbot Ananya",
+      });
+    } catch (_) {}
 
     setLeadSubmitted(true);
     setShowLeadForm(false);
