@@ -8,7 +8,6 @@ import {
   CheckCheck,
   ChevronLeft,
   ChevronRight,
-  ExternalLink,
   Clock,
   Sparkles,
   Phone,
@@ -32,6 +31,81 @@ export default function MandatoryNotificationModal({
       setCurrentIndex(unreadNotifications.length - 1);
     }
   }, [unreadNotifications.length, currentIndex]);
+
+  // Lock background page scroll strictly when mandatory notification is active
+  useEffect(() => {
+    if (!unreadNotifications || unreadNotifications.length === 0) return;
+
+    const { body, documentElement } = document;
+    const scrollY = window.scrollY || documentElement.scrollTop || 0;
+    const scrollbarWidth = Math.max(0, window.innerWidth - documentElement.clientWidth);
+
+    const previous = {
+      bodyOverflow: body.style.overflow,
+      bodyPosition: body.style.position,
+      bodyTop: body.style.top,
+      bodyLeft: body.style.left,
+      bodyRight: body.style.right,
+      bodyWidth: body.style.width,
+      bodyPaddingRight: body.style.paddingRight,
+      htmlOverflow: documentElement.style.overflow,
+      touchAction: body.style.touchAction,
+    };
+
+    body.classList.add("modal-open");
+    documentElement.classList.add("modal-open");
+    body.style.overflow = "hidden";
+    body.style.position = "fixed";
+    body.style.top = `-${scrollY}px`;
+    body.style.left = "0";
+    body.style.right = "0";
+    body.style.width = "100%";
+    body.style.touchAction = "none";
+    if (scrollbarWidth > 0) {
+      body.style.paddingRight = `${scrollbarWidth}px`;
+    }
+    documentElement.style.overflow = "hidden";
+
+    const handleWheel = (e) => {
+      const card = document.getElementById("mandatory-notif-dialog");
+      if (card && card.contains(e.target)) {
+        if (card.scrollHeight > card.clientHeight) {
+          return;
+        }
+      }
+      e.preventDefault();
+    };
+
+    const handleTouchMove = (e) => {
+      const card = document.getElementById("mandatory-notif-dialog");
+      if (card && card.contains(e.target)) {
+        if (card.scrollHeight > card.clientHeight) {
+          return;
+        }
+      }
+      e.preventDefault();
+    };
+
+    document.addEventListener("wheel", handleWheel, { passive: false, capture: true });
+    document.addEventListener("touchmove", handleTouchMove, { passive: false, capture: true });
+
+    return () => {
+      document.removeEventListener("wheel", handleWheel, { capture: true });
+      document.removeEventListener("touchmove", handleTouchMove, { capture: true });
+      body.classList.remove("modal-open");
+      documentElement.classList.remove("modal-open");
+      body.style.overflow = previous.bodyOverflow;
+      body.style.position = previous.bodyPosition;
+      body.style.top = previous.bodyTop;
+      body.style.left = previous.bodyLeft;
+      body.style.right = previous.bodyRight;
+      body.style.width = previous.bodyWidth;
+      body.style.paddingRight = previous.bodyPaddingRight;
+      body.style.touchAction = previous.touchAction;
+      documentElement.style.overflow = previous.htmlOverflow;
+      window.scrollTo(0, scrollY);
+    };
+  }, [unreadNotifications]);
 
   if (!unreadNotifications || unreadNotifications.length === 0) {
     return null;
@@ -57,15 +131,6 @@ export default function MandatoryNotificationModal({
       if (onMarkAllRead) await onMarkAllRead();
     } finally {
       setProcessing(false);
-    }
-  };
-
-  const handleOpenLink = () => {
-    if (!current?.link_url) return;
-    if (onNavigate) {
-      onNavigate(current.link_url);
-    } else if (typeof window !== "undefined") {
-      window.location.assign(current.link_url);
     }
   };
 
@@ -103,13 +168,15 @@ export default function MandatoryNotificationModal({
 
   return (
     <div
-      className="fixed inset-0 z-[99999] flex items-center justify-center p-4 sm:p-6 bg-black/85 backdrop-blur-md select-none animate-in fade-in duration-200"
+      data-modal-overlay="true"
+      className="fixed inset-0 z-[99999] flex items-center justify-center p-4 sm:p-6 bg-black/85 backdrop-blur-md select-none animate-in fade-in duration-200 touch-none overscroll-none"
       role="dialog"
       aria-modal="true"
       aria-labelledby="mandatory-notif-title"
     >
       <div
-        className={`w-full max-w-lg rounded-3xl p-6 sm:p-7 shadow-2xl border transition-all ${
+        id="mandatory-notif-dialog"
+        className={`w-full max-w-lg max-h-[90vh] overflow-y-auto overscroll-contain touch-auto rounded-3xl p-6 sm:p-7 shadow-2xl border transition-all ${
           isDark
             ? "bg-slate-900/95 border-slate-700/70 text-slate-100 shadow-cyan-950/40"
             : "bg-white border-slate-200 text-slate-800 shadow-slate-900/20"
@@ -172,18 +239,6 @@ export default function MandatoryNotificationModal({
               </p>
             )}
           </div>
-
-          {/* Linked Record Quick Action */}
-          {current?.link_url && (
-            <button
-              type="button"
-              onClick={handleOpenLink}
-              className="w-full flex items-center justify-center gap-2 py-2 px-3 text-xs font-semibold rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 transition-colors"
-            >
-              <ExternalLink className="w-3.5 h-3.5" />
-              <span>View Related Record ({current.link_url})</span>
-            </button>
-          )}
 
           {/* Stepper Controls if multiple notifications */}
           {total > 1 && (
