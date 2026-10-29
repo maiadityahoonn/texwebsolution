@@ -12,6 +12,7 @@ import {
   FileText,
   ExternalLink,
   ShieldAlert,
+  XCircle,
 } from "lucide-react";
 import { CLOSED_PIPELINE_STAGES, getLeadNextAction } from "../shared/leadUtils";
 import {
