@@ -43,13 +43,21 @@ function getMetaCookies(request) {
   return { fbp, fbc };
 }
 
+function parsePurchaseValue(lead) {
+  const direct = Number(lead?.deal_value || lead?.amount || lead?.value);
+  if (Number.isFinite(direct) && direct > 0) return direct;
+  const digits = String(lead?.budget || lead?.budget_range || "").replace(/[^0-9]/g, "");
+  const fromBudget = Number(digits);
+  return Number.isFinite(fromBudget) && fromBudget > 0 ? fromBudget : 1;
+}
+
 function mapEventName(status) {
   const value = cleanText(status || "Lead", 80).toLowerCase();
-  if (value.includes("lost")) return "LeadLost";
-  if (value.includes("won") || value.includes("converted") || value.includes("closed won")) return "Purchase";
-  if (value.includes("negotiation") || value.includes("proposal") || value.includes("quotation")) return "SubmitApplication";
-  if (value.includes("meeting")) return "Schedule";
-  if (value.includes("contacted") || value.includes("qualified") || value.includes("requirement")) return "Contact";
+  if (value.includes("lost") || value.includes("abandon") || value.includes("drop") || value.includes("cancel")) return "LeadLost";
+  if (value.includes("won") || value.includes("converted") || value.includes("closed won") || value.includes("paid") || value.includes("purchase")) return "Purchase";
+  if (value.includes("negotiation") || value.includes("proposal") || value.includes("quotation") || value.includes("quote") || value.includes("estimate") || value.includes("agreement")) return "SubmitApplication";
+  if (value.includes("meeting") || value.includes("schedule") || value.includes("call") || value.includes("demo")) return "Schedule";
+  if (value.includes("contacted") || value.includes("qualified") || value.includes("requirement") || value.includes("verified")) return "Contact";
   return "Lead";
 }
 
@@ -120,7 +128,7 @@ export async function POST(request) {
       crm_status: cleanText(body.status || lead.status || "New", 80),
       service: cleanText(lead.service || "", 120),
       source: cleanText(lead.source || "", 120),
-      ...(eventName === "Purchase" ? { currency: "INR", value: Number(lead.amount || lead.budget || lead.deal_value || 1) } : {}),
+      ...(eventName === "Purchase" ? { currency: "INR", value: parsePurchaseValue(lead) } : {}),
     },
     user_data: userData,
   };

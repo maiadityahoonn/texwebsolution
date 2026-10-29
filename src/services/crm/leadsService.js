@@ -25,13 +25,12 @@ export async function sendMetaCrmEvent(lead, status = lead?.status || 'New') {
 
 export function mapDealStageToLeadStatus(stage) {
   const value = String(stage || '').toLowerCase();
-  if (value === 'closed_lost') return 'Lost';
-  if (value === 'closed_won') return 'Closed Won';
-  if (value.includes('negotiation')) return 'Negotiation';
-  if (value.includes('proposal') || value.includes('quotation') || value.includes('quote')) return 'Proposal Sent';
-  if (value.includes('qualified') || value.includes('requirement')) return 'Qualified';
-  if (value.includes('contacted')) return 'Qualified';
-  if (value.includes('meeting')) return 'Meeting';
+  if (value.includes('lost') || value.includes('abandon') || value.includes('drop')) return 'Lost';
+  if (value.includes('won') || value.includes('convert')) return 'Closed Won';
+  if (value.includes('negotiat')) return 'Negotiation';
+  if (value.includes('proposal') || value.includes('quotation') || value.includes('quote') || value.includes('estimate')) return 'Proposal Sent';
+  if (value === 'qualified' || value.includes('meet') || value.includes('schedul')) return 'Meeting';
+  if (value.includes('contact') || value.includes('qualif') || value.includes('require')) return 'Qualified';
   return 'Lead';
 }
 
@@ -100,6 +99,7 @@ export async function sendDealStageMetaEvent(deal, stage) {
         ...lead,
         service: deal.service || lead.service,
         notes: [lead.notes, deal.notes].filter(Boolean).join('\n'),
+        deal_value: Number(deal.deal_value || deal.value) || 0,
         status: mapDealStageToLeadStatus(stage),
       },
       mapDealStageToLeadStatus(stage)
