@@ -107,7 +107,7 @@ export async function POST(request) {
   const eventTime = Math.floor(new Date(body.event_time || lead.updated_at || lead.created_at || Date.now()).getTime() / 1000);
   const eventName = mapEventName(body.status || lead.status);
   const eventId = body.event_id || lead.event_id || null;
-  const actionSource = body.action_source || (eventId ? "website" : "system_generated");
+  const actionSource = body.action_source || "website";
   const eventSourceUrl = body.event_source_url || request.headers.get("referer") || undefined;
 
   const eventItem = {
@@ -144,7 +144,7 @@ export async function POST(request) {
   const idempotencyKey = idempotencySubject
     ? `crm:capi:idempotency:${idempotencySubject}:${eventName}:${cleanText(body.status || lead.status || "New", 80)}`
     : "";
-  if (idempotencyKey) {
+  if (idempotencyKey && !config.testEventCode) {
     const claimed = await cacheSetNx(idempotencyKey, "1", 60 * 60 * 24 * 7);
     if (!claimed) {
       return NextResponse.json({ ok: true, skipped: true, reason: "Duplicate CAPI event suppressed." });
